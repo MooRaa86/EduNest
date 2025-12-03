@@ -20,6 +20,10 @@ public class registerServiceImpl implements RegisterationService{
     @Override
     public boolean registerUser(RegisterRequestDto registerRequestDto) {
 
+        if(userRepository.existsByEmail(registerRequestDto.getEmail())) {
+            throw new RuntimeException("Email already in use");
+        }
+
         Roles role = roleRepository.findById(registerRequestDto.getRoleId())
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
