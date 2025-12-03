@@ -1,6 +1,5 @@
 package com.example.gradproj.EduNest.dto;
 
-import jakarta.persistence.Lob;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -21,7 +20,6 @@ public class ContactMessageRequestDto {
     @Email(regexp = "^[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+)\\.(com|net|org|edu|ac\\.[a-z]{2,3})$",
             message = "Invalid email format.")
     private String email;
-
 
     @Pattern(regexp = "^01[0-9]{9}$", message = "Invalid phone number")
     @NotBlank(message = "Phone is required")
