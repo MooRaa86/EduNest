@@ -20,6 +20,9 @@ public class GlobalExceptionHandler{
         for(FieldError fieldError : fieldErrors){
             response.addError(fieldError.getField(),fieldError.getDefaultMessage());
         }
+        exception.getBindingResult().getGlobalErrors().forEach(error -> {
+            response.addError(error.getObjectName(), error.getDefaultMessage());
+        });
 
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
@@ -27,7 +30,7 @@ public class GlobalExceptionHandler{
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleException(Exception exception){
         ErrorResponse response = new ErrorResponse();
-        response.addError("Server Error",exception.getMessage());
+        response.addError("Error Message : ",exception.getMessage());
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

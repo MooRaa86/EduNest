@@ -22,7 +22,6 @@ public class ContactMessageRequestDto {
             message = "Invalid email format.")
     private String email;
 
-
     @Pattern(regexp = "^01[0-9]{9}$", message = "Invalid phone number")
     @NotBlank(message = "Phone is required")
     private String phone;
