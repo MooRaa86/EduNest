@@ -1,9 +1,8 @@
 package com.example.gradproj.EduNest.repository;
 
-import com.example.gradproj.EduNest.entity.UserEntity;
+import com.example.gradproj.EduNest.entity.Mentor;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository extends JpaRepository<UserEntity,Long> {
+public interface MentorRepository extends JpaRepository<Mentor, Long> {
     boolean existsByEmail(String email);
-
 }

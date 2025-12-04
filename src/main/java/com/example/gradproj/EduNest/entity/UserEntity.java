@@ -7,14 +7,12 @@ import lombok.*;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
-@Table(name = "user")
-@Builder
+//@Table(name = "user")
+//@Builder
+@MappedSuperclass
 public class UserEntity extends BaseEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private String fristName;
+
+    private String firstName;
     private String lastName;
     private String email;
     private String password;

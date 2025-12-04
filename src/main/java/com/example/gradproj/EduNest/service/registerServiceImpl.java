@@ -1,9 +1,12 @@
 package com.example.gradproj.EduNest.service;
 
-import com.example.gradproj.EduNest.dto.RegisterRequestDto;
+import com.example.gradproj.EduNest.dto.MentorRequestDto;
+import com.example.gradproj.EduNest.dto.StudenRequestDto;
+import com.example.gradproj.EduNest.entity.Mentor;
 import com.example.gradproj.EduNest.entity.Roles;
-import com.example.gradproj.EduNest.entity.UserEntity;
-import com.example.gradproj.EduNest.repository.UserRepository;
+import com.example.gradproj.EduNest.entity.Student;
+import com.example.gradproj.EduNest.repository.MentorRepository;
+import com.example.gradproj.EduNest.repository.StudentRepository;
 import com.example.gradproj.EduNest.repository.roleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,37 +16,70 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class registerServiceImpl implements RegisterationService{
 
-    private final UserRepository userRepository;
+    private final MentorRepository mentorRepository;
+    private final StudentRepository studentRepository;
     private final roleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public boolean registerUser(RegisterRequestDto registerRequestDto) {
 
-        if(userRepository.existsByEmail(registerRequestDto.getEmail())) {
-            throw new RuntimeException("Email already in use");
+    @Override
+    public boolean registerStudent(StudenRequestDto studentDto) {
+        if(studentRepository.existsByEmail(studentDto.getEmail())) {
+            throw new RuntimeException("Email already exists");
         }
 
-        Roles role = roleRepository.findById(registerRequestDto.getRoleId())
+        Roles role = roleRepository.findById(studentDto.getRoleId())
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
-        String pass = passwordEncoder.encode(registerRequestDto.getPassword());
-
-        UserEntity userEntity = UserEntity.builder()
-                .fristName(registerRequestDto.getFirstName())
-                .lastName(registerRequestDto.getLastName())
-                .email(registerRequestDto.getEmail())
-                .password(pass)
-                .phoneNumber(registerRequestDto.getPhoneNumber())
-                .roles(role)
-                .build();
-
-        UserEntity user = userRepository.save(userEntity);
-
-        if(user != null){
-            return true;
-        }else{
-            throw new RuntimeException("Registeration Failed!!");
+        if(!role.getRoleName().equals("STUDENT")) {
+            throw new RuntimeException("Role mismatch");
         }
+
+        Student student = new Student();
+
+        student.setFirstName(studentDto.getFirstName());
+        student.setLastName(studentDto.getLastName());
+        student.setEmail(studentDto.getEmail());
+        student.setPassword(passwordEncoder.encode(studentDto.getPassword()));
+        student.setPhoneNumber(studentDto.getPhoneNumber());
+        student.setRoles(role);
+        student.setEducationalLevel(studentDto.getEducationalLevel());
+
+        Student newStudent = studentRepository.save(student);
+
+        return newStudent.getId() != null;
+
+    }
+
+    @Override
+    public boolean registerMentor(MentorRequestDto mentorRequestDto) {
+        if (mentorRepository.existsByEmail(mentorRequestDto.getEmail())) {
+           throw new RuntimeException("Email already exists");
+        }
+
+        Roles role = roleRepository.findById(mentorRequestDto.getRoleId())
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        if(!role.getRoleName().equals("MENTOR")) {
+            throw new RuntimeException("Role mismatch");
+        }
+
+        Mentor mentor = new Mentor();
+        mentor.setFirstName(mentorRequestDto.getFirstName());
+        mentor.setLastName(mentorRequestDto.getLastName());
+        mentor.setEmail(mentorRequestDto.getEmail());
+        mentor.setPassword(passwordEncoder.encode(mentorRequestDto.getPassword()));
+        mentor.setPhoneNumber(mentorRequestDto.getPhoneNumber());
+        mentor.setBio(mentorRequestDto.getBio());
+        mentor.setRoles(role);
+        mentor.setGithubUrl(mentorRequestDto.getGithubUrl());
+        mentor.setLinkedInUrl(mentorRequestDto.getLinkedInUrl());
+        mentor.setJobTitle(mentorRequestDto.getJobTitle());
+        mentor.setYearsOfExperience(mentorRequestDto.getYearsOfExperience());
+
+        Mentor newMentor=  mentorRepository.save(mentor);
+
+        return newMentor.getId() != null;
+
     }
 }
