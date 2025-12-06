@@ -6,7 +6,7 @@ import lombok.*;
 @Builder @AllArgsConstructor
 @NoArgsConstructor
 @Getter @Setter
-public class StudenRequestDto extends RegisterRequestDto {
+public class StudentRequestDto extends RegisterRequestDto {
 
     private EducationalLevel educationalLevel;
 }

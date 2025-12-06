@@ -1,24 +1,29 @@
 package com.example.gradproj.EduNest.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@Data
-@AllArgsConstructor
+@Table(name = "mentors")
+@PrimaryKeyJoinColumn(name = "mentor_id") // الـ FK اللي بيربط مع جدول users
+@Getter
+@Setter
+@SuperBuilder
 @NoArgsConstructor
-@Builder
-@Table(name = "mentor")
+@AllArgsConstructor
 public class Mentor extends UserEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private String jobTitle; // enum -> static
+
+    // الـ ID بيورثه من الأب
+
+    private String jobTitle;
+
+    @Column(length = 500)
     private String bio;
+
     private String linkedInUrl;
+
     private String githubUrl;
+
     private double yearsOfExperience;
 }

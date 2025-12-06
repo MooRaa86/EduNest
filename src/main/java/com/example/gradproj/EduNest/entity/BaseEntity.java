@@ -1,27 +1,28 @@
 package com.example.gradproj.EduNest.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
-import lombok.Data;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 
 import java.time.LocalDateTime;
 
-@Data
 @MappedSuperclass
-public class BaseEntity {
+@Getter
+@Setter
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public abstract class BaseEntity {
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    @JsonIgnore
+    @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(nullable = false)
-    @JsonIgnore
     private LocalDateTime updatedAt;
-
 }

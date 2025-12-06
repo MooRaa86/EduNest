@@ -16,6 +16,7 @@ import lombok.Setter;
         fieldMatch = "confirmPassword",
         message = "Passwords do not match")
 public class RegisterRequestDto {
+
     @NotBlank(message = "First name is required")
     @Size(min = 2, max = 20, message = "First name must be between 2 and 20 characters")
     private String firstName;
@@ -41,7 +42,7 @@ public class RegisterRequestDto {
     @Pattern(regexp = "^01[0-9]{9}$", message = "Invalid phone number")
     private String phoneNumber;
 
-    @NotNull(message =  "Role Id is required")
-    @roleValidator
-    private Long roleId;
+//    @NotNull(message =  "Role Id is required")
+//    @roleValidator
+//    private Long roleId;
 }

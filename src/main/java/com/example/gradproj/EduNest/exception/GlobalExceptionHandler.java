@@ -30,7 +30,7 @@ public class GlobalExceptionHandler{
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleException(Exception exception){
         ErrorResponse response = new ErrorResponse();
-        response.addError("Error Message : ",exception.getMessage());
+        response.addError("error message",exception.getMessage());
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

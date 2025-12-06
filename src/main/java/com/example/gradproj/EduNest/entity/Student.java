@@ -2,23 +2,22 @@ package com.example.gradproj.EduNest.entity;
 
 import com.example.gradproj.EduNest.enums.EducationalLevel;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
-@AllArgsConstructor
+@Table(name = "students")
+@PrimaryKeyJoinColumn(name = "student_id") // الـ FK اللي بيربط مع جدول users
+@Getter
+@Setter
+@SuperBuilder
 @NoArgsConstructor
-@Data
-@Builder
-@Table(name = "student")
+@AllArgsConstructor
 public class Student extends UserEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+
+    // الـ ID بيورثه من الأب (UserEntity)
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private EducationalLevel educationalLevel;
-
 }
