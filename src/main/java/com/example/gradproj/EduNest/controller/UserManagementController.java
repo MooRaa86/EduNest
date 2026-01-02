@@ -38,7 +38,7 @@ public class UserManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/verifyUser")
+    @PostMapping("/verify-user")
     public ResponseEntity<SimpleResponse> verifyAccount(@RequestBody VerifyAccountDto dto) {
         registerationService.verifyUser(dto.getEmail(), dto.getOtp());
         SimpleResponse response = new SimpleResponse();
@@ -46,7 +46,7 @@ public class UserManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @PostMapping("/sendOtp")
+    @PostMapping("/send-otp")
     public ResponseEntity<SimpleResponse> sendOtpToEmail(@Valid @Email String email) {
         registerationService.generateAndSendOtp(email);
         SimpleResponse response = new SimpleResponse();

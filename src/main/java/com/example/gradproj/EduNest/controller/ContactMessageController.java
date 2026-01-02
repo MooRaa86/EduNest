@@ -16,7 +16,7 @@ public class ContactMessageController {
     @Autowired
     private ContactMessageService contactMessageService;
 
-    @PostMapping("/saveContactMessage")
+    @PostMapping("/save-contact-message")
     public ResponseEntity<String> insertContactMessage(
             @Valid @RequestBody ContactMessageRequestDto contactMessageRequestDto) {
 
