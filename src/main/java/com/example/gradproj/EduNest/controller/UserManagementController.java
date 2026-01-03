@@ -22,7 +22,7 @@ public class UserManagementController {
 
     private final RegistrationService registerationService;
 
-    @PostMapping("/register/student")
+    @PostMapping("/register-student")
     public ResponseEntity<SimpleResponse> registerStudent(@Valid @RequestBody StudentRequestDto dto){
         registerationService.registerStudent(dto);
         SimpleResponse response = new SimpleResponse();
@@ -30,7 +30,7 @@ public class UserManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/register/mentor")
+    @PostMapping("/register-mentor")
     public ResponseEntity<SimpleResponse> register(@Valid @RequestBody MentorRequestDto dto){
         registerationService.registerMentor(dto);
         SimpleResponse response = new SimpleResponse();
