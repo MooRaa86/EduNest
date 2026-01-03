@@ -11,9 +11,9 @@ public class OTP {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Column(name = "otp_code")
     private String otpCode;
-
+    @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
     @OneToOne

@@ -11,9 +11,9 @@ import java.util.Map;
 @NoArgsConstructor
 @Getter @Setter
 public class SimpleResponse {
-    Map<String,String> Messages=new HashMap<>();
+    Map<String,Object> Messages=new HashMap<>();
 
-    public void addMessage(String key,String value){
+    public void addMessage(String key,Object value){
         Messages.put(key,value);
     }
 }

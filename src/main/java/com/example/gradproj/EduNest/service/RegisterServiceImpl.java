@@ -9,11 +9,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
+import org.thymeleaf.templateresolver.ITemplateResolver;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+
+import static com.example.gradproj.EduNest.utils.SystemUtils.*;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +35,7 @@ public class RegisterServiceImpl implements RegistrationService {
     private final OTPRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final TemplateEngine templateEngine;
     private final int expiryTime = 2;
 
     @Override
@@ -49,33 +59,14 @@ public class RegisterServiceImpl implements RegistrationService {
                 .build();
         otpRepository.save(otp);
 
-        String html = String.format(
-                "<div style=\"font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; position: relative; overflow: hidden;\">" +
+        // Prepare the evaluation context
+        String htmlTemplate = emailService.getEmailTemplate("otp-template.html");
 
-                        "  " +
-                        "  <div style=\"padding: 40px 40px 20px 40px;\">" +
-                        "    <h1 style=\"color: #000000; font-size: 28px; margin: 0; font-weight: bold; letter-spacing: -1px;\">EduNest</h1>" +
-                        "  </div>" +
 
-                        "  " +
-                        "  <div style=\"padding: 0 40px 100px 40px; color: #333333; line-height: 1.6;\">" +
-                        "    <p style=\"font-size: 16px; margin-bottom: 30px;\">Subject: <strong>Verification Code</strong></p>" +
-                        "    <p style=\"font-size: 16px; margin-bottom: 20px;\">Dear User,</p>" +
-                        "    <p style=\"font-size: 16px; margin-bottom: 30px;\">You are registering with EduNest. To complete your sign-up process, please use the verification code below.</p>" +
-
-                        "    " +
-                        "    <div style=\"margin-bottom: 30px;\">" +
-                        "      <p style=\"font-size: 14px; color: #666; margin-bottom: 5px;\">Your OTP Code:</p>" +
-                        "      <span style=\"font-size: 36px; font-weight: 800; color: #000000; letter-spacing: 2px;\">%s</span>" +
-                        "      <p style=\"font-size: 13px; color: #888; margin-top: 10px;\">Valid for <strong>%d minutes</strong> only.</p>" +
-                        "    </div>" +
-
-                        "    <p style=\"font-size: 16px; margin-top: 40px;\">Best regards,<br><strong>EduNest Team</strong></p>" +
-                        "  </div>" +
-
-                        "</div>",
-                otpCode, expiryTime
-        );
+        // Process the template
+        String html = htmlTemplate.replace("{{OTP_CODE}}", otpCode)
+                .replace("{{USER_NAME}}", user.getFirstName() + " " + user.getLastName())
+                .replace("{{EXPIRY_MINUTES}}", String.valueOf(expiryTime));
 
         emailService.sendEmail(
                 user.getEmail(),
@@ -92,7 +83,7 @@ public class RegisterServiceImpl implements RegistrationService {
             throw new EmailAlreadyExistsException("Email already exists");
         }
 
-        Roles role = roleRepository.findByName("STUDENT")
+        Roles role = roleRepository.findByName(STUDENT)
                 .orElseThrow(() -> new RoleNotFoundException("Error: Role STUDENT not found."));
 
         Student student = Student.builder()
@@ -103,6 +94,16 @@ public class RegisterServiceImpl implements RegistrationService {
                 .phoneNumber(studentDto.getPhoneNumber())
                 .role(role)
                 .educationalLevel(studentDto.getEducationalLevel())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .createdBy(SYSTEM)
+                .updatedBy(SYSTEM)
+
+                // after login
+                //        student.setUpdatedBy(currentUser.getUsername());
+                //        student.setUpdatedAt(LocalDateTime.now());
+
+                .enabled(false)
                 .build();
 
         studentRepository.save(student);
@@ -119,7 +120,7 @@ public class RegisterServiceImpl implements RegistrationService {
             throw new EmailAlreadyExistsException("Email already exists");
         }
 
-        Roles role = roleRepository.findByName("MENTOR")
+        Roles role = roleRepository.findByName(MENTOR)
                 .orElseThrow(() -> new RoleNotFoundException("Error: Role MENTOR not found."));
 
         Mentor mentor = Mentor.builder()
@@ -134,6 +135,13 @@ public class RegisterServiceImpl implements RegistrationService {
                 .linkedInUrl(mentorRequestDto.getLinkedInUrl())
                 .githubUrl(mentorRequestDto.getGithubUrl())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
+                .createdBy(SYSTEM)
+                .updatedBy(SYSTEM)
+//                after login
+//        student.setUpdatedBy(currentUser.getUsername());
+//        student.setUpdatedAt(LocalDateTime.now());
+
+                .enabled(false)
                 .build();
 
         mentorRepository.save(mentor);
@@ -159,6 +167,7 @@ public class RegisterServiceImpl implements RegistrationService {
 
         UserEntity user = otpEntity.getUser();
         user.setEnabled(true);
+        user.setUpdatedBy(SYSTEM);
         userRepository.save(user);
 
         otpRepository.delete(otpEntity);

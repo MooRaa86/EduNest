@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EduNest Verification Code</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      background-color: #ffffff;
+      border: 1px solid #e0e0e0;
+      padding: 40px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header h1 {
+      color: #000000;
+      font-size: 28px;
+      margin: 0 0 20px 0;
+      font-weight: bold;
+    }
+    .content p {
+      font-size: 16px;
+      color: #333333;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .otp-box {
+      margin: 30px 0;
+      text-align: center;
+    }
+    .otp-code {
+      font-size: 36px;
+      font-weight: 800;
+      color: #000000;
+      letter-spacing: 2px;
+    }
+    .otp-expiry {
+      font-size: 13px;
+      color: #888888;
+      margin-top: 10px;
+    }
+    .footer p {
+      font-size: 16px;
+      margin-top: 40px;
+      color: #333333;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>EduNest</h1>
+  </div>
+  <div class="content">
+    <p>Dear {{USER_NAME || 'User'}},</p>
+    <p>You are registering with EduNest. To complete your sign-up process, please use the verification code below.</p>
+
+    <div class="otp-box">
+      <span class="otp-code">{{OTP_CODE}}</span>
+      <p class="otp-expiry">Valid for <strong>{{EXPIRY_MINUTES}} minutes</strong> only.</p>
+    </div>
+
+    <p>Best regards,<br><strong>EduNest Team</strong></p>
+  </div>
+</div>
+</body>
+</html>
+head>
+<body>
+
+</body>
+</html>

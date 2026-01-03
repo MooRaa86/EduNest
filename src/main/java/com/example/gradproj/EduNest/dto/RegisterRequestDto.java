@@ -1,7 +1,6 @@
 package com.example.gradproj.EduNest.dto;
 
 import com.example.gradproj.EduNest.annotation.FieldsValueMatch;
-import com.example.gradproj.EduNest.annotation.roleValidator;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -43,6 +42,6 @@ public class RegisterRequestDto {
     private String phoneNumber;
 
 //    @NotNull(message =  "Role Id is required")
-//    @roleValidator
+//    @RoleValidator
 //    private Long roleId;
 }

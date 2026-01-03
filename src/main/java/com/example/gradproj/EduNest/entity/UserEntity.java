@@ -14,9 +14,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 public abstract class UserEntity extends BaseEntity { // Abstract عشان محدش يعمل User بس
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // ده الـ ID الموحد في كل الجداول
+     // ده الـ ID الموحد في كل الجداول
 
     private String firstName;
 

@@ -15,15 +15,16 @@ import lombok.experimental.SuperBuilder;
 public class Mentor extends UserEntity {
 
     // الـ ID بيورثه من الأب
-
+    @Column(name = "job_title")
     private String jobTitle;
 
-    @Column(length = 500)
+    @Column(length = 500,name = "bio")
     private String bio;
 
+    @Column(name = "linked_in_url")
     private String linkedInUrl;
-
+    @Column(name = "github_url")
     private String githubUrl;
-
+    @Column(name = "years_of_experience")
     private double yearsOfExperience;
 }

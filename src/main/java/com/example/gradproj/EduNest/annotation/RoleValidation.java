@@ -3,7 +3,7 @@ package com.example.gradproj.EduNest.annotation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class roleValidation implements ConstraintValidator<roleValidator,Long> {
+public class RoleValidation implements ConstraintValidator<RoleValidator,Long> {
 
 
     @Override

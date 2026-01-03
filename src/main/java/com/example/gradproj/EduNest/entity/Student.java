@@ -18,6 +18,6 @@ public class Student extends UserEntity {
     // الـ ID بيورثه من الأب (UserEntity)
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false,name = "educational_level")
     private EducationalLevel educationalLevel;
 }
