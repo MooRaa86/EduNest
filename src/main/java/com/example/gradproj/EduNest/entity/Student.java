@@ -1,9 +1,12 @@
 package com.example.gradproj.EduNest.entity;
 
+import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.enums.EducationalLevel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.util.*;
 
 @Entity
 @Table(name = "students")
@@ -20,4 +23,8 @@ public class Student extends UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false,name = "educational_level")
     private EducationalLevel educationalLevel;
+
+    @ManyToMany(mappedBy = "students")
+    private Set<mentorShipE> mentorships = new HashSet<>();
+
 }

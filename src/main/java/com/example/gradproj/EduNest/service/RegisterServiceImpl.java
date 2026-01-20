@@ -94,10 +94,10 @@ public class RegisterServiceImpl implements RegistrationService {
                 .phoneNumber(studentDto.getPhoneNumber())
                 .role(role)
                 .educationalLevel(studentDto.getEducationalLevel())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .createdBy(SYSTEM)
-                .updatedBy(SYSTEM)
+//                .createdAt(LocalDateTime.now())
+//                .updatedAt(LocalDateTime.now())
+//                .createdBy(SYSTEM)
+//                .updatedBy(SYSTEM)
 
                 // after login
                 //        student.setUpdatedBy(currentUser.getUsername());
@@ -135,8 +135,8 @@ public class RegisterServiceImpl implements RegistrationService {
                 .linkedInUrl(mentorRequestDto.getLinkedInUrl())
                 .githubUrl(mentorRequestDto.getGithubUrl())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
-                .createdBy(SYSTEM)
-                .updatedBy(SYSTEM)
+//                .createdBy(SYSTEM)
+//                .updatedBy(SYSTEM)
 //                after login
 //        student.setUpdatedBy(currentUser.getUsername());
 //        student.setUpdatedAt(LocalDateTime.now());

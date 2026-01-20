@@ -1,8 +1,11 @@
 package com.example.gradproj.EduNest.entity;
 
+import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.util.*;
 
 @Entity
 @Table(name = "mentors")
@@ -27,4 +30,8 @@ public class Mentor extends UserEntity {
     private String githubUrl;
     @Column(name = "years_of_experience")
     private double yearsOfExperience;
+
+    @OneToMany(mappedBy = "mentor", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<mentorShipE> mentorships = new ArrayList<>();
+
 }
