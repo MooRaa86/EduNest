@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.exception;
 
+import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -94,6 +95,11 @@ public class GlobalExceptionHandler{
 
         response.addError("error", "Malformed JSON request or invalid data type");
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(globalLogicEx.class)
+    public ResponseEntity<ErrorResponse> handleLogicEx(globalLogicEx ex) {
+        return buildErrorResponse("error message", ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler
