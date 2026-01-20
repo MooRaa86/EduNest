@@ -1,0 +1,41 @@
+package com.example.gradproj.EduNest.service.mentorShip;
+
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
+
+
+public interface mentorShipService {
+
+    mentorShipFDto createMentorShip(mentorShipCreateDTO dto);
+
+    mentorShipFDto updateMentorShip(Long mentorShipId, mentorShipUpdateDTO dto);
+
+    void deleteMentorShip(Long mentorShipId);
+
+    PageResponse<mentorShipFDto> getMentorShips(int page, int size);
+
+    mentorShipFDto getMentorShipById(Long mentorShipId);
+
+
+//    List<mentorShip> getMentorShipsByMentorId(Long mentorId);
+//
+//
+//    mentorShip addStudentToMentorShip(Long mentorShipId, Long studentId);
+//
+//    mentorShip removeStudentFromMentorShip(Long mentorShipId, Long studentId);
+//
+//    List<Long> getStudentsIdsInMentorShip(Long mentorShipId);
+//
+//
+//    List<mentorShip> searchMentorShipsByTitle(String title);
+//
+//    List<mentorShip> filterMentorShipsByCategory(String category);
+//
+//    List<mentorShip> filterMentorShipsByDifficultyLevel(String difficultyLevel);
+//
+//
+//    mentorShip updateMentorShipRating(Long mentorShipId, Integer rating);
+}
+
