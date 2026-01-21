@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.repository.quizrepository;
 
-import com.example.gradproj.EduNest.entity.quizEntity.Quiz;
+import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.enums.QuizStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

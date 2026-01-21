@@ -2,8 +2,9 @@ package com.example.gradproj.EduNest.service.quizservice.question;
 
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
-import com.example.gradproj.EduNest.entity.quizEntity.Question;
-import com.example.gradproj.EduNest.entity.quizEntity.Quiz;
+import com.example.gradproj.EduNest.entity.quizentity.Question;
+import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quizrepository.QuestionRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class QuestionServiceImp implements QuestionService {
     @Override
     public QuestionResponseDTO createQuestion(QuestionDTO questionDTO) {
         Quiz quiz = quizRepository.findById(questionDTO.getQuizId())
-                .orElseThrow(() -> new RuntimeException("Quiz not found"));
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         Question question = Question.builder()
                 .quiz(quiz)
@@ -51,17 +52,17 @@ public class QuestionServiceImp implements QuestionService {
     @Override
     public QuestionResponseDTO getQuestionById(Long id) {
         Question question = questionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Question not found"));
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
         return mapToResponseDTO(question);
     }
 
     @Override
     public QuestionResponseDTO updateQuestion(Long id, QuestionDTO questionDTO) {
         Question question = questionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Question not found"));
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
 
         Quiz quiz = quizRepository.findById(questionDTO.getQuizId())
-                .orElseThrow(() -> new RuntimeException("Quiz not found"));
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         question.setQuiz(quiz);
         question.setText(questionDTO.getText());

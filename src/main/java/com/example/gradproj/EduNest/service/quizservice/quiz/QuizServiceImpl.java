@@ -5,7 +5,7 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.entity.mentorship.Mentorship;
-import com.example.gradproj.EduNest.entity.quizEntity.Quiz;
+import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.enums.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorship.mentorShipRepository;

@@ -1,26 +1,23 @@
-package com.example.gradproj.EduNest.entity.quizEntity;
+package com.example.gradproj.EduNest.entity.quizentity;
 
 import com.example.gradproj.EduNest.entity.Student;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 @Entity
 @Table(name = "quizSubmission" ,
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"studentId","quiz_id"})}
+        uniqueConstraints = { @UniqueConstraint(columnNames = {"student_id", "quiz_id"})}
 )
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class QuizSubmission {
 
     @Id
@@ -36,7 +33,7 @@ public class QuizSubmission {
     private Quiz quiz;
 
     @Min(value = 0, message = "Score cannot be negative")
-    private Long score;
+    private Integer score;
 
     @NotNull(message = "Submission date must not be null")
     private LocalDateTime submittedAt = LocalDateTime.now();
