@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.service.tasks;
 
-import com.example.gradproj.EduNest.dto.tasks.GradeSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.SubmissionResponse;
-import com.example.gradproj.EduNest.dto.tasks.SubmitTaskRequest;
+import com.example.gradproj.EduNest.dto.tasks.requests.GradeSubmissionRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.SubmissionResponse;
+import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 
 import java.util.List;
 

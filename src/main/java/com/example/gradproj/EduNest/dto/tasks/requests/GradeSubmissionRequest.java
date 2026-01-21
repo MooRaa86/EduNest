@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.dto.tasks;
+package com.example.gradproj.EduNest.dto.tasks.requests;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

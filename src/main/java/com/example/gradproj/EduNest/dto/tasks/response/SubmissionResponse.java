@@ -1,5 +1,6 @@
-package com.example.gradproj.EduNest.dto.tasks;
+package com.example.gradproj.EduNest.dto.tasks.response;
 
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -9,15 +10,19 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class SubmissionResponse {
-    private Long id;
+
+    private Long submissionId;
     private Long taskId;
     private Long studentId;
-    private Integer attemptNo;
+
     private String fileUrl;
-    private String status;
+    private LocalDateTime submittedAt;
+
     private Boolean isLate;
+    private SubmissionStatus status;
+
     private Integer rawScore;
     private Integer finalScore;
-    private LocalDateTime submittedAt;
-    private LocalDateTime gradedAt;
+    private String feedback;
 }
+

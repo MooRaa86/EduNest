@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.dto.tasks;
+package com.example.gradproj.EduNest.dto.tasks.response;
 
 import lombok.*;
 
@@ -16,7 +16,6 @@ public class TaskResponse {
     private Integer points;
     private Integer passPoints;
     private Integer estimatedMinutes;
-    private Integer maxAttempts;
     private String status;
     private LocalDateTime dueAt;
     private String attachmentUrl;

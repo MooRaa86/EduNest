@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.entity.tasks;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
+import com.example.gradproj.EduNest.entity.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -24,16 +25,12 @@ public class TaskSubmission extends BaseEntity {
     @JoinColumn(name = "task_id",nullable = false)
     private Task task;
 
-    @Column(name = "student_id")
-    private Long studentId;
-    @Column(name = "attempt_no")
-    private Integer attemptNo;
     @Column(name = "file_url")
     private String fileUrl;
-    //الدرجه الي المدرس دخلها مش النهائيه لسه هنحسب بيها الدرجه النهائيه بعد حساب هل التاسك متاخر ولا لا
+
     @Column(name = "raw_score")
     private Integer rawScore;
-    // الدرجة بعد خصم التأخير (السيستم يحسبها)
+
     @Column(name = "final_score")
     private Integer finalScore;
     @Column(name = "task_feedback")
@@ -43,14 +40,20 @@ public class TaskSubmission extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "submission_status")
     private SubmissionStatus status=SubmissionStatus.SUBMITTED;
+
     @Column(name= "submitted_at")
     private LocalDateTime submittedAt;
+
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
-    @Column(name = "graded_By")
-    private String gradedBy;
+
     @Column(name = "is_late")
     private Boolean isLate=false;
+
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "student_id", nullable = false)
+    private Student student;
 
 
 }

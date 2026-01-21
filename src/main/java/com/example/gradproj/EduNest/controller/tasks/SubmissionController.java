@@ -1,10 +1,12 @@
 package com.example.gradproj.EduNest.controller.tasks;
 
-import com.example.gradproj.EduNest.dto.tasks.GradeSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.SubmissionResponse;
-import com.example.gradproj.EduNest.dto.tasks.SubmitTaskRequest;
+import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.dto.tasks.requests.GradeSubmissionRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.SubmissionResponse;
+import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 import com.example.gradproj.EduNest.service.tasks.SubmissionService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,24 +20,33 @@ public class SubmissionController {
         this.submissionService = submissionService;
     }
     @PostMapping("/tasks/{taskId}/submissions")
-    public ResponseEntity<SubmissionResponse> submit(
+    public ResponseEntity<SimpleResponse> submit(
             @PathVariable Long taskId,
             @Valid @RequestBody SubmitTaskRequest req
     ) {
-        return ResponseEntity.ok(submissionService.submit(taskId, req));
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message","task submitted Successfully");
+        response.addMessage("submission",submissionService.submit(taskId,req));
+        return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @GetMapping("/tasks/{taskId}/submissions")
-    public ResponseEntity<List<SubmissionResponse>> listByTask(@PathVariable Long taskId) {
-        return ResponseEntity.ok(submissionService.listByTask(taskId));
+    public ResponseEntity<SimpleResponse> listByTask(@PathVariable Long taskId) {
+       SimpleResponse response=new SimpleResponse();
+       response.addMessage("message","all submissions for this task");
+       response.addMessage("submissions",submissionService.listByTask(taskId));
+        return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @PostMapping("/submissions/{submissionId}/grade")
-    public ResponseEntity<SubmissionResponse> grade(
+    public ResponseEntity<SimpleResponse> grade(
             @PathVariable Long submissionId,
             @Valid @RequestBody GradeSubmissionRequest req
     ) {
-        return ResponseEntity.ok(submissionService.grade(submissionId, req));
+        SimpleResponse response=new SimpleResponse();
+        response.addMessage("message","grade submitted Successfully");
+        response.addMessage("submission",submissionService.grade(submissionId,req));
+       return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
 
