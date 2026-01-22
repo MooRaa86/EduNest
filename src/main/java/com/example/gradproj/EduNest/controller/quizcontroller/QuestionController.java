@@ -37,6 +37,7 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
+
     @DeleteMapping("/{id}")
     public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable Long id){
         questionService.deleteQuestion(id);
@@ -44,6 +45,7 @@ public class QuestionController {
         simpleResponse.addMessage("message","Question deleted successfully");
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<SimpleResponse> getQuestionById(@PathVariable Long id){
@@ -53,6 +55,7 @@ public class QuestionController {
         simpleResponse.addMessage("Question Details",questionResponseDTO);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
+
 
     @GetMapping("/fetch/{quizId}")
     public  ResponseEntity<SimpleResponse> getQuestionByQuizId(@PathVariable Long quizId){
