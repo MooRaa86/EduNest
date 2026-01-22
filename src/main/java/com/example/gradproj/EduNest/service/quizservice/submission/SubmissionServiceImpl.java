@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.repository.StudentRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 
@@ -93,7 +94,7 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .build();
     }
 
-    public List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId) {
+    public List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId){
         QuizSubmission submission = quizSubmissionRepository
                 .findByStudent_IdAndQuiz_Id(studentId, quizId)
                 .orElseThrow(() -> new globalLogicEx("Submission not found"));
@@ -106,8 +107,8 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .toList();
     }
 
-    public List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId) {
-        return quizSubmissionRepository.findAllByStudent_Id(studentId)
+  public  List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size){
+        return quizSubmissionRepository.findAllByStudent_Id(studentId , PageRequest.of(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
                         .id(sub.getId())
@@ -120,8 +121,8 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     @Override
-    public List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId) {
-        return quizSubmissionRepository.findAllByQuiz_Id(quizId)
+    public List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId, int page, int size){
+        return quizSubmissionRepository.findAllByQuiz_Id(quizId,PageRequest.of(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
                         .id(sub.getId())

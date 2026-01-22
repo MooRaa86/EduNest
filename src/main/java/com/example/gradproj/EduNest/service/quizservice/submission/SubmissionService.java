@@ -12,8 +12,9 @@ public interface SubmissionService {
 
     List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId);
 
-    List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId);
+    List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId, int page, int size);
 
-    List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId);
+    List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size);
+
 
 }

@@ -13,8 +13,9 @@ import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -114,8 +115,8 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
-    public Page<QuizResponseDTO> getQuizzes(String search, QuizStatus status, LocalDate deadline, Pageable pageable) {
-        Page<Quiz> quizzes = quizRepository.findQuizzes(search, status, deadline, pageable);
+    public Page<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, LocalDate deadline, Pageable pageable) {
+        Page<Quiz> quizzes = quizRepository.findQuizzes(quizName, status, deadline, pageable);
         return quizzes.map(quiz -> QuizResponseDTO.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
