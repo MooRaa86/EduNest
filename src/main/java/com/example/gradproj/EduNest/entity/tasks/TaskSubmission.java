@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "task_submission",
         uniqueConstraints =
-             @UniqueConstraint(columnNames = {"task_id","student_id","attempt_no"})
+             @UniqueConstraint(columnNames = {"task_id","student_id"})
 )
 public class TaskSubmission extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY,optional = false)

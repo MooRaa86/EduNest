@@ -123,4 +123,17 @@ public class mentorShipServiceI implements mentorShipService{
                 .build();
     }
 
+
+    private mentorShipFDto mapToFResponse(mentorShipE mentorShip) {
+        return mentorShipFDto.builder()
+                .id(mentorShip.getId())
+                .title(mentorShip.getTitle())
+                .description(mentorShip.getDescription())
+                .category(mentorShip.getCategory())
+                .rating(mentorShip.getRating())
+                .difficultyLevel(mentorShip.getDifficultyLevel())
+                .build();
+    }
+
+
 }
