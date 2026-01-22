@@ -200,7 +200,7 @@ public class QuizServiceImpl implements QuizService {
     }
 
     private double calculateAverageScore(Quiz quiz) {
-        if (quiz.getSubmissions() == null || quiz.getSubmissions().size() == 0) {
+        if (quiz.getSubmissions() == null || quiz.getSubmissions().isEmpty()) {
             return 0;
         }
         return quiz.getSubmissions().stream()
