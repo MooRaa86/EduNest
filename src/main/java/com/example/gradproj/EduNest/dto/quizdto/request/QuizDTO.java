@@ -18,12 +18,13 @@ public class QuizDTO {
 
     @NotNull(message = "Duration is required")
     @Min(value = 1, message = "Duration must be at least 1 minute")
-    private Integer durationMinutes;
+    private Integer duration;
 
     @NotNull(message = "Total points are required")
-    @Min(value = 0, message = "Points can't be negative")
+    @Min(value = 1, message = "Points can't be negative")
     private Integer totalPoints;
 
+    @NotNull(message = "status is required")
     private QuizStatus status = QuizStatus.DRAFT;
 
     @FutureOrPresent(message = "Deadline cannot be in the past")

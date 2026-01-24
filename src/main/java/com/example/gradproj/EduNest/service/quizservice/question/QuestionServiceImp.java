@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuestionDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.enums.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quizrepository.QuestionRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
@@ -43,6 +44,8 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public List<QuestionResponseDTO> getQuestionsByQuizId(Long quizId) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
         return questionRepository.findAll().stream()
                 .filter(q -> q.getQuiz().getId().equals(quizId))
                 .map(this::mapToResponseDTO)
@@ -79,8 +82,24 @@ public class QuestionServiceImp implements QuestionService {
     }
 
     @Override
-    public void deleteQuestion(Long id) {
-        questionRepository.deleteById(id);
+    public void deleteQuestion(Long quizId, Long questionId) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (!quiz.getStatus().equals(QuizStatus.DRAFT)) {
+            throw new globalLogicEx("Cannot delete question. Quiz is already published or closed.");
+        }
+
+        Question question = questionRepository.findById(questionId)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+
+        Question deletedQuestion=quiz.getQuestions().stream()
+                .filter(q -> q.getId().equals(question.getId()))
+                .findFirst()
+                .orElseThrow(() -> new globalLogicEx("Question not found in this quiz"));
+
+        questionRepository.delete(deletedQuestion);
+        quizRepository.save(quiz);
     }
 
     private QuestionResponseDTO mapToResponseDTO(Question question) {

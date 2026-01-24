@@ -63,11 +63,9 @@ public class QuizController {
 
     @GetMapping("/filter")
     public ResponseEntity<SimpleResponse> filterQuizzes(
-            @RequestParam String quizName,
-            @RequestParam QuizStatus status,
-            @RequestParam
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate deadline,
+            @RequestParam(required = false) String quizName,
+            @RequestParam(required = false) QuizStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate deadline,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size
     ) {

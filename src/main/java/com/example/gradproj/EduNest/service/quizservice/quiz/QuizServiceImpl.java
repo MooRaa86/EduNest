@@ -4,17 +4,16 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
-import com.example.gradproj.EduNest.entity.mentorship.Mentorship;
+import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.enums.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.mentorship.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
@@ -31,13 +30,13 @@ public class QuizServiceImpl implements QuizService {
     @Override
     public QuizResponseDTO createQuiz(QuizDTO quizdto) {
 
-        Mentorship mentorship = mentorshipRepository.findById(quizdto.getMentorshipId())
+        mentorShipE mentorship = mentorshipRepository.findById(quizdto.getMentorshipId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
 
         Quiz quiz = Quiz.builder()
                 .title(quizdto.getTitle())
-                .durationMinutes(quizdto.getDurationMinutes())
+                .duration(quizdto.getDuration())
                 .totalPoints(quizdto.getTotalPoints())
                 .mentorship(mentorship)
                 .status(quizdto.getStatus() != null ? quizdto.getStatus() : QuizStatus.DRAFT)
@@ -49,7 +48,7 @@ public class QuizServiceImpl implements QuizService {
         return QuizResponseDTO.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
-                .durationMinutes(quiz.getDurationMinutes())
+                .durationMinutes(quiz.getDuration())
                 .totalPoints(quiz.getTotalPoints())
                 .status(quiz.getStatus())
                 .deadline(quiz.getDeadline())
@@ -73,11 +72,11 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
-        Mentorship mentorship = mentorshipRepository.findById(quizdto.getMentorshipId())
+        mentorShipE mentorship = mentorshipRepository.findById(quizdto.getMentorshipId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
         quiz.setTitle(quizdto.getTitle());
-        quiz.setDurationMinutes(quizdto.getDurationMinutes());
+        quiz.setDuration(quizdto.getDuration());
         quiz.setTotalPoints(quizdto.getTotalPoints());
         quiz.setMentorship(mentorship);
         quiz.setStatus(quizdto.getStatus() != null ? quizdto.getStatus() : quiz.getStatus());
@@ -88,7 +87,7 @@ public class QuizServiceImpl implements QuizService {
         return QuizResponseDTO.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
-                .durationMinutes(quiz.getDurationMinutes())
+                .durationMinutes(quiz.getDuration())
                 .totalPoints(quiz.getTotalPoints())
                 .status(quiz.getStatus())
                 .deadline(quiz.getDeadline())
@@ -105,7 +104,7 @@ public class QuizServiceImpl implements QuizService {
         return QuizResponseDTO.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
-                .durationMinutes(quiz.getDurationMinutes())
+                .durationMinutes(quiz.getDuration())
                 .totalPoints(quiz.getTotalPoints())
                 .status(quiz.getStatus())
                 .deadline(quiz.getDeadline())
@@ -120,7 +119,7 @@ public class QuizServiceImpl implements QuizService {
         return quizzes.map(quiz -> QuizResponseDTO.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
-                .durationMinutes(quiz.getDurationMinutes())
+                .durationMinutes(quiz.getDuration())
                 .totalPoints(quiz.getTotalPoints())
                 .status(quiz.getStatus())
                 .deadline(quiz.getDeadline())
@@ -136,6 +135,7 @@ public class QuizServiceImpl implements QuizService {
         List<Quiz> allQuizzes = quizRepository.findAll();
 
         int totalQuizzes = allQuizzes.size();
+//        System.out.println(totalQuizzes);
         int publishedCount = 0;
         int draftCount = 0;
         double sumAverageScores = 0.0;
@@ -148,6 +148,7 @@ public class QuizServiceImpl implements QuizService {
         double averageScore = totalQuizzes > 0 ? sumAverageScores / totalQuizzes : 0.0;
 
         return QuizDashboardDTO.builder()
+                .totalQuizzes(totalQuizzes)
                 .publishedCount(publishedCount)
                 .draftCount(draftCount)
                 .averageScore(averageScore)

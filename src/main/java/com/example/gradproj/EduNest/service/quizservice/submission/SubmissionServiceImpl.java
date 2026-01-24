@@ -74,11 +74,17 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         List<StudentAnswer> studentAnswers =
                 quizSubmissionDTO.getAnswers().stream()
-                        .map(dto -> StudentAnswer.builder()
+                        .map(dto -> {
+                            Question question = questions.get(dto.getQuestionId());
+                            if (question == null) {
+                                throw new globalLogicEx("Question with id " + dto.getQuestionId() + " does not exist in this quiz");
+                            }
+                        return StudentAnswer.builder()
                                 .submission(quizSubmission)
-                                .question(questions.get(dto.getQuestionId()))
+                                .question(question)
                                 .selectedAnswer(dto.getSelectedAnswer())
-                                .build())
+                                .build();
+    })
                         .toList();
 
         quizSubmission.setAnswers(studentAnswers);
@@ -101,6 +107,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         return submission.getAnswers().stream()
                 .map(ans -> StudentAnswerDTO.builder()
+                        .submissionId(ans.getSubmission().getId())
                         .questionId(ans.getQuestion().getId())
                         .selectedAnswer(ans.getSelectedAnswer())
                         .build())

@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.entity.quizentity;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.mentorship.Mentorship;
+import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.enums.QuizStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -21,16 +21,16 @@ public class Quiz extends BaseEntity {
 
     @ManyToOne
     @JoinColumn(name="mentorship_id")
-    private Mentorship mentorship;
+    private mentorShipE mentorship;
 
     @NotBlank(message = "Quiz title cannot be blank")
     @Size(max = 100, message = "Quiz title cannot exceed 100 characters")
     private String title;
 
     @NotNull
-    private Integer durationMinutes;
+    private Integer duration;
 
-    @Min(0)
+    @Min(1)
     private Integer totalPoints;
 
     @Enumerated(EnumType.STRING)

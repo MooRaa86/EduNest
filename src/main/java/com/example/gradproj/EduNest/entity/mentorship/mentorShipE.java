@@ -19,7 +19,7 @@ import java.util.Set;
 @SuperBuilder
 @Setter @Getter @NoArgsConstructor @AllArgsConstructor
 @Table(name = "mentorship")
-public class Mentorship extends BaseEntity {
+public class mentorShipE extends BaseEntity {
 
     private String title;
 

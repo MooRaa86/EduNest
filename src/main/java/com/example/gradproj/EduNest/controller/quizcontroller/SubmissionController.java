@@ -30,7 +30,7 @@ public class SubmissionController
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-    @GetMapping("/answer/{quizId}/{studentId}")
+    @GetMapping("/answer/{studentId}/{quizId}")
     public ResponseEntity<SimpleResponse> getStudentAnswers(
             @PathVariable Long studentId,
             @PathVariable Long quizId) {
@@ -51,7 +51,7 @@ public class SubmissionController
         List<QuizSubmissionResponseDTO> quizSubmissionResponseDTOS =
                 submissionService.getAllSubmissionsByQuiz(quizId, page, size);
         SimpleResponse simpleResponse = new SimpleResponse();
-        simpleResponse.addMessage("message","AllSubmissions of quiz");
+        simpleResponse.addMessage("message","All Submissions of quiz");
         simpleResponse.addMessage("Submissions",quizSubmissionResponseDTOS);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }

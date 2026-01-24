@@ -38,9 +38,9 @@ public class QuestionController {
     }
 
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable Long id){
-        questionService.deleteQuestion(id);
+    @DeleteMapping("/{quizId}/{questionId}")
+    public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable Long quizId,@PathVariable Long questionId){
+        questionService.deleteQuestion(quizId,questionId);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Question deleted successfully");
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);

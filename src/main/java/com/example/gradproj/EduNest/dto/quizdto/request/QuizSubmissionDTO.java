@@ -14,7 +14,6 @@ public class QuizSubmissionDTO {
     @NotNull(message = "Student ID is required")
     private Long studentId;
 
-    @NotNull(message = "Quiz ID is required")
     private Long quizId;
 
     @NotNull
