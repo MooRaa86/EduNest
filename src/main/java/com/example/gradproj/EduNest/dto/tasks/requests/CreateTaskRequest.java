@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.validator.constraints.URL;
 
 import java.time.LocalDateTime;
 
@@ -46,5 +47,6 @@ public class CreateTaskRequest {
     private LocalDateTime dueAt;
 
     @Size(max = 500, message = "attachmentUrl max length is 500")
+    @URL(message = "attachmentUrl must be a valid URL")
     private String attachmentUrl;
 }

@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.controller.tasks;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
+import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
 import jakarta.validation.Valid;
@@ -26,14 +27,18 @@ public class TaskController {
         response.addMessage("task", created);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-    @PostMapping("/{id}/publish")
-    public  ResponseEntity<SimpleResponse> publish(@PathVariable Long id){
-        TaskResponse published=taskService.publish(id);
-        SimpleResponse  response = new SimpleResponse();
-        response.addMessage("message", "task published successfully");
-        response.addMessage("task", published);
-        return  ResponseEntity.status(HttpStatus.OK).body(response) ;
-    }
+
+@PatchMapping("/{id}/status")
+public ResponseEntity<SimpleResponse> updateStatus(
+        @PathVariable Long id,
+        @Valid @RequestBody UpdateTaskStatusRequest req
+) {
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "task status updated successfully");
+        response.addMessage("task", taskService.updateStatus(id, req));
+   return ResponseEntity.status(HttpStatus.OK).body(response);
+}
+
     @GetMapping("/published")
     public  ResponseEntity<SimpleResponse> published(){
 
@@ -61,9 +66,11 @@ public class TaskController {
     }
 
     @DeleteMapping("/{id}")
-    public  ResponseEntity<Void> delete(@PathVariable Long id){
+    public  ResponseEntity<SimpleResponse> delete(@PathVariable Long id){
         taskService.delete(id);
-        return  ResponseEntity.noContent().build();
+        SimpleResponse simpleResponse=new SimpleResponse();
+        simpleResponse.addMessage("message", "task deleted successfully");
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
 }
