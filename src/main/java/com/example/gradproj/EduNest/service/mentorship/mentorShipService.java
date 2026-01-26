@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.mentorShip;
+package com.example.gradproj.EduNest.service.mentorship;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;

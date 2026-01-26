@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.mentorShip;
+package com.example.gradproj.EduNest.service.mentorship;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
@@ -11,6 +11,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import lombok.RequiredArgsConstructor;
+import com.example.gradproj.EduNest.service.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class mentorShipServiceI implements mentorShipService{
+public class mentorShipServiceI implements mentorShipService {
 
     private final mentorShipRepository MentorShipRepository;
     private final TaskRepository taskRepository;

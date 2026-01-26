@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 
 import java.util.List;
 
-public interface SubmissionService {
+public interface TaskSubmissionService {
     SubmissionResponse submit(Long taskId, SubmitTaskRequest req);
     List<SubmissionResponse> listByTask(Long taskId);
     SubmissionResponse grade(Long submissionId, GradeSubmissionRequest req);

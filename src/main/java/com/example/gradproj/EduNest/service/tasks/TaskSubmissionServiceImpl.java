@@ -12,7 +12,6 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.StudentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
-import com.example.gradproj.EduNest.utils.SystemUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,13 +22,13 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-public class SubmissionServiceImpl implements SubmissionService {
+public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskRepository taskRepository;
     private final TaskSubmissionRepository submissionRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final StudentRepository studentRepository;
 
-    public SubmissionServiceImpl(TaskRepository taskRepository, TaskSubmissionRepository submissionRepository, TaskSubmissionRepository taskSubmissionRepository,StudentRepository studentRepository) {
+    public TaskSubmissionServiceImpl(TaskRepository taskRepository, TaskSubmissionRepository submissionRepository, TaskSubmissionRepository taskSubmissionRepository, StudentRepository studentRepository) {
         this.taskRepository = taskRepository;
         this.submissionRepository = submissionRepository;
         this.taskSubmissionRepository = taskSubmissionRepository;

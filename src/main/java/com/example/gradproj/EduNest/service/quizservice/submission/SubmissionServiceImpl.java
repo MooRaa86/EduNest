@@ -46,7 +46,8 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
         if (!quiz.getStatus().equals(QuizStatus.PUBLISHED)
-                ||!quiz.getDeadline().isAfter(LocalDate.now())) {
+//                ||!quiz.getDeadline().isAfter(LocalDate.now())
+        ) {
             throw new globalLogicEx("Quiz is not available");
         }
 

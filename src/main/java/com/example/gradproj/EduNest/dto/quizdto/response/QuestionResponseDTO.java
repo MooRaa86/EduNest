@@ -26,7 +26,7 @@ public class QuestionResponseDTO {
 
     @NotBlank
     @Size(max = 100)
-    private String correctAnswer;
+    private String correctAnswer; //enum
 
     @NotBlank
     @Size(max = 100)

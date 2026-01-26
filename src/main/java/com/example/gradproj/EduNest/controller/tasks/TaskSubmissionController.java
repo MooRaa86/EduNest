@@ -2,21 +2,18 @@ package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.response.SubmissionResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
-import com.example.gradproj.EduNest.service.tasks.SubmissionService;
+import com.example.gradproj.EduNest.service.tasks.TaskSubmissionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-public class SubmissionController {
-    private final SubmissionService submissionService;
+public class TaskSubmissionController {
+    private final TaskSubmissionService submissionService;
 
-    public SubmissionController(SubmissionService submissionService) {
+    public TaskSubmissionController(TaskSubmissionService submissionService) {
         this.submissionService = submissionService;
     }
     @PostMapping("/tasks/{taskId}/submissions")

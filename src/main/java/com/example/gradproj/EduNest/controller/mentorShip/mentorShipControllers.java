@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.service.mentorShip.mentorShipService;
+import com.example.gradproj.EduNest.service.mentorship.mentorShipService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
