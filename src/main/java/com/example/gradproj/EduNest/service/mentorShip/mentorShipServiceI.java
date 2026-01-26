@@ -4,21 +4,26 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class mentorShipServiceI implements mentorShipService{
 
     private final mentorShipRepository MentorShipRepository;
+    private final TaskRepository taskRepository;
 
     @Override
     public mentorShipFDto createMentorShip(mentorShipCreateDTO dto) {
@@ -123,8 +128,37 @@ public class mentorShipServiceI implements mentorShipService{
                 .build();
     }
 
+    @Override
+    public List<TaskResponse> getMentorShipTasks(Long mentorShipId) {
+        if(!MentorShipRepository.existsById(mentorShipId)) {
+            throw new globalLogicEx("MentorShip not found");
+        }
 
-    private mentorShipFDto mapToFResponse(mentorShipE mentorShip) {
+        List<Task> mentorshipTasks = taskRepository.findByMentorshipId(mentorShipId);
+        return mentorshipTasks.stream()
+                .map(this::mapToTaskResponse)
+                .collect(Collectors.toList());
+
+    }
+
+    @Override
+    public long countMentorShipsForMentorId(Long mentorId) {
+        if(!MentorShipRepository.existsById(mentorId)) {
+            throw new globalLogicEx("Mentor not found");
+        }
+        return MentorShipRepository.countByMentorId(mentorId);
+    }
+
+    @Override
+    public long countStudentsforMentorId(Long mentorId) {
+        if(!MentorShipRepository.existsById(mentorId)) {
+            throw new globalLogicEx("Mentor not found");
+        }
+        return MentorShipRepository.countByMentorId(mentorId);
+    }
+
+
+    private mentorShipFDto mapToMentorShipResponse(mentorShipE mentorShip) {
         return mentorShipFDto.builder()
                 .id(mentorShip.getId())
                 .title(mentorShip.getTitle())
@@ -135,5 +169,19 @@ public class mentorShipServiceI implements mentorShipService{
                 .build();
     }
 
+    private TaskResponse mapToTaskResponse(Task task) {
+        TaskResponse res = new TaskResponse();
+        res.setId(task.getId());
+        res.setTitle(task.getTitle());
+        res.setDescription(task.getDescription());
+        res.setPoints(task.getPoints());
+        res.setPassPoints(task.getPassPoints());
+        res.setEstimatedMinutes(task.getEstimatedMinutes());
+        res.setStatus(task.getStatus().name());
+        res.setDueAt(task.getDueAt());
+        res.setAttachmentUrl(task.getAttachmentUrl());
+
+        return res;
+    }
 
 }

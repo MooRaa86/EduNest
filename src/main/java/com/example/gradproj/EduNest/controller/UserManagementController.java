@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/register")
 @RequiredArgsConstructor
 public class UserManagementController {
 
     private final RegistrationService registerationService;
 
-    @PostMapping("/register-student")
+    @PostMapping("/student")
     public ResponseEntity<SimpleResponse> registerStudent(@Valid @RequestBody StudentRequestDto dto){
         registerationService.registerStudent(dto);
         SimpleResponse response = new SimpleResponse();
@@ -30,7 +30,7 @@ public class UserManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/register-mentor")
+    @PostMapping("/mentor")
     public ResponseEntity<SimpleResponse> register(@Valid @RequestBody MentorRequestDto dto){
         registerationService.registerMentor(dto);
         SimpleResponse response = new SimpleResponse();

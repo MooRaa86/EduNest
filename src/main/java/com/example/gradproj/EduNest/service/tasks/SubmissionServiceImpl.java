@@ -78,6 +78,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public List<SubmissionResponse> listByTask(Long taskId) {
+
+        if(!taskRepository.existsById(taskId)){
+            throw new globalLogicEx("Task not found with this id");
+        }
+
         return submissionRepository.findByTask_id(taskId).stream()
                 .map(this::mapToSubmissionResponse)
                 .collect(Collectors.toList());
@@ -88,9 +93,9 @@ public class SubmissionServiceImpl implements SubmissionService {
         TaskSubmission sub =submissionRepository.findById(submissionId).orElseThrow(() -> new IllegalArgumentException("Submission not found with id: " + submissionId));
         Task task=sub.getTask();
         if (req.getScore()>task.getPoints()){
-            throw new globalLogicEx("score must be less than or equal to task points");
+            throw new globalLogicEx("score must be less than or equal to task points " + task.getPoints());
         }
-        sub.setRawScore(req.getScore());
+        sub.setRawScore(task.getPoints());
         sub.setFeedBack(req.getFeedback());
         sub.setFinalScore(req.getScore());
         sub.setStatus(SubmissionStatus.GRADED);

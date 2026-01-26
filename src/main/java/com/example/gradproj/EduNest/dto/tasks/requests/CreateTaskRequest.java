@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.dto.tasks.requests;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,6 +42,7 @@ public class CreateTaskRequest {
 
     @NotNull(message = "dueAt is required")
     @Future(message = "dueAt must be in the future")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // for unify the date formate
     private LocalDateTime dueAt;
 
     @Size(max = 500, message = "attachmentUrl max length is 500")
