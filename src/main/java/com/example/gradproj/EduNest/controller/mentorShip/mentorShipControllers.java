@@ -5,12 +5,14 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.service.mentorShip.mentorShipService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -77,5 +79,30 @@ public class mentorShipControllers {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{mid}/get-tasks")
+    public ResponseEntity<SimpleResponse> getTasks(
+            @PathVariable Long mid){
+        List<TaskResponse> tasks = mentorShipService.getMentorShipTasks(mid);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("tasks", tasks);
+        return ResponseEntity.ok(response);
+    }
 
+    @GetMapping("/count-for-mentor/{id}")
+    public ResponseEntity<SimpleResponse> getCountForMentor(
+            @PathVariable Long id){
+        long count = mentorShipService.countMentorShipsForMentorId(id);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("count", count);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/count-students-for-mentor/{id}")
+    public ResponseEntity<SimpleResponse> getCountStudentsForMentor(
+            @PathVariable Long id){
+        long count = mentorShipService.countStudentsforMentorId(id);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("count", count);
+        return ResponseEntity.ok(response);
+    }
 }

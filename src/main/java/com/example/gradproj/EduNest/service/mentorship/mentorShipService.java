@@ -4,6 +4,9 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+
+import java.util.List;
 
 
 public interface mentorShipService {
@@ -18,8 +21,13 @@ public interface mentorShipService {
 
     mentorShipFDto getMentorShipById(Long mentorShipId);
 
+    List<TaskResponse> getMentorShipTasks(Long mentorShipId);
 
-//    List<mentorShip> getMentorShipsByMentorId(Long mentorId);
+    long countMentorShipsForMentorId(Long mentorId);
+
+    long countStudentsforMentorId(Long mentorId);
+
+    //    List<mentorShip> getMentorShipsByMentorId(Long mentorId);
 //
 //
 //    mentorShip addStudentToMentorShip(Long mentorShipId, Long studentId);
