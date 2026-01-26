@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.tasks;
 
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
+import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.entity.tasks.Task;
@@ -52,24 +53,6 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public TaskResponse publish(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-            .orElseThrow(() -> new globalLogicEx("Task not found"));
-        task.setStatus(TaskStatus.PUBLISHED);
-        Task updatedTask = taskRepository.save(task);
-        return mapToTaskResponse(updatedTask);
-    }
-
-    @Override
-    public TaskResponse close(Long taskId) {
-        Task task=taskRepository.findById(taskId)
-            .orElseThrow(() -> new globalLogicEx("Task not found"));
-        task.setStatus(TaskStatus.CLOSED);
-        Task closedTask=taskRepository.save(task);
-        return  mapToTaskResponse(closedTask);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public List<TaskResponse> getPublishedTasks() {
         return taskRepository.findTaskByStatus(TaskStatus.PUBLISHED).stream()
@@ -116,6 +99,18 @@ public class TaskServiceImpl implements TaskService{
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(()->new globalLogicEx("Task not found"));
         taskRepository.delete(task);
+    }
+
+    @Override
+    public TaskResponse updateStatus(Long taskId, UpdateTaskStatusRequest req) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
+            throw new globalLogicEx("Cannot revert published task to draft");
+        }
+        task.setStatus(req.getStatus());
+        return mapToTaskResponse(task);
     }
 
     private TaskResponse mapToTaskResponse(Task task) {
