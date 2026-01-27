@@ -114,8 +114,8 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
-    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, Pageable pageable) {
-        Page<Quiz> quizzes = quizRepository.findQuizzes(quizName, status, pageable);
+    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid, Pageable pageable) {
+        Page<Quiz> quizzes = quizRepository.findQuizzesByMentorship(msid,quizName, status,pageable);
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
                 .map(quiz -> QuizResponseDTO.builder()
