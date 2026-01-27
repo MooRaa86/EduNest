@@ -4,8 +4,7 @@ import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseDTO;
-import com.example.gradproj.EduNest.service.quizservice.question.QuestionService;
-import com.example.gradproj.EduNest.service.quizservice.submission.SubmissionService;
+import com.example.gradproj.EduNest.service.quizservice.submission.QuizSubmissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,9 +16,9 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1")
-public class SubmissionController
+public class QuizSubmissionController
 {
-    private final SubmissionService submissionService;
+    private final QuizSubmissionService submissionService;
 
     @PostMapping("/submit-quiz-answer/{quizId}")
     public ResponseEntity<SimpleResponse>submitQuizAnswers(@Valid @RequestBody QuizSubmissionDTO  quizSubmissionDTO,@PathVariable Long quizId){
@@ -27,7 +26,7 @@ public class SubmissionController
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message","Quiz submitted successfully");
         simpleResponse.addMessage("Score",quizSubmissionResponseDTO.getScore().toString());
-        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+        return ResponseEntity.status(HttpStatus.CREATED).body(simpleResponse);
     }
 
     @GetMapping("/answer/{studentId}/{quizId}")

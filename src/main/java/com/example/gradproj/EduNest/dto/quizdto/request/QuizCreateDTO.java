@@ -1,13 +1,11 @@
 package com.example.gradproj.EduNest.dto.quizdto.request;
 
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
-import java.time.LocalDate;
-
 @Data
-public class QuizDTO {
+public class QuizCreateDTO {
 
     @NotNull(message = "Mentorship ID is required")
     private Long mentorshipId;
@@ -16,17 +14,14 @@ public class QuizDTO {
     @Size(max = 100, message = "Title can't exceed 100 characters")
     private String title;
 
+    @NotBlank(message = "Description is required")
+    @Size(max = 500, message = "Description can't exceed 500 characters")
+    private String description;
+
     @NotNull(message = "Duration is required")
     @Min(value = 1, message = "Duration must be at least 1 minute")
-    private Integer duration;
+    private Integer durationMinutes;
 
-    @NotNull(message = "Total points are required")
-    @Min(value = 1, message = "Points can't be negative")
-    private Integer totalPoints;
-
-    @NotNull(message = "status is required")
     private QuizStatus status = QuizStatus.DRAFT;
 
-    @FutureOrPresent(message = "Deadline cannot be in the past")
-    private LocalDate deadline;
 }

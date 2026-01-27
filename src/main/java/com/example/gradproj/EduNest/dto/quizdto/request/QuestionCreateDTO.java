@@ -1,12 +1,13 @@
 package com.example.gradproj.EduNest.dto.quizdto.request;
 
+import com.example.gradproj.EduNest.enums.quiz.AnswerChoices;
 import jakarta.validation.constraints.*;
 import lombok.Builder;
 import lombok.Data;
 
 @Data
 @Builder
-public class QuestionDTO {
+public class QuestionCreateDTO {
 
     @NotNull(message = "Quiz ID is required")
     private Long quizId;
@@ -16,14 +17,10 @@ public class QuestionDTO {
     private String text;
 
     @Min(value = 0, message = "Points can't be negative")
-    private int points;
+    private Integer points;
 
-    @Min(value = 1, message = "Order number must be at least 1")
-    private int orderNumber;
-
-    @NotBlank(message = "Correct answer is required")
-    @Size(max = 100)
-    private String correctAnswer;
+    @NotNull(message = "Correct answer is required")
+    private AnswerChoices correctAnswer;
 
     @NotBlank(message = "Option A is required")
     @Size(max = 100)

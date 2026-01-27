@@ -1,29 +1,29 @@
 package com.example.gradproj.EduNest.service.quizservice.quiz;
 
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDate;
-
 public interface QuizService {
-    QuizResponseDTO createQuiz(QuizDTO quizdto);
+    QuizResponseDTO createQuiz(QuizCreateDTO quizCreateDTO);
+
     void deleteQuiz(Long id);
-     QuizResponseDTO updateQuiz(Long id,QuizDTO quizdto);
+
+    QuizResponseDTO updateQuiz(Long id, QuizUpdateDto quizUpdateDto);
+
     QuizResponseDTO getQuizDetails(Long id);
-    Page<QuizResponseDTO> getQuizzes(
-            String search,
-            QuizStatus status,
-            LocalDate deadline,
-            Pageable pageable
-    );
-    QuizDashboardDTO getQuizDashboard();
+
+    PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, Pageable pageable);
+
+    QuizDashboardDTO getQuizDashboard(Long mentorshipID);
 
     QuizStatisticsDTO getQuizStatistics(Long quizId);
-    void publishQuiz(Long quizId);
-    void closeQuiz(Long quizId);
+
+    void changeStatus(Long quizId, QuizStatus quizStatus);
 }

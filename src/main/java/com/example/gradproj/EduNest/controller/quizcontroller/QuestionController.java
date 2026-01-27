@@ -1,7 +1,8 @@
 package com.example.gradproj.EduNest.controller.quizcontroller;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
 import com.example.gradproj.EduNest.service.quizservice.question.QuestionService;
 import jakarta.validation.Valid;
@@ -20,17 +21,17 @@ public class QuestionController {
     private final QuestionService questionService;
 
     @PostMapping
-    public ResponseEntity<SimpleResponse> addQuestion(@Valid @RequestBody QuestionDTO questionDTO){
-        QuestionResponseDTO questionResponseDTO=questionService.createQuestion(questionDTO);
+    public ResponseEntity<SimpleResponse> addQuestion(@Valid @RequestBody QuestionCreateDTO questionCreateDTO){
+        QuestionResponseDTO questionResponseDTO=questionService.createQuestion(questionCreateDTO);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Question added successfully");
         simpleResponse.addMessage("Question Details",questionResponseDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(simpleResponse);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<SimpleResponse> updateQuestion(@Valid @RequestBody QuestionDTO questionDTO , @PathVariable Long id){
-        QuestionResponseDTO  questionResponseDTO=questionService.updateQuestion(id,questionDTO);
+    @PatchMapping("/{id}")
+    public ResponseEntity<SimpleResponse> updateQuestion(@Valid @RequestBody QuestionUpdateDto questionUpdateDto, @PathVariable Long id){
+        QuestionResponseDTO  questionResponseDTO=questionService.updateQuestion(id, questionUpdateDto );
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Question updated successfully");
         simpleResponse.addMessage("Question Details",questionResponseDTO);

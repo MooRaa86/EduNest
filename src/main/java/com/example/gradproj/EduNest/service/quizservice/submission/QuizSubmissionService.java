@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseD
 
 import java.util.List;
 
-public interface SubmissionService {
+public interface QuizSubmissionService {
 
     QuizSubmissionResponseDTO submitQuizAnswers(QuizSubmissionDTO quizSubmissionDTO, Long quizId);
 

@@ -2,20 +2,19 @@ package com.example.gradproj.EduNest.controller.quizcontroller;
 
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.service.quizservice.quiz.QuizService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -27,17 +26,17 @@ public class QuizController {
     private final QuizService quizService;
 
     @PostMapping
-    public ResponseEntity<SimpleResponse> createQuiz(@Valid  @RequestBody QuizDTO quizdto) {
-        QuizResponseDTO  quizResponseDTO = quizService.createQuiz(quizdto);
+    public ResponseEntity<SimpleResponse> createQuiz(@Valid  @RequestBody QuizCreateDTO quizCreateDTO) {
+        QuizResponseDTO  quizResponseDTO = quizService.createQuiz(quizCreateDTO);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message","Quiz created successfully");
         simpleResponse.addMessage("Quiz Details",quizResponseDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(simpleResponse);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<SimpleResponse> updateQuiz(@Valid @RequestBody QuizDTO quizdto , @PathVariable Long id) {
-        QuizResponseDTO quizResponseDTO = quizService.updateQuiz(id,quizdto);
+    @PatchMapping("/{id}")
+    public ResponseEntity<SimpleResponse> updateQuiz(@Valid @RequestBody QuizUpdateDto quizUpdateDto , @PathVariable Long id) {
+        QuizResponseDTO quizResponseDTO = quizService.updateQuiz(id,quizUpdateDto);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message","Quiz updated successfully");
         simpleResponse.addMessage("Quiz Details",quizResponseDTO);
@@ -65,13 +64,12 @@ public class QuizController {
     public ResponseEntity<SimpleResponse> filterQuizzes(
             @RequestParam(required = false) String quizName,
             @RequestParam(required = false) QuizStatus status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate deadline,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<QuizResponseDTO> response =
-                quizService.getQuizzes(quizName, status, deadline, pageable);
+        PageResponse<QuizResponseDTO> response =
+                quizService.getQuizzes(quizName, status, pageable);
 
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quizzes retrieved successfully");
@@ -80,9 +78,9 @@ public class QuizController {
         return ResponseEntity.ok(simpleResponse);
     }
 
-    @GetMapping("/dashboard")
-    public ResponseEntity<SimpleResponse> getDashboard() {
-        QuizDashboardDTO quizDashboardDTO=quizService.getQuizDashboard();
+    @GetMapping("/dashboard/{mentorshipId}")
+    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable  Long mentorshipId) {
+        QuizDashboardDTO quizDashboardDTO=quizService.getQuizDashboard(mentorshipId);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message","Dashboard retrieved successfully");
         simpleResponse.addMessage("Dashboard Details",quizDashboardDTO);
@@ -98,19 +96,12 @@ public class QuizController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-    @PostMapping("/publish/{id}")
-    public ResponseEntity<SimpleResponse> publishQuiz(@PathVariable Long id) {
-        quizService.publishQuiz(id);
-        SimpleResponse simpleResponse = new SimpleResponse();
-        simpleResponse.addMessage("message","Quiz published successfully");
-          return  ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    @PostMapping("/change-status/{id}")
+    public ResponseEntity<SimpleResponse>changeQuizStatus(@PathVariable Long id, @RequestParam QuizStatus status) {
+        quizService.changeStatus(id, status);        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message","Quiz status changed successfully");
+        simpleResponse.addMessage("Quiz Status",status);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-    @PostMapping("/close/{id}")
-    public ResponseEntity<SimpleResponse> closeQuiz(@PathVariable Long id) {
-        quizService.closeQuiz(id);
-        SimpleResponse simpleResponse = new SimpleResponse();
-        simpleResponse.addMessage("message","Quiz Closed successfully");
-        return  ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
-    }
 }

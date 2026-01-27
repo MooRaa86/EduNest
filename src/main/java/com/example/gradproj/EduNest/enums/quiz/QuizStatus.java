@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.enums;
+package com.example.gradproj.EduNest.enums.quiz;
 
 public enum QuizStatus {
     DRAFT,

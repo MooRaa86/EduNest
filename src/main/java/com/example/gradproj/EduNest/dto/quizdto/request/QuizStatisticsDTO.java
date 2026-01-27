@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.dto.quizdto.request;
 
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,5 +13,6 @@ public class QuizStatisticsDTO {
     private int totalStudents;
     private int totalSubmissions;
     private double averageScore;
-    private LocalDate deadline;
+    private int totalQuestions;
+    private int totalPoints;
 }

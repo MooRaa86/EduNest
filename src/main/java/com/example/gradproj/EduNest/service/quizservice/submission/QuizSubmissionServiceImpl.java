@@ -1,6 +1,5 @@
 package com.example.gradproj.EduNest.service.quizservice.submission;
 
-import ch.qos.logback.core.joran.sanity.Pair;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseDTO;
@@ -9,18 +8,17 @@ import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.quizentity.QuizSubmission;
 import com.example.gradproj.EduNest.entity.quizentity.StudentAnswer;
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.StudentRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +27,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class SubmissionServiceImpl implements SubmissionService {
+public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     private final QuizRepository quizRepository;
     private final QuizSubmissionRepository quizSubmissionRepository;
@@ -45,9 +43,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         Student student = studentRepository.findById(quizSubmissionDTO.getStudentId())
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
-        if (!quiz.getStatus().equals(QuizStatus.PUBLISHED)
-//                ||!quiz.getDeadline().isAfter(LocalDate.now())
-        ) {
+        if (quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Quiz is not available");
         }
 
@@ -151,7 +147,8 @@ public class SubmissionServiceImpl implements SubmissionService {
             Question question = questions.get(studentAnswer.getQuestionId());
             if (question == null) continue;
 
-            if (studentAnswer.getSelectedAnswer().equals(question.getCorrectAnswer())) {
+            String correctAnswer= String.valueOf(question.getCorrectAnswer());
+            if (studentAnswer.getSelectedAnswer().equals(correctAnswer)) {
                 score += question.getPoints();
                 numOfCorrect++;
             }
@@ -160,6 +157,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         return new ScoreResult(score, numOfCorrect);
     }
 
+    @Getter
     public static class ScoreResult {
         private int totalScore;
         private int numCorrect;
@@ -169,8 +167,6 @@ public class SubmissionServiceImpl implements SubmissionService {
             this.numCorrect = numCorrect;
         }
 
-        public int getTotalScore() { return totalScore; }
-        public int getNumCorrect() { return numCorrect; }
     }
 
 }

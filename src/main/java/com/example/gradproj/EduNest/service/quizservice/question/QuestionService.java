@@ -1,18 +1,19 @@
 package com.example.gradproj.EduNest.service.quizservice.question;
 
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
 import java.util.List;
 
 public interface QuestionService {
 
-    QuestionResponseDTO createQuestion(QuestionDTO questionDTO);
+    QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO);
 
     List<QuestionResponseDTO> getQuestionsByQuizId(Long quizId);
 
     QuestionResponseDTO getQuestionById(Long id);
 
-    QuestionResponseDTO updateQuestion(Long id, QuestionDTO questionDTO);
+    QuestionResponseDTO updateQuestion(Long id, QuestionUpdateDto dto);
 
-    public void deleteQuestion(Long quizId, Long questionId);
+     void deleteQuestion(Long quizId, Long questionId);
 }
