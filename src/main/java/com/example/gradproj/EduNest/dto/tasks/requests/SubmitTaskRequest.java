@@ -13,10 +13,6 @@ import org.hibernate.validator.constraints.URL;
 @Getter
 @Setter
 public class SubmitTaskRequest {
-    @NotNull(message = "studentId is required")
-    @Positive(message = "studentId must be positive")
-    private Long studentId;
-
     @NotBlank(message = "fileUrl is required")
     @Size(max = 500, message = "fileUrl max length is 500")
     @URL(message = "fileUrl must be a valid URL")

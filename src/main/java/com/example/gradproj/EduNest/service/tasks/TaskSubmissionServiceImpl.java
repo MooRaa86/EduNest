@@ -12,6 +12,8 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.StudentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,13 +36,25 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         this.taskSubmissionRepository = taskSubmissionRepository;
         this.studentRepository= studentRepository;
     }
+    Authentication authentication =
+            SecurityContextHolder.getContext().getAuthentication();
+
+
+    private String getCurrentStudentEmail() {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Unauthenticated user");
+        }
+        return authentication.getName();
+    }
+
     @Override
     public SubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
         Task task= taskRepository.findById(taskId).orElseThrow(() -> new IllegalArgumentException("Task not found with id: " + taskId));
         if (task.getStatus()!= TaskStatus.PUBLISHED){
             throw new globalLogicEx("Task is not published");
         }
-        Student student=studentRepository.findById(req.getStudentId()).orElseThrow(() -> new IllegalArgumentException("Student not found with id: " + req.getStudentId()));
+
+        Student student=studentRepository.findByEmail(getCurrentStudentEmail());
 
         LocalDateTime now=LocalDateTime.now();
         boolean isLate= now.isAfter(task.getDueAt());
