@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.exception.authHandling.EduNestAccessDeniedHa
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAuthenticationEntryPoint;
 import com.example.gradproj.EduNest.filters.JwtTokenGeneratorFilter;
 import com.example.gradproj.EduNest.filters.JwtTokenValidatorFilter;
+import com.example.gradproj.EduNest.repository.UserRepository;
 import com.example.gradproj.EduNest.service.jwt.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -93,9 +94,10 @@ public class ProjectSecurityProdconfig {
     @Bean
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            UserRepository userRepository
     ){
-        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder);
+        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder,userRepository);
         ProviderManager providerManager = new ProviderManager(authProvider);
         providerManager.setEraseCredentialsAfterAuthentication(false);
         return providerManager;

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.config;
 
 import com.example.gradproj.EduNest.config.auth.EduNestAuthenticationProvider;
+import com.example.gradproj.EduNest.repository.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -70,9 +71,10 @@ public class ProjectSecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            UserRepository userRepository
     ){
-        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder);
+        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder,userRepository);
         ProviderManager providerManager = new ProviderManager(authProvider);
         providerManager.setEraseCredentialsAfterAuthentication(false);
         return providerManager;
