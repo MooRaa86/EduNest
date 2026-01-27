@@ -31,11 +31,12 @@ public class mentorShipServiceI implements mentorShipService{
     private final MentorRepository mentorRepository;
 
 
-    Authentication authentication =
-            SecurityContextHolder.getContext().getAuthentication();
+
 
 
     private String getCurrentMentorEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Unauthenticated user");
         }

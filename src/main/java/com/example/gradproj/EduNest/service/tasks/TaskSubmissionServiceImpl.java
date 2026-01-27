@@ -36,11 +36,10 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         this.taskSubmissionRepository = taskSubmissionRepository;
         this.studentRepository= studentRepository;
     }
-    Authentication authentication =
-            SecurityContextHolder.getContext().getAuthentication();
-
 
     private String getCurrentStudentEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Unauthenticated user");
         }

@@ -16,6 +16,8 @@ import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepo
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 
@@ -33,6 +35,16 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final StudentRepository studentRepository;
 
+
+    private String getCurrentStudentEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Unauthenticated user");
+        }
+        return authentication.getName();
+    }
+
     @Override
     public QuizSubmissionResponseDTO submitQuizAnswers(
             QuizSubmissionDTO quizSubmissionDTO, Long quizId) {
@@ -40,8 +52,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
-        Student student = studentRepository.findById(quizSubmissionDTO.getStudentId())
-                .orElseThrow(() -> new globalLogicEx("Student not found"));
+        Student student = studentRepository
+                .findByEmail(getCurrentStudentEmail());
 
         if (quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Quiz is not available");
@@ -104,7 +116,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         return submission.getAnswers().stream()
                 .map(ans -> StudentAnswerDTO.builder()
-                        .submissionId(ans.getSubmission().getId())
+//                        .submissionId(ans.getSubmission().getId())
                         .questionId(ans.getQuestion().getId())
                         .selectedAnswer(ans.getSelectedAnswer())
                         .build())
