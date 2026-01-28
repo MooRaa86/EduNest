@@ -1,12 +1,16 @@
 package com.example.gradproj.EduNest.service.tasks;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
@@ -154,6 +158,42 @@ public class TaskServiceImpl implements TaskService{
                 .totalElements(tasks.getTotalElements())
                 .totalPages(tasks.getTotalPages())
                 .build();
+    }
+
+    @Override
+    public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
+        mentorShipE mentorShip = mentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        List<Task> allTasks = taskRepository.findByMentorshipId(mentorShipId);
+
+        int totalTasks = allTasks.size();
+        int publishedCount = 0;
+        int draftCount = 0;
+        double sumAverageScores = 0.0;
+
+        for (Task task : allTasks) {
+            publishedCount += (task.getStatus() == TaskStatus.PUBLISHED ? 1 : 0);
+            draftCount += (task.getStatus() == TaskStatus.DRAFT ? 1 : 0);
+            sumAverageScores += calculateAverageScore(task);
+        }
+        double averageScore = totalTasks > 0 ? sumAverageScores / totalTasks : 0.0;
+
+        return TaskDashboardDTO.builder()
+                .totalTasks(totalTasks)
+                .publishedCount(publishedCount)
+                .draftCount(draftCount)
+                .averageScore(averageScore)
+                .build();
+    }
+
+    private double calculateAverageScore(Task task) {
+        if (task.getSubmissions() == null || task.getSubmissions().isEmpty()) {
+            return 0;
+        }
+        return task.getSubmissions().stream()
+                .mapToDouble(s -> s.getFinalScore() != null ? s.getFinalScore() : 0)
+                .average()
+                .orElse(0.0);
     }
 
 }

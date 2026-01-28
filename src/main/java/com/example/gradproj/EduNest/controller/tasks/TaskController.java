@@ -2,9 +2,11 @@ package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
@@ -86,6 +88,16 @@ public ResponseEntity<SimpleResponse> updateStatus(
         simpleResponse.addMessage("Tasks", response);
 
         return ResponseEntity.ok(simpleResponse);
+    }
+
+
+    @GetMapping("/dashboard/{mentorshipId}")
+    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable  Long mentorshipId) {
+       TaskDashboardDTO taskDashboardDTO =taskService.getTaskDashboard(mentorshipId);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message","Dashboard retrieved successfully");
+        simpleResponse.addMessage("Dashboard Details",taskDashboardDTO);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
 }
