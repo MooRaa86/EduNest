@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
@@ -10,8 +11,13 @@ import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+
+
 import java.time.LocalDateTime;
 import java.util.List;
 @Service
@@ -52,13 +58,6 @@ public class TaskServiceImpl implements TaskService{
 
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaskResponse> getPublishedTasks() {
-        return taskRepository.findTaskByStatus(TaskStatus.PUBLISHED).stream()
-                .map(this::mapToTaskResponse)
-                .toList();
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -127,4 +126,34 @@ public class TaskServiceImpl implements TaskService{
 
         return res;
     }
+
+
+    @Override
+    public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, Long msid, Pageable pageable) {
+
+        Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status,pageable);
+
+        List<TaskResponse> taskDTOs = tasks.getContent().stream()
+                .map(task -> TaskResponse.builder()
+                        .id(task.getId())
+                        .title(task.getTitle())
+                        .description(task.getDescription())
+                        .points(task.getPoints())
+                        .passPoints(task.getPassPoints())
+                        .estimatedMinutes(task.getEstimatedMinutes())
+                        .status(String.valueOf(task.getStatus()))
+                        .dueAt(task.getDueAt())
+                        .attachmentUrl(task.getAttachmentUrl())
+                        .build())
+                .toList();
+
+        return PageResponse.<TaskResponse>builder()
+                .content(taskDTOs)
+                .page(tasks.getNumber())
+                .size(tasks.getSize())
+                .totalElements(tasks.getTotalElements())
+                .totalPages(tasks.getTotalPages())
+                .build();
+    }
+
 }
