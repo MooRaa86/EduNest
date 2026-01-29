@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.config;
 
 import com.example.gradproj.EduNest.config.auth.EduNestAuthenticationProvider;
-import com.example.gradproj.EduNest.repository.UserRepository;
+import com.example.gradproj.EduNest.repository.users.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

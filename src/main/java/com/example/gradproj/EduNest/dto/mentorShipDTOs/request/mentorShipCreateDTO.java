@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.dto.mentorShipDTOs.request;
 
-import com.example.gradproj.EduNest.enums.DifficultyLevel;
+import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import jakarta.validation.constraints.*;
 import lombok.*;
 

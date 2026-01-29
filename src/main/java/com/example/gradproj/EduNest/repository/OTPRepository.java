@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.repository;
 
-import com.example.gradproj.EduNest.entity.OTP;
+import com.example.gradproj.EduNest.entity.register.OTP;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
