@@ -7,6 +7,8 @@ import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
+import com.example.gradproj.EduNest.enums.register.OtpType;
+import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
 import com.example.gradproj.EduNest.repository.*;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
@@ -43,7 +45,7 @@ public class RegisterServiceImpl implements RegistrationService {
         return String.valueOf(100000 + random.nextInt(900000));
     }
 
-    private void processAndSendOtp(UserEntity user) {
+    private void processAndSendOtp(UserEntity user,String template) {
 
         otpRepository.findByUser_Email(user.getEmail()).ifPresent(existingOtp -> {
             otpRepository.delete(existingOtp);
@@ -59,7 +61,7 @@ public class RegisterServiceImpl implements RegistrationService {
         otpRepository.save(otp);
 
         // Prepare the evaluation context
-        String htmlTemplate = emailService.getEmailTemplate("otp-template.html");
+        String htmlTemplate = emailService.getEmailTemplate(template);
 
 
         // Process the template
@@ -107,7 +109,8 @@ public class RegisterServiceImpl implements RegistrationService {
 
         studentRepository.save(student);
 
-        processAndSendOtp(student);
+        String template = "otp-template.html";
+        processAndSendOtp(student, template);
 
     }
 
@@ -145,7 +148,8 @@ public class RegisterServiceImpl implements RegistrationService {
 
         mentorRepository.save(mentor);
 
-        processAndSendOtp(mentor);
+        String template = "otp-template.html";
+        processAndSendOtp(mentor, template);
 
     }
 
@@ -181,8 +185,70 @@ public class RegisterServiceImpl implements RegistrationService {
 
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
+        String template = "otp-template.html";
+        processAndSendOtp(user,template);
+    }
 
-        processAndSendOtp(user);
+    @Override
+    public void forgetPassword(String email) {
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("Email not found"));
+
+        if (!user.isEnabled()) {
+            throw new globalLogicEx("User is not verified yet");
+        }
+
+        String template = "forget-password-otp-template.html";
+        processAndSendOtp(user, template);
+    }
+
+    @Override
+    @Transactional
+    public void verifyForgetPasswordOtp(String email, String otpCode) {
+
+        OTP otpEntity = otpRepository
+                .findByUser_EmailAndOtpCode(email, otpCode)
+                .orElseThrow(() -> new InvalidOtpException("Invalid OTP"));
+
+        if (otpEntity.getExpiresAt().isBefore(LocalDateTime.now())) {
+            otpRepository.delete(otpEntity);
+            throw new OtpExpiredException("Expired OTP, please request a new one.");
+        }
+
+        otpEntity.setOtpType(OtpType.RESET);
+        otpRepository.save(otpEntity);
+        //  متحذفش OTP هنا
+        // بس اتأكد إنه صح
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String email, String newPassword) {
+
+        OTP otp = otpRepository.findByUser_Email(email)
+                .orElseThrow(() ->
+                        new globalLogicEx("OTP verification required"));
+
+        if (!OtpType.RESET.equals(otp.getOtpType())) {
+            otpRepository.delete(otp);
+            throw new globalLogicEx("Invalid OTP, please request a new one.");
+        }
+
+        if(otp.getCreatedAt().plusHours(1).isBefore(LocalDateTime.now())) {
+            otpRepository.delete(otp);
+            throw new OtpExpiredException("Expired OTP, This process failed you have to request a new verify otp");
+        }
+
+        UserEntity user = otp.getUser();
+
+        if (!user.isEnabled()){
+            throw new globalLogicEx("User is not verified yet");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        otpRepository.delete(otp);
+
     }
 
 }

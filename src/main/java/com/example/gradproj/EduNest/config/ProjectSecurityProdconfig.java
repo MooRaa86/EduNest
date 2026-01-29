@@ -70,7 +70,7 @@ public class ProjectSecurityProdconfig {
                                 "/api/auth/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/register/**").permitAll()
-                        .requestMatchers("/login-api").permitAll()
+                        .requestMatchers("/login-api","/forget-password/**").permitAll()
                         .anyRequest().authenticated()
                 );
         http.exceptionHandling(ex -> ex

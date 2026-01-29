@@ -9,4 +9,7 @@ public interface RegistrationService {
     void verifyUser(String email, String otpCode);
     void generateAndSendOtp(String email);
     String generateOTP();
+    void forgetPassword(String email);
+    void verifyForgetPasswordOtp(String email, String otpCode);
+    void resetPassword(String email, String newPassword);
 }
