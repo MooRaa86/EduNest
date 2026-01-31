@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.entity.quizentity;
 
-import com.example.gradproj.EduNest.entity.Student;
+import com.example.gradproj.EduNest.entity.users.Student;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

@@ -10,8 +10,7 @@ import lombok.Data;
 @Builder
 public class StudentAnswerDTO {
 
-//    @NotNull(message = "Quiz Submission ID is required")
-    private Long submissionId;
+//    private Long submissionId;
 
     @NotNull(message = "Question ID is required")
     private Long questionId;

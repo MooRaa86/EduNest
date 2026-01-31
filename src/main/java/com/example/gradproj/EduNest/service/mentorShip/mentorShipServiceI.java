@@ -5,11 +5,11 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.entity.Mentor;
+import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.MentorRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,11 +37,9 @@ public class mentorShipServiceI implements mentorShipService{
     private String getCurrentMentorEmail() {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
-
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Unauthenticated user");
         }
-
         return authentication.getName();
     }
 

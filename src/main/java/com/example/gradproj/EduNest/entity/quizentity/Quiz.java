@@ -2,12 +2,10 @@ package com.example.gradproj.EduNest.entity.quizentity;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -20,27 +18,24 @@ import java.util.List;
 public class Quiz extends BaseEntity {
 
     @ManyToOne
-    @JoinColumn(name="mentorship_id")
+    @JoinColumn(name="mentorship_id", nullable = false)
     private mentorShipE mentorship;
 
-    @NotBlank(message = "Quiz title cannot be blank")
-    @Size(max = 100, message = "Quiz title cannot exceed 100 characters")
+    @Column(nullable = false, length = 100)
     private String title;
 
-    @NotNull
-    private Integer duration;
+    @Column(nullable = false, length = 500)
+    private String description;
 
-    @Min(1)
-    private Integer totalPoints;
+    @Column(nullable = false)
+    private Integer durationMinutes;
 
     @Enumerated(EnumType.STRING)
     private QuizStatus status = QuizStatus.DRAFT;
 
-    private LocalDate deadline;
-
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true ,fetch = FetchType.LAZY)
     private List<Question> questions;
 
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     private List<QuizSubmission> submissions;
 }

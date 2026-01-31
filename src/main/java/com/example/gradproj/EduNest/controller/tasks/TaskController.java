@@ -1,15 +1,22 @@
 package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Pageable;
+
 
 @RestController
 @RequestMapping("/api/v1/task")
@@ -38,15 +45,6 @@ public ResponseEntity<SimpleResponse> updateStatus(
         response.addMessage("task", taskService.updateStatus(id, req));
    return ResponseEntity.status(HttpStatus.OK).body(response);
 }
-
-    @GetMapping("/published")
-    public  ResponseEntity<SimpleResponse> published(){
-
-        SimpleResponse response = new SimpleResponse();
-        response.addMessage("message", "all published tasks");
-        response.addMessage("tasks",taskService.getPublishedTasks());
-       return  ResponseEntity.status(HttpStatus.OK).body(response);
-    }
     @GetMapping("/{id}")
     public  ResponseEntity<SimpleResponse> getById(@PathVariable Long id){
         SimpleResponse response = new SimpleResponse();
@@ -70,6 +68,35 @@ public ResponseEntity<SimpleResponse> updateStatus(
         taskService.delete(id);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message", "task deleted successfully");
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+    @GetMapping("/filter/{msid}")
+    public ResponseEntity<SimpleResponse> filterTasks(
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "4") int size,
+            @PathVariable Long msid
+    ) {
+        Pageable pageable = (Pageable) PageRequest.of(page, size);
+
+        PageResponse<TaskResponse> response =
+                taskService.getTasks(taskName, status, msid, pageable);
+
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Tasks retrieved successfully");
+        simpleResponse.addMessage("Tasks", response);
+
+        return ResponseEntity.ok(simpleResponse);
+    }
+
+
+    @GetMapping("/dashboard/{mentorshipId}")
+    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable  Long mentorshipId) {
+       TaskDashboardDTO taskDashboardDTO =taskService.getTaskDashboard(mentorshipId);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message","Dashboard retrieved successfully");
+        simpleResponse.addMessage("Dashboard Details",taskDashboardDTO);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 

@@ -1,10 +1,11 @@
 package com.example.gradproj.EduNest.service.quizservice.question;
 
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
-import com.example.gradproj.EduNest.enums.QuizStatus;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quizrepository.QuestionRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
@@ -22,20 +23,23 @@ public class QuestionServiceImp implements QuestionService {
     private final QuizRepository quizRepository;
 
     @Override
-    public QuestionResponseDTO createQuestion(QuestionDTO questionDTO) {
-        Quiz quiz = quizRepository.findById(questionDTO.getQuizId())
+    public QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO) {
+        Quiz quiz = quizRepository.findById(questionCreateDTO.getQuizId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quiz.getStatus() != QuizStatus.DRAFT) {
+            throw new globalLogicEx("Cannot add question. Quiz is already published or closed.");
+        }
 
         Question question = Question.builder()
                 .quiz(quiz)
-                .text(questionDTO.getText())
-                .points(questionDTO.getPoints())
-                .orderNumber(questionDTO.getOrderNumber())
-                .correctAnswer(questionDTO.getCorrectAnswer())
-                .optionA(questionDTO.getOptionA())
-                .optionB(questionDTO.getOptionB())
-                .optionC(questionDTO.getOptionC())
-                .optionD(questionDTO.getOptionD())
+                .text(questionCreateDTO.getText())
+                .points(questionCreateDTO.getPoints())
+                .correctAnswer(questionCreateDTO.getCorrectAnswer())
+                .optionA(questionCreateDTO.getOptionA())
+                .optionB(questionCreateDTO.getOptionB())
+                .optionC(questionCreateDTO.getOptionC())
+                .optionD(questionCreateDTO.getOptionD())
                 .build();
 
         Question saved = questionRepository.save(question);
@@ -44,12 +48,8 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public List<QuestionResponseDTO> getQuestionsByQuizId(Long quizId) {
-        Quiz quiz = quizRepository.findById(quizId)
-                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
-        return questionRepository.findAll().stream()
-                .filter(q -> q.getQuiz().getId().equals(quizId))
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
+        quizRepository.findById(quizId).orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return questionRepository.findByQuiz_Id(quizId).stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
 
     @Override
@@ -60,22 +60,42 @@ public class QuestionServiceImp implements QuestionService {
     }
 
     @Override
-    public QuestionResponseDTO updateQuestion(Long id, QuestionDTO questionDTO) {
+    public QuestionResponseDTO updateQuestion(Long id, QuestionUpdateDto dto) {
+
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
 
-        Quiz quiz = quizRepository.findById(questionDTO.getQuizId())
+        Quiz quiz = quizRepository.findById(dto.getQuizId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
-        question.setQuiz(quiz);
-        question.setText(questionDTO.getText());
-        question.setPoints(questionDTO.getPoints());
-        question.setOrderNumber(questionDTO.getOrderNumber());
-        question.setCorrectAnswer(questionDTO.getCorrectAnswer());
-        question.setOptionA(questionDTO.getOptionA());
-        question.setOptionB(questionDTO.getOptionB());
-        question.setOptionC(questionDTO.getOptionC());
-        question.setOptionD(questionDTO.getOptionD());
+        if (quiz.getStatus() != QuizStatus.DRAFT) {
+            throw new globalLogicEx("Cannot update question. Quiz is already published or closed.");
+        }
+
+        if (dto.getText() != null)
+            question.setText(dto.getText());
+
+        if (dto.getPoints() != null)
+            question.setPoints(dto.getPoints());
+
+        if (dto.getCorrectAnswer() != null)
+            question.setCorrectAnswer(dto.getCorrectAnswer());
+
+        if (dto.getOptionA() != null)
+            question.setOptionA(dto.getOptionA());
+
+        if (dto.getOptionB() != null)
+            question.setOptionB(dto.getOptionB());
+
+        if (dto.getOptionC() != null)
+            question.setOptionC(dto.getOptionC());
+
+        if (dto.getOptionD() != null)
+            question.setOptionD(dto.getOptionD());
+
+        if (!question.getQuiz().getId().equals(dto.getQuizId())) {
+            question.setQuiz(quiz);
+        }
 
         Question updated = questionRepository.save(question);
         return mapToResponseDTO(updated);
@@ -93,13 +113,12 @@ public class QuestionServiceImp implements QuestionService {
         Question question = questionRepository.findById(questionId)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
 
-        Question deletedQuestion=quiz.getQuestions().stream()
-                .filter(q -> q.getId().equals(question.getId()))
-                .findFirst()
-                .orElseThrow(() -> new globalLogicEx("Question not found in this quiz"));
+        if (!question.getQuiz().getId().equals(quizId)) {
+            throw new globalLogicEx("Question does not belong to this quiz");
+        }
 
-        questionRepository.delete(deletedQuestion);
-        quizRepository.save(quiz);
+
+        questionRepository.delete(question);
     }
 
     private QuestionResponseDTO mapToResponseDTO(Question question) {
@@ -107,7 +126,6 @@ public class QuestionServiceImp implements QuestionService {
                 .id(question.getId())
                 .text(question.getText())
                 .points(question.getPoints())
-                .orderNumber(question.getOrderNumber())
                 .correctAnswer(question.getCorrectAnswer())
                 .optionA(question.getOptionA())
                 .optionB(question.getOptionB())

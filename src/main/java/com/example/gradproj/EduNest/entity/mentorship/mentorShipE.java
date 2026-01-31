@@ -2,10 +2,10 @@ package com.example.gradproj.EduNest.entity.mentorship;
 
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.Mentor;
-import com.example.gradproj.EduNest.entity.Student;
+import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
-import com.example.gradproj.EduNest.enums.DifficultyLevel;
+import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
