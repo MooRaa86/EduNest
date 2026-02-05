@@ -12,6 +12,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.service.points.PointsService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -29,13 +30,21 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskSubmissionRepository submissionRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final StudentRepository studentRepository;
+    private final PointsService pointsService;
 
-    public TaskSubmissionServiceImpl(TaskRepository taskRepository, TaskSubmissionRepository submissionRepository, TaskSubmissionRepository taskSubmissionRepository, StudentRepository studentRepository) {
+
+    public TaskSubmissionServiceImpl(TaskRepository taskRepository,
+                                     TaskSubmissionRepository submissionRepository,
+                                     TaskSubmissionRepository taskSubmissionRepository,
+                                     StudentRepository studentRepository,
+                                     PointsService pointsService) {
         this.taskRepository = taskRepository;
         this.submissionRepository = submissionRepository;
         this.taskSubmissionRepository = taskSubmissionRepository;
         this.studentRepository= studentRepository;
+        this.pointsService = pointsService;
     }
+
 
     private String getCurrentStudentEmail() {
         Authentication authentication =
@@ -112,6 +121,12 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         sub.setFinalScore(req.getScore());
         sub.setStatus(SubmissionStatus.GRADED);
         sub.setGradedAt(LocalDateTime.now());
+
+
+        if (sub.getFinalScore() != null ) {
+            pointsService.awardTaskFinalScorePoints(sub);
+        }
+
         return mapToSubmissionResponse(sub);
     }
 

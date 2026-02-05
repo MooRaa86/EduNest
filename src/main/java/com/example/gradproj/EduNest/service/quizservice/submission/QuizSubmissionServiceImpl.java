@@ -13,12 +13,14 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
+import com.example.gradproj.EduNest.service.points.PointsService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 import java.time.LocalDateTime;
@@ -34,6 +36,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final QuizRepository quizRepository;
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final StudentRepository studentRepository;
+    private final PointsService pointsService;
+
 
 
     private String getCurrentStudentEmail() {
@@ -46,6 +50,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     }
 
     @Override
+    @Transactional
     public QuizSubmissionResponseDTO submitQuizAnswers(
             QuizSubmissionDTO quizSubmissionDTO, Long quizId) {
 
@@ -98,14 +103,17 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         quizSubmission.setAnswers(studentAnswers);
 
-        quizSubmissionRepository.save(quizSubmission);
+        QuizSubmission saved = quizSubmissionRepository.save(quizSubmission);
+
+        pointsService.awardQuizScorePoints(saved);
+
 
         return QuizSubmissionResponseDTO.builder()
-                .id(quizSubmission.getId())
+                .id(saved.getId())
                 .studentId(student.getId())
                 .quizId(quiz.getId())
                 .score(score.getTotalScore())
-                .submittedAt(quizSubmission.getSubmittedAt())
+                .submittedAt(saved.getSubmittedAt())
                 .build();
     }
 
