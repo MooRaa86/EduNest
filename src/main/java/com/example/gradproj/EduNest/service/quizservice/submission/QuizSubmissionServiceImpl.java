@@ -3,19 +3,21 @@ package com.example.gradproj.EduNest.service.quizservice.submission;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseDTO;
-import com.example.gradproj.EduNest.entity.Student;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.quizentity.QuizSubmission;
 import com.example.gradproj.EduNest.entity.quizentity.StudentAnswer;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.StudentRepository;
+import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 
@@ -33,6 +35,16 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final StudentRepository studentRepository;
 
+
+    private String getCurrentStudentEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Unauthenticated user");
+        }
+        return authentication.getName();
+    }
+
     @Override
     public QuizSubmissionResponseDTO submitQuizAnswers(
             QuizSubmissionDTO quizSubmissionDTO, Long quizId) {
@@ -40,8 +52,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
-        Student student = studentRepository.findById(quizSubmissionDTO.getStudentId())
-                .orElseThrow(() -> new globalLogicEx("Student not found"));
+        Student student = studentRepository
+                .findByEmail(getCurrentStudentEmail());
 
         if (quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Quiz is not available");
@@ -104,7 +116,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         return submission.getAnswers().stream()
                 .map(ans -> StudentAnswerDTO.builder()
-                        .submissionId(ans.getSubmission().getId())
+//                        .submissionId(ans.getSubmission().getId())
                         .questionId(ans.getQuestion().getId())
                         .selectedAnswer(ans.getSelectedAnswer())
                         .build())

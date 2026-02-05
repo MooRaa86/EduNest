@@ -11,10 +11,10 @@ import java.util.List;
 @Builder
 public class QuizSubmissionDTO {
 
-    @NotNull(message = "Student ID is required")
-    private Long studentId;
+//    @NotNull(message = "Student ID is required")
+//    private Long studentId;
 
-    private Long quizId;
+//    private Long quizId;
 
     @NotNull
     private List<StudentAnswerDTO> answers;

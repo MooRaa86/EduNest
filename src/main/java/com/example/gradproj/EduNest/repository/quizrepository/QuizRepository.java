@@ -16,15 +16,18 @@ import java.util.Optional;
 @Repository
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
     @Query("""
-                SELECT q FROM Quiz q
-                WHERE (:quizName IS NULL OR LOWER(q.title) LIKE LOWER(CONCAT('%', :quizName, '%')))
-                  AND (:status IS NULL OR q.status = :status)
-            """)
-    Page<Quiz> findQuizzes(
+    SELECT q FROM Quiz q
+    WHERE q.mentorship.id = :mentorshipId
+      AND (:quizName IS NULL OR LOWER(q.title) LIKE LOWER(CONCAT('%', :quizName, '%')))
+      AND (:status IS NULL OR q.status = :status)
+""")
+    Page<Quiz> findQuizzesByMentorship(
+            @Param("mentorshipId") Long mentorshipId,
             @Param("quizName") String quizName,
             @Param("status") QuizStatus status,
             Pageable pageable
     );
+
 
     List<Quiz> findByMentorship_Id(Long mentorshipId);
 }

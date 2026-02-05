@@ -13,7 +13,7 @@ import lombok.*;
 @Builder
 public class QuizUpdateDto {
 
-    private Long mentorshipId;
+//    private Long mentorshipId;
 
     @Size(max = 100, message = "Title can't exceed 100 characters")
     private String title;

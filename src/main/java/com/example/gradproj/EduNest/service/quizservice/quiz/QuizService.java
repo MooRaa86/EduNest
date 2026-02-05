@@ -19,7 +19,7 @@ public interface QuizService {
 
     QuizResponseDTO getQuizDetails(Long id);
 
-    PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, Pageable pageable);
+    PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid ,Pageable pageable);
 
     QuizDashboardDTO getQuizDashboard(Long mentorshipID);
 

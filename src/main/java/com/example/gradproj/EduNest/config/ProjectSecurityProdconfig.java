@@ -5,19 +5,16 @@ import com.example.gradproj.EduNest.exception.authHandling.EduNestAccessDeniedHa
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAuthenticationEntryPoint;
 import com.example.gradproj.EduNest.filters.JwtTokenGeneratorFilter;
 import com.example.gradproj.EduNest.filters.JwtTokenValidatorFilter;
-import com.example.gradproj.EduNest.service.jwt.JwtService;
+import com.example.gradproj.EduNest.repository.users.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -51,7 +48,7 @@ public class ProjectSecurityProdconfig {
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                         CorsConfiguration config = new CorsConfiguration();
-                        config.setAllowedOrigins(Collections.singletonList("*"));
+                        config.setAllowedOriginPatterns(Arrays.asList("*"));
                         config.setAllowedMethods(Collections.singletonList("*"));
                         config.setAllowCredentials(true);
                         config.setAllowedHeaders(Collections.singletonList("*"));
@@ -73,7 +70,7 @@ public class ProjectSecurityProdconfig {
                                 "/api/auth/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/register/**").permitAll()
-                        .requestMatchers("/login-api").permitAll()
+                        .requestMatchers("/login-api","/forget-password/**").permitAll()
                         .anyRequest().authenticated()
                 );
         http.exceptionHandling(ex -> ex
@@ -93,9 +90,10 @@ public class ProjectSecurityProdconfig {
     @Bean
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            UserRepository userRepository
     ){
-        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder);
+        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder,userRepository);
         ProviderManager providerManager = new ProviderManager(authProvider);
         providerManager.setEraseCredentialsAfterAuthentication(false);
         return providerManager;

@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.config.auth;
 
-import com.example.gradproj.EduNest.entity.UserEntity;
+import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.UserRepository;
+import com.example.gradproj.EduNest.repository.users.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

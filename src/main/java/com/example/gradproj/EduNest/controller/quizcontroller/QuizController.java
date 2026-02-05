@@ -60,16 +60,17 @@ public class QuizController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-    @GetMapping("/filter")
+    @GetMapping("/filter/{msid}")
     public ResponseEntity<SimpleResponse> filterQuizzes(
             @RequestParam(required = false) String quizName,
             @RequestParam(required = false) QuizStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "4") int size
+            @RequestParam(defaultValue = "4") int size,
+            @PathVariable Long msid
     ) {
         Pageable pageable = PageRequest.of(page, size);
         PageResponse<QuizResponseDTO> response =
-                quizService.getQuizzes(quizName, status, pageable);
+                quizService.getQuizzes(quizName, status, msid,pageable);
 
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quizzes retrieved successfully");

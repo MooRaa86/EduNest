@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.entity.tasks;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.Student;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

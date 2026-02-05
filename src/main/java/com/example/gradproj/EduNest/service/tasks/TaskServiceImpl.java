@@ -1,16 +1,27 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
+import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+
+
 import java.time.LocalDateTime;
 import java.util.List;
 @Service
@@ -51,31 +62,6 @@ public class TaskServiceImpl implements TaskService{
 
     }
 
-    @Override
-    public TaskResponse publish(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-            .orElseThrow(() -> new globalLogicEx("Task not found"));
-        task.setStatus(TaskStatus.PUBLISHED);
-        Task updatedTask = taskRepository.save(task);
-        return mapToTaskResponse(updatedTask);
-    }
-
-    @Override
-    public TaskResponse close(Long taskId) {
-        Task task=taskRepository.findById(taskId)
-            .orElseThrow(() -> new globalLogicEx("Task not found"));
-        task.setStatus(TaskStatus.CLOSED);
-        Task closedTask=taskRepository.save(task);
-        return  mapToTaskResponse(closedTask);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaskResponse> getPublishedTasks() {
-        return taskRepository.findTaskByStatus(TaskStatus.PUBLISHED).stream()
-                .map(this::mapToTaskResponse)
-                .toList();
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -118,6 +104,18 @@ public class TaskServiceImpl implements TaskService{
         taskRepository.delete(task);
     }
 
+    @Override
+    public TaskResponse updateStatus(Long taskId, UpdateTaskStatusRequest req) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
+            throw new globalLogicEx("Cannot revert published task to draft");
+        }
+        task.setStatus(req.getStatus());
+        return mapToTaskResponse(task);
+    }
+
     private TaskResponse mapToTaskResponse(Task task) {
         TaskResponse res = new TaskResponse();
         res.setId(task.getId());
@@ -132,4 +130,70 @@ public class TaskServiceImpl implements TaskService{
 
         return res;
     }
+
+
+    @Override
+    public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, Long msid, Pageable pageable) {
+
+        Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status,pageable);
+
+        List<TaskResponse> taskDTOs = tasks.getContent().stream()
+                .map(task -> TaskResponse.builder()
+                        .id(task.getId())
+                        .title(task.getTitle())
+                        .description(task.getDescription())
+                        .points(task.getPoints())
+                        .passPoints(task.getPassPoints())
+                        .estimatedMinutes(task.getEstimatedMinutes())
+                        .status(String.valueOf(task.getStatus()))
+                        .dueAt(task.getDueAt())
+                        .attachmentUrl(task.getAttachmentUrl())
+                        .build())
+                .toList();
+
+        return PageResponse.<TaskResponse>builder()
+                .content(taskDTOs)
+                .page(tasks.getNumber())
+                .size(tasks.getSize())
+                .totalElements(tasks.getTotalElements())
+                .totalPages(tasks.getTotalPages())
+                .build();
+    }
+
+    @Override
+    public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
+        mentorShipE mentorShip = mentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        List<Task> allTasks = taskRepository.findByMentorshipId(mentorShipId);
+
+        int totalTasks = allTasks.size();
+        int publishedCount = 0;
+        int draftCount = 0;
+        double sumAverageScores = 0.0;
+
+        for (Task task : allTasks) {
+            publishedCount += (task.getStatus() == TaskStatus.PUBLISHED ? 1 : 0);
+            draftCount += (task.getStatus() == TaskStatus.DRAFT ? 1 : 0);
+            sumAverageScores += calculateAverageScore(task);
+        }
+        double averageScore = totalTasks > 0 ? sumAverageScores / totalTasks : 0.0;
+
+        return TaskDashboardDTO.builder()
+                .totalTasks(totalTasks)
+                .publishedCount(publishedCount)
+                .draftCount(draftCount)
+                .averageScore(averageScore)
+                .build();
+    }
+
+    private double calculateAverageScore(Task task) {
+        if (task.getSubmissions() == null || task.getSubmissions().isEmpty()) {
+            return 0;
+        }
+        return task.getSubmissions().stream()
+                .mapToDouble(s -> s.getFinalScore() != null ? s.getFinalScore() : 0)
+                .average()
+                .orElse(0.0);
+    }
+
 }

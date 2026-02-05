@@ -77,11 +77,11 @@ public class QuizServiceImpl implements QuizService {
         if (quizUpdateDto.getTitle() != null) quiz.setTitle(quizUpdateDto.getTitle());
         if (quizUpdateDto.getDescription() != null) quiz.setDescription(quizUpdateDto.getDescription());
         if (quizUpdateDto.getDurationMinutes() != null) quiz.setDurationMinutes(quizUpdateDto.getDurationMinutes());
-        if (quizUpdateDto.getMentorshipId() != null) {
-            mentorShipE mentorship = mentorshipRepository.findById(quizUpdateDto.getMentorshipId())
-                    .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
-            quiz.setMentorship(mentorship);
-        }
+//        if (quizUpdateDto.getMentorshipId() != null) {
+//            mentorShipE mentorship = mentorshipRepository.findById(quizUpdateDto.getMentorshipId())
+//                    .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+//            quiz.setMentorship(mentorship);
+//        }
         if (quizUpdateDto.getStatus() != null) quiz.setStatus(quizUpdateDto.getStatus());
 
 
@@ -114,8 +114,8 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
-    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, Pageable pageable) {
-        Page<Quiz> quizzes = quizRepository.findQuizzes(quizName, status, pageable);
+    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid, Pageable pageable) {
+        Page<Quiz> quizzes = quizRepository.findQuizzesByMentorship(msid,quizName, status,pageable);
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
                 .map(quiz -> QuizResponseDTO.builder()

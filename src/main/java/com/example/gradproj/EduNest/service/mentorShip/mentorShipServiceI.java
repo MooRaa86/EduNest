@@ -5,15 +5,19 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,12 +28,30 @@ public class mentorShipServiceI implements mentorShipService{
 
     private final mentorShipRepository MentorShipRepository;
     private final TaskRepository taskRepository;
+    private final MentorRepository mentorRepository;
+
+
+
+
+
+    private String getCurrentMentorEmail() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Unauthenticated user");
+        }
+        return authentication.getName();
+    }
+
+
 
     @Override
     public mentorShipFDto createMentorShip(mentorShipCreateDTO dto) {
+        Mentor mentor = mentorRepository.findByEmail(getCurrentMentorEmail());
 
         mentorShipE mentorShip = mentorShipE.builder()
                 .title(dto.getTitle())
+                .mentor(mentor)
                 .description(dto.getDescription())
                 .category(dto.getCategory())
                 .rating(dto.getRating())
