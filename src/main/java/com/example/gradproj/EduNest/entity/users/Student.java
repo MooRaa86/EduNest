@@ -26,8 +26,6 @@ public class Student extends UserEntity {
     private EducationalLevel educationalLevel;
 
 
-    private Integer totalPoints = 0;
-
     @ManyToMany(mappedBy = "students")
     private Set<mentorShipE> mentorships = new HashSet<>();
 

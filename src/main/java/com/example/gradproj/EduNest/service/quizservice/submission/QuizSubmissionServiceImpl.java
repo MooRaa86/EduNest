@@ -13,7 +13,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
-import com.example.gradproj.EduNest.service.points.PointsService;
+import com.example.gradproj.EduNest.service.points.TotalPointsService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +36,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final QuizRepository quizRepository;
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final StudentRepository studentRepository;
-    private final PointsService pointsService;
+    private final TotalPointsService totalPointsService;
 
 
 
@@ -104,16 +104,15 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         quizSubmission.setAnswers(studentAnswers);
 
         QuizSubmission saved = quizSubmissionRepository.save(quizSubmission);
-
-        pointsService.awardQuizScorePoints(saved);
+        totalPointsService.recalculate(saved.getStudent(), saved.getQuiz().getMentorship());
 
 
         return QuizSubmissionResponseDTO.builder()
-                .id(saved.getId())
+                .id(quizSubmission.getId())
                 .studentId(student.getId())
                 .quizId(quiz.getId())
                 .score(score.getTotalScore())
-                .submittedAt(saved.getSubmittedAt())
+                .submittedAt(quizSubmission.getSubmittedAt())
                 .build();
     }
 

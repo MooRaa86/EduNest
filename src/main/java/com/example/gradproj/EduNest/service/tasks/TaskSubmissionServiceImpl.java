@@ -3,6 +3,8 @@ package com.example.gradproj.EduNest.service.tasks;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeSubmissionRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.SubmissionResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
+import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
@@ -12,7 +14,8 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
-import com.example.gradproj.EduNest.service.points.PointsService;
+import com.example.gradproj.EduNest.service.points.TotalPointsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -25,25 +28,15 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskRepository taskRepository;
     private final TaskSubmissionRepository submissionRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final StudentRepository studentRepository;
-    private final PointsService pointsService;
+    private final TotalPointsService totalPointsService;
 
 
-    public TaskSubmissionServiceImpl(TaskRepository taskRepository,
-                                     TaskSubmissionRepository submissionRepository,
-                                     TaskSubmissionRepository taskSubmissionRepository,
-                                     StudentRepository studentRepository,
-                                     PointsService pointsService) {
-        this.taskRepository = taskRepository;
-        this.submissionRepository = submissionRepository;
-        this.taskSubmissionRepository = taskSubmissionRepository;
-        this.studentRepository= studentRepository;
-        this.pointsService = pointsService;
-    }
 
 
     private String getCurrentStudentEmail() {
@@ -111,23 +104,28 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     public SubmissionResponse grade(Long submissionId, GradeSubmissionRequest req) {
-        TaskSubmission sub =submissionRepository.findById(submissionId).orElseThrow(() -> new IllegalArgumentException("Submission not found with id: " + submissionId));
-        Task task=sub.getTask();
-        if (req.getScore()>task.getPoints()){
-            throw new globalLogicEx("score must be less than or equal to task points " + task.getPoints());
+
+        TaskSubmission sub = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Submission not found with id: " + submissionId));
+
+        Task task = sub.getTask();
+
+        if (req.getScore() > task.getPoints()) {
+            throw new globalLogicEx(
+                    "score must be less than or equal to task points " + task.getPoints());
         }
+
         sub.setRawScore(task.getPoints());
         sub.setFeedBack(req.getFeedback());
         sub.setFinalScore(req.getScore());
         sub.setStatus(SubmissionStatus.GRADED);
         sub.setGradedAt(LocalDateTime.now());
 
-
-        if (sub.getFinalScore() != null ) {
-            pointsService.awardTaskFinalScorePoints(sub);
-        }
+        totalPointsService.recalculate(sub.getStudent(), task.getMentorship());
 
         return mapToSubmissionResponse(sub);
+
     }
 
     private SubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
