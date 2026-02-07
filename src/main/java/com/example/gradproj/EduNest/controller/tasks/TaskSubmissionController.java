@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
-import com.example.gradproj.EduNest.dto.tasks.requests.GradeSubmissionRequest;
+import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 import com.example.gradproj.EduNest.service.tasks.TaskSubmissionService;
 import jakarta.validation.Valid;
@@ -38,7 +38,7 @@ public class TaskSubmissionController {
     @PostMapping("/submissions/{submissionId}/grade")
     public ResponseEntity<SimpleResponse> grade(
             @PathVariable Long submissionId,
-            @Valid @RequestBody GradeSubmissionRequest req
+            @Valid @RequestBody GradeTaskSubmissionRequest req
     ) {
         SimpleResponse response=new SimpleResponse();
         response.addMessage("message","grade submitted Successfully");

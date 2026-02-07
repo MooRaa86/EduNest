@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
+import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class TotalPointsService {
     private final TotalPointsRepository totalPointsRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final QuizSubmissionRepository quizSubmissionRepository;
+    private final ProjectSubmissionRepository projectSubmissionRepository;
 
     @Transactional
     public void recalculate(Student student, mentorShipE mentorship) {
@@ -25,8 +27,10 @@ public class TotalPointsService {
 
         int quizzesTotal = quizSubmissionRepository.sumScoresForMentorship(
                 student.getId(), mentorship.getId());
+        int projectsTotal= projectSubmissionRepository.sumFinalScoresForMentorship(
+                student.getId(), mentorship.getId());
 
-        int total = tasksTotal + quizzesTotal;
+        int total = tasksTotal + quizzesTotal +projectsTotal;
 
         TotalPoints tp = totalPointsRepository
                 .findByStudent_IdAndMentorship_Id(student.getId(), mentorship.getId())

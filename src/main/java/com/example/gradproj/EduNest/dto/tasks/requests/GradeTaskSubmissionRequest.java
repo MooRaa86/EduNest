@@ -11,7 +11,7 @@ import lombok.*;
 @NoArgsConstructor
 @Getter
 @Setter
-public class GradeSubmissionRequest {
+public class GradeTaskSubmissionRequest {
     @NotNull(message = "score is required")
     @Min(value = 0, message = "score must be >= 0")
     @Max(value = 1000, message = "score is too large")

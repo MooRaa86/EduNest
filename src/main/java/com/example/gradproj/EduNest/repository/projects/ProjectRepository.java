@@ -1,4 +1,30 @@
 package com.example.gradproj.EduNest.repository.projects;
 
-public interface ProjectRepository {
+import com.example.gradproj.EduNest.entity.projects.Project;
+import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.enums.project.ProjectStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+
+public interface ProjectRepository extends JpaRepository<Project,Long> {
+    boolean existsById(Long id);
+    List<Task> findProjectByStatus(ProjectStatus status);
+    List<Project> findByMentorshipId(Long mentorshipId);
+    @Query("""
+    SELECT p FROM Project p
+    WHERE p.mentorship.id = :msid
+      AND (:projectName IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :projectName, '%')))
+      AND (:status IS NULL OR p.status = :status)
+""")
+    Page<Project> findProjectsByMentorship(
+            @Param("msid") Long msid,
+            @Param("projectName") String projectName,
+            @Param("status") ProjectStatus status,
+            Pageable pageable
+    );
 }

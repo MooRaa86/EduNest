@@ -1,10 +1,8 @@
 package com.example.gradproj.EduNest.service.tasks;
 
-import com.example.gradproj.EduNest.dto.tasks.requests.GradeSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.response.SubmissionResponse;
+import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
-import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
@@ -49,8 +47,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     }
 
     @Override
-    public SubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
-        Task task= taskRepository.findById(taskId).orElseThrow(() -> new IllegalArgumentException("Task not found with id: " + taskId));
+    public TaskSubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
+        Task task= taskRepository.findById(taskId).orElseThrow(() -> new IllegalArgumentException("Task not found"));
         if (task.getStatus()!= TaskStatus.PUBLISHED){
             throw new globalLogicEx("Task is not published");
         }
@@ -91,7 +89,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubmissionResponse> listByTask(Long taskId) {
+    public List<TaskSubmissionResponse> listByTask(Long taskId) {
 
         if(!taskRepository.existsById(taskId)){
             throw new globalLogicEx("Task not found with this id");
@@ -103,11 +101,11 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     }
 
     @Override
-    public SubmissionResponse grade(Long submissionId, GradeSubmissionRequest req) {
+    public TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req) {
 
         TaskSubmission sub = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Submission not found with id: " + submissionId));
+                        "Submission not found"));
 
         Task task = sub.getTask();
 
@@ -128,8 +126,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     }
 
-    private SubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
-        SubmissionResponse res = new SubmissionResponse();
+    private TaskSubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
+        TaskSubmissionResponse res = new TaskSubmissionResponse();
         res.setSubmissionId(s.getId());
         res.setTaskId(s.getTask().getId());
         res.setStudentId(s.getStudent().getId());

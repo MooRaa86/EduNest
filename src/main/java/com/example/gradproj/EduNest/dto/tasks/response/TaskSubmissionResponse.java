@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
-public class SubmissionResponse {
+public class TaskSubmissionResponse {
 
     private Long submissionId;
     private Long taskId;

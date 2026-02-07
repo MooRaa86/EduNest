@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
@@ -28,7 +27,7 @@ public class TaskController {
     }
     @PostMapping
     public ResponseEntity<SimpleResponse> create(@RequestBody CreateTaskRequest req){
-        TaskResponse created =taskService.create(req);
+        TaskResponse created =taskService.createTask(req);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task created successfully");
         response.addMessage("task", created);
@@ -42,14 +41,14 @@ public ResponseEntity<SimpleResponse> updateStatus(
 ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task status updated successfully");
-        response.addMessage("task", taskService.updateStatus(id, req));
+        response.addMessage("task", taskService.updateTaskStatus(id, req));
    return ResponseEntity.status(HttpStatus.OK).body(response);
 }
     @GetMapping("/{id}")
     public  ResponseEntity<SimpleResponse> getById(@PathVariable Long id){
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task retrieved successfully");
-        response.addMessage("task", taskService.getById(id));
+        response.addMessage("task", taskService.getTaskById(id));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     @PatchMapping("/{id}")
@@ -59,13 +58,13 @@ public ResponseEntity<SimpleResponse> updateStatus(
     ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task updated successfully");
-       response.addMessage("task", taskService.update(id, req));
+       response.addMessage("task", taskService.updateTask(id, req));
        return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @DeleteMapping("/{id}")
     public  ResponseEntity<SimpleResponse> delete(@PathVariable Long id){
-        taskService.delete(id);
+        taskService.deleteTask(id);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message", "task deleted successfully");
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);

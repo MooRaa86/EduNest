@@ -37,7 +37,7 @@ public class TaskServiceImpl implements TaskService{
 
 
     @Override
-    public TaskResponse create(CreateTaskRequest req) {
+    public TaskResponse createTask(CreateTaskRequest req) {
         if (req.getPassPoints()> req.getPoints()){
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
@@ -65,7 +65,7 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     @Transactional(readOnly = true)
-    public TaskResponse getById(Long taskId) {
+    public TaskResponse getTaskById(Long taskId) {
 
         Task task=taskRepository.findById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
@@ -73,8 +73,8 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public TaskResponse update(long taskId, PatchTaskRequest request) {
-        Task task=taskRepository.findById(taskId).orElseThrow(()->new IllegalArgumentException("Task not found with id: " + taskId));
+    public TaskResponse updateTask(long taskId, PatchTaskRequest request) {
+        Task task=taskRepository.findById(taskId).orElseThrow(()->new IllegalArgumentException("Task not found "));
         if (task.getStatus() == TaskStatus.CLOSED){
             throw new globalLogicEx("cannot update closed task");
         }
@@ -98,14 +98,14 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public void delete(Long taskId) {
+    public void deleteTask(Long taskId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(()->new globalLogicEx("Task not found"));
         taskRepository.delete(task);
     }
 
     @Override
-    public TaskResponse updateStatus(Long taskId, UpdateTaskStatusRequest req) {
+    public TaskResponse updateTaskStatus(Long taskId, UpdateTaskStatusRequest req) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
 
