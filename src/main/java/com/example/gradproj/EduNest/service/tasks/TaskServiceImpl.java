@@ -1,16 +1,13 @@
 package com.example.gradproj.EduNest.service.tasks;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
-import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
-import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
@@ -41,7 +38,7 @@ public class TaskServiceImpl implements TaskService{
         if (req.getPassPoints()> req.getPoints()){
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
-        mentorShipE mentorship = mentorShipRepository.findById(req.getMentorshipId())
+        MentorShip mentorship = mentorShipRepository.findById(req.getMentorshipId())
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
 
 
@@ -162,7 +159,7 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
-        mentorShipE mentorShip = mentorShipRepository.findById(mentorShipId)
+        MentorShip mentorShip = mentorShipRepository.findById(mentorShipId)
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
         List<Task> allTasks = taskRepository.findByMentorshipId(mentorShipId);
 

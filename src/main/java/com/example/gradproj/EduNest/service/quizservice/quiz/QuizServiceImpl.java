@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
@@ -33,7 +33,7 @@ public class QuizServiceImpl implements QuizService {
     @Transactional
     public QuizResponseDTO createQuiz(QuizCreateDTO quizCreateDTO) {
 
-        mentorShipE mentorship = mentorshipRepository.findById(quizCreateDTO.getMentorshipId())
+        MentorShip mentorship = mentorshipRepository.findById(quizCreateDTO.getMentorshipId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
 
@@ -142,7 +142,7 @@ public class QuizServiceImpl implements QuizService {
     @Override
     public QuizDashboardDTO getQuizDashboard(Long mentorShipId) {
 
-        mentorShipE mentorShip = mentorshipRepository.findById(mentorShipId)
+        MentorShip mentorShip = mentorshipRepository.findById(mentorShipId)
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
         List<Quiz> allQuizzes = quizRepository.findByMentorship_Id(mentorShipId);
 

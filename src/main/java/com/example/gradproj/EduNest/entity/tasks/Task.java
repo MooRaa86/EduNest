@@ -1,11 +1,10 @@
 package com.example.gradproj.EduNest.entity.tasks;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -52,6 +51,6 @@ public class Task extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "mentorship_id", nullable = false)
-    private mentorShipE mentorship;
+    private MentorShip mentorship;
 
 }

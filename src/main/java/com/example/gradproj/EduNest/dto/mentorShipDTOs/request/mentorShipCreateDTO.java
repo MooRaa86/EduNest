@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.dto.mentorShipDTOs.request;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import java.util.*;
 
 @Getter
 @Setter
@@ -23,10 +24,28 @@ public class mentorShipCreateDTO {
     @Size(min = 3, max = 20, message = "Category must be between 3 and 20 characters")
     private String category; // enum بعدين
 
-    @Min(value = 1, message = "Rating must be at least 1")
-    @Max(value = 5, message = "Rating must be at most 5")
-    private Integer rating;
-
     private DifficultyLevel difficultyLevel;
+
+    @PositiveOrZero(message = "Price must be zero or positive")
+    private double price;
+
+    @NotEmpty(message = "What will learn list cannot be empty")
+    @Size(max = 12, message = "Maximum 12 items allowed")
+    private List<
+            @NotBlank
+            @Size(min = 3, max = 100)
+                    String
+            > whatWillLearn = new ArrayList<>();
+
+    @Size(max = 10, message = "Maximum 10 tags allowed")
+    private List<
+            @NotBlank(message = "tag connot be null")
+            @Size(min = 2, max = 20)
+                    String
+            > tags = new ArrayList<>();
+
+    @NotNull
+    @Positive
+    private Double duration;
 
 }

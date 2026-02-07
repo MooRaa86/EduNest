@@ -1,13 +1,17 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
+import com.example.gradproj.EduNest.annotation.FieldsValueMatch;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.entity.mentorship.Tags;
+import com.example.gradproj.EduNest.entity.mentorship.WhatWillLearn;
 import com.example.gradproj.EduNest.entity.users.Mentor;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
@@ -16,9 +20,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,9 +38,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final mentorShipRepository MentorShipRepository;
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
-
-
-
+    private final imageStorageService imageService;
 
 
     private String getCurrentMentorEmail() {
@@ -44,66 +51,122 @@ public class mentorShipServiceI implements mentorShipService{
     }
 
 
-
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
     @Override
     public mentorShipFDto createMentorShip(mentorShipCreateDTO dto) {
         Mentor mentor = mentorRepository.findByEmail(getCurrentMentorEmail());
 
-        mentorShipE mentorShip = mentorShipE.builder()
-                .title(dto.getTitle())
+        MentorShip mentorShip = MentorShip.builder()
                 .mentor(mentor)
+                .title(dto.getTitle())
                 .description(dto.getDescription())
-                .category(dto.getCategory())
-                .rating(dto.getRating())
+                .category(dto.getCategory().trim().toLowerCase())
                 .difficultyLevel(dto.getDifficultyLevel())
+                .price(dto.getPrice())
+                .duration(dto.getDuration())
                 .build();
 
-        mentorShipE savedMentorShip = MentorShipRepository.save(mentorShip);
+        List<Tags> tags = dto.getTags().stream()
+                .map(t -> Tags.builder()
+                        .tag(t.trim().toLowerCase())
+                        .mentorShip(mentorShip)
+                        .build()).collect(Collectors.toList());
 
-        return mentorShipFDto.builder()
-                .id(savedMentorShip.getId())
-                .title(savedMentorShip.getTitle())
-                .description(savedMentorShip.getDescription())
-                .category(savedMentorShip.getCategory())
-                .rating(savedMentorShip.getRating())
-                .difficultyLevel(savedMentorShip.getDifficultyLevel())
-                .build();
+        List<WhatWillLearn> whatWillLearns = dto.getWhatWillLearn().stream()
+                        .map(w -> WhatWillLearn.builder()
+                                .mentorShip(mentorShip)
+                                .content(w.trim().toLowerCase())
+                                .build()).collect(Collectors.toList());
+
+        mentorShip.setWhatWillLearn(whatWillLearns);
+
+        mentorShip.setTags(tags);
+
+        MentorShip savedMentorShip = MentorShipRepository.save(mentorShip);
+
+        return mapToMentorShipResponse(savedMentorShip);
     }
 
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
     @Override
     public mentorShipFDto updateMentorShip(Long mentorShipId, mentorShipUpdateDTO dto) {
 
-        mentorShipE mentorShip = MentorShipRepository.findById(mentorShipId)
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
-        if (dto.getTitle() != null) mentorShip.setTitle(dto.getTitle());
-        if (dto.getDescription() != null) mentorShip.setDescription(dto.getDescription());
-        if (dto.getCategory() != null) mentorShip.setCategory(dto.getCategory());
-        if (dto.getRating() != null) mentorShip.setRating(dto.getRating());
-        if (dto.getDifficultyLevel() != null) mentorShip.setDifficultyLevel(dto.getDifficultyLevel());
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
 
-        mentorShipE saved = MentorShipRepository.save(mentorShip);
+        if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
+            throw new BadCredentialsException("you are not allowed to update this mentorship");
+        }
 
-        return mentorShipFDto.builder()
-                .id(saved.getId())
-                .title(saved.getTitle())
-                .description(saved.getDescription())
-                .category(saved.getCategory())
-                .rating(saved.getRating())
-                .difficultyLevel(saved.getDifficultyLevel())
-                .build();
+        if (dto.getTitle() != null)
+            mentorShip.setTitle(dto.getTitle());
 
+        if (dto.getDescription() != null)
+            mentorShip.setDescription(dto.getDescription());
+
+        if (dto.getCategory() != null)
+            mentorShip.setCategory(dto.getCategory().trim().toLowerCase());
+
+        if (dto.getDifficultyLevel() != null)
+            mentorShip.setDifficultyLevel(dto.getDifficultyLevel());
+
+        if (dto.getPrice() != null)
+            mentorShip.setPrice(dto.getPrice());
+
+        if (dto.getWhatWillLearn() != null) {
+
+            mentorShip.getWhatWillLearn().clear();
+
+            for (String w : dto.getWhatWillLearn()) {
+                mentorShip.getWhatWillLearn().add(
+                        WhatWillLearn.builder()
+                                .mentorShip(mentorShip)
+                                .content(w.trim().toLowerCase())
+                                .build()
+                );
+            }
+        }
+
+        if (dto.getTags() != null) {
+            mentorShip.getTags().clear();
+            dto.getTags().forEach(t -> {
+                mentorShip.getTags().add(
+                        Tags.builder()
+                                .tag(t.trim().toLowerCase())
+                                .mentorShip(mentorShip)
+                                .build()
+                );
+            });
+        }
+
+        if(dto.getDuration() != null){
+            mentorShip.setDuration(dto.getDuration());
+        }
+
+        return mapToMentorShipResponse(mentorShip);
     }
 
     @Override
+    @PreAuthorize("hasRole('MENTOR')")
     public void deleteMentorShip(Long mentorShipId) {
 
-        mentorShipE mentorShip = MentorShipRepository.findById(mentorShipId)
+        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
 
-        mentorShip.getStudents().clear();
-        MentorShipRepository.save(mentorShip);
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
 
+        if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
+            throw new BadCredentialsException("you are not allowed to delete this mentorship");
+        }
+
+        mentorShip.getStudents().clear();
+        imageService.deleteOldCoverImage(mentorShip.getCoverImageUrl());
+        mentorShip.setCoverImageUrl(null);
+        MentorShipRepository.save(mentorShip);
         MentorShipRepository.delete(mentorShip);
     }
 
@@ -112,18 +175,11 @@ public class mentorShipServiceI implements mentorShipService{
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<mentorShipE> mentorShipsPage = MentorShipRepository.findAll(pageable);
+        Page<MentorShip> mentorShipsPage = MentorShipRepository.findAll(pageable);
 
         List<mentorShipFDto> content = mentorShipsPage.getContent()
                 .stream()
-                .map(mentorShip -> mentorShipFDto.builder()
-                        .id(mentorShip.getId())
-                        .title(mentorShip.getTitle())
-                        .description(mentorShip.getDescription())
-                        .category(mentorShip.getCategory())
-                        .rating(mentorShip.getRating())
-                        .difficultyLevel(mentorShip.getDifficultyLevel())
-                        .build())
+                .map(this::mapToMentorShipResponse)
                 .toList();
 
         return PageResponse.<mentorShipFDto>builder()
@@ -137,17 +193,10 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     public mentorShipFDto getMentorShipById(Long mentorShipId) {
-        mentorShipE mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
+        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
 
-        return mentorShipFDto.builder()
-                .id(mentorShip.getId())
-                .title(mentorShip.getTitle())
-                .description(mentorShip.getDescription())
-                .category(mentorShip.getCategory())
-                .rating(mentorShip.getRating())
-                .difficultyLevel(mentorShip.getDifficultyLevel())
-                .build();
+        return mapToMentorShipResponse(mentorShip);
     }
 
     @Override
@@ -164,30 +213,95 @@ public class mentorShipServiceI implements mentorShipService{
     }
 
     @Override
-    public long countMentorShipsForMentorId(Long mentorId) {
-        if(!MentorShipRepository.existsById(mentorId)) {
-            throw new globalLogicEx("Mentor not found");
+    @PreAuthorize("hasRole('MENTOR')")
+    public void updateMentorShipStatus(long mentorShipId, Status status) {
+        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
+                () -> new globalLogicEx("MentorShip not found"));
+
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+
+        if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
+            throw new BadCredentialsException("you are not allowed to update this mentorship");
         }
-        return MentorShipRepository.countByMentorId(mentorId);
+
+        mentorShip.setStatus(status);
+        MentorShipRepository.save(mentorShip);
     }
 
     @Override
-    public long countStudentsforMentorId(Long mentorId) {
-        if(!MentorShipRepository.existsById(mentorId)) {
-            throw new globalLogicEx("Mentor not found");
+    @PreAuthorize("hasRole('MENTOR')")
+    public long countMentorShipsForMentorId() {
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        return MentorShipRepository.countByMentor_Id(currentMentor.getId());
+    }
+
+    @Override
+    @PreAuthorize("hasRole('MENTOR')")
+    public long countStudentsforMentor() {
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        return MentorShipRepository.countStudentsByMentorId(currentMentor.getId());
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public String uploadCoverImage(Long mentorshipId, MultipartFile image) {
+
+        MentorShip mentorship = MentorShipRepository.findById(mentorshipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
+        if (!mentorship.getMentor().getEmail().equals(getCurrentMentorEmail())) {
+            throw new globalLogicEx("You are not allowed for this request");
         }
-        return MentorShipRepository.countByMentorId(mentorId);
+
+        if (image.isEmpty()) {
+            throw new globalLogicEx("Image is empty");
+        }
+
+        if (!image.getContentType().startsWith("image/")) {
+            throw new globalLogicEx("File must be an image");
+        }
+
+        if (image.getSize() > 2 * 1024 * 1024) {
+            throw new globalLogicEx("Image size must be less than 2MB");
+        }
+
+        imageService.deleteOldCoverImage(mentorship.getCoverImageUrl());
+
+        String imageUrl =
+                imageService.saveCoverImage(mentorshipId, image);
+
+        mentorship.setCoverImageUrl(imageUrl);
+
+        return imageUrl;
     }
 
 
-    private mentorShipFDto mapToMentorShipResponse(mentorShipE mentorShip) {
+    private mentorShipFDto mapToMentorShipResponse(MentorShip mentorShip) {
         return mentorShipFDto.builder()
                 .id(mentorShip.getId())
                 .title(mentorShip.getTitle())
                 .description(mentorShip.getDescription())
-                .category(mentorShip.getCategory())
-                .rating(mentorShip.getRating())
                 .difficultyLevel(mentorShip.getDifficultyLevel())
+                .price(mentorShip.getPrice())
+                .whatWillLearn(mentorShip.getWhatWillLearn() == null ? List.of() :
+                        mentorShip.getWhatWillLearn().stream()
+                                .map(WhatWillLearn::getContent)
+                                .toList()
+                )
+                .tags(
+                        mentorShip.getTags() == null ? List.of() :
+                                mentorShip.getTags().stream()
+                                        .map(Tags::getTag)
+                                        .toList()
+                )
+                .status(mentorShip.getStatus())
+                .category(mentorShip.getCategory())
+                .rating(
+                        mentorShip.getRating() == null ? 0 : mentorShip.getRating()
+                )
+                .duration(mentorShip.getDuration())
+                .coverImageUrl(mentorShip.getCoverImageUrl())
                 .build();
     }
 
