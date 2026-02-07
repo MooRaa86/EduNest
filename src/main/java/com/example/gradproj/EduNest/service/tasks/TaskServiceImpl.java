@@ -53,7 +53,7 @@ public class TaskServiceImpl implements TaskService{
                 .estimatedMinutes(req.getEstimatedMinutes())
                 .dueAt(req.getDueAt())
                 .attachmentUrl(req.getAttachmentUrl())
-                .status(TaskStatus.DRAFT)
+                .status(req.getStatus())
                 .mentorship(mentorship)
                 .build();
         Task saved=taskRepository.save(task);
@@ -84,6 +84,7 @@ public class TaskServiceImpl implements TaskService{
         if (request.getPassPoints() != null) task.setPassPoints(request.getPassPoints());
         if (request.getEstimatedMinutes() != null) task.setEstimatedMinutes(request.getEstimatedMinutes());
         if (request.getAttachmentUrl() != null) task.setAttachmentUrl(request.getAttachmentUrl());
+        if (request.getStatus() != null) task.setStatus(request.getStatus());
         if (request.getDueAt() != null){
             if (request.getDueAt().isBefore(LocalDateTime.now())){
                 throw new globalLogicEx("dueAt must be in the future ");

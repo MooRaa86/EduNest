@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Setter
 public class ProjectSubmissionResponse {
     private Long submissionId;
-    private Long taskId;
+    private Long projectId;
     private Long studentId;
 
     private String fileUrl;

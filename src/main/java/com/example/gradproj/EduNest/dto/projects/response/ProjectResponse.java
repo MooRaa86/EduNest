@@ -12,12 +12,17 @@ import java.time.LocalDateTime;
 public class ProjectResponse {
     private Long id;
     private String title;
-    private String description;
+    private String goal;
+    private String difficulty;
+    private String brief;
+    private String descriptionUrl;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime startAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime endAt;
     private Integer points;
-    private Integer passPoints;
-    private Integer estimatedMinutes;
     private String status;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // for unify the date formate
-    private LocalDateTime dueAt;
-    private String attachmentUrl;
+    private Long mentorshipId;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
 }

@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.dto.tasks.requests;
 
+import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -49,4 +50,7 @@ public class CreateTaskRequest {
     @Size(max = 500, message = "attachmentUrl max length is 500")
     @URL(message = "attachmentUrl must be a valid URL")
     private String attachmentUrl;
+
+    @NotBlank(message = "status is required")
+    private TaskStatus status;
 }

@@ -6,13 +6,9 @@ import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
 import com.example.gradproj.EduNest.entity.projects.Project;
-import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
-import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
@@ -37,27 +33,27 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req) {
-        if (req.getPassPoints()> req.getPoints()){
-            throw new globalLogicEx("passPoints must be less than or equal to points");
-        }
         mentorShipE mentorship = mentorShipRepository.findById(req.getMentorshipId())
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
+        if (req.getEndAt().isBefore(req.getStartAt())) {
+            throw new globalLogicEx("endAt must be after startAt");
+        }
 
-        Project project= Project.builder()
+        Project project = Project.builder()
                 .title(req.getTitle())
-                .description(req.getDescription())
+                .goal(req.getGoal())
+//                .difficulty(req.getDifficulty())
+                .brief(req.getBrief())
+                .descriptionUrl(req.getDescriptionUrl())
+                .startAt(req.getStartAt())
+                .endAt(req.getEndAt())
                 .points(req.getPoints())
-                .passPoints(req.getPassPoints())
-                .estimatedMinutes(req.getEstimatedMinutes())
-                .dueAt(req.getDueAt())
-                .attachmentUrl(req.getAttachmentUrl())
-                .status(ProjectStatus.DRAFT)
+                .status(req.getStatus())
                 .mentorship(mentorship)
                 .build();
-        Project saved=projectRepository.save(project);
-
-        return mapToProjectResponse(saved);
+        projectRepository.save(project);
+        return mapToProjectResponse(project);
     }
 
     @Override
@@ -68,27 +64,33 @@ public class ProjectServiceImpl implements ProjectService{
     }
 
     @Override
-    public ProjectResponse updateProject(long projectId, PatchProjectRequest request) {
-        Project project=projectRepository.findById(projectId).orElseThrow(()->new IllegalArgumentException("Project not found"));
-        if (project.getStatus() == ProjectStatus.CLOSED){
-            throw new globalLogicEx("cannot update closed task");
-        }
-        if (request.getTitle() !=null)project.setTitle(request.getTitle());
-        if (request.getDescription() != null) project.setDescription(request.getDescription());
-        if (request.getPoints() != null) project.setPoints(request.getPoints());
-        if (request.getPassPoints() != null) project.setPassPoints(request.getPassPoints());
-        if (request.getEstimatedMinutes() != null) project.setEstimatedMinutes(request.getEstimatedMinutes());
-        if (request.getAttachmentUrl() != null) project.setAttachmentUrl(request.getAttachmentUrl());
-        if (request.getDueAt() != null){
-            if (request.getDueAt().isBefore(LocalDateTime.now())){
-                throw new globalLogicEx("dueAt must be in the future ");
-            }
-            project.setDueAt(request.getDueAt());
+    public ProjectResponse updateProject(long projectId, PatchProjectRequest req) {
 
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+
+        if (project.getStatus() == ProjectStatus.CLOSED) {
+            throw new globalLogicEx("Cannot update closed project");
         }
-        if (project.getPassPoints()>project.getPoints()){
-            throw  new globalLogicEx("Pass points must be less than or equal to points.");
+
+        if (req.getTitle() != null) project.setTitle(req.getTitle());
+        if (req.getGoal() != null) project.setGoal(req.getGoal());
+//        if (req.getDifficulty() != null) project.setDifficulty(req.getDifficulty());
+        if (req.getBrief() != null) project.setBrief(req.getBrief());
+        if (req.getDescriptionUrl() != null) project.setDescriptionUrl(req.getDescriptionUrl());
+        if (req.getPoints() != null) project.setPoints(req.getPoints());
+        if (req.getStatus()!= null) project.setStatus(req.getStatus());
+
+        LocalDateTime start = req.getStartAt() != null ? req.getStartAt() : project.getStartAt();
+        LocalDateTime end   = req.getEndAt()   != null ? req.getEndAt()   : project.getEndAt();
+
+        if (end.isBefore(start)) {
+            throw new globalLogicEx("endAt must be after startAt");
         }
+
+        if (req.getStartAt() != null) project.setStartAt(req.getStartAt());
+        if (req.getEndAt() != null) project.setEndAt(req.getEndAt());
+
         return mapToProjectResponse(project);
     }
 
@@ -114,25 +116,17 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public PageResponse<ProjectResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable) {
+        Page<Project> projects =
+                projectRepository.findProjectsByMentorship(
+                        msid, projectName, status, pageable);
 
-        Page<Project> projects = projectRepository.findProjectsByMentorship(msid, projectName, status, pageable);
-
-        List<ProjectResponse> projectDTOs = projects.getContent().stream()
-                .map(project -> ProjectResponse.builder()
-                        .id(project.getId())
-                        .title(project.getTitle())
-                        .description(project.getDescription())
-                        .points(project.getPoints())
-                        .passPoints(project.getPassPoints())
-                        .estimatedMinutes(project.getEstimatedMinutes())
-                        .status(String.valueOf(project.getStatus()))
-                        .dueAt(project.getDueAt())
-                        .attachmentUrl(project.getAttachmentUrl())
-                        .build())
+        List<ProjectResponse> responses = projects.getContent()
+                .stream()
+                .map(this::mapToProjectResponse)
                 .toList();
 
         return PageResponse.<ProjectResponse>builder()
-                .content(projectDTOs)
+                .content(responses)
                 .page(projects.getNumber())
                 .size(projects.getSize())
                 .totalElements(projects.getTotalElements())
@@ -178,17 +172,19 @@ public class ProjectServiceImpl implements ProjectService{
 
 
     private ProjectResponse mapToProjectResponse(Project project) {
-        ProjectResponse res = new ProjectResponse();
-        res.setId(project.getId());
-        res.setTitle(project.getTitle());
-        res.setDescription(project.getDescription());
-        res.setPoints(project.getPoints());
-        res.setPassPoints(project.getPassPoints());
-        res.setEstimatedMinutes(project.getEstimatedMinutes());
-        res.setStatus(project.getStatus().name());
-        res.setDueAt(project.getDueAt());
-        res.setAttachmentUrl(project.getAttachmentUrl());
-
-        return res;
+        return ProjectResponse.builder()
+                .id(project.getId())
+                .title(project.getTitle())
+                .goal(project.getGoal())
+//                .difficulty(project.getDifficulty().name())
+                .brief(project.getBrief())
+                .descriptionUrl(project.getDescriptionUrl())
+                .startAt(project.getStartAt())
+                .endAt(project.getEndAt())
+                .points(project.getPoints())
+                .status(project.getStatus().name())
+                .mentorshipId(project.getMentorship().getId())
+                .createdAt(project.getCreatedAt())
+                .build();
     }
 }

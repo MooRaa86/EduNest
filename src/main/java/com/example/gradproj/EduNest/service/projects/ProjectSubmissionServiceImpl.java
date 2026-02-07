@@ -46,13 +46,13 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     public ProjectSubmissionResponse submit(Long projectId, SubmitProjectRequest req) {
         Project project= projectRepository.findById(projectId).orElseThrow(() -> new IllegalArgumentException("project not found"));
         if (project.getStatus() != ProjectStatus.PUBLISHED){
-            throw new globalLogicEx("Task is not published");
+            throw new globalLogicEx("Project is not published");
         }
 
         Student student=studentRepository.findByEmail(getCurrentStudentEmail());
 
         LocalDateTime now=LocalDateTime.now();
-        boolean isLate= now.isAfter(project.getDueAt());
+        boolean isLate= now.isAfter(project.getEndAt());
 
         Optional<ProjectSubmission> existingOpt=projectSubmissionRepository.findByProject_IdAndStudent_Id(projectId,student.getId());
 
@@ -103,7 +103,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
 
         if (req.getScore() > project.getPoints()) {
             throw new globalLogicEx(
-                    "score must be less than or equal to task points " + project.getPoints());
+                    "score must be less than or equal to project points " + project.getPoints());
         }
 
         sub.setRawScore(project.getPoints());
@@ -121,7 +121,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     private ProjectSubmissionResponse mapToSubmissionResponse(ProjectSubmission s) {
         ProjectSubmissionResponse res = new ProjectSubmissionResponse();
         res.setSubmissionId(s.getId());
-        res.setTaskId(s.getProject().getId());
+        res.setProjectId(s.getProject().getId());
         res.setStudentId(s.getStudent().getId());
         res.setFileUrl(s.getFileUrl());
         res.setStatus(SubmissionStatus.valueOf(s.getStatus().name()));
