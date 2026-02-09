@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.service.contactUs;
 
-import com.example.gradproj.EduNest.dto.contactUs.ContactMessageRequestDto;
-import com.example.gradproj.EduNest.entity.contactUs.ContactMessageEntity;
-import com.example.gradproj.EduNest.repository.contactUs.ContactMessageRepository;
+import com.example.gradproj.EduNest.dto.contactus.ContactMessageRequestDto;
+import com.example.gradproj.EduNest.entity.contactus.ContactMessageEntity;
+import com.example.gradproj.EduNest.repository.contactus.ContactMessageRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
