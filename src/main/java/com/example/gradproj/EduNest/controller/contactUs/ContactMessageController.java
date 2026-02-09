@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.controller.contactUs;
 
-import com.example.gradproj.EduNest.dto.contactUs.ContactMessageRequestDto;
+import com.example.gradproj.EduNest.dto.contactus.ContactMessageRequestDto;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.service.contactUs.ContactMessageService;
 import jakarta.validation.Valid;

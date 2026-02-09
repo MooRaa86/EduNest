@@ -174,7 +174,6 @@ public class QuizServiceImpl implements QuizService {
                 .draftCount(draftCount)
                 .averageScore(averageScore)
                 .build();
-
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.service.contactUs;
 
-import com.example.gradproj.EduNest.dto.contactUs.ContactMessageRequestDto;
+import com.example.gradproj.EduNest.dto.contactus.ContactMessageRequestDto;
 
 import java.util.List;
 
