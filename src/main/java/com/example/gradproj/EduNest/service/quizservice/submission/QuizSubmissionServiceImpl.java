@@ -13,7 +13,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
-import com.example.gradproj.EduNest.service.points.TotalPointsService;
+import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +36,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final QuizRepository quizRepository;
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final StudentRepository studentRepository;
-    private final TotalPointsService totalPointsService;
+    private final TotalPointsServiceImp totalPointsService;
 
 
 

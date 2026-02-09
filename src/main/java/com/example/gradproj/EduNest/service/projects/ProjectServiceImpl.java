@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
@@ -33,7 +33,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req) {
-        mentorShipE mentorship = mentorShipRepository.findById(req.getMentorshipId())
+        MentorShip mentorship = mentorShipRepository.findById(req.getMentorshipId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
         if (req.getEndAt().isBefore(req.getStartAt())) {
@@ -137,7 +137,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectDashboardDTO getProjectDashboard(Long mentorShipId) {
-        mentorShipE mentorShip = mentorShipRepository.findById(mentorShipId)
+        MentorShip mentorShip = mentorShipRepository.findById(mentorShipId)
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
         List<Project> allProjects = projectRepository.findByMentorshipId(mentorShipId);
 

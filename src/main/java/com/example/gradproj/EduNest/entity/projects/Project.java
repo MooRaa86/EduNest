@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.entity.projects;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
-import com.example.gradproj.EduNest.enums.project.ProjectDifficultyLevel;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -56,5 +56,5 @@ public class Project extends BaseEntity {
 
         @ManyToOne(fetch = FetchType.LAZY, optional = false)
         @JoinColumn(name = "mentorship_id", nullable = false)
-        private mentorShipE mentorship;
+        private MentorShip mentorship;
     }

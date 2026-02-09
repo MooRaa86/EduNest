@@ -12,7 +12,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
-import com.example.gradproj.EduNest.service.points.TotalPointsService;
+import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,7 +32,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskSubmissionRepository submissionRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final StudentRepository studentRepository;
-    private final TotalPointsService totalPointsService;
+    private final TotalPointsServiceImp totalPointsService;
 
 
 

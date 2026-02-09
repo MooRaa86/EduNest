@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.points;
 
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+
 import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
@@ -13,14 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class TotalPointsService {
+public class TotalPointsServiceImp implements TotalPointsService {
     private final TotalPointsRepository totalPointsRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
 
     @Transactional
-    public void recalculate(Student student, mentorShipE mentorship) {
+    public void recalculate(Student student, MentorShip mentorship) {
 
         int tasksTotal = taskSubmissionRepository.sumFinalScoresForMentorship(
                 student.getId(), mentorship.getId());

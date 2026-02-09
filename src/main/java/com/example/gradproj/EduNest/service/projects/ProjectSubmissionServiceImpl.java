@@ -12,7 +12,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
-import com.example.gradproj.EduNest.service.points.TotalPointsService;
+import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,7 +31,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     private final ProjectRepository projectRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final StudentRepository studentRepository;
-    private final TotalPointsService totalPointsService;
+    private final TotalPointsServiceImp totalPointsService;
 
     private String getCurrentStudentEmail() {
         Authentication authentication =
