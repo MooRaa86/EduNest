@@ -52,9 +52,6 @@ public class ProjectSubmission extends BaseEntity {
     @Column(name = "is_late")
     private Boolean isLate=false;
 
-    @Column(name = "points_applied")
-    private Integer pointsApplied;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;

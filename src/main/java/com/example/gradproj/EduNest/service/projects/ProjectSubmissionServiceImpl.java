@@ -14,7 +14,9 @@ import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionReposit
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,11 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Unauthenticated user");
         }
+
+        if(!(authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_STUDENT")))){
+            throw new BadCredentialsException("you are not allowed to submit project");
+        }
+
         return authentication.getName();
     }
 

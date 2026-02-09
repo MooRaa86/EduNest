@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.entity.livesession;
 
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Future;
@@ -39,5 +39,5 @@ public class Session {
 
     @ManyToOne
     @JoinColumn(name="mentorship_id", nullable = false)
-    private mentorShipE mentorship;
+    private MentorShip mentorship;
 }

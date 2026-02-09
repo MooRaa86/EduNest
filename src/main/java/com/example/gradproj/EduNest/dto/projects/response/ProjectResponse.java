@@ -13,7 +13,7 @@ public class ProjectResponse {
     private Long id;
     private String title;
     private String goal;
-    private String difficulty;
+//    private String difficulty;
     private String brief;
     private String descriptionUrl;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

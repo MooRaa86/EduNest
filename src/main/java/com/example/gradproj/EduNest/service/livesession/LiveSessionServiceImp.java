@@ -4,7 +4,7 @@ import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.entity.livesession.Session;
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
@@ -31,7 +31,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Scheduled date/time must be in the future");
         }
 
-        mentorShipE mentorShip = mentorShipRepository.findById(createSessionDto.getMentorshipId())
+        MentorShip mentorShip = mentorShipRepository.findById(createSessionDto.getMentorshipId())
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
 
         Session session = Session.builder()

@@ -24,7 +24,7 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/update/{sessionId}")
+    @PatchMapping("/update/{sessionId}")
     public ResponseEntity<SimpleResponse> updateSession(
             @PathVariable Long sessionId,
             @RequestBody UpdateSessionDto updateSessionDto) {
