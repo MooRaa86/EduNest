@@ -11,6 +11,7 @@ import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
 import jakarta.transaction.Transactional;
@@ -27,6 +28,7 @@ public class QuizServiceImpl implements QuizService {
 
     private final QuizRepository quizRepository;
     private final mentorShipRepository mentorshipRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
 
     @Override
@@ -61,10 +63,14 @@ public class QuizServiceImpl implements QuizService {
     @Override
     @Transactional
     public void deleteQuiz(Long id) {
-        Quiz quiz = quizRepository.findById(id)
-                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
-
-        quizRepository.delete(quiz);
+//        Quiz quiz = quizRepository.findById(id)
+//                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+//
+//        quizRepository.delete(quiz);
+        if (!quizRepository.existsById(id)) {
+         throw  new globalLogicEx("Quiz not found");
+        }
+        quizRepository.deleteById(id);
     }
 
 
@@ -142,8 +148,12 @@ public class QuizServiceImpl implements QuizService {
     @Override
     public QuizDashboardDTO getQuizDashboard(Long mentorShipId) {
 
-        MentorShip mentorShip = mentorshipRepository.findById(mentorShipId)
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+//        MentorShip mentorShip = mentorshipRepository.findById(mentorShipId)
+//                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        if (!(mentorshipRepository.existsById(mentorShipId)))
+        {
+            throw  new globalLogicEx("MentorShip not found");
+        }
         List<Quiz> allQuizzes = quizRepository.findByMentorship_Id(mentorShipId);
 
         int totalQuizzes = allQuizzes.size();
@@ -181,8 +191,8 @@ public class QuizServiceImpl implements QuizService {
 
         return QuizStatisticsDTO.builder()
                 .status(quiz.getStatus())
-                .averageScore(calculateAverageScore(quiz))
-                .totalStudents(quiz.getMentorship() != null ? quiz.getMentorship().getStudents().size() : 0)
+                .averageScore(calculateAverageScore(quiz))    //quiz.getMentorship().getStudents().size()
+                .totalStudents(quiz.getMentorship() != null ? enrollmentRepository.countByMentorShip(quiz.getMentorship()) : 0)
                 .totalSubmissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .totalPoints(totalPoints)
                 .totalQuestions(totalQuestions)

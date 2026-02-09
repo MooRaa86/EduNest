@@ -27,4 +27,5 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             @Param("status") ProjectStatus status,
             Pageable pageable
     );
+    void deleteById(Long id);
 }

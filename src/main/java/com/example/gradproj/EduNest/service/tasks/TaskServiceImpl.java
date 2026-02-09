@@ -97,9 +97,10 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public void deleteTask(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(()->new globalLogicEx("Task not found"));
-        taskRepository.delete(task);
+       if (!(taskRepository.existsById(taskId))) {
+           throw   new globalLogicEx("Task not found");
+       }
+       taskRepository.deleteById(taskId);
     }
 
     @Override
@@ -160,8 +161,9 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
-        MentorShip mentorShip = mentorShipRepository.findById(mentorShipId)
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        if (!(mentorShipRepository.existsById(mentorShipId))) {
+            throw  new globalLogicEx("mentorShip not found");
+        }
         List<Task> allTasks = taskRepository.findByMentorshipId(mentorShipId);
 
         int totalTasks = allTasks.size();

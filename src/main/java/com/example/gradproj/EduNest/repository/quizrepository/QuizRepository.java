@@ -30,4 +30,8 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
 
     List<Quiz> findByMentorship_Id(Long mentorshipId);
+
+    void deleteById(Long id);
+
+    boolean existsById(Long id);
 }

@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.entity.users;
 
+import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
@@ -25,12 +26,12 @@ public class Student extends UserEntity {
     @Column(nullable = false,name = "educational_level")
     private EducationalLevel educationalLevel;
 
+    @OneToMany(
+            mappedBy = "student",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<Enrollment> enrollments = new ArrayList<>();
 
-    @ManyToMany(mappedBy = "students")
-    private Set<MentorShip> mentorships = new HashSet<>();
-
-
-    @OneToMany(mappedBy = "student", fetch = FetchType.LAZY)
-    private List<TaskSubmission> submissions = new ArrayList<>();
 
 }

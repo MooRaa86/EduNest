@@ -43,7 +43,6 @@ public class ProjectServiceImpl implements ProjectService{
         Project project = Project.builder()
                 .title(req.getTitle())
                 .goal(req.getGoal())
-//                .difficulty(req.getDifficulty())
                 .brief(req.getBrief())
                 .descriptionUrl(req.getDescriptionUrl())
                 .startAt(req.getStartAt())
@@ -75,7 +74,6 @@ public class ProjectServiceImpl implements ProjectService{
 
         if (req.getTitle() != null) project.setTitle(req.getTitle());
         if (req.getGoal() != null) project.setGoal(req.getGoal());
-//        if (req.getDifficulty() != null) project.setDifficulty(req.getDifficulty());
         if (req.getBrief() != null) project.setBrief(req.getBrief());
         if (req.getDescriptionUrl() != null) project.setDescriptionUrl(req.getDescriptionUrl());
         if (req.getPoints() != null) project.setPoints(req.getPoints());
@@ -96,9 +94,10 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public void deleteProject(Long projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(()->new globalLogicEx("project not found"));
-        projectRepository.delete(project);
+        if (!projectRepository.existsById(projectId)) {
+            throw  new globalLogicEx("project not found");
+        }
+        projectRepository.deleteById(projectId);
 
     }
 
@@ -137,8 +136,9 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectDashboardDTO getProjectDashboard(Long mentorShipId) {
-        MentorShip mentorShip = mentorShipRepository.findById(mentorShipId)
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        if (!(mentorShipRepository.existsById(mentorShipId))) {
+            throw   new globalLogicEx("mentorShip not found");
+        }
         List<Project> allProjects = projectRepository.findByMentorshipId(mentorShipId);
 
         int totalProjects = allProjects.size();
@@ -176,7 +176,6 @@ public class ProjectServiceImpl implements ProjectService{
                 .id(project.getId())
                 .title(project.getTitle())
                 .goal(project.getGoal())
-//                .difficulty(project.getDifficulty().name())
                 .brief(project.getBrief())
                 .descriptionUrl(project.getDescriptionUrl())
                 .startAt(project.getStartAt())

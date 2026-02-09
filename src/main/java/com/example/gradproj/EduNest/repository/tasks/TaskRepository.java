@@ -27,5 +27,7 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
             Pageable pageable
     );
 
+    void deleteById(Long taskId);
+
 
 }
