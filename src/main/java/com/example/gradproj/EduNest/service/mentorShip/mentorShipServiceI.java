@@ -13,6 +13,7 @@ import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
@@ -39,6 +40,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
     private final imageStorageService imageService;
+    private final EnrollmentRepository enrollmentRepository;
 
 
     private String getCurrentMentorEmail() {
@@ -163,7 +165,7 @@ public class mentorShipServiceI implements mentorShipService{
             throw new BadCredentialsException("you are not allowed to delete this mentorship");
         }
 
-        mentorShip.getStudents().clear();
+        mentorShip.getEnrollments().clear();
         imageService.deleteOldCoverImage(mentorShip.getCoverImageUrl());
         mentorShip.setCoverImageUrl(null);
         MentorShipRepository.save(mentorShip);
@@ -239,7 +241,7 @@ public class mentorShipServiceI implements mentorShipService{
     @PreAuthorize("hasRole('MENTOR')")
     public long countStudentsforMentor() {
         Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
-        return MentorShipRepository.countStudentsByMentorId(currentMentor.getId());
+        return enrollmentRepository.countStudentsByMentorId(currentMentor.getId());
     }
 
     @Override

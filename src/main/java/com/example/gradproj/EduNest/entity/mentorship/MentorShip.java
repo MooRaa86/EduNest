@@ -3,18 +3,14 @@ package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Mentor;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @SuperBuilder
@@ -63,13 +59,12 @@ public class MentorShip extends BaseEntity {
     @JoinColumn(name = "mentor_id",nullable = true)
     private Mentor mentor;
 
-    @ManyToMany
-    @JoinTable(
-            name = "enrollments",
-            joinColumns = @JoinColumn(name = "mentorship_id"),
-            inverseJoinColumns = @JoinColumn(name = "student_id")
+    @OneToMany(
+            mappedBy = "mentorShip",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
     )
-    private Set<Student> students = new HashSet<>();
+    private List<Enrollment> enrollments = new ArrayList<>();
 
 
     @OneToMany(mappedBy = "mentorship", fetch = FetchType.LAZY)
