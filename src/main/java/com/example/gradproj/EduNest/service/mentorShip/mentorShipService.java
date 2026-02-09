@@ -5,6 +5,8 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,27 +25,12 @@ public interface mentorShipService {
 
     List<TaskResponse> getMentorShipTasks(Long mentorShipId);
 
-    long countMentorShipsForMentorId(Long mentorId);
+    void updateMentorShipStatus(long mentorShipId, Status status);
 
-    long countStudentsforMentorId(Long mentorId);
+    long countMentorShipsForMentorId();
 
-    //    List<mentorShip> getMentorShipsByMentorId(Long mentorId);
-//
-//
-//    mentorShip addStudentToMentorShip(Long mentorShipId, Long studentId);
-//
-//    mentorShip removeStudentFromMentorShip(Long mentorShipId, Long studentId);
-//
-//    List<Long> getStudentsIdsInMentorShip(Long mentorShipId);
-//
-//
-//    List<mentorShip> searchMentorShipsByTitle(String title);
-//
-//    List<mentorShip> filterMentorShipsByCategory(String category);
-//
-//    List<mentorShip> filterMentorShipsByDifficultyLevel(String difficultyLevel);
-//
-//
-//    mentorShip updateMentorShipRating(Long mentorShipId, Integer rating);
+    long countStudentsforMentor();
+
+    String uploadCoverImage(Long mentorshipId, MultipartFile image);
 }
 

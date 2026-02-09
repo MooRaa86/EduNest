@@ -6,11 +6,9 @@ import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
@@ -22,19 +20,44 @@ import java.util.Set;
 @SuperBuilder
 @Setter @Getter @NoArgsConstructor @AllArgsConstructor
 @Table(name = "mentorship")
-public class mentorShipE extends BaseEntity {
+public class MentorShip extends BaseEntity {
 
     private String title;
 
     private String description;
 
-    private String category;
+    private String category; // backEnd,frontEnd
 
     private Integer rating;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "difficulty_level")
-    private DifficultyLevel difficultyLevel;
+    @Builder.Default
+    private DifficultyLevel difficultyLevel = DifficultyLevel.ALL_LEVEL;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Status status = Status.DRAFT;
+
+    private Double price;
+
+    @OneToMany(
+            mappedBy = "mentorShip",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<WhatWillLearn> whatWillLearn = new ArrayList<>();
+
+    @Column(name = "cover_image_url")
+    private String coverImageUrl = "";
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "mentorShip",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    private List<Tags> tags = new ArrayList<>();
+
+    private double duration;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentor_id",nullable = true)

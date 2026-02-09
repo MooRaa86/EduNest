@@ -8,6 +8,8 @@ import com.example.gradproj.EduNest.dto.auth.forgetPassword.VerifyForgetPassword
 import com.example.gradproj.EduNest.service.auth.LoginService;
 import com.example.gradproj.EduNest.service.register.RegistrationService;
 import com.example.gradproj.EduNest.utils.Constants;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,10 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(
+        name = "Authentication",
+        description = "Authentication (login, forget password)"
+)
 public class AuthController {
     private final LoginService loginService;
     private final RegistrationService registerService;
+
     @PostMapping("/login-api")
+    @Operation(summary = "login with email and password")
     public ResponseEntity<SimpleResponse> login(
             @RequestBody LoginRequestDto DTO
             ){
@@ -36,6 +44,7 @@ public class AuthController {
     }
 
     @PostMapping("/forget-password")
+    @Operation(summary = "send otp via email for password reset")
     public ResponseEntity<SimpleResponse> forgetPassword(
             @Valid @RequestBody ForgetPasswordRequestDto dto) {
 
@@ -46,6 +55,7 @@ public class AuthController {
     }
 
     @PostMapping("/forget-password/verify-otp")
+    @Operation(summary = "verify the otp")
     public ResponseEntity<SimpleResponse> verifyForgetPasswordOtp(
             @Valid @RequestBody VerifyForgetPasswordOtpDto dto) {
 
@@ -59,6 +69,7 @@ public class AuthController {
     }
 
     @PostMapping("/forget-password/reset")
+    @Operation(summary = "reset password after verification")
     public ResponseEntity<SimpleResponse> resetPassword(
             @Valid @RequestBody ResetPasswordRequestDto dto) {
 

@@ -1,5 +1,5 @@
 package com.example.gradproj.EduNest.enums.mentorShip;
 
 public enum DifficultyLevel {
-    BEGINNER,INTERMEDIATE,ADVANCED,EXPERT
+    ALL_LEVEL,BEGINNER,INTERMEDIATE,EXPERT
 }

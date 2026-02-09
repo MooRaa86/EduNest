@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.entity.users;
 
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
 import jakarta.persistence.*;
@@ -27,7 +27,7 @@ public class Student extends UserEntity {
 
 
     @ManyToMany(mappedBy = "students")
-    private Set<mentorShipE> mentorships = new HashSet<>();
+    private Set<MentorShip> mentorships = new HashSet<>();
 
 
     @OneToMany(mappedBy = "student", fetch = FetchType.LAZY)

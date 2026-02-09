@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.entity.users;
 
-import com.example.gradproj.EduNest.entity.mentorship.mentorShipE;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -32,6 +32,6 @@ public class Mentor extends UserEntity {
     private double yearsOfExperience;
 
     @OneToMany(mappedBy = "mentor", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<mentorShipE> mentorships = new ArrayList<>();
+    private List<MentorShip> mentorships = new ArrayList<>();
 
 }
