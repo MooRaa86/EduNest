@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.entity.users;
 
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.mentorship.Reviews;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
 import jakarta.persistence.*;
@@ -33,5 +34,12 @@ public class Student extends UserEntity {
     )
     private List<Enrollment> enrollments = new ArrayList<>();
 
+
+    @OneToMany(
+            mappedBy = "student",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<Reviews> reviews = new ArrayList<>();
 
 }

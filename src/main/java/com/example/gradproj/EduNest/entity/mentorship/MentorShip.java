@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -65,6 +66,14 @@ public class MentorShip extends BaseEntity {
             orphanRemoval = true
     )
     private List<Enrollment> enrollments = new ArrayList<>();
+
+    @JsonManagedReference
+    @OneToMany(
+            mappedBy = "mentorShip",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<Reviews> reviews = new ArrayList<>();
 
 
     @OneToMany(mappedBy = "mentorship", fetch = FetchType.LAZY)
