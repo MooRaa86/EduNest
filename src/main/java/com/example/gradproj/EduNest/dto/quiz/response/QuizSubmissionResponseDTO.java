@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.dto.quizdto.response;
+package com.example.gradproj.EduNest.dto.quiz.response;
 
 import lombok.Builder;
 import lombok.Data;

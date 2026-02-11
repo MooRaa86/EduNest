@@ -3,11 +3,11 @@ package com.example.gradproj.EduNest.controller.quiz;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizCreateDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
-import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuizStatisticsDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuizUpdateDto;
+import com.example.gradproj.EduNest.dto.quiz.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.service.quiz.quiz.QuizService;
 import io.swagger.v3.oas.annotations.Operation;

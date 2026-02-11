@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.service.quiz.question;
 
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
-import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuestionCreateDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuestionUpdateDto;
+import com.example.gradproj.EduNest.dto.quiz.response.QuestionResponseDTO;
 import java.util.List;
 
 public interface QuestionService {

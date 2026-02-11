@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.service.quiz.submission;
 
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizSubmissionDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.StudentAnswerDTO;
-import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.quiz.Question;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;

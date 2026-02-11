@@ -1,10 +1,8 @@
-package com.example.gradproj.EduNest.dto.quizdto.request;
+package com.example.gradproj.EduNest.dto.quiz.request;
 
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import lombok.Builder;
 import lombok.Data;
-
-import java.time.LocalDate;
 
 @Data
 @Builder

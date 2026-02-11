@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.dto.quizdto.request;
+package com.example.gradproj.EduNest.dto.quiz.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

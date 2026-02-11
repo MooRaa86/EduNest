@@ -1,9 +1,9 @@
 package com.example.gradproj.EduNest.controller.quiz;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
-import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuestionCreateDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.QuestionUpdateDto;
+import com.example.gradproj.EduNest.dto.quiz.response.QuestionResponseDTO;
 import com.example.gradproj.EduNest.service.quiz.question.QuestionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
