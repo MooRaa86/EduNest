@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
-import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

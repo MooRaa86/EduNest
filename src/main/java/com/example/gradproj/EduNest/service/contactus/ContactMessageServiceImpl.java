@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.contactUs;
+package com.example.gradproj.EduNest.service.contactus;
 
 import com.example.gradproj.EduNest.dto.contactus.ContactMessageRequestDto;
 import com.example.gradproj.EduNest.entity.contactus.ContactMessageEntity;

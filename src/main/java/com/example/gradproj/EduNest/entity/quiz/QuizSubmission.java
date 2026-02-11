@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.entity.quizentity;
+package com.example.gradproj.EduNest.entity.quiz;
 
 import com.example.gradproj.EduNest.entity.users.Student;
 import jakarta.persistence.*;

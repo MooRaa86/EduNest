@@ -1,10 +1,12 @@
-package com.example.gradproj.EduNest.controller.quizcontroller;
+package com.example.gradproj.EduNest.controller.quiz;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
-import com.example.gradproj.EduNest.service.quizservice.question.QuestionService;
+import com.example.gradproj.EduNest.service.quiz.question.QuestionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,10 +18,18 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/question")
+@Tag(
+        name = "Quiz Questions",
+        description = "APIs for managing quiz questions (create, update, delete, fetch)"
+)
 public class QuestionController {
 
     private final QuestionService questionService;
 
+    @Operation(
+            summary = "Add new question",
+            description = "Create a new question and attach it to a quiz"
+    )
     @PostMapping
     public ResponseEntity<SimpleResponse> addQuestion(@Valid @RequestBody QuestionCreateDTO questionCreateDTO){
         QuestionResponseDTO questionResponseDTO=questionService.createQuestion(questionCreateDTO);
@@ -29,6 +39,10 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(simpleResponse);
     }
 
+    @Operation(
+            summary = "Update question",
+            description = "Update an existing question using question ID"
+    )
     @PatchMapping("/{id}")
     public ResponseEntity<SimpleResponse> updateQuestion(@Valid @RequestBody QuestionUpdateDto questionUpdateDto, @PathVariable Long id){
         QuestionResponseDTO  questionResponseDTO=questionService.updateQuestion(id, questionUpdateDto );
@@ -38,7 +52,10 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-
+    @Operation(
+            summary = "Delete question",
+            description = "Delete a question from a quiz using quiz ID and question ID"
+    )
     @DeleteMapping("/{quizId}/{questionId}")
     public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable Long quizId,@PathVariable Long questionId){
         questionService.deleteQuestion(quizId,questionId);
@@ -48,6 +65,10 @@ public class QuestionController {
     }
 
 
+    @Operation(
+            summary = "Get question by ID",
+            description = "Retrieve question details using question ID"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<SimpleResponse> getQuestionById(@PathVariable Long id){
         QuestionResponseDTO questionResponseDTO=questionService.getQuestionById(id);
@@ -57,7 +78,10 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-
+    @Operation(
+            summary = "Get questions by quiz ID",
+            description = "Retrieve all questions that belong to a specific quiz"
+    )
     @GetMapping("/fetch/{quizId}")
     public  ResponseEntity<SimpleResponse> getQuestionByQuizId(@PathVariable Long quizId){
         List<QuestionResponseDTO>AllQuestions=questionService.getQuestionsByQuizId(quizId);

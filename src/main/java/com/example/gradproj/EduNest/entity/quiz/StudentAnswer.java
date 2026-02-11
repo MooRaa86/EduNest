@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.entity.quizentity;
+package com.example.gradproj.EduNest.entity.quiz;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

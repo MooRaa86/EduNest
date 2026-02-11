@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.quizservice.quiz;
+package com.example.gradproj.EduNest.service.quiz.quiz;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizCreateDTO;
@@ -7,7 +7,6 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface QuizService {

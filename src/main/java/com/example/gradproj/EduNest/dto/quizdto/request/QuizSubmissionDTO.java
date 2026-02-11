@@ -1,6 +1,5 @@
 package com.example.gradproj.EduNest.dto.quizdto.request;
 
-import com.example.gradproj.EduNest.entity.quizentity.StudentAnswer;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;

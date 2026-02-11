@@ -1,14 +1,14 @@
-package com.example.gradproj.EduNest.service.quizservice.question;
+package com.example.gradproj.EduNest.service.quiz.question;
 
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuestionResponseDTO;
-import com.example.gradproj.EduNest.entity.quizentity.Question;
-import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.entity.quiz.Question;
+import com.example.gradproj.EduNest.entity.quiz.Quiz;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.quizrepository.QuestionRepository;
-import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuestionRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

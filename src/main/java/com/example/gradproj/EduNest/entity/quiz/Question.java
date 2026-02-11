@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.entity.quizentity;
+package com.example.gradproj.EduNest.entity.quiz;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.enums.quiz.AnswerChoices;

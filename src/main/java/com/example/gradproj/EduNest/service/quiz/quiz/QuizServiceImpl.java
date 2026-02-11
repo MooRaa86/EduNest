@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.quizservice.quiz;
+package com.example.gradproj.EduNest.service.quiz.quiz;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizCreateDTO;
@@ -7,13 +7,13 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-import com.example.gradproj.EduNest.entity.quizentity.Question;
-import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.entity.quiz.Question;
+import com.example.gradproj.EduNest.entity.quiz.Quiz;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
-import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

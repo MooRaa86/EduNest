@@ -1,6 +1,6 @@
-package com.example.gradproj.EduNest.repository.quizrepository;
+package com.example.gradproj.EduNest.repository.quiz;
 
-import com.example.gradproj.EduNest.entity.quizentity.Question;
+import com.example.gradproj.EduNest.entity.quiz.Question;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

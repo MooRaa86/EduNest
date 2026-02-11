@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.quizservice.question;
+package com.example.gradproj.EduNest.service.quiz.question;
 
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionCreateDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuestionUpdateDto;
