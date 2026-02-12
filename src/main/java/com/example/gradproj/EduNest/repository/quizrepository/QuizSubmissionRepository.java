@@ -21,12 +21,15 @@ public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, 
 
     Optional<QuizSubmission> findByStudent_IdAndQuiz_Id(Long studentId, Long quizId);
     @Query("""
-        select coalesce(sum(qs.score), 0)
-        from QuizSubmission qs
-        where qs.student.id = :studentId
-          and qs.quiz.mentorship.id = :mentorshipId
-          and qs.score is not null
-    """)
-    int sumScoresForMentorship(@Param("studentId") Long studentId,
-                               @Param("mentorshipId") Long mentorshipId);
+    select coalesce(sum(qs.score), 0)
+    from QuizSubmission qs
+    where qs.student.id = :studentId
+      and qs.quiz.week.mentorship.id = :mentorshipId
+      and qs.score is not null
+""")
+    int sumScoresForMentorship(
+            @Param("studentId") Long studentId,
+            @Param("mentorshipId") Long mentorshipId
+    );
+
 }

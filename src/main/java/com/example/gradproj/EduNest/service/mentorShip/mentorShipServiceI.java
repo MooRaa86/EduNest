@@ -1,22 +1,21 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
-import com.example.gradproj.EduNest.annotation.FieldsValueMatch;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Tags;
 import com.example.gradproj.EduNest.entity.mentorship.WhatWillLearn;
-import com.example.gradproj.EduNest.entity.users.Mentor;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
-import com.example.gradproj.EduNest.repository.users.MentorRepository;
-import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +35,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class mentorShipServiceI implements mentorShipService{
 
-    private final mentorShipRepository MentorShipRepository;
+    private final MentorShipRepository MentorShipRepository;
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
     private final imageStorageService imageService;
@@ -207,7 +206,7 @@ public class mentorShipServiceI implements mentorShipService{
             throw new globalLogicEx("MentorShip not found");
         }
 
-        List<Task> mentorshipTasks = taskRepository.findByMentorshipId(mentorShipId);
+        List<Task> mentorshipTasks = taskRepository.findByWeek_Mentorship_Id(mentorShipId);
         return mentorshipTasks.stream()
                 .map(this::mapToTaskResponse)
                 .collect(Collectors.toList());

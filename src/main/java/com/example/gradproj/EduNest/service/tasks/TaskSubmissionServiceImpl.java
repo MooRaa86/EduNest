@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.tasks;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
@@ -104,14 +105,12 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     public TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req) {
 
         TaskSubmission sub = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Submission not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Submission not found"));
 
         Task task = sub.getTask();
 
         if (req.getScore() > task.getPoints()) {
-            throw new globalLogicEx(
-                    "score must be less than or equal to task points " + task.getPoints());
+            throw new globalLogicEx("score must be less than or equal to task points " + task.getPoints());
         }
 
         sub.setRawScore(task.getPoints());
@@ -120,11 +119,25 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         sub.setStatus(SubmissionStatus.GRADED);
         sub.setGradedAt(LocalDateTime.now());
 
-        totalPointsService.recalculate(sub.getStudent(), task.getMentorship());
+
+        MentorShip mentorship = task.getWeek().getMentorship();
+
+
+        int newScore = sub.getFinalScore();
+        int oldApplied = (sub.getPointsApplied() == null) ? 0 : sub.getPointsApplied();
+        int delta = newScore - oldApplied;
+
+        if (delta != 0) {
+            totalPointsService.applyDelta(sub.getStudent(), mentorship, delta);
+        }
+
+        sub.setPointsApplied(newScore);
+
+        submissionRepository.save(sub);
 
         return mapToSubmissionResponse(sub);
-
     }
+
 
     private TaskSubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
         TaskSubmissionResponse res = new TaskSubmissionResponse();

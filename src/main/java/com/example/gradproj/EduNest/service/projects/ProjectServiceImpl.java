@@ -6,12 +6,14 @@ import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,20 +24,18 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService{
     private final ProjectRepository projectRepository;
-    private final mentorShipRepository mentorShipRepository;
+    private final MentorShipRepository mentorShipRepository;
+    private final WeekRepository weekRepository;
 
-    public ProjectServiceImpl(ProjectRepository projectRepository,mentorShipRepository mentorShipRepository) {
-        this.projectRepository = projectRepository;
-        this.mentorShipRepository=mentorShipRepository;
-    }
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req) {
-        MentorShip mentorship = mentorShipRepository.findById(req.getMentorshipId())
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
-
+//        MentorShip mentorship = MentorShipRepository.findById(req.getMentorshipId())
+//                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        MentorShipWeek week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
         if (req.getEndAt().isBefore(req.getStartAt())) {
             throw new globalLogicEx("endAt must be after startAt");
         }
@@ -49,7 +49,8 @@ public class ProjectServiceImpl implements ProjectService{
                 .endAt(req.getEndAt())
                 .points(req.getPoints())
                 .status(req.getStatus())
-                .mentorship(mentorship)
+//                .mentorship(mentorship)
+                .week(week)
                 .build();
         projectRepository.save(project);
         return mapToProjectResponse(project);
@@ -139,7 +140,7 @@ public class ProjectServiceImpl implements ProjectService{
         if (!(mentorShipRepository.existsById(mentorShipId))) {
             throw   new globalLogicEx("mentorShip not found");
         }
-        List<Project> allProjects = projectRepository.findByMentorshipId(mentorShipId);
+        List<Project> allProjects = projectRepository.findByWeek_Mentorship_Id(mentorShipId);
 
         int totalProjects = allProjects.size();
         int publishedCount = 0;
@@ -182,7 +183,8 @@ public class ProjectServiceImpl implements ProjectService{
                 .endAt(project.getEndAt())
                 .points(project.getPoints())
                 .status(project.getStatus().name())
-                .mentorshipId(project.getMentorship().getId())
+//                .mentorshipId(project.getMentorship().getId())
+                .weekId(project.getWeek().getId())
                 .createdAt(project.getCreatedAt())
                 .build();
     }

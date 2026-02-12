@@ -14,10 +14,12 @@ import java.util.List;
 public interface ProjectRepository extends JpaRepository<Project,Long> {
     boolean existsById(Long id);
     List<Task> findProjectByStatus(ProjectStatus status);
-    List<Project> findByMentorshipId(Long mentorshipId);
+//    List<Project> findByMentorshipId(Long mentorshipId);
+    List<Project> findByWeek_Mentorship_Id(Long mentorshipId);
+
     @Query("""
     SELECT p FROM Project p
-    WHERE p.mentorship.id = :msid
+    WHERE p.week.mentorship.id = :msid
       AND (:projectName IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :projectName, '%')))
       AND (:status IS NULL OR p.status = :status)
 """)
@@ -27,5 +29,6 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             @Param("status") ProjectStatus status,
             Pageable pageable
     );
+    List<Project> findByWeek_Id(Long weekId);
     void deleteById(Long id);
 }

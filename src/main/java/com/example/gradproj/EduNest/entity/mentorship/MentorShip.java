@@ -3,13 +3,14 @@ package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Mentor;
-import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -76,6 +77,7 @@ public class MentorShip extends BaseEntity {
     private List<Reviews> reviews = new ArrayList<>();
 
 
-    @OneToMany(mappedBy = "mentorship", fetch = FetchType.LAZY)
-    private List<Task> tasks = new ArrayList<>();
+    @OneToMany(mappedBy = "mentorship", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MentorShipWeek> weeks = new ArrayList<>();
+
 }

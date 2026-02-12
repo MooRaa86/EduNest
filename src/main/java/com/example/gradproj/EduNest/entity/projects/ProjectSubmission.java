@@ -1,12 +1,10 @@
 package com.example.gradproj.EduNest.entity.projects;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -51,6 +49,10 @@ public class ProjectSubmission extends BaseEntity {
 
     @Column(name = "is_late")
     private Boolean isLate=false;
+
+    @Column(name = "points_applied")
+    private Integer pointsApplied;
+
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)

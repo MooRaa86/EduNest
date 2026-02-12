@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.entity.livesession;
 
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Future;
@@ -37,7 +37,8 @@ public class Session {
     @Enumerated(EnumType.STRING)
     private SessionStatus status = SessionStatus.SCHEDULED;
 
-    @ManyToOne
-    @JoinColumn(name="mentorship_id", nullable = false)
-    private MentorShip mentorship;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "week_id",nullable = false)
+    private MentorShipWeek week;
+
 }

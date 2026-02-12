@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.projects;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
 import com.example.gradproj.EduNest.dto.projects.request.SubmitProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.users.Student;
@@ -103,6 +104,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
 
     @Override
     public ProjectSubmissionResponse gradeProject(Long submissionId, GradeProjectSubmissionRequest req) {
+
         ProjectSubmission sub = projectSubmissionRepository.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("Submission not found"));
 
@@ -119,11 +121,23 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
         sub.setStatus(SubmissionStatus.GRADED);
         sub.setGradedAt(LocalDateTime.now());
 
-        totalPointsService.recalculate(sub.getStudent(), project.getMentorship());
+        MentorShip mentorship = project.getWeek().getMentorship();
+
+        int newScore = sub.getFinalScore();
+        int oldApplied = (sub.getPointsApplied() == null) ? 0 : sub.getPointsApplied();
+        int delta = newScore - oldApplied;
+
+        if (delta != 0) {
+            totalPointsService.applyDelta(sub.getStudent(), mentorship, delta);
+        }
+
+        sub.setPointsApplied(newScore);
+
+        projectSubmissionRepository.save(sub);
 
         return mapToSubmissionResponse(sub);
-
     }
+
 
     private ProjectSubmissionResponse mapToSubmissionResponse(ProjectSubmission s) {
         ProjectSubmissionResponse res = new ProjectSubmissionResponse();

@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface mentorShipRepository extends JpaRepository<MentorShip, Long> {
+public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     boolean existsById(Long id);
     long countByMentor_Id(Long mentorId);
 

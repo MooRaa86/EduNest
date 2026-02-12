@@ -6,31 +6,30 @@ import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
-
 import java.time.LocalDateTime;
 import java.util.List;
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService{
     private final TaskRepository taskRepository;
-    private final mentorShipRepository mentorShipRepository;
+    private final MentorShipRepository mentorShipRepository;
+    private final WeekRepository weekRepository;
 
-    public TaskServiceImpl(TaskRepository taskRepository,mentorShipRepository mentorShipRepository) {
-        this.taskRepository = taskRepository;
-        this.mentorShipRepository=mentorShipRepository;
-    }
+
 
 
     @Override
@@ -38,8 +37,11 @@ public class TaskServiceImpl implements TaskService{
         if (req.getPassPoints()> req.getPoints()){
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
-        MentorShip mentorship = mentorShipRepository.findById(req.getMentorshipId())
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+//        MentorShip mentorship = MentorShipRepository.findById(req.getMentorshipId())
+//                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        MentorShipWeek week=weekRepository.findById(req.getWeekId()).orElseThrow(
+                ()->new  globalLogicEx("weekId not found")
+        );
 
 
         Task task= Task.builder()
@@ -51,7 +53,8 @@ public class TaskServiceImpl implements TaskService{
                 .dueAt(req.getDueAt())
                 .attachmentUrl(req.getAttachmentUrl())
                 .status(req.getStatus())
-                .mentorship(mentorship)
+//                .mentorship(mentorship)
+                .week(week)
                 .build();
         Task saved=taskRepository.save(task);
 
@@ -164,7 +167,7 @@ public class TaskServiceImpl implements TaskService{
         if (!(mentorShipRepository.existsById(mentorShipId))) {
             throw  new globalLogicEx("mentorShip not found");
         }
-        List<Task> allTasks = taskRepository.findByMentorshipId(mentorShipId);
+        List<Task> allTasks = taskRepository.findByWeek_Mentorship_Id(mentorShipId);
 
         int totalTasks = allTasks.size();
         int publishedCount = 0;

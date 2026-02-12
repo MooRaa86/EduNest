@@ -21,7 +21,7 @@ public class CreateTaskRequest {
     private String title;
 
     @NotNull
-    private Long mentorshipId;
+    private Long weekId;
 
     @NotBlank(message = "description is required")
     @Size(min = 10, max = 10000, message = "description must be between 10 and 10000 characters")

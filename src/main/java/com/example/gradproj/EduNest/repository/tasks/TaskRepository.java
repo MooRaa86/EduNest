@@ -13,10 +13,12 @@ import java.util.List;
 public interface TaskRepository extends JpaRepository<Task,Long> {
     boolean existsById(Long id);
     List<Task> findTaskByStatus(TaskStatus status);
-    List<Task> findByMentorshipId(Long mentorshipId);
+//    List<Task> findByMentorshipId(Long mentorshipId);
+List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
+
     @Query("""
     SELECT t FROM Task t
-    WHERE t.mentorship.id = :msid
+    WHERE t.week.mentorship.id = :msid
       AND (:taskName IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', :taskName, '%')))
       AND (:status IS NULL OR t.status = :status)
 """)
@@ -27,7 +29,9 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
             Pageable pageable
     );
 
+
     void deleteById(Long taskId);
 
+    List<Task> findByWeek_Id(Long weekId);
 
 }

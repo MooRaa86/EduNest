@@ -1,8 +1,7 @@
 package com.example.gradproj.EduNest.entity.projects;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -31,10 +30,6 @@ public class Project extends BaseEntity {
         @Column(name = "project_goal", nullable = false, length = 255)
         private String goal;
 
-//        @Enumerated(EnumType.STRING)
-//        @Column(name = "project_difficulty", nullable = false)
-//        private ProjectDifficultyLevel difficulty;
-
         @Column(name = "project_description_url", length = 1000)
         private String descriptionUrl;
 
@@ -54,7 +49,11 @@ public class Project extends BaseEntity {
         @OneToMany(mappedBy = "project", cascade = CascadeType.REMOVE, orphanRemoval = true)
         private List<ProjectSubmission> submissions = new ArrayList<>();
 
+//        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+//        @JoinColumn(name = "mentorship_id", nullable = false)
+//        private MentorShip mentorship;
         @ManyToOne(fetch = FetchType.LAZY, optional = false)
-        @JoinColumn(name = "mentorship_id", nullable = false)
-        private MentorShip mentorship;
-    }
+        @JoinColumn(name = "week_id",nullable = false)
+        private MentorShipWeek week;
+
+}

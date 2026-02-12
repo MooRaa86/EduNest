@@ -1,10 +1,11 @@
 package com.example.gradproj.EduNest.dto.projects.request;
-import com.example.gradproj.EduNest.enums.project.ProjectDifficultyLevel;
+
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import org.hibernate.validator.constraints.URL;
+
 import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
@@ -16,8 +17,8 @@ public class CreateProjectRequest {
     @Size(min = 3, max = 150, message = "title must be between 3 and 150 characters")
     private String title;
 
-    @NotNull(message = "mentorshipId is required")
-    private Long mentorshipId;
+    @NotNull(message = "weekId is required")
+    private Long weekId;
 
     @NotBlank(message = "goal is required")
     @Size(min = 5, max = 255, message = "goal must be between 5 and 255 characters")

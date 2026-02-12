@@ -9,15 +9,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
     @Query("""
     SELECT q FROM Quiz q
-    WHERE q.mentorship.id = :mentorshipId
+    WHERE q.week.mentorship.id = :mentorshipId
       AND (:quizName IS NULL OR LOWER(q.title) LIKE LOWER(CONCAT('%', :quizName, '%')))
       AND (:status IS NULL OR q.status = :status)
 """)
@@ -27,11 +25,9 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
             @Param("status") QuizStatus status,
             Pageable pageable
     );
-
-
-    List<Quiz> findByMentorship_Id(Long mentorshipId);
-
+//    List<Quiz> findByMentorship_Id(Long mentorshipId);
+    List<Quiz> findByWeek_Mentorship_Id(Long mentorshipId);
     void deleteById(Long id);
-
+    List<Quiz> findByWeek_Id(Long weekId);
     boolean existsById(Long id);
 }
