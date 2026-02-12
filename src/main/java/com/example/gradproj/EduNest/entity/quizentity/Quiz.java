@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.entity.quizentity;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,9 +17,10 @@ import java.util.List;
 @Builder
 public class Quiz extends BaseEntity {
 
-    @ManyToOne
-    @JoinColumn(name="mentorship_id", nullable = false)
-    private MentorShip mentorship;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "week_id",nullable = false)
+    private MentorShipWeek week;
+
 
     @Column(nullable = false, length = 100)
     private String title;

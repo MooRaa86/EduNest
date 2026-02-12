@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.quizservice.submission;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseDTO;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
@@ -104,16 +105,18 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         quizSubmission.setAnswers(studentAnswers);
 
         QuizSubmission saved = quizSubmissionRepository.save(quizSubmission);
-        totalPointsService.recalculate(saved.getStudent(), saved.getQuiz().getMentorship());
 
+        MentorShip mentorship = saved.getQuiz().getWeek().getMentorship();
+        totalPointsService.applyDelta(saved.getStudent(), mentorship, saved.getScore());
 
         return QuizSubmissionResponseDTO.builder()
-                .id(quizSubmission.getId())
+                .id(saved.getId())
                 .studentId(student.getId())
                 .quizId(quiz.getId())
-                .score(score.getTotalScore())
-                .submittedAt(quizSubmission.getSubmittedAt())
+                .score(saved.getScore())
+                .submittedAt(saved.getSubmittedAt())
                 .build();
+
     }
 
     public List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId){

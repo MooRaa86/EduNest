@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.entity.tasks;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -49,8 +49,12 @@ public class Task extends BaseEntity {
     private List<TaskSubmission> submissions = new ArrayList<>();
 
 
+//    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+//    @JoinColumn(name = "mentorship_id", nullable = false)
+//    private MentorShip mentorship;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "mentorship_id", nullable = false)
-    private MentorShip mentorship;
+    @JoinColumn(name = "week_id",nullable = false)
+    private MentorShipWeek week;
 
 }

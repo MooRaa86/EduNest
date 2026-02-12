@@ -1,13 +1,11 @@
 package com.example.gradproj.EduNest.dto.livesession.request;
 
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
@@ -23,7 +21,7 @@ public class CreateSessionDto {
     @NotNull(message = "Time cannot be null")
     private LocalTime time;
 
-    @NotNull(message = "Mentorship ID cannot be null")
-    private Long mentorshipId;
+    @NotNull(message = "week ID cannot be null")
+    private Long weekId;
 }
 

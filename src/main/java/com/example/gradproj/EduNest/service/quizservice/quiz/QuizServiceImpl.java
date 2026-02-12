@@ -6,19 +6,20 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
-import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
@@ -27,23 +28,28 @@ import java.util.List;
 public class QuizServiceImpl implements QuizService {
 
     private final QuizRepository quizRepository;
-    private final mentorShipRepository mentorshipRepository;
+    private final MentorShipRepository mentorshipRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final WeekRepository weekRepository;
 
 
     @Override
     @Transactional
     public QuizResponseDTO createQuiz(QuizCreateDTO quizCreateDTO) {
 
-        MentorShip mentorship = mentorshipRepository.findById(quizCreateDTO.getMentorshipId())
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+//        MentorShip mentorship = mentorshipRepository.findById(quizCreateDTO.getMentorshipId())
+//                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        MentorShipWeek week=weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
+                ()->new globalLogicEx("Week not found")
+        );
 
 
         Quiz quiz = Quiz.builder()
                 .title(quizCreateDTO.getTitle())
                 .durationMinutes(quizCreateDTO.getDurationMinutes())
                 .description(quizCreateDTO.getDescription())
-                .mentorship(mentorship)
+//                .mentorship(mentorship)
+                .week(week)
                 .status(quizCreateDTO.getStatus() != null ? quizCreateDTO.getStatus() : QuizStatus.DRAFT)
                 .build();
 
@@ -154,7 +160,7 @@ public class QuizServiceImpl implements QuizService {
         {
             throw  new globalLogicEx("MentorShip not found");
         }
-        List<Quiz> allQuizzes = quizRepository.findByMentorship_Id(mentorShipId);
+        List<Quiz> allQuizzes = quizRepository.findByWeek_Mentorship_Id(mentorShipId);
 
         int totalQuizzes = allQuizzes.size();
         int publishedCount = 0;
@@ -191,7 +197,7 @@ public class QuizServiceImpl implements QuizService {
         return QuizStatisticsDTO.builder()
                 .status(quiz.getStatus())
                 .averageScore(calculateAverageScore(quiz))    //quiz.getMentorship().getStudents().size()
-                .totalStudents(quiz.getMentorship() != null ? enrollmentRepository.countByMentorShip(quiz.getMentorship()) : 0)
+                .totalStudents(quiz.getWeek().getMentorship() != null ? enrollmentRepository.countByMentorShip(quiz.getWeek().getMentorship()) : 0)
                 .totalSubmissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .totalPoints(totalPoints)
                 .totalQuestions(totalQuestions)

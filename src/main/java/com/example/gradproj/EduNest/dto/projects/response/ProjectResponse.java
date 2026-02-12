@@ -22,7 +22,7 @@ public class ProjectResponse {
     private LocalDateTime endAt;
     private Integer points;
     private String status;
-    private Long mentorshipId;
+    private Long weekId;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 }

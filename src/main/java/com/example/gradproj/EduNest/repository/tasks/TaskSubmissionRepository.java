@@ -12,13 +12,16 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
     List<TaskSubmission> findByTask_id (long task_id);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);
     @Query("""
-        select coalesce(sum(ts.finalScore), 0)
-        from TaskSubmission ts
-        where ts.student.id = :studentId
-          and ts.task.mentorship.id = :mentorshipId
-          and ts.status = com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
-          and ts.finalScore is not null
-    """)
-    int sumFinalScoresForMentorship(@Param("studentId") Long studentId,
-                                    @Param("mentorshipId") Long mentorshipId);
+    select coalesce(sum(ts.finalScore), 0)
+    from TaskSubmission ts
+    where ts.student.id = :studentId
+      and ts.task.week.mentorship.id = :mentorshipId
+      and ts.status = com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
+      and ts.finalScore is not null
+""")
+    int sumFinalScoresForMentorship(
+            @Param("studentId") Long studentId,
+            @Param("mentorshipId") Long mentorshipId
+    );
+
 }

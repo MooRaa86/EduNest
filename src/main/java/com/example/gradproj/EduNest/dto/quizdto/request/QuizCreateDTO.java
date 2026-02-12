@@ -7,8 +7,8 @@ import lombok.Data;
 @Data
 public class QuizCreateDTO {
 
-    @NotNull(message = "Mentorship ID is required")
-    private Long mentorshipId;
+    @NotNull(message = "Week ID is required")
+    private Long weekId;
 
     @NotBlank(message = "Title is required")
     @Size(max = 100, message = "Title can't exceed 100 characters")

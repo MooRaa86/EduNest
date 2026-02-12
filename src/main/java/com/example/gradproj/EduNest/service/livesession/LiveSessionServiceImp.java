@@ -4,11 +4,12 @@ import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.entity.livesession.Session;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
-import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,9 +19,10 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class LiveSessionServiceImp implements LiveSessionService {
 
-    private final mentorShipRepository mentorShipRepository;
+    private final MentorShipRepository mentorShipRepository;
     private final LiveSessionRepository liveSessionRepository;
     private final JitsiService jitsiService;
+    private final WeekRepository weekRepository;
 
     @Override
     public SessionResponseDto createSession(CreateSessionDto createSessionDto) {
@@ -31,13 +33,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Scheduled date/time must be in the future");
         }
 
-        MentorShip mentorShip = mentorShipRepository.findById(createSessionDto.getMentorshipId())
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
-
+//        MentorShip mentorShip = MentorShipRepository.findById(createSessionDto.getMentorshipId())
+//                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        MentorShipWeek week=weekRepository.findById(createSessionDto.getWeekId()).orElseThrow(() -> new globalLogicEx("MentorShip not found"));
         Session session = Session.builder()
                 .scheduledAt(scheduledAt)
                 .title(createSessionDto.getTitle())
-                .mentorship(mentorShip)
+//                .mentorship(mentorShip)
+                .week(week)
                 .status(SessionStatus.SCHEDULED)
                 .build();
 

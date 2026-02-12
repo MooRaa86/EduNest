@@ -52,4 +52,23 @@ public class TotalPointsServiceImp implements TotalPointsService {
                 .map(TotalPoints::getTotalPoints)
                 .orElse(0);
     }
+    @Transactional
+    public void applyDelta(Student student, MentorShip mentorship, int delta) {
+        if (delta == 0) return;
+
+        TotalPoints tp = totalPointsRepository
+                .findForUpdate(student.getId(), mentorship.getId())
+                .orElseGet(() -> TotalPoints.builder()
+                        .student(student)
+                        .mentorship(mentorship)
+                        .totalPoints(0)
+                        .build());
+
+        tp.setTotalPoints(tp.getTotalPoints() + delta);
+
+
+        if (tp.getTotalPoints() < 0) tp.setTotalPoints(0);
+
+        totalPointsRepository.save(tp);
+    }
 }
