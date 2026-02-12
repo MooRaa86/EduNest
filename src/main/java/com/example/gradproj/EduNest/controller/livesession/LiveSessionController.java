@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.service.livesession.LiveSessionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/liveSession")
 @RequiredArgsConstructor
+@Tag(
+        name = "Live Session",
+        description = "APIS"
+)
 public class LiveSessionController {
 
     private final LiveSessionService liveSessionService;

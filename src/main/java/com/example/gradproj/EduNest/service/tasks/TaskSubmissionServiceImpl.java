@@ -1,18 +1,19 @@
 package com.example.gradproj.EduNest.service.tasks;
 
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -34,6 +35,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
+    private final TotalPointsRepository totalPointsRepository;
 
 
 
@@ -49,7 +51,9 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     public TaskSubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
-        Task task= taskRepository.findById(taskId).orElseThrow(() -> new IllegalArgumentException("Task not found"));
+        Task task= taskRepository.findById(taskId).orElseThrow(() ->
+                new IllegalArgumentException("Task not found"));
+
         if (task.getStatus()!= TaskStatus.PUBLISHED){
             throw new globalLogicEx("Task is not published");
         }
@@ -61,7 +65,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         Optional<TaskSubmission> existingOpt=submissionRepository.findByTask_IdAndStudent_Id(taskId,student.getId());
 
-        if (existingOpt.isPresent()&&isLate){
+        if (isLate && existingOpt.isPresent()){
             throw  new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
 
@@ -122,7 +126,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         MentorShip mentorship = task.getWeek().getMentorship();
 
-
+//        //--------------------------------------- remove points applied
         int newScore = sub.getFinalScore();
         int oldApplied = (sub.getPointsApplied() == null) ? 0 : sub.getPointsApplied();
         int delta = newScore - oldApplied;

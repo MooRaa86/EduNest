@@ -3,7 +3,6 @@ package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Mentor;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -78,6 +77,6 @@ public class MentorShip extends BaseEntity {
 
 
     @OneToMany(mappedBy = "mentorship", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MentorShipWeek> weeks = new ArrayList<>();
+    private List<Week> weeks = new ArrayList<>();
 
 }

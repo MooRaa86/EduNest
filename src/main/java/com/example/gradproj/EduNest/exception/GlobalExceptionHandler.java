@@ -121,6 +121,6 @@ public class GlobalExceptionHandler{
 
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> handleException(Exception exception){
-        return buildErrorResponse("unhandled error", exception.getMessage(), HttpStatus.CONFLICT);
+        return buildErrorResponse("error", exception.getMessage(), HttpStatus.CONFLICT);
     }
 }

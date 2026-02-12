@@ -1,15 +1,18 @@
 package com.example.gradproj.EduNest.entity.users;
 
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Reviews;
-import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "students")
@@ -27,6 +30,7 @@ public class Student extends UserEntity {
     @Column(nullable = false,name = "educational_level")
     private EducationalLevel educationalLevel;
 
+    @JsonIgnore
     @OneToMany(
             mappedBy = "student",
             cascade = CascadeType.ALL,

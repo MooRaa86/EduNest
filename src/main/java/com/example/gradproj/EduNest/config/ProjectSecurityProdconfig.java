@@ -14,7 +14,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -31,6 +33,8 @@ import java.util.Collections;
 @Profile("prod")
 @Configuration
 @RequiredArgsConstructor
+@EnableWebSecurity
+@EnableMethodSecurity
 public class ProjectSecurityProdconfig {
 
     private final JwtTokenGeneratorFilter jwtTokenGeneratorFilter;

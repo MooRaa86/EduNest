@@ -33,6 +33,7 @@ public class TaskSubmission extends BaseEntity {
 
     @Column(name = "final_score")
     private Integer finalScore;
+
     @Column(name = "task_feedback")
     @Lob
     private String feedBack;

@@ -1,11 +1,11 @@
-package com.example.gradproj.EduNest.entity.weeks;
+package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.livesession.Session;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,7 +22,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "weeks")
-public class MentorShipWeek extends BaseEntity {
+public class Week extends BaseEntity {
+
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorship;
