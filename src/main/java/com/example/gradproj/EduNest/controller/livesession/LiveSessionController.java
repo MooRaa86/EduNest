@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.service.livesession.LiveSessionService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

@@ -4,7 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.projects.Project;
-import com.example.gradproj.EduNest.entity.quizentity.Quiz;
+import com.example.gradproj.EduNest.entity.quiz.Quiz;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

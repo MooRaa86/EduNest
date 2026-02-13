@@ -1,19 +1,20 @@
-package com.example.gradproj.EduNest.service.quizservice.submission;
+package com.example.gradproj.EduNest.service.quiz.submission;
 
-import com.example.gradproj.EduNest.dto.quizdto.request.QuizSubmissionDTO;
-import com.example.gradproj.EduNest.dto.quizdto.request.StudentAnswerDTO;
-import com.example.gradproj.EduNest.dto.quizdto.response.QuizSubmissionResponseDTO;
+
+import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
+import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.quiz.Question;
+import com.example.gradproj.EduNest.entity.quiz.Quiz;
+import com.example.gradproj.EduNest.entity.quiz.QuizSubmission;
+import com.example.gradproj.EduNest.entity.quiz.StudentAnswer;
 import com.example.gradproj.EduNest.entity.users.Student;
-import com.example.gradproj.EduNest.entity.quizentity.Question;
-import com.example.gradproj.EduNest.entity.quizentity.Quiz;
-import com.example.gradproj.EduNest.entity.quizentity.QuizSubmission;
-import com.example.gradproj.EduNest.entity.quizentity.StudentAnswer;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
-import com.example.gradproj.EduNest.repository.quizrepository.QuizRepository;
-import com.example.gradproj.EduNest.repository.quizrepository.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import java.time.LocalDateTime;
 import java.util.List;

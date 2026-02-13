@@ -1,8 +1,8 @@
-package com.example.gradproj.EduNest.controller.contactUs;
+package com.example.gradproj.EduNest.controller.contactus;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.contactus.ContactMessageRequestDto;
-import com.example.gradproj.EduNest.service.contactUs.ContactMessageService;
+import com.example.gradproj.EduNest.service.contactus.ContactMessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
