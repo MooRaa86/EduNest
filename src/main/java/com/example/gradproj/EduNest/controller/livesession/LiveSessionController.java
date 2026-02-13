@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.controller.livesession;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
+import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.service.livesession.LiveSessionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/liveSession")
@@ -131,6 +134,25 @@ public class LiveSessionController {
 
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Session ended successfully", sessionResponseDto);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Record snapshot", description = "Record attendance snapshot for a session")
+    @PostMapping("/snapshot/{sessionId}")
+    public ResponseEntity<SimpleResponse> recordSnapshot(@PathVariable Long sessionId,
+                                                         @RequestBody List<Long> studentIds) {
+        liveSessionService.recordSnapshot(sessionId, studentIds);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("Message","Snapshots recorded successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get session attendance", description = "Fetch attendance report for a session")
+    @GetMapping("/attendance/{sessionId}")
+    public ResponseEntity<SimpleResponse> getAttendance(@PathVariable Long sessionId) {
+        List<AttendanceResponse> attendance = liveSessionService.getSessionAttendance(sessionId);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("Attendance report for session "+ sessionId, attendance);
         return ResponseEntity.ok(response);
     }
 }

@@ -52,4 +52,5 @@ public class TotalPointsServiceImp implements TotalPointsService {
                 .map(TotalPoints::getTotalPoints)
                 .orElse(0);
     }
+
 }

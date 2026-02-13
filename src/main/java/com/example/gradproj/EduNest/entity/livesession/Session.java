@@ -32,6 +32,10 @@ public class Session {
     @Future(message = "Scheduled date/time must be in the future")
     private LocalDateTime scheduledAt;
 
+    private LocalDateTime actualStartTime;
+
+    private LocalDateTime actualEndTime;
+
     private String meetingUrl;
 
     @Enumerated(EnumType.STRING)

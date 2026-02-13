@@ -2,7 +2,10 @@ package com.example.gradproj.EduNest.service.livesession;
 
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
+import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
+
+import java.util.List;
 
 public interface LiveSessionService {
 
@@ -13,5 +16,7 @@ public interface LiveSessionService {
     SessionResponseDto startLiveSession(Long sessionId);
     SessionResponseDto joinSession(Long sessionId);
     SessionResponseDto endSession(Long sessionId);
+    void recordSnapshot(Long sessionId, List<Long> studentIds);
+    List<AttendanceResponse> getSessionAttendance(Long sessionId);
 
 }

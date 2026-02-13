@@ -2,17 +2,26 @@ package com.example.gradproj.EduNest.service.livesession;
 
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
+import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.entity.livesession.Session;
+import com.example.gradproj.EduNest.entity.livesession.SessionAttendance;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.mentorShipRepository;
+import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.points.TotalPointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -20,7 +29,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
     private final mentorShipRepository mentorShipRepository;
     private final LiveSessionRepository liveSessionRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final StudentRepository studentRepository;
+    private final AttendanceRepository attendanceRepository;
     private final JitsiService jitsiService;
+    private final TotalPointsService  totalPointsService;
 
     @Override
     public SessionResponseDto createSession(CreateSessionDto createSessionDto) {
@@ -92,7 +105,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
         liveSessionRepository.delete(session);
     }
 
-        @Override
+    @Override
     public SessionResponseDto startLiveSession(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -104,6 +117,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
         String meetingUrl = jitsiService.createRoomLink(sessionId);
         session.setMeetingUrl(meetingUrl);
         session.setStatus(SessionStatus.LIVE);
+        session.setActualStartTime(LocalDateTime.now());
 
         liveSessionRepository.save(session);
 
@@ -140,11 +154,107 @@ public class LiveSessionServiceImp implements LiveSessionService {
         }
 
         session.setStatus(SessionStatus.ENDED);
+        session.setActualEndTime(LocalDateTime.now());
         liveSessionRepository.save(session);
 
+        calculateAttendancePoints(session);
         return mapToDto(session);
     }
 
+    public void recordSnapshot(Long sessionId, List<Long> studentIds) {
+        Session session = liveSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new globalLogicEx("Session not found"));
+
+        Long mentorshipId = session.getMentorship().getId();
+
+        for (Long studentId : studentIds) {
+            boolean isStudentExistInThisMentorship = enrollmentRepository.existsByMentorShip_IdAndStudent_Id(mentorshipId, studentId);
+
+            if (!isStudentExistInThisMentorship) {
+                throw new globalLogicEx("Student with id " + studentId + " is not enrolled in mentorship " + mentorshipId);
+            }
+
+            Student student = studentRepository.findById(studentId).orElseThrow(() -> new globalLogicEx("Student not found"));
+
+            SessionAttendance sessionAttendance = SessionAttendance
+                    .builder()
+                    .session(session)
+                    .student(student)
+                    .snapshotTime(LocalDateTime.now())
+                    .build();
+
+            attendanceRepository.save(sessionAttendance);
+        }
+    }
+
+    public List<AttendanceResponse> getSessionAttendance(Long sessionId) {
+        Session session = liveSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new globalLogicEx("Session not found"));
+
+
+        if (session.getActualStartTime() == null) {
+            throw new globalLogicEx("Session not started yet");
+
+        }
+        if (session.getActualEndTime() == null) {
+            throw new globalLogicEx("Session not finished yet");
+        }
+
+        Long sessionDuration = Duration.between(session.getActualStartTime(), session.getActualEndTime()).toMinutes();
+
+        List<SessionAttendance> allSnapshots =
+                attendanceRepository.findBySession_SessionId(sessionId);
+
+        Map<Student, Long> studentAttendances = new HashMap<>();
+        for (SessionAttendance sessionAttendance : allSnapshots) {
+            Student student = sessionAttendance.getStudent();
+            studentAttendances.put(student, studentAttendances.getOrDefault(student, 0L) + 1);
+        }
+
+        long totalSnapshots = Math.max(1, sessionDuration / 5);
+
+        List<AttendanceResponse> attendanceReport = new ArrayList<>();
+        for (Map.Entry<Student, Long> studentAttendance : studentAttendances.entrySet()) {
+            Student student = studentAttendance.getKey();
+            Long studentSnapshots = studentAttendance.getValue();
+
+            double attendancePercentage = (studentSnapshots * 100.0) / totalSnapshots;
+
+            String status = attendancePercentage >= 75 ? "Present" : "Absent";
+            attendanceReport.add(
+                    AttendanceResponse.builder()
+                            .sessionId(session.getSessionId())
+                            .studentId(student.getId())
+                            .attendancePercentage(attendancePercentage)
+                            .status(status)
+                            .build()
+            );
+
+
+        }
+
+        return attendanceReport;
+
+    }
+
+    private void calculateAttendancePoints(Session session) {
+        List<AttendanceResponse> results =
+                getSessionAttendance(session.getSessionId());
+
+        for (AttendanceResponse result : results) {
+            if ("Present".equals(result.getStatus())) {
+
+                Student student = studentRepository.findById(result.getStudentId())
+                        .orElseThrow(() -> new globalLogicEx("Student not found"));
+
+//                totalPointsService.addAttendancePoints(
+//                        student,
+//                        session.getMentorship(),
+//                        5
+//                );
+            }
+        }
+    }
 
     private SessionResponseDto mapToDto(Session session) {
         return SessionResponseDto.builder()

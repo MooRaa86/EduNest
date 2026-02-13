@@ -28,6 +28,5 @@ public class SessionAttendance {
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    private LocalDateTime joinedAt;
-    private LocalDateTime leftAt;
+    private LocalDateTime snapshotTime;
 }
