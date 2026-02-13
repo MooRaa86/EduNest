@@ -1,6 +1,9 @@
 package com.example.gradproj.EduNest.dto.weeks;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -12,4 +15,6 @@ public class WeekContentItemDTO {
     private Long id;
     private String title;
     private String status;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
 }

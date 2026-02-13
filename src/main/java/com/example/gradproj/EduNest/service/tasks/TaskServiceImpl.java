@@ -7,7 +7,7 @@ import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.tasks.Task;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -37,9 +37,7 @@ public class TaskServiceImpl implements TaskService{
         if (req.getPassPoints()> req.getPoints()){
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
-//        MentorShip mentorship = MentorShipRepository.findById(req.getMentorshipId())
-//                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
-        MentorShipWeek week=weekRepository.findById(req.getWeekId()).orElseThrow(
+        Week week=weekRepository.findById(req.getWeekId()).orElseThrow(
                 ()->new  globalLogicEx("weekId not found")
         );
 
@@ -53,7 +51,6 @@ public class TaskServiceImpl implements TaskService{
                 .dueAt(req.getDueAt())
                 .attachmentUrl(req.getAttachmentUrl())
                 .status(req.getStatus())
-//                .mentorship(mentorship)
                 .week(week)
                 .build();
         Task saved=taskRepository.save(task);

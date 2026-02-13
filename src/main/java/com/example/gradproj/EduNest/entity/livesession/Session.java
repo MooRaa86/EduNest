@@ -1,29 +1,27 @@
 package com.example.gradproj.EduNest.entity.livesession;
 
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.BaseEntity;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "sessions")
-@Data
+@Setter @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Session {
+public class Session extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long sessionId;
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    private Long sessionId;
 
     @NotBlank(message = "Title cannot be blank")
     private String title;
@@ -39,6 +37,6 @@ public class Session {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "week_id",nullable = false)
-    private MentorShipWeek week;
+    private Week week;
 
 }

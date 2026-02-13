@@ -17,11 +17,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "contact_message")
 public class ContactMessageEntity extends BaseEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "contact_message_id")
-    private Long id;
+    
 
     @NotBlank(message = "Name is required")
     @Column(name = "name")

@@ -3,10 +3,10 @@ package com.example.gradproj.EduNest.service.week;
 import com.example.gradproj.EduNest.dto.weeks.*;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.tasks.Task;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -37,11 +36,11 @@ public class WeekService {
         MentorShip mentorShip = mentorShipRepository.findById(createWeekrequest.getMentorshipId()).orElseThrow(
                 () -> new globalLogicEx("mentorShip not found")
         );
-        MentorShipWeek week = MentorShipWeek.builder()
+        Week week = Week.builder()
                 .title(createWeekrequest.getTitle())
                 .mentorship(mentorShip)
                 .build();
-        MentorShipWeek saved = weekRepository.save(week);
+        Week saved = weekRepository.save(week);
         return mapToWeekResponse(saved);
 
     }
@@ -54,7 +53,7 @@ public class WeekService {
     }
 
     public WeekResponse udateWeekTitle(Long id, UpdateWeekRequest request) {
-        MentorShipWeek week = weekRepository.findById(id).orElseThrow(() -> new globalLogicEx("Week not found"));
+        Week week = weekRepository.findById(id).orElseThrow(() -> new globalLogicEx("Week not found"));
         week.setTitle(request.getTitle());
         return mapToWeekResponse(weekRepository.save(week));
 
@@ -70,7 +69,7 @@ public class WeekService {
     @Transactional(readOnly = true)
     public WeekContentsResponse getWeekContents(Long weekId) {
 
-        MentorShipWeek week = weekRepository.findById(weekId)
+        Week week = weekRepository.findById(weekId)
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
 
         var tasks = taskRepository.findByWeek_Id(weekId);
@@ -84,9 +83,10 @@ public class WeekService {
         for (Session s : sessions) {
             items.add(WeekContentItemDTO.builder()
                     .type("SESSION")
-                    .id(s.getSessionId())
+                    .id(s.getId())
                     .title(s.getTitle())
                     .status(s.getStatus() == null ? null : s.getStatus().name())
+                    .createdAt(s.getCreatedAt())
                     .build());
         }
 
@@ -97,6 +97,7 @@ public class WeekService {
                     .id(q.getId())
                     .title(q.getTitle())
                     .status(q.getStatus() == null ? null : q.getStatus().name())
+                    .createdAt(q.getCreatedAt())
                     .build());
         }
 
@@ -107,6 +108,7 @@ public class WeekService {
                     .id(t.getId())
                     .title(t.getTitle())
                     .status(t.getStatus() == null ? null : t.getStatus().name())
+                    .createdAt(t.getCreatedAt())
                     .build());
         }
 
@@ -117,14 +119,15 @@ public class WeekService {
                     .id(p.getId())
                     .title(p.getTitle())
                     .status(p.getStatus() == null ? null : p.getStatus().name())
+                    .createdAt(p.getCreatedAt())
                     .build());
         }
 
         // ✅ ترتيب زي UI: Session ثم Quiz ثم Task ثم Project (مؤقت لحد ما تعمل orderIndex)
-        items.sort(Comparator
-                .comparingInt((WeekContentItemDTO i) -> typePriority(i.getType()))
-                .thenComparing(WeekContentItemDTO::getId, Comparator.nullsLast(Long::compareTo))
-        );
+//        items.sort(Comparator
+//                .comparingInt((WeekContentItemDTO i) -> typePriority(i.getType()))
+//                .thenComparing(WeekContentItemDTO::getId, Comparator.nullsLast(Long::compareTo))
+//        );
 
         return WeekContentsResponse.builder()
                 .weekId(week.getId())
@@ -134,7 +137,7 @@ public class WeekService {
     }
 
 
-    private WeekResponse mapToWeekResponse(MentorShipWeek week) {
+    private WeekResponse mapToWeekResponse(Week week) {
         WeekResponse res = new WeekResponse();
         res.setTitle(week.getTitle());
         res.setId(week.getId());

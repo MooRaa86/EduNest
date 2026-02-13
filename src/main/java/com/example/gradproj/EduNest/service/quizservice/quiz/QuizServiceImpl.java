@@ -8,7 +8,7 @@ import com.example.gradproj.EduNest.dto.quizdto.request.QuizUpdateDto;
 import com.example.gradproj.EduNest.dto.quizdto.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.entity.quizentity.Question;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -39,7 +39,7 @@ public class QuizServiceImpl implements QuizService {
 
 //        MentorShip mentorship = mentorshipRepository.findById(quizCreateDTO.getMentorshipId())
 //                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
-        MentorShipWeek week=weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
+        Week week=weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
                 ()->new globalLogicEx("Week not found")
         );
 

@@ -7,7 +7,7 @@ import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequ
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.entity.projects.Project;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -35,7 +35,7 @@ public class ProjectServiceImpl implements ProjectService{
     public ProjectResponse createProject(CreateProjectRequest req) {
 //        MentorShip mentorship = MentorShipRepository.findById(req.getMentorshipId())
 //                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
-        MentorShipWeek week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
+        Week week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
         if (req.getEndAt().isBefore(req.getStartAt())) {
             throw new globalLogicEx("endAt must be after startAt");
         }

@@ -1,12 +1,12 @@
 package com.example.gradproj.EduNest.repository.week;
 
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface WeekRepository extends JpaRepository<MentorShipWeek,Long> {
+public interface WeekRepository extends JpaRepository<Week,Long> {
     void deleteById(Long id);
-    List<MentorShipWeek> findByMentorship_IdOrderByIdAsc(Long mentorshipId);
+    List<Week> findByMentorship_IdOrderByIdAsc(Long mentorshipId);
 
 }

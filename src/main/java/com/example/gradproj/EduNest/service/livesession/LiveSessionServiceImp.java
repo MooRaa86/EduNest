@@ -4,7 +4,7 @@ import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
 import com.example.gradproj.EduNest.entity.livesession.Session;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
@@ -35,7 +35,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
 //        MentorShip mentorShip = MentorShipRepository.findById(createSessionDto.getMentorshipId())
 //                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
-        MentorShipWeek week=weekRepository.findById(createSessionDto.getWeekId()).orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        Week week=weekRepository.findById(createSessionDto.getWeekId()).orElseThrow(() -> new globalLogicEx("MentorShip not found"));
         Session session = Session.builder()
                 .scheduledAt(scheduledAt)
                 .title(createSessionDto.getTitle())
@@ -151,7 +151,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
     private SessionResponseDto mapToDto(Session session) {
         return SessionResponseDto.builder()
-                .sessionId(session.getSessionId())
+                .sessionId(session.getId())
                 .sessionTitle(session.getTitle())
                 .sessionStartDate(session.getScheduledAt())
                 .meetingUrl(session.getMeetingUrl())

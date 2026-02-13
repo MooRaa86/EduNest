@@ -7,6 +7,8 @@ import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionReques
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 import com.example.gradproj.EduNest.service.projects.ProjectServiceImpl;
 import com.example.gradproj.EduNest.service.projects.ProjectSubmissionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,11 +17,15 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/project")
+@Tag(
+        name = "project submission",
+        description = "APIS"
+)
 @RequiredArgsConstructor
 public class ProjectSubmissionController {
     private final ProjectSubmissionService submissionService;
 
-
+    @Operation(summary = "submit by project Id")
     @PostMapping("/{projectId}/submissions")
     public ResponseEntity<SimpleResponse> submit(
             @PathVariable Long projectId,
@@ -30,7 +36,7 @@ public class ProjectSubmissionController {
         response.addMessage("submission",submissionService.submit(projectId,req));
         return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
-
+    @Operation(summary = "get submissions by project Id")
     @GetMapping("/{projectId}/submissions")
     public ResponseEntity<SimpleResponse> listByProject(@PathVariable Long projectId) {
         SimpleResponse response=new SimpleResponse();
@@ -38,6 +44,7 @@ public class ProjectSubmissionController {
         response.addMessage("submissions",submissionService.listByProject(projectId));
         return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
+    @Operation(summary = "grade project submission by submission Id")
     @PostMapping("/submissions/{submissionId}/grade")
     public ResponseEntity<SimpleResponse> grade(
             @PathVariable Long submissionId,

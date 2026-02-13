@@ -1,11 +1,16 @@
 package com.example.gradproj.EduNest.entity.users;
 
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "mentors")
@@ -31,6 +36,7 @@ public class Mentor extends UserEntity {
     @Column(name = "years_of_experience")
     private double yearsOfExperience;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "mentor", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MentorShip> mentorships = new ArrayList<>();
 

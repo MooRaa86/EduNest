@@ -1,20 +1,22 @@
 package com.example.gradproj.EduNest.entity.projects;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.weeks.MentorShipWeek;
+import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 @Entity
 @Table(name = "projects")
-@Data
+@Setter @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
@@ -49,11 +51,9 @@ public class Project extends BaseEntity {
         @OneToMany(mappedBy = "project", cascade = CascadeType.REMOVE, orphanRemoval = true)
         private List<ProjectSubmission> submissions = new ArrayList<>();
 
-//        @ManyToOne(fetch = FetchType.LAZY, optional = false)
-//        @JoinColumn(name = "mentorship_id", nullable = false)
-//        private MentorShip mentorship;
+
         @ManyToOne(fetch = FetchType.LAZY, optional = false)
         @JoinColumn(name = "week_id",nullable = false)
-        private MentorShipWeek week;
+        private Week week;
 
 }

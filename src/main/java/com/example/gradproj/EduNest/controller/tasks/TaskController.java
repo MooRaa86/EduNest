@@ -9,6 +9,8 @@ import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,10 @@ import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/api/v1/task")
+@Tag(
+        name = "task",
+        description = "APIS"
+)
 public class TaskController {
     private final TaskService taskService;
 
@@ -26,14 +32,16 @@ public class TaskController {
         this.taskService = taskService;
     }
     @PostMapping
-    public ResponseEntity<SimpleResponse> create(@RequestBody CreateTaskRequest req){
+    @Operation(summary = "create task")
+    public ResponseEntity<SimpleResponse> create(
+            @RequestBody CreateTaskRequest req){
         TaskResponse created =taskService.createTask(req);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task created successfully");
         response.addMessage("task", created);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
+    @Operation(summary = "update task ")
 @PatchMapping("/{id}/status")
 public ResponseEntity<SimpleResponse> updateStatus(
         @PathVariable Long id,
@@ -45,6 +53,7 @@ public ResponseEntity<SimpleResponse> updateStatus(
    return ResponseEntity.status(HttpStatus.OK).body(response);
 }
     @GetMapping("/{id}")
+    @Operation(summary = "get task by id")
     public  ResponseEntity<SimpleResponse> getById(@PathVariable Long id){
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task retrieved successfully");
@@ -52,6 +61,7 @@ public ResponseEntity<SimpleResponse> updateStatus(
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     @PatchMapping("/{id}")
+    @Operation(summary = "update task")
     public ResponseEntity<SimpleResponse> patch(
             @PathVariable Long id,
             @RequestBody @Valid PatchTaskRequest req
@@ -63,6 +73,7 @@ public ResponseEntity<SimpleResponse> updateStatus(
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "delete task by id")
     public  ResponseEntity<SimpleResponse> delete(@PathVariable Long id){
         taskService.deleteTask(id);
         SimpleResponse simpleResponse=new SimpleResponse();
@@ -70,6 +81,7 @@ public ResponseEntity<SimpleResponse> updateStatus(
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
     @GetMapping("/filter/{msid}")
+    @Operation(summary = "filter tasks")
     public ResponseEntity<SimpleResponse> filterTasks(
             @RequestParam(required = false) String taskName,
             @RequestParam(required = false) TaskStatus status,
@@ -91,6 +103,7 @@ public ResponseEntity<SimpleResponse> updateStatus(
 
 
     @GetMapping("/dashboard/{mentorshipId}")
+    @Operation(summary = "get task dashboard details")
     public ResponseEntity<SimpleResponse> getDashboard(@PathVariable  Long mentorshipId) {
        TaskDashboardDTO taskDashboardDTO =taskService.getTaskDashboard(mentorshipId);
         SimpleResponse simpleResponse = new SimpleResponse();
