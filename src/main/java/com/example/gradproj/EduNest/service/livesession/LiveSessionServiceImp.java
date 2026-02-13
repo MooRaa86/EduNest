@@ -250,11 +250,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 Student student = studentRepository.findById(result.getStudentId())
                         .orElseThrow(() -> new globalLogicEx("Student not found"));
 
-//                totalPointsService.addAttendancePoints(
-//                        student,
-//                        session.getMentorship(),
-//                        5
-//                );
+                totalPointsService.applyDelta(
+                        student,
+                        session.getWeek().getMentorship(),
+                        5
+                );
             }
         }
     }

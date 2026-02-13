@@ -21,6 +21,7 @@ public class TotalPointsServiceImp implements TotalPointsService {
                 .orElse(0);
     }
     @Transactional
+    @Override
     public void applyDelta(Student student, MentorShip mentorship, int delta) {
         if (delta == 0) return;
 
