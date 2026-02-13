@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
@@ -30,6 +31,7 @@ public class WeekService {
     private final QuizRepository quizRepository;
     private final ProjectRepository projectRepository;
     private final LiveSessionRepository sessionRepository;
+    private final LectureRepository lectureRepository;
 
 
     public WeekResponse createWeek(CreateWeekrequest createWeekrequest) {
@@ -76,6 +78,7 @@ public class WeekService {
         var quizzes = quizRepository.findByWeek_Id(weekId);
         var projects = projectRepository.findByWeek_Id(weekId);
         var sessions = sessionRepository.findByWeek_Id(weekId);
+        var lectures = lectureRepository.findByWeek_Id(weekId);
 
         List<WeekContentItemDTO> items = new ArrayList<>();
 
@@ -122,6 +125,7 @@ public class WeekService {
                     .createdAt(p.getCreatedAt())
                     .build());
         }
+
 
         // ✅ ترتيب زي UI: Session ثم Quiz ثم Task ثم Project (مؤقت لحد ما تعمل orderIndex)
 //        items.sort(Comparator

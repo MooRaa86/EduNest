@@ -116,18 +116,20 @@ public class TaskServiceImpl implements TaskService{
     }
 
     private TaskResponse mapToTaskResponse(Task task) {
-        TaskResponse res = new TaskResponse();
-        res.setId(task.getId());
-        res.setTitle(task.getTitle());
-        res.setDescription(task.getDescription());
-        res.setPoints(task.getPoints());
-        res.setPassPoints(task.getPassPoints());
-        res.setEstimatedMinutes(task.getEstimatedMinutes());
-        res.setStatus(task.getStatus().name());
-        res.setDueAt(task.getDueAt());
-        res.setAttachmentUrl(task.getAttachmentUrl());
+        TaskResponse response = TaskResponse.builder()
+                .id(task.getId())
+                .title(task.getTitle())
+                .description(task.getDescription())
+                .points(task.getPoints())
+                .passPoints(task.getPassPoints())
+                .estimatedMinutes(task.getEstimatedMinutes())
+                .status(task.getStatus().name())
+                .dueAt(task.getDueAt())
+                .attachmentUrl(task.getAttachmentUrl())
+                .build();
 
-        return res;
+
+        return response;
     }
 
 

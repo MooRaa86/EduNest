@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
+import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.quizentity.Quiz;
@@ -43,5 +44,8 @@ public class Week extends BaseEntity {
 
     @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
     private List<Session> liveSessions;
+
+    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
+    private List<Lecture> lectures;
 
 }
