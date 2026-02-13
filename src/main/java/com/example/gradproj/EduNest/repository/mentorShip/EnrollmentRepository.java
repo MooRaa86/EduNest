@@ -25,4 +25,5 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Enrollment findByMentorShipAndStudent(MentorShip mentorShip, Student student);
 
     int countByMentorShip(MentorShip mentorShip);
+    boolean existsByMentorShip_IdAndStudent_Id(Long mentorshipId, Long studentId);
 }
