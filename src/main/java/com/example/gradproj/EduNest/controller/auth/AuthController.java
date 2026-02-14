@@ -34,9 +34,13 @@ public class AuthController {
             @RequestBody LoginRequestDto DTO
             ){
         String jwt = loginService.loginProcess(DTO);
+        String role = loginService.getJwtRole(jwt);
+
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("status","Login successful");
         resp.addMessage("jwt",jwt);
+        resp.addMessage("Role",role);
+
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .header(Constants.JWT_HEADER,jwt)
