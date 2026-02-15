@@ -2,12 +2,12 @@ package com.example.gradproj.EduNest.controller.mentorShip;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.ChangeStatusRequest;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.service.mentorShip.mentorShipService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -145,7 +145,7 @@ public class mentorShipControllers {
             value = "/{mentorshipId}/change-cover-image",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    @Operation(summary = "upload cover image for mentorship")
+    @Operation(summary = "change cover image for mentorship")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> uploadCover(
             @PathVariable Long mentorshipId,
@@ -154,6 +154,33 @@ public class mentorShipControllers {
         String imageURL = mentorShipService.uploadCoverImage(mentorshipId, image);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Image_URL", imageURL);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{mentorshipId}/join")
+    @Operation(summary = "Student join in mentorship")
+    public ResponseEntity<SimpleResponse> joinMentorship(
+            @PathVariable Long mentorshipId
+    ) {
+        mentorShipService.joinMentorship(mentorshipId);
+
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "Mentorship joined successfully");
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{mentorshipId}/rate")
+    @Operation(summary = "rate a mentorship")
+    public ResponseEntity<SimpleResponse> rateMentorship(
+            @PathVariable Long mentorshipId,
+            @RequestBody @Valid CreateReviewRequest request
+    ) {
+
+        mentorShipService.rateMentorship(mentorshipId, request);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "Mentorship rated successfully");
+
         return ResponseEntity.ok(response);
     }
 

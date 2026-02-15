@@ -1,21 +1,23 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-import com.example.gradproj.EduNest.entity.mentorship.Tags;
-import com.example.gradproj.EduNest.entity.mentorship.WhatWillLearn;
+import com.example.gradproj.EduNest.entity.mentorship.*;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,10 +26,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,9 +44,11 @@ public class mentorShipServiceI implements mentorShipService{
     private final MentorRepository mentorRepository;
     private final imageStorageService imageService;
     private final EnrollmentRepository enrollmentRepository;
+    private final StudentRepository studentRepository;
+    private final ReviewsRepository reviewsRepository;
 
 
-    private String getCurrentMentorEmail() {
+    private String getCurrentUserEmail() {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -56,7 +62,9 @@ public class mentorShipServiceI implements mentorShipService{
     @PreAuthorize("hasRole('MENTOR')")
     @Override
     public mentorShipFDto createMentorShip(mentorShipCreateDTO dto) {
-        Mentor mentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
+
 
         MentorShip mentorShip = MentorShip.builder()
                 .mentor(mentor)
@@ -97,7 +105,8 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
-        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
         if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
             throw new BadCredentialsException("you are not allowed to update this mentorship");
@@ -158,7 +167,9 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
                 .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
 
-        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
+
 
         if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
             throw new BadCredentialsException("you are not allowed to delete this mentorship");
@@ -219,7 +230,8 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
 
-        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
         if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
             throw new BadCredentialsException("you are not allowed to update this mentorship");
@@ -232,14 +244,16 @@ public class mentorShipServiceI implements mentorShipService{
     @Override
     @PreAuthorize("hasRole('MENTOR')")
     public long countMentorShipsForMentorId() {
-        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
         return MentorShipRepository.countByMentor_Id(currentMentor.getId());
     }
 
     @Override
     @PreAuthorize("hasRole('MENTOR')")
     public long countStudentsforMentor() {
-        Mentor currentMentor = mentorRepository.findByEmail(getCurrentMentorEmail());
+        Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
         return enrollmentRepository.countStudentsByMentorId(currentMentor.getId());
     }
 
@@ -251,7 +265,7 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorship = MentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
-        if (!mentorship.getMentor().getEmail().equals(getCurrentMentorEmail())) {
+        if (!mentorship.getMentor().getEmail().equals(getCurrentUserEmail())) {
             throw new globalLogicEx("You are not allowed for this request");
         }
 
@@ -277,6 +291,78 @@ public class mentorShipServiceI implements mentorShipService{
         return imageUrl;
     }
 
+    @Transactional
+    @Override
+    public void joinMentorship(Long mentorshipId) {
+
+        String email = getCurrentUserEmail();
+
+        Student student = studentRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+
+        MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
+                .orElseThrow(() -> new RuntimeException("Mentorship not found"));
+
+        if (enrollmentRepository.existsByMentorShip_IdAndStudent_Id(
+                mentorshipId,
+                student.getId()
+        )) {
+            throw new globalLogicEx("You are already enrolled in this mentorship");
+        }
+
+
+        Enrollment enrollment = Enrollment.builder()
+                .student(student)
+                .mentorShip(mentorShip)
+                .price(mentorShip.getPrice())
+                .joinedAt(LocalDateTime.now())
+                .build();
+
+        enrollmentRepository.save(enrollment);
+    }
+
+    @Transactional
+    @Override
+    public void rateMentorship(Long mentorshipId, CreateReviewRequest request) {
+
+        String email = getCurrentUserEmail();
+
+        Student student = studentRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+
+        MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
+                .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
+
+
+        boolean enrolled = enrollmentRepository
+                .existsByMentorShip_IdAndStudent_Id(mentorshipId, student.getId());
+
+        if (!enrolled) {
+            throw new RuntimeException("You must enroll before rating");
+        }
+
+        MentorShipReviews existingReview =
+                reviewsRepository.findByMentorShipIdAndStudentId(
+                        mentorshipId,
+                        student.getId()
+                );
+
+        if (existingReview != null) {
+            existingReview.setRating(request.getRating());
+            existingReview.setFeedBack(request.getFeedback());
+            return;
+        }
+
+
+        MentorShipReviews review = MentorShipReviews.builder()
+                .mentorShip(mentorShip)
+                .student(student)
+                .rating(request.getRating())
+                .feedBack(request.getFeedback())
+                .build();
+
+        reviewsRepository.save(review);
+    }
 
     private mentorShipFDto mapToMentorShipResponse(MentorShip mentorShip) {
         return mentorShipFDto.builder()

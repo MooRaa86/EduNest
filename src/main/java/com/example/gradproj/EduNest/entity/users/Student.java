@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.entity.users;
 
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
-import com.example.gradproj.EduNest.entity.mentorship.Reviews;
+import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -44,6 +44,6 @@ public class Student extends UserEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<Reviews> reviews = new ArrayList<>();
+    private List<MentorShipReviews> reviews = new ArrayList<>();
 
 }

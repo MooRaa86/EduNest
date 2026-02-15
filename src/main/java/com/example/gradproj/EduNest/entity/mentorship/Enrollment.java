@@ -1,7 +1,6 @@
 package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
-import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,9 +24,11 @@ public class Enrollment extends BaseEntity {
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorShip;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mentor_id", nullable = false)
-    private Mentor mentor;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "mentor_id", nullable = false)
+//    private Mentor mentor;
+
+    private Double price;
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;

@@ -19,10 +19,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Session extends BaseEntity {
 
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    private Long sessionId;
-
     @NotBlank(message = "Title cannot be blank")
     private String title;
 

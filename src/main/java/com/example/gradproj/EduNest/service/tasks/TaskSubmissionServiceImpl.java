@@ -18,6 +18,7 @@ import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +59,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             throw new globalLogicEx("Task is not published");
         }
 
-        Student student=studentRepository.findByEmail(getCurrentStudentEmail());
+        Student student=studentRepository.findByEmail(getCurrentStudentEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
         LocalDateTime now=LocalDateTime.now();
         boolean isLate= now.isAfter(task.getDueAt());
