@@ -14,7 +14,7 @@ public class WeekContentItemDTO {
     private String type;     // SESSION / QUIZ / TASK / PROJECT
     private Long id;
     private String title;
-    private String status;
+//    private String status;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 }

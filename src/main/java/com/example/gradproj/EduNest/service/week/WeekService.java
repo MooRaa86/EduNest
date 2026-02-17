@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.week;
 
 import com.example.gradproj.EduNest.dto.weeks.*;
+import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
@@ -54,7 +55,8 @@ public class WeekService {
         weekRepository.deleteById(weekId);
     }
 
-    public WeekResponse udateWeekTitle(Long id, UpdateWeekRequest request) {
+    @Transactional
+    public WeekResponse updateWeekTitle(Long id, UpdateWeekRequest request) {
         Week week = weekRepository.findById(id).orElseThrow(() -> new globalLogicEx("Week not found"));
         week.setTitle(request.getTitle());
         return mapToWeekResponse(weekRepository.save(week));
@@ -82,56 +84,51 @@ public class WeekService {
 
         List<WeekContentItemDTO> items = new ArrayList<>();
 
-        // Session
         for (Session s : sessions) {
             items.add(WeekContentItemDTO.builder()
                     .type("SESSION")
                     .id(s.getId())
                     .title(s.getTitle())
-                    .status(s.getStatus() == null ? null : s.getStatus().name())
                     .createdAt(s.getCreatedAt())
                     .build());
         }
 
-        // Quiz
         for (Quiz q : quizzes) {
             items.add(WeekContentItemDTO.builder()
                     .type("QUIZ")
                     .id(q.getId())
                     .title(q.getTitle())
-                    .status(q.getStatus() == null ? null : q.getStatus().name())
                     .createdAt(q.getCreatedAt())
                     .build());
         }
 
-        // Task
         for (Task t : tasks) {
             items.add(WeekContentItemDTO.builder()
                     .type("TASK")
                     .id(t.getId())
                     .title(t.getTitle())
-                    .status(t.getStatus() == null ? null : t.getStatus().name())
                     .createdAt(t.getCreatedAt())
                     .build());
         }
 
-        // Project
         for (Project p : projects) {
             items.add(WeekContentItemDTO.builder()
                     .type("PROJECT")
                     .id(p.getId())
                     .title(p.getTitle())
-                    .status(p.getStatus() == null ? null : p.getStatus().name())
                     .createdAt(p.getCreatedAt())
                     .build());
         }
+        for (Lecture l: lectures){
+            items.add(WeekContentItemDTO.builder()
+                    .type("LECTURE")
+                    .id(l.getId())
+                    .title(l.getTitle())
+                    .createdAt(l.getCreatedAt())
+                    .build());
 
+        }
 
-        // ✅ ترتيب زي UI: Session ثم Quiz ثم Task ثم Project (مؤقت لحد ما تعمل orderIndex)
-//        items.sort(Comparator
-//                .comparingInt((WeekContentItemDTO i) -> typePriority(i.getType()))
-//                .thenComparing(WeekContentItemDTO::getId, Comparator.nullsLast(Long::compareTo))
-//        );
 
         return WeekContentsResponse.builder()
                 .weekId(week.getId())
@@ -147,14 +144,5 @@ public class WeekService {
         res.setId(week.getId());
         return res;
     }
-
-    private int typePriority(String type) {
-        return switch (type) {
-            case "SESSION" -> 1;
-            case "QUIZ" -> 2;
-            case "TASK" -> 3;
-            case "PROJECT" -> 4;
-            default -> 99;
-        };
     }
-}
+

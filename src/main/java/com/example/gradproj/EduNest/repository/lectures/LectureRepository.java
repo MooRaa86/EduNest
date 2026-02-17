@@ -9,5 +9,5 @@ public interface LectureRepository extends JpaRepository<Lecture, Long> {
 
     List<Lecture> findByWeekId(Long weekId);
 
-    Object findByWeek_Id(Long weekId);
+    List<Lecture> findByWeek_Id(Long weekId);
 }

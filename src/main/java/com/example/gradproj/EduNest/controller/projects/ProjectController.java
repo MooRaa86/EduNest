@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/project")
 @Tag(
         name = "project",
-        description = "APIS"
+        description = "APIs for managing projects (create, update, delete, filter, dashboard"
 )
 @RequiredArgsConstructor
 public class ProjectController {
