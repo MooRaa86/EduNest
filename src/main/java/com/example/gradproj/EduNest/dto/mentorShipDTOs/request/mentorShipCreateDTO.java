@@ -21,7 +21,7 @@ public class mentorShipCreateDTO {
     private String description;
 
     @NotBlank(message = "Category is required")
-    @Size(min = 3, max = 20, message = "Category must be between 3 and 20 characters")
+    @Size(min = 3, max = 50, message = "Category must be between 3 and 20 characters")
     private String category; // enum بعدين
 
     private DifficultyLevel difficultyLevel;

@@ -17,8 +17,8 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "reviews")
-public class Reviews extends BaseEntity {
+@Table(name = "mentorship_reviews")
+public class MentorShipReviews extends BaseEntity {
 
     private String feedBack;
 

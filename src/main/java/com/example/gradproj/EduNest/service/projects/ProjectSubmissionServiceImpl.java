@@ -19,6 +19,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,7 +58,8 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
             throw new globalLogicEx("Project is not published");
         }
 
-        Student student=studentRepository.findByEmail(getCurrentStudentEmail());
+        Student student=studentRepository.findByEmail(getCurrentStudentEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("student not found"));
 
         LocalDateTime now=LocalDateTime.now();
         boolean isLate= now.isAfter(project.getEndAt());
