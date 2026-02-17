@@ -18,7 +18,7 @@ public class mentorShipFDto {
     private String title;
     private String description;
     private String category;
-    private Integer rating;
+    private Double rating;
     private DifficultyLevel difficultyLevel;
     private double price;
     private List<String> whatWillLearn;

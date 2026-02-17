@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.repository.mentorShip;
+package com.example.gradproj.EduNest.repository.mentorShip.projections;
 
 
 public interface MonthlyRevenueProjection {

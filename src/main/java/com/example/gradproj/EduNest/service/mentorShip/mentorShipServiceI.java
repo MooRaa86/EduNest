@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.*;
+import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
@@ -15,6 +16,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
+import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
@@ -46,6 +48,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final ReviewsRepository reviewsRepository;
+    private final TotalPointsRepository totalPointsRepository;
 
 
     private String getCurrentUserEmail() {
@@ -291,8 +294,8 @@ public class mentorShipServiceI implements mentorShipService{
         return imageUrl;
     }
 
-    @Transactional
     @Override
+    @Transactional
     public void joinMentorship(Long mentorshipId) {
 
         String email = getCurrentUserEmail();
@@ -310,7 +313,6 @@ public class mentorShipServiceI implements mentorShipService{
             throw new globalLogicEx("You are already enrolled in this mentorship");
         }
 
-
         Enrollment enrollment = Enrollment.builder()
                 .student(student)
                 .mentorShip(mentorShip)
@@ -318,7 +320,14 @@ public class mentorShipServiceI implements mentorShipService{
                 .joinedAt(LocalDateTime.now())
                 .build();
 
+        TotalPoints tp = TotalPoints.builder()
+                .student(student)
+                .mentorship(mentorShip)
+                .totalPoints(0)
+                .build();
+
         enrollmentRepository.save(enrollment);
+        totalPointsRepository.save(tp);
     }
 
     @Transactional
@@ -333,12 +342,11 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
-
         boolean enrolled = enrollmentRepository
                 .existsByMentorShip_IdAndStudent_Id(mentorshipId, student.getId());
 
         if (!enrolled) {
-            throw new RuntimeException("You must enroll before rating");
+            throw new globalLogicEx("You must enroll before rating");
         }
 
         MentorShipReviews existingReview =
@@ -348,20 +356,27 @@ public class mentorShipServiceI implements mentorShipService{
                 );
 
         if (existingReview != null) {
+
             existingReview.setRating(request.getRating());
             existingReview.setFeedBack(request.getFeedback());
-            return;
+
+        } else {
+
+            MentorShipReviews review = MentorShipReviews.builder()
+                    .mentorShip(mentorShip)
+                    .student(student)
+                    .rating(request.getRating())
+                    .feedBack(request.getFeedback())
+                    .build();
+
+            reviewsRepository.save(review);
         }
 
+        reviewsRepository.flush();
 
-        MentorShipReviews review = MentorShipReviews.builder()
-                .mentorShip(mentorShip)
-                .student(student)
-                .rating(request.getRating())
-                .feedBack(request.getFeedback())
-                .build();
+        Double avgRating = reviewsRepository.calculateAverageRating(mentorshipId);
 
-        reviewsRepository.save(review);
+        mentorShip.setRating(avgRating != null ? avgRating : 0.0);
     }
 
     private mentorShipFDto mapToMentorShipResponse(MentorShip mentorShip) {

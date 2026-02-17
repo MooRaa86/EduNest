@@ -1,10 +1,14 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorShipListResponse;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipStatsResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -14,5 +18,50 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @EntityGraph(attributePaths = {"tags"})
     Page<MentorShip> findAll(Pageable pageable);
+
+    @Query("""
+    SELECT 
+        m.id AS id,
+        m.title AS title,
+        m.rating AS rating,
+        COUNT(e.id) AS totalEnroll,
+        COALESCE(SUM(e.price),0) AS revenue,
+        m.createdAt AS createdDate,
+        m.difficultyLevel AS difficultyLevel
+    FROM MentorShip m
+    LEFT JOIN m.enrollments e
+    WHERE m.mentor.email = :email
+    GROUP BY m.id
+""")
+    Page<MentorShipListResponse> findMentorMentorships(
+            @Param("email") String email,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT 
+        m.title AS title,
+        m.status AS status,
+        COUNT(DISTINCT lec.id) AS totalLessons,
+        COUNT(DISTINCT q.id) AS totalQuizzes,
+        COUNT(DISTINCT t.id) AS totalAssignments,
+        COUNT(DISTINCT s.id) AS totalSessions
+    FROM MentorShip m
+    LEFT JOIN m.weeks w
+    LEFT JOIN w.lectures lec
+    LEFT JOIN w.quizzes q
+    LEFT JOIN w.tasks t
+    LEFT JOIN w.liveSessions s
+    WHERE m.id = :mentorshipId
+      AND m.mentor.email = :email
+    GROUP BY m.title, m.status
+""")
+    MentorshipStatsResponse getMentorshipStats(
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("email") String email
+    );
+
+
+
 
 }

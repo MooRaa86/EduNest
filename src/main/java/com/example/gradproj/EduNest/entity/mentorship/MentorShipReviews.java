@@ -17,7 +17,13 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "mentorship_reviews")
+@Table(
+        name = "mentorship_reviews",
+        indexes = {
+                @Index(name = "idx_mentorship_only", columnList = "mentorship_id"),
+                @Index( name = "idx_mentorship_student", columnList = "mentorship_id, student_id")
+        }
+)
 public class MentorShipReviews extends BaseEntity {
 
     private String feedBack;

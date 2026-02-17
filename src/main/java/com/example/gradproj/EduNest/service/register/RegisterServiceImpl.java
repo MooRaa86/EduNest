@@ -95,15 +95,6 @@ public class RegisterServiceImpl implements RegistrationService {
                 .phoneNumber(studentDto.getPhoneNumber())
                 .role(role)
                 .educationalLevel(studentDto.getEducationalLevel())
-//                .createdAt(LocalDateTime.now())
-//                .updatedAt(LocalDateTime.now())
-//                .createdBy(SYSTEM)
-//                .updatedBy(SYSTEM)
-
-                // after login
-                //        student.setUpdatedBy(currentUser.getUsername());
-                //        student.setUpdatedAt(LocalDateTime.now());
-
                 .enabled(false)
                 .build();
 
