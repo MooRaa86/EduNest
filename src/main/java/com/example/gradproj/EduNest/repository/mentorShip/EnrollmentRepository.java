@@ -3,6 +3,10 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -42,6 +46,26 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     List<MonthlyRevenueProjection> getMonthlyRevenueForMentor(
             @Param("email") String email,
             @Param("startDate") LocalDateTime startDate
+    );
+
+    @Query("""
+    SELECT 
+        e.student.id AS studentId,
+        e.student.firstName AS firstName,
+        e.student.lastName AS lastName,
+        e.student.email AS email,
+
+        SUM(CASE WHEN m.status = 'ACTIVE' THEN 1 ELSE 0 END) AS activeMentorshipCount,
+        SUM(CASE WHEN m.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedMentorshipCount
+
+    FROM Enrollment e
+    JOIN e.mentorShip m
+    WHERE m.mentor.email = :email
+    GROUP BY e.student.id, e.student.firstName, e.student.lastName, e.student.email
+""")
+    Page<MentorStudentListResponse> findStudentsForMentor(
+            @Param("email") String email,
+            Pageable pageable
     );
 
 

@@ -21,6 +21,8 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
             Pageable pageable
     );
 
+    Page<MentorShipReviews> findByMentorShip_Id(Long mentorShipId, Pageable pageable);
+
 
     @Query("""
     SELECT COALESCE(AVG(r.rating), 0)
@@ -28,5 +30,12 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     WHERE r.mentorShip.mentor.id = :mentorId
 """)
     Double findAverageRatingByMentorId(@Param("mentorId") Long mentorId);
+
+    @Query("""
+    SELECT AVG(r.rating)
+    FROM MentorShipReviews r
+    WHERE r.mentorShip.id = :mentorshipId
+""")
+    Double calculateAverageRating(@Param("mentorshipId") Long mentorshipId);
 
 }

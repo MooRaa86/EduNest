@@ -9,8 +9,9 @@ import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
-import com.example.gradproj.EduNest.repository.mentorShip.MonthlyRevenueProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -40,7 +41,7 @@ public class DashboardService {
     private final ReviewsRepository reviewsRepository;
     private final LiveSessionRepository liveSessionRepository;
 
-    private String getCurrentMentorEmail() {
+    private String getCurrentUserEmail() {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -52,7 +53,7 @@ public class DashboardService {
     @PreAuthorize("hasRole('MENTOR')")
     public Map<String, Object> getDashboardCardsDetails() {
 
-        Mentor mentor = mentorRepository.findByEmail(getCurrentMentorEmail())
+        Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
                 .orElseThrow(() -> new RuntimeException("Mentor not found"));
 
 
@@ -81,7 +82,7 @@ public class DashboardService {
         );
 
         Page<MentorShipReviews> reviews = reviewsRepository.
-                findByMentorShip_Mentor_Email(getCurrentMentorEmail(), pageable);
+                findByMentorShip_Mentor_Email(getCurrentUserEmail(), pageable);
 
         List<ReviewsRsponse> reviewsRsponses = reviews.getContent()
                 .stream()
@@ -104,7 +105,7 @@ public class DashboardService {
             int size
     ) {
 
-        String email = getCurrentMentorEmail();
+        String email = getCurrentUserEmail();
 
         Pageable pageable = PageRequest.of(
                 page,
@@ -142,7 +143,7 @@ public class DashboardService {
 
     public List<SalesChartResponse> getSalesChartData(Integer months) {
 
-        String email = getCurrentMentorEmail();
+        String email = getCurrentUserEmail();
 
         LocalDateTime startDate = null;
 
@@ -182,6 +183,29 @@ public class DashboardService {
                 .build();
     }
 
+    public PageResponse<MentorStudentListResponse> getStudents(
+            int page,
+            int size
+    ) {
 
+        String email = getCurrentUserEmail();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("student.firstName").ascending()
+        );
+
+        Page<MentorStudentListResponse> result =
+                enrollmentRepository.findStudentsForMentor(email, pageable);
+
+        return PageResponse.<MentorStudentListResponse>builder()
+                .content(result.getContent())
+                .page(result.getNumber())
+                .size(result.getSize())
+                .totalElements(result.getTotalElements())
+                .totalPages(result.getTotalPages())
+                .build();
+    }
 
 }
