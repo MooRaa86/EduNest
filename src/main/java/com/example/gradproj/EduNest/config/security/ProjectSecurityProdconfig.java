@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.config;
+package com.example.gradproj.EduNest.config.security;
 
 import com.example.gradproj.EduNest.config.auth.EduNestAuthenticationProvider;
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAccessDeniedHandler;
