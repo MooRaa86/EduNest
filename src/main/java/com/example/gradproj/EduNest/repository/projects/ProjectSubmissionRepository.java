@@ -6,7 +6,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,19 +13,32 @@ import java.util.Optional;
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
     List<ProjectSubmission> findByProject_id (long project_Id);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
-    @Query("""
-        SELECT ps
-        FROM ProjectSubmission ps
-        JOIN FETCH ps.project p
-        JOIN FETCH p.week w
-        JOIN FETCH w.mentorship m
-        WHERE ps.student.id = :studentId
-          AND (:status IS NULL OR ps.status = :status)
-        ORDER BY ps.submittedAt DESC
-    """)
+    @Query(
+            value = """
+    SELECT ps
+    FROM ProjectSubmission ps
+    JOIN FETCH ps.project p
+    JOIN FETCH p.week w
+    JOIN FETCH w.mentorship m
+    WHERE ps.student.id = :studentId
+      AND (:status IS NULL OR ps.status = :status)
+    ORDER BY ps.submittedAt DESC
+  """,
+            countQuery = """
+    SELECT COUNT(ps)
+    FROM ProjectSubmission ps
+    JOIN ps.project p
+    JOIN p.week w
+    JOIN w.mentorship m
+    WHERE ps.student.id = :studentId
+      AND (:status IS NULL OR ps.status = :status)
+  """
+    )
     Page<ProjectSubmission> findForStudentProfile(
-            @Param("studentId") Long studentId,
-            @Param("status") SubmissionStatus status,
+            Long studentId,
+            SubmissionStatus status,
             Pageable pageable
     );
+
+
 }

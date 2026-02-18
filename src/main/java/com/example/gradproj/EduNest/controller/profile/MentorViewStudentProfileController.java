@@ -3,6 +3,8 @@ package com.example.gradproj.EduNest.controller.profile;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
+import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.service.profile.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
@@ -40,5 +42,29 @@ public class MentorViewStudentProfileController {
 
         return ResponseEntity.ok(resp);
     }
+
+    @GetMapping("/students/{studentId}/projects")
+    @Operation(summary = "Get student projects for profile")
+    public ResponseEntity<SimpleResponse> getStudentProjects(
+            @PathVariable Long studentId,
+            @RequestParam(required = false) SubmissionStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+
+        PageResponse<StudentProjectProfileDTO> projects =
+                profileService.getStudentProjects(
+                        studentId,
+                        status,
+                        page,
+                        size
+                );
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("studentProjects", projects);
+
+        return ResponseEntity.ok(resp);
+    }
+
 
 }

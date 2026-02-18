@@ -22,6 +22,7 @@ public class StudentProjectProfileDTO {
     private LocalDateTime gradedAt;
 
     private String feedback;
+    private String submissionLink;
 
     private Integer rawScore;
     private Integer finalScore;

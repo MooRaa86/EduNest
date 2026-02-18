@@ -3,9 +3,12 @@ package com.example.gradproj.EduNest.service.profile;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
 import com.example.gradproj.EduNest.dto.profile.ProfileStudentInformationForMentorResponse;
+import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
+import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.StudentMentorProfileKpiResponse;
@@ -15,6 +18,7 @@ import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -100,5 +104,54 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
             .totalPages(page.getTotalPages())
             .build();
 }
+
+    public PageResponse<StudentProjectProfileDTO> getStudentProjects(
+            Long studentId,
+            SubmissionStatus status,
+            int page,
+            int size
+    ) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<ProjectSubmission> submissions =
+                projectSubmissionRepository
+                        .findForStudentProfile(studentId, status, pageable);
+
+        List<StudentProjectProfileDTO> content =
+                submissions.getContent()
+                        .stream()
+                        .map(this::mapToDto)
+                        .toList();
+
+        return PageResponse.<StudentProjectProfileDTO>builder()
+                .content(content)
+                .page(submissions.getNumber())
+                .size(submissions.getSize())
+                .totalElements(submissions.getTotalElements())
+                .totalPages(submissions.getTotalPages())
+                .build();
+    }
+
+    private StudentProjectProfileDTO mapToDto(ProjectSubmission ps) {
+
+        return StudentProjectProfileDTO.builder()
+                .projectSubmissionId(ps.getId())
+                .projectTitle(ps.getProject().getTitle())
+                .mentorshipTitle(
+                        ps.getProject()
+                                .getWeek()
+                                .getMentorship()
+                                .getTitle()
+                )
+                .status(ps.getStatus())
+                .submittedAt(ps.getSubmittedAt())
+                .gradedAt(ps.getGradedAt())
+                .submissionLink(ps.getFileUrl())
+                .feedback(ps.getFeedBack())
+                .rawScore(ps.getRawScore())
+                .finalScore(ps.getFinalScore())
+                .build();
+    }
 
 }
