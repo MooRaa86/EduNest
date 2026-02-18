@@ -304,7 +304,11 @@ public class mentorShipServiceI implements mentorShipService{
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
         MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
-                .orElseThrow(() -> new RuntimeException("Mentorship not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
+
+        if(mentorShip.getStatus() == Status.DRAFT) {
+            throw new globalLogicEx("You can't join this mentorship wait for be published");
+        }
 
         if (enrollmentRepository.existsByMentorShip_IdAndStudent_Id(
                 mentorshipId,
