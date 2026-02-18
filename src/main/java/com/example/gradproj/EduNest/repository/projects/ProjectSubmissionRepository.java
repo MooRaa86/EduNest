@@ -1,6 +1,9 @@
 package com.example.gradproj.EduNest.repository.projects;
 
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,16 +15,18 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
     List<ProjectSubmission> findByProject_id (long project_Id);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
     @Query("""
-    select coalesce(sum(ps.finalScore), 0)
-    from ProjectSubmission ps
-    where ps.student.id = :studentId
-      and ps.project.week.mentorship.id = :mentorshipId
-      and ps.status = com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
-      and ps.finalScore is not null
-""")
-    int sumFinalScoresForMentorship(
+        SELECT ps
+        FROM ProjectSubmission ps
+        JOIN FETCH ps.project p
+        JOIN FETCH p.week w
+        JOIN FETCH w.mentorship m
+        WHERE ps.student.id = :studentId
+          AND (:status IS NULL OR ps.status = :status)
+        ORDER BY ps.submittedAt DESC
+    """)
+    Page<ProjectSubmission> findForStudentProfile(
             @Param("studentId") Long studentId,
-            @Param("mentorshipId") Long mentorshipId
+            @Param("status") SubmissionStatus status,
+            Pageable pageable
     );
-
 }

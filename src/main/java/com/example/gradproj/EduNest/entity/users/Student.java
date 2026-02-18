@@ -29,6 +29,7 @@ public class Student extends UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false,name = "educational_level")
     private EducationalLevel educationalLevel;
+    private String address;
 
     @JsonIgnore
     @OneToMany(

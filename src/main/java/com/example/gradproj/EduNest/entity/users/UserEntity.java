@@ -35,4 +35,7 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
 
     @Column(nullable = false)
     private boolean enabled = false;
+
+    @OneToOne(mappedBy = "user")
+    private SocialMedia socialMedia;
 }

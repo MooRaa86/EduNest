@@ -1,0 +1,44 @@
+package com.example.gradproj.EduNest.controller.profile;
+
+import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
+import com.example.gradproj.EduNest.service.profile.ProfileService;
+import io.swagger.v3.oas.annotations.Operation;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/profile/students")
+@RequiredArgsConstructor
+public class MentorViewStudentProfileController {
+    private final ProfileService profileService;
+    @GetMapping("/{studentId}")
+    public ResponseEntity<SimpleResponse> getStudentProfile(@PathVariable Long studentId){
+     SimpleResponse response=new SimpleResponse();
+     response.addMessage("status","Student profile retrieved successfully");
+     response.addMessage("Student profile",profileService.profileStudentInformationForMentorResponse(studentId));
+     return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/students/{studentId}/mentorships-progress")
+    @Operation(summary = "Get enrolled mentorships progress for a student")
+    public ResponseEntity<SimpleResponse> getStudentMentorshipProgress(
+            @PathVariable Long studentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+
+        PageResponse<EnrolledMentorshipProgressDto> progress =
+                profileService.getEnrolledMentorshipProgress(studentId, PageRequest.of(page, size));
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("mentorshipProgress", progress);
+
+        return ResponseEntity.ok(resp);
+    }
+
+}

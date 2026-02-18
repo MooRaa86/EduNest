@@ -2,15 +2,17 @@ package com.example.gradproj.EduNest.service.register;
 
 import com.example.gradproj.EduNest.dto.register.MentorRequestDto;
 import com.example.gradproj.EduNest.dto.register.StudentRequestDto;
-import com.example.gradproj.EduNest.entity.*;
+import com.example.gradproj.EduNest.entity.Roles;
 import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
-import com.example.gradproj.EduNest.repository.*;
+import com.example.gradproj.EduNest.repository.OTPRepository;
+import com.example.gradproj.EduNest.repository.RoleRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
@@ -125,8 +127,12 @@ public class RegisterServiceImpl implements RegistrationService {
                 .role(role)
                 .jobTitle(mentorRequestDto.getJobTitle())
                 .bio(mentorRequestDto.getBio())
-                .linkedInUrl(mentorRequestDto.getLinkedInUrl())
-                .githubUrl(mentorRequestDto.getGithubUrl())
+                .socialMedia( SocialMedia.builder()
+                        .github(mentorRequestDto.getGithubUrl())
+                        .linkedin(mentorRequestDto.getLinkedInUrl())
+                        .build())
+//                .linkedInUrl(mentorRequestDto.getLinkedInUrl())
+//                .githubUrl(mentorRequestDto.getGithubUrl())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
 //                .createdBy(SYSTEM)
 //                .updatedBy(SYSTEM)

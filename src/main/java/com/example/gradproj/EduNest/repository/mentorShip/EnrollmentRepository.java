@@ -3,8 +3,10 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.StudentMentorProfileKpiResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -66,6 +68,91 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Page<MentorStudentListResponse> findStudentsForMentor(
             @Param("email") String email,
             Pageable pageable
+    );
+// profile total enrolled mentorships
+@Query(
+        value = """
+        SELECT
+            m.id AS mentorshipId,
+            m.title AS title,
+            m.status AS status,
+
+            COALESCE(
+                (SELECT tp.totalPoints
+                 FROM TotalPoints tp
+                 WHERE tp.student.id = :studentId
+                   AND tp.mentorship.id = m.id),
+                0
+            ) AS totalPoints,
+
+            (SELECT COUNT(DISTINCT t.id)
+             FROM Task t
+             WHERE t.week.mentorship.id = m.id) AS totalTasks,
+
+            (SELECT COUNT(DISTINCT ts.task.id)
+             FROM TaskSubmission ts
+             WHERE ts.student.id = :studentId
+               AND ts.task.week.mentorship.id = m.id
+               AND ts.status IN (
+                    com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.SUBMITTED,
+                    com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
+               )
+            ) AS submittedTasks,
+
+            (SELECT COUNT(DISTINCT q.id)
+             FROM Quiz q
+             WHERE q.week.mentorship.id = m.id) AS totalQuizzes,
+
+            (SELECT COUNT(DISTINCT qs.quiz.id)
+             FROM QuizSubmission qs
+             WHERE qs.student.id = :studentId
+               AND qs.quiz.week.mentorship.id = m.id
+            ) AS submittedQuizzes
+
+        FROM Enrollment e
+        JOIN e.mentorShip m
+        WHERE e.student.id = :studentId
+          AND m.mentor.id = :mentorId
+    """,
+        countQuery = """
+        SELECT COUNT(e.id)
+        FROM Enrollment e
+        JOIN e.mentorShip m
+        WHERE e.student.id = :studentId
+          AND m.mentor.id = :mentorId
+    """
+)
+Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMentorAndStudent(
+        @Param("mentorId") Long mentorId,
+        @Param("studentId") Long studentId,
+        Pageable pageable
+);
+
+
+
+    @Query("""
+    SELECT
+        COALESCE(SUM(tp.totalPoints), 0) AS totalPoints,
+
+        SUM(CASE WHEN m.status = com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE THEN 1 ELSE 0 END)
+        AS activeMentorships,
+
+        SUM(CASE WHEN m.status = com.example.gradproj.EduNest.enums.mentorShip.Status.COMPLETED THEN 1 ELSE 0 END)
+        AS completedMentorships
+
+    FROM Enrollment e
+    JOIN e.mentorShip m
+
+    LEFT JOIN TotalPoints tp
+           ON tp.student.id = :studentId
+          AND tp.mentorship.id = m.id
+
+    WHERE e.student.id = :studentId
+      AND m.mentor.id = :mentorId
+""")
+    StudentMentorProfileKpiResponse getStudentMentorProfileKpis(
+            @Param("mentorId") Long mentorId,
+            @Param("studentId") Long studentId
     );
 
 
