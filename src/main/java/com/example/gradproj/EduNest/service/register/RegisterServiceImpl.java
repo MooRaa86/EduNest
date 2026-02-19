@@ -20,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.thymeleaf.TemplateEngine;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -38,7 +37,6 @@ public class RegisterServiceImpl implements RegistrationService {
     private final OTPRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final TemplateEngine templateEngine;
     private final int expiryTime = 2;
 
     @Override
@@ -131,15 +129,7 @@ public class RegisterServiceImpl implements RegistrationService {
                         .github(mentorRequestDto.getGithubUrl())
                         .linkedin(mentorRequestDto.getLinkedInUrl())
                         .build())
-//                .linkedInUrl(mentorRequestDto.getLinkedInUrl())
-//                .githubUrl(mentorRequestDto.getGithubUrl())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
-//                .createdBy(SYSTEM)
-//                .updatedBy(SYSTEM)
-//                after login
-//        student.setUpdatedBy(currentUser.getUsername());
-//        student.setUpdatedAt(LocalDateTime.now());
-
                 .enabled(false)
                 .build();
 

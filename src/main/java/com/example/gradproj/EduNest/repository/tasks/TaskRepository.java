@@ -12,8 +12,6 @@ import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task,Long> {
     boolean existsById(Long id);
-    List<Task> findTaskByStatus(TaskStatus status);
-//    List<Task> findByMentorshipId(Long mentorshipId);
 List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
 
     @Query("""

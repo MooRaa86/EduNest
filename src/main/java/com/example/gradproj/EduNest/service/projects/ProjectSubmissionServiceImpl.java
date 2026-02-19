@@ -142,17 +142,18 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
 
 
     private ProjectSubmissionResponse mapToSubmissionResponse(ProjectSubmission s) {
-        ProjectSubmissionResponse res = new ProjectSubmissionResponse();
-        res.setSubmissionId(s.getId());
-        res.setProjectId(s.getProject().getId());
-        res.setStudentId(s.getStudent().getId());
-        res.setFileUrl(s.getFileUrl());
-        res.setStatus(SubmissionStatus.valueOf(s.getStatus().name()));
-        res.setIsLate(s.getIsLate());
-        res.setRawScore(s.getRawScore());
-        res.setFinalScore(s.getFinalScore());
-        res.setSubmittedAt(s.getSubmittedAt());
-        res.setFeedback(s.getFeedBack());
-        return res;
+        return ProjectSubmissionResponse.builder()
+                .submissionId(s.getId())
+                .projectId(s.getProject().getId())
+                .studentId(s.getStudent().getId())
+                .fileUrl(s.getFileUrl())
+                .status(s.getStatus()) 
+                .isLate(s.getIsLate())
+                .rawScore(s.getRawScore())
+                .finalScore(s.getFinalScore())
+                .submittedAt(s.getSubmittedAt())
+                .feedback(s.getFeedBack())
+                .build();
     }
+
 }
