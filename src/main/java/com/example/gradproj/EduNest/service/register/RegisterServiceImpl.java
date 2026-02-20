@@ -115,6 +115,10 @@ public class RegisterServiceImpl implements RegistrationService {
 
         Roles role = roleRepository.findByName(MENTOR)
                 .orElseThrow(() -> new RoleNotFoundException("Error: Role MENTOR not found."));
+        SocialMedia socialMedia = SocialMedia.builder()
+                .github(mentorRequestDto.getGithubUrl())
+                .linkedin(mentorRequestDto.getLinkedInUrl())
+                .build();
 
         Mentor mentor = Mentor.builder()
                 .firstName(mentorRequestDto.getFirstName())
@@ -125,13 +129,13 @@ public class RegisterServiceImpl implements RegistrationService {
                 .role(role)
                 .jobTitle(mentorRequestDto.getJobTitle())
                 .bio(mentorRequestDto.getBio())
-                .socialMedia( SocialMedia.builder()
-                        .github(mentorRequestDto.getGithubUrl())
-                        .linkedin(mentorRequestDto.getLinkedInUrl())
-                        .build())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
                 .enabled(false)
                 .build();
+
+// ✅ اربط من الناحيتين
+        mentor.setSocialMedia(socialMedia);
+        socialMedia.setUser(mentor);
 
         mentorRepository.save(mentor);
 
