@@ -33,7 +33,7 @@ public class Mentor extends UserEntity {
     private double yearsOfExperience;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "mentor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "mentor", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<MentorShip> mentorships = new ArrayList<>();
 
 }

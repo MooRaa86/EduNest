@@ -1,8 +1,8 @@
 package com.example.gradproj.EduNest.config.auth;
 
-import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.repository.users.projection.AuthUserProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -12,7 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,12 +22,16 @@ public class EduNestUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserEntity user = userRepository.findByEmail(username).orElseThrow(() -> new
-                UsernameNotFoundException("There is no details for email : " + username));
-        if (user.getRole() == null) {
+
+        AuthUserProjection user =
+                userRepository.findAuthUser(username)
+                        .orElseThrow(() ->
+                                new UsernameNotFoundException("User not found"));
+
+        if (user.getRoleName() == null) {
             throw new globalLogicEx("User has no role assigned!");
         }
-        String roleName = "ROLE_" + user.getRole().getName();
+        String roleName = "ROLE_" + user.getRoleName();
         List<GrantedAuthority> authorities =
                 List.of(new SimpleGrantedAuthority(roleName));
         return new User(user.getEmail(),user.getPassword(),authorities);
