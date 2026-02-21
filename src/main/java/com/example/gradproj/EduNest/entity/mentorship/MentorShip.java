@@ -25,7 +25,7 @@ public class MentorShip extends BaseEntity {
 
     private String category; // backEnd,frontEnd
 
-    private Integer rating;
+    private Double rating;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "difficulty_level")
@@ -73,7 +73,7 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<Reviews> reviews = new ArrayList<>();
+    private List<MentorShipReviews> reviews = new ArrayList<>();
 
 
     @OneToMany(mappedBy = "mentorship", cascade = CascadeType.ALL, orphanRemoval = true)

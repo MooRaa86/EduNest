@@ -1,13 +1,11 @@
 package com.example.gradproj.EduNest.service.jwt;
 
-import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.utils.Constants;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -77,6 +75,51 @@ public class JwtService implements JwtServiceI{
 
 
     }
+
+    /**
+     * WebSocket validations ->
+     *
+     * */
+
+    @Override
+    public boolean isTokenValid(String token) {
+        try {
+            SecretKey secretKey = getSecretKey();
+
+            Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token);
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public String extractUsername(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("username", String.class);
+    }
+
+    @Override
+    public String extractAuthorities(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("authorities", String.class);
+    }
+
+    @Override
+    public Claims extractAllClaims(String token) {
+        SecretKey secretKey = getSecretKey();
+
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
 
     @Override
     public SecretKey getSecretKey() {

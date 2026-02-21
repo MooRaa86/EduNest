@@ -1,7 +1,6 @@
 package com.example.gradproj.EduNest.dto.projects.request;
 
 
-import com.example.gradproj.EduNest.enums.project.ProjectDifficultyLevel;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
@@ -23,8 +22,6 @@ public class PatchProjectRequest {
 
     @Size(min = 5, max = 255, message = "goal must be between 5 and 255 characters")
     private String goal;
-
-//    private ProjectDifficultyLevel difficulty;
 
     @Size(min = 10, max = 10000, message = "brief must be between 10 and 10000 characters")
     private String brief;

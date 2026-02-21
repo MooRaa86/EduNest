@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Tag(
         name = "Week",
-        description = "APIS of week functionality"
+        description = "APIS of week functionality create , delete , update , get weeks of mentorShip , get content of this weeks"
 )
 public class WeekController {
     private final WeekService weekService;
@@ -42,7 +42,7 @@ public class WeekController {
     @PatchMapping("/{id}")
     @Operation(summary = "update the week title")
     public ResponseEntity<SimpleResponse>update(@PathVariable Long id, @RequestBody UpdateWeekRequest updateWeekRequest) {
-        WeekResponse update = weekService.udateWeekTitle(id, updateWeekRequest);
+        WeekResponse update = weekService.updateWeekTitle(id, updateWeekRequest);
 
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "week updated successfully");

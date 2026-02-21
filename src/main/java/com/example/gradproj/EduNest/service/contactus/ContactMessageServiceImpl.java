@@ -21,13 +21,15 @@ public class ContactMessageServiceImpl implements ContactMessageService {
 
     @Override
     public void saveContactMessage(ContactMessageRequestDto dto) {
-        ContactMessageEntity entity = new ContactMessageEntity();
-        entity.setName(dto.getName());
-        entity.setEmail(dto.getEmail());
-        entity.setPhone(dto.getPhone());
-        entity.setMessage(dto.getMessage());
-        entity.setCreatedBy(SYSTEM);
-        entity.setUpdatedBy(SYSTEM);
+        ContactMessageEntity entity = ContactMessageEntity.builder()
+                .name(dto.getName())
+                .email(dto.getEmail())
+                .phone(dto.getPhone())
+                .message(dto.getMessage())
+                .createdBy(SYSTEM)
+                .updatedBy(SYSTEM)
+                .build();
+
 
         contactMessageRepository.save(entity);
     }
@@ -38,11 +40,13 @@ public class ContactMessageServiceImpl implements ContactMessageService {
 
         List<ContactMessageRequestDto> messages = new ArrayList<>();
         for (ContactMessageEntity entity : entities) {
-            ContactMessageRequestDto messageDto = new ContactMessageRequestDto();
-            messageDto.setName(entity.getName());
-            messageDto.setEmail(entity.getEmail());
-            messageDto.setPhone(entity.getPhone());
-            messageDto.setMessage(entity.getMessage());
+            ContactMessageRequestDto messageDto = ContactMessageRequestDto.builder()
+                    .name(entity.getName())
+                    .email(entity.getEmail())
+                    .phone(entity.getPhone())
+                    .message(entity.getMessage())
+                    .build();
+
 
 
             messages.add(messageDto);

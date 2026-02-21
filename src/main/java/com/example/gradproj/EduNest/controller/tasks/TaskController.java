@@ -23,7 +23,7 @@ import org.springframework.data.domain.Pageable;
 @RequestMapping("/api/v1/task")
 @Tag(
         name = "task",
-        description = "APIS"
+        description = "APIs for managing Tasks (create, update, delete, filter, dashboard"
 )
 public class TaskController {
     private final TaskService taskService;

@@ -1,9 +1,11 @@
 package com.example.gradproj.EduNest.entity.quiz;
 
+import com.example.gradproj.EduNest.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(
@@ -14,12 +16,8 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class StudentAnswer {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+public class StudentAnswer extends BaseEntity {
 
     @NotNull(message = "Quiz submission must not be null")
     @ManyToOne(fetch = FetchType.LAZY)

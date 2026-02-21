@@ -25,7 +25,6 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
             @Param("status") QuizStatus status,
             Pageable pageable
     );
-//    List<Quiz> findByMentorship_Id(Long mentorshipId);
     List<Quiz> findByWeek_Mentorship_Id(Long mentorshipId);
     void deleteById(Long id);
     List<Quiz> findByWeek_Id(Long weekId);

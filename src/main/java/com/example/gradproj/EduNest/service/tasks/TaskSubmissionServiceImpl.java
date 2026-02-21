@@ -10,7 +10,6 @@ import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
@@ -18,6 +17,7 @@ import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,10 +32,8 @@ import java.util.stream.Collectors;
 public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskRepository taskRepository;
     private final TaskSubmissionRepository submissionRepository;
-    private final TaskSubmissionRepository taskSubmissionRepository;
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
-    private final TotalPointsRepository totalPointsRepository;
 
 
 
@@ -58,7 +56,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             throw new globalLogicEx("Task is not published");
         }
 
-        Student student=studentRepository.findByEmail(getCurrentStudentEmail());
+        Student student=studentRepository.findByEmail(getCurrentStudentEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
         LocalDateTime now=LocalDateTime.now();
         boolean isLate= now.isAfter(task.getDueAt());
@@ -125,8 +124,6 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
 
         MentorShip mentorship = task.getWeek().getMentorship();
-
-//        //--------------------------------------- remove points applied
         int newScore = sub.getFinalScore();
         int oldApplied = (sub.getPointsApplied() == null) ? 0 : sub.getPointsApplied();
         int delta = newScore - oldApplied;
@@ -144,17 +141,18 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
 
     private TaskSubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
-        TaskSubmissionResponse res = new TaskSubmissionResponse();
-        res.setSubmissionId(s.getId());
-        res.setTaskId(s.getTask().getId());
-        res.setStudentId(s.getStudent().getId());
-        res.setFileUrl(s.getFileUrl());
-        res.setStatus(SubmissionStatus.valueOf(s.getStatus().name()));
-        res.setIsLate(s.getIsLate());
-        res.setRawScore(s.getRawScore());
-        res.setFinalScore(s.getFinalScore());
-        res.setSubmittedAt(s.getSubmittedAt());
-        res.setFeedback(s.getFeedBack());
-        return res;
+        return TaskSubmissionResponse.builder()
+                .submissionId(s.getId())
+                .taskId(s.getTask().getId())
+                .studentId(s.getStudent().getId())
+                .fileUrl(s.getFileUrl())
+                .status(SubmissionStatus.valueOf(s.getStatus().name()))
+                .isLate(s.getIsLate())
+                .rawScore(s.getRawScore())
+                .finalScore(s.getFinalScore())
+                .submittedAt(s.getSubmittedAt())
+                .feedback(s.getFeedBack())
+                .build();
     }
+
 }

@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
@@ -32,5 +33,9 @@ public interface mentorShipService {
     long countStudentsforMentor();
 
     String uploadCoverImage(Long mentorshipId, MultipartFile image);
+
+    void joinMentorship(Long mentorshipId);
+
+    void rateMentorship(Long mentorshipId, CreateReviewRequest request);
 }
 

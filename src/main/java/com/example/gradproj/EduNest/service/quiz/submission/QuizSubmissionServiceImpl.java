@@ -21,10 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,7 +59,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         Student student = studentRepository
-                .findByEmail(getCurrentStudentEmail());
+                .findByEmail(getCurrentStudentEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
         if (quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Quiz is not available");
@@ -83,24 +84,23 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .quiz(quiz)
                 .student(student)
                 .score(score.getTotalScore())
-                .submittedAt(LocalDateTime.now())
                 .build();
-
 
         List<StudentAnswer> studentAnswers =
                 quizSubmissionDTO.getAnswers().stream()
-                        .map(dto -> {
+                        .<StudentAnswer>map(dto -> {
                             Question question = questions.get(dto.getQuestionId());
                             if (question == null) {
                                 throw new globalLogicEx("Question with id " + dto.getQuestionId() + " does not exist in this quiz");
                             }
-                        return StudentAnswer.builder()
-                                .submission(quizSubmission)
-                                .question(question)
-                                .selectedAnswer(dto.getSelectedAnswer())
-                                .build();
-    })
+                            return StudentAnswer.builder()
+                                    .submission(quizSubmission)
+                                    .question(question)
+                                    .selectedAnswer(dto.getSelectedAnswer())
+                                    .build();
+                        })
                         .toList();
+
 
         quizSubmission.setAnswers(studentAnswers);
 
@@ -114,7 +114,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .studentId(student.getId())
                 .quizId(quiz.getId())
                 .score(saved.getScore())
-                .submittedAt(saved.getSubmittedAt())
                 .build();
 
     }
@@ -126,7 +125,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         return submission.getAnswers().stream()
                 .map(ans -> StudentAnswerDTO.builder()
-//                        .submissionId(ans.getSubmission().getId())
                         .questionId(ans.getQuestion().getId())
                         .selectedAnswer(ans.getSelectedAnswer())
                         .build())
@@ -141,7 +139,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                         .studentId(studentId)
                         .quizId(sub.getQuiz().getId())
                         .score(sub.getScore())
-                        .submittedAt(sub.getSubmittedAt())
                         .build())
                 .toList();
     }
@@ -155,7 +152,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                         .studentId(sub.getStudent().getId())
                         .quizId(sub.getQuiz().getId())
                         .score(sub.getScore())
-                        .submittedAt(sub.getSubmittedAt())
                         .build())
                 .toList();
     }

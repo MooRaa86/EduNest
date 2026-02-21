@@ -1,7 +1,6 @@
 package com.example.gradproj.EduNest.repository.projects;
 
 import com.example.gradproj.EduNest.entity.projects.Project;
-import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,8 +12,6 @@ import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<Project,Long> {
     boolean existsById(Long id);
-    List<Task> findProjectByStatus(ProjectStatus status);
-//    List<Project> findByMentorshipId(Long mentorshipId);
     List<Project> findByWeek_Mentorship_Id(Long mentorshipId);
 
     @Query("""

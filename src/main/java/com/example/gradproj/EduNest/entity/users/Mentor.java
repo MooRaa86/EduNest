@@ -28,11 +28,7 @@ public class Mentor extends UserEntity {
 
     @Column(length = 500,name = "bio")
     private String bio;
-
-    @Column(name = "linked_in_url")
-    private String linkedInUrl;
-    @Column(name = "github_url")
-    private String githubUrl;
+    
     @Column(name = "years_of_experience")
     private double yearsOfExperience;
 

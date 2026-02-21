@@ -2,15 +2,17 @@ package com.example.gradproj.EduNest.service.register;
 
 import com.example.gradproj.EduNest.dto.register.MentorRequestDto;
 import com.example.gradproj.EduNest.dto.register.StudentRequestDto;
-import com.example.gradproj.EduNest.entity.*;
+import com.example.gradproj.EduNest.entity.Roles;
 import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
-import com.example.gradproj.EduNest.repository.*;
+import com.example.gradproj.EduNest.repository.OTPRepository;
+import com.example.gradproj.EduNest.repository.RoleRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
@@ -18,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.thymeleaf.TemplateEngine;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -36,7 +37,6 @@ public class RegisterServiceImpl implements RegistrationService {
     private final OTPRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final TemplateEngine templateEngine;
     private final int expiryTime = 2;
 
     @Override
@@ -95,15 +95,6 @@ public class RegisterServiceImpl implements RegistrationService {
                 .phoneNumber(studentDto.getPhoneNumber())
                 .role(role)
                 .educationalLevel(studentDto.getEducationalLevel())
-//                .createdAt(LocalDateTime.now())
-//                .updatedAt(LocalDateTime.now())
-//                .createdBy(SYSTEM)
-//                .updatedBy(SYSTEM)
-
-                // after login
-                //        student.setUpdatedBy(currentUser.getUsername());
-                //        student.setUpdatedAt(LocalDateTime.now());
-
                 .enabled(false)
                 .build();
 
@@ -124,6 +115,10 @@ public class RegisterServiceImpl implements RegistrationService {
 
         Roles role = roleRepository.findByName(MENTOR)
                 .orElseThrow(() -> new RoleNotFoundException("Error: Role MENTOR not found."));
+        SocialMedia socialMedia = SocialMedia.builder()
+                .github(mentorRequestDto.getGithubUrl())
+                .linkedin(mentorRequestDto.getLinkedInUrl())
+                .build();
 
         Mentor mentor = Mentor.builder()
                 .firstName(mentorRequestDto.getFirstName())
@@ -134,17 +129,13 @@ public class RegisterServiceImpl implements RegistrationService {
                 .role(role)
                 .jobTitle(mentorRequestDto.getJobTitle())
                 .bio(mentorRequestDto.getBio())
-                .linkedInUrl(mentorRequestDto.getLinkedInUrl())
-                .githubUrl(mentorRequestDto.getGithubUrl())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
-//                .createdBy(SYSTEM)
-//                .updatedBy(SYSTEM)
-//                after login
-//        student.setUpdatedBy(currentUser.getUsername());
-//        student.setUpdatedAt(LocalDateTime.now());
-
                 .enabled(false)
                 .build();
+
+// ✅ اربط من الناحيتين
+        mentor.setSocialMedia(socialMedia);
+        socialMedia.setUser(mentor);
 
         mentorRepository.save(mentor);
 

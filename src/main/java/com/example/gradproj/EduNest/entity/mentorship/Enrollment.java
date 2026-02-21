@@ -2,9 +2,12 @@ package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Student;
-import jakarta.persistence.Entity;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +17,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Enrollment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -24,6 +27,12 @@ public class Enrollment extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorShip;
+
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "mentor_id", nullable = false)
+//    private Mentor mentor;
+
+    private Double price;
 
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
