@@ -10,18 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class TotalPointsServiceImp implements TotalPointsService {
+public class TotalPointsServiceImp{
     private final TotalPointsRepository totalPointsRepository;
 
-    @Transactional(readOnly = true)
-    public int getTotalPoints(Long studentId, Long mentorshipId) {
-        return totalPointsRepository
-                .findByStudent_IdAndMentorship_Id(studentId, mentorshipId)
-                .map(TotalPoints::getTotalPoints)
-                .orElse(0);
-    }
     @Transactional
-    @Override
     public void applyDelta(Student student, MentorShip mentorship, int delta) {
         if (delta == 0) return;
 

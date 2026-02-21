@@ -14,8 +14,6 @@ import java.util.Optional;
 
 public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
     Optional<TotalPoints> findByStudent_IdAndMentorship_Id(Long studentId, Long mentorshipId);
-
-    boolean existsByStudent_IdAndMentorship_Id(Long studentId, Long mentorshipId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select tp from TotalPoints tp

@@ -48,7 +48,6 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public List<QuestionResponseDTO> getQuestionsByQuizId(Long quizId) {
-//        quizRepository.findById(quizId).orElseThrow(() -> new globalLogicEx("Quiz not found"));
         if (!quizRepository.existsById(quizId)) {
             throw  new globalLogicEx("Quiz not found");
         }

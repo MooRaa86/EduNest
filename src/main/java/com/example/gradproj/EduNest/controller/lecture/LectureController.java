@@ -41,7 +41,7 @@ public class LectureController {
     @PatchMapping("/{id}")
     @Operation(summary = "Update lecture from week by it's id")
 
-    public ResponseEntity<SimpleResponse> updateLecture(@PathVariable Long id, UpdeteLectureRequest updeteLectureRequest){
+    public ResponseEntity<SimpleResponse> updateLecture(@PathVariable Long id,@RequestBody UpdeteLectureRequest updeteLectureRequest){
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","lecture updated successfully");
         simpleResponse.addMessage("lecture",lectureService.updateLecture(id,updeteLectureRequest));
@@ -55,5 +55,16 @@ public class LectureController {
         simpleResponse.addMessage("lecture",lectureService.getLectureById(id));
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
+    @GetMapping("/week/{weekId}")
+    @Operation(summary = "Get all lectures by week id")
+    public ResponseEntity<SimpleResponse> getLecturesByWeekId(@PathVariable Long weekId) {
+
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "lectures fetched successfully");
+        simpleResponse.addMessage("lectures", lectureService.getLecturesByWeekId(weekId));
+
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
 
 }

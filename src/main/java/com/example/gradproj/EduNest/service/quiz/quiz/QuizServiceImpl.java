@@ -36,9 +36,6 @@ public class QuizServiceImpl implements QuizService {
     @Override
     @Transactional
     public QuizResponseDTO createQuiz(QuizCreateDTO quizCreateDTO) {
-
-//        MentorShip mentorship = mentorshipRepository.findById(quizCreateDTO.getMentorshipId())
-//                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
         Week week=weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
                 ()->new globalLogicEx("Week not found")
         );
@@ -48,7 +45,6 @@ public class QuizServiceImpl implements QuizService {
                 .title(quizCreateDTO.getTitle())
                 .durationMinutes(quizCreateDTO.getDurationMinutes())
                 .description(quizCreateDTO.getDescription())
-//                .mentorship(mentorship)
                 .week(week)
                 .status(quizCreateDTO.getStatus() != null ? quizCreateDTO.getStatus() : QuizStatus.DRAFT)
                 .build();
@@ -69,10 +65,6 @@ public class QuizServiceImpl implements QuizService {
     @Override
     @Transactional
     public void deleteQuiz(Long id) {
-//        Quiz quiz = quizRepository.findById(id)
-//                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
-//
-//        quizRepository.delete(quiz);
         if (!quizRepository.existsById(id)) {
          throw  new globalLogicEx("Quiz not found");
         }
@@ -89,11 +81,6 @@ public class QuizServiceImpl implements QuizService {
         if (quizUpdateDto.getTitle() != null) quiz.setTitle(quizUpdateDto.getTitle());
         if (quizUpdateDto.getDescription() != null) quiz.setDescription(quizUpdateDto.getDescription());
         if (quizUpdateDto.getDurationMinutes() != null) quiz.setDurationMinutes(quizUpdateDto.getDurationMinutes());
-//        if (quizUpdateDto.getMentorshipId() != null) {
-//            mentorShipE mentorship = mentorshipRepository.findById(quizUpdateDto.getMentorshipId())
-//                    .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
-//            quiz.setMentorship(mentorship);
-//        }
         if (quizUpdateDto.getStatus() != null) quiz.setStatus(quizUpdateDto.getStatus());
 
 
@@ -154,8 +141,6 @@ public class QuizServiceImpl implements QuizService {
     @Override
     public QuizDashboardDTO getQuizDashboard(Long mentorShipId) {
 
-//        MentorShip mentorShip = mentorshipRepository.findById(mentorShipId)
-//                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
         if (!(mentorshipRepository.existsById(mentorShipId)))
         {
             throw  new globalLogicEx("MentorShip not found");
@@ -196,7 +181,7 @@ public class QuizServiceImpl implements QuizService {
 
         return QuizStatisticsDTO.builder()
                 .status(quiz.getStatus())
-                .averageScore(calculateAverageScore(quiz))    //quiz.getMentorship().getStudents().size()
+                .averageScore(calculateAverageScore(quiz))
                 .totalStudents(quiz.getWeek().getMentorship() != null ? enrollmentRepository.countByMentorShip(quiz.getWeek().getMentorship()) : 0)
                 .totalSubmissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .totalPoints(totalPoints)

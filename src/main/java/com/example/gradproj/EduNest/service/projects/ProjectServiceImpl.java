@@ -33,8 +33,6 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req) {
-//        MentorShip mentorship = MentorShipRepository.findById(req.getMentorshipId())
-//                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
         Week week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
         if (req.getEndAt().isBefore(req.getStartAt())) {
             throw new globalLogicEx("endAt must be after startAt");
@@ -49,7 +47,6 @@ public class ProjectServiceImpl implements ProjectService{
                 .endAt(req.getEndAt())
                 .points(req.getPoints())
                 .status(req.getStatus())
-//                .mentorship(mentorship)
                 .week(week)
                 .build();
         projectRepository.save(project);
@@ -183,7 +180,6 @@ public class ProjectServiceImpl implements ProjectService{
                 .endAt(project.getEndAt())
                 .points(project.getPoints())
                 .status(project.getStatus().name())
-//                .mentorshipId(project.getMentorship().getId())
                 .weekId(project.getWeek().getId())
                 .createdAt(project.getCreatedAt())
                 .build();

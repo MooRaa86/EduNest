@@ -61,7 +61,7 @@ public LectureResponse updateLecture(Long lectureId, UpdeteLectureRequest reques
         return mapToLectureResponse(lecture);
     }
     public List<LectureResponse> getLecturesByWeekId(Long weekId){
-        List<Lecture> lectures=lectureRepository.findByWeekId(weekId);
+        List<Lecture> lectures=lectureRepository.findByWeek_Id(weekId);
         return lectures.stream().map(this::mapToLectureResponse).toList();
     }
 }

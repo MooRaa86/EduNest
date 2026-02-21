@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Quiz extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -15,7 +15,7 @@ import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
-import com.example.gradproj.EduNest.service.points.TotalPointsService;
+import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +36,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final StudentRepository studentRepository;
     private final AttendanceRepository attendanceRepository;
     private final JitsiService jitsiService;
-    private final TotalPointsService  totalPointsService;
+    private final TotalPointsServiceImp totalPointsService;
 
     @Override
     public SessionResponseDto createSession(CreateSessionDto createSessionDto) {
