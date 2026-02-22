@@ -10,6 +10,7 @@ import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
@@ -34,6 +35,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TaskSubmissionRepository submissionRepository;
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
+    private final EnrollmentRepository enrollmentRepository;
 
 
 
@@ -50,14 +52,26 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     @Override
     public TaskSubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
         Task task= taskRepository.findById(taskId).orElseThrow(() ->
-                new IllegalArgumentException("Task not found"));
+                new globalLogicEx("Task not found"));
 
         if (task.getStatus()!= TaskStatus.PUBLISHED){
             throw new globalLogicEx("Task is not published");
         }
-
+        MentorShip mentorShip = task.getWeek().getMentorship();
         Student student=studentRepository.findByEmail(getCurrentStudentEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+
+        boolean isEnrolled = enrollmentRepository
+                .existsByMentorShip_IdAndStudent_Id(
+                        mentorShip.getId(),
+                        student.getId()
+                );
+
+        if (!isEnrolled) {
+            throw new globalLogicEx("You must enroll in this mentorship before submitting tasks.");
+        }
+
+
 
         LocalDateTime now=LocalDateTime.now();
         boolean isLate= now.isAfter(task.getDueAt());

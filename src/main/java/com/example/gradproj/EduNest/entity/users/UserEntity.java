@@ -36,6 +36,11 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
     @Column(nullable = false)
     private boolean enabled = false;
 
-    @OneToOne(mappedBy = "user",fetch = FetchType.LAZY)
+    @OneToOne(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
     private SocialMedia socialMedia;
 }

@@ -42,7 +42,8 @@ public class ProjectSecurityConfig {
                                 "/v3/api-docs.yaml",
                                 "/swagger-resources/**",
                                 "/api/auth/**",
-                                "/api/v1/**"
+                                "/api/v1/**",
+                                "/api/v1/contact/**"
                         ).permitAll()
                         .anyRequest().permitAll()
                 );
