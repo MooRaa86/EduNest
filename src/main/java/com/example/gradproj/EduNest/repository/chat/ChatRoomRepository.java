@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
@@ -24,7 +25,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 """)
     List<ChatRoomProjection> findRoomsByMentorship(Long mentorshipId);
 
-
+    @Query("""
+   SELECT r
+   FROM ChatRoom r
+   WHERE r.id = :id
+""")
+    Optional<ChatRoom> findRoomById(Long id);
 
 
 

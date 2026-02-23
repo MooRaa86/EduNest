@@ -6,7 +6,6 @@ import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
@@ -51,51 +50,51 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     public TaskSubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
-        Task task= taskRepository.findById(taskId).orElseThrow(() ->
-                new globalLogicEx("Task not found"));
 
-        if (task.getStatus()!= TaskStatus.PUBLISHED){
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        if (task.getStatus() != TaskStatus.PUBLISHED) {
             throw new globalLogicEx("Task is not published");
         }
-        MentorShip mentorShip = task.getWeek().getMentorship();
-        Student student=studentRepository.findByEmail(getCurrentStudentEmail())
+
+        String email = getCurrentStudentEmail();
+
+        Long studentId = studentRepository.findIdByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
-        boolean isEnrolled = enrollmentRepository
-                .existsByMentorShip_IdAndStudent_Id(
-                        mentorShip.getId(),
-                        student.getId()
-                );
+        boolean isEnrolled = enrollmentRepository.isStudentEnrolledForTask(taskId, studentId);
 
         if (!isEnrolled) {
             throw new globalLogicEx("You must enroll in this mentorship before submitting tasks.");
         }
 
+        LocalDateTime now = LocalDateTime.now();
+        boolean isLate = now.isAfter(task.getDueAt());
 
+        Optional<TaskSubmission> existingOpt =
+                submissionRepository.findByTask_IdAndStudent_Id(taskId, studentId);
 
-        LocalDateTime now=LocalDateTime.now();
-        boolean isLate= now.isAfter(task.getDueAt());
-
-        Optional<TaskSubmission> existingOpt=submissionRepository.findByTask_IdAndStudent_Id(taskId,student.getId());
-
-        if (isLate && existingOpt.isPresent()){
-            throw  new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        if (isLate && existingOpt.isPresent()) {
+            throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
-
 
         TaskSubmission sub = existingOpt.orElseGet(() -> {
             TaskSubmission s = new TaskSubmission();
-            s.setTask(task);
-            s.setStudent(student);
+
+            // IMPORTANT: references (proxies) بدون تحميل كامل
+            s.setTask(taskRepository.getReferenceById(taskId));
+            s.setStudent(studentRepository.getReferenceById(studentId));
+
             s.setStatus(SubmissionStatus.SUBMITTED);
             return s;
         });
-
 
         sub.setFileUrl(req.getFileUrl());
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
+
         sub.setRawScore(null);
         sub.setFinalScore(null);
         sub.setFeedBack(null);

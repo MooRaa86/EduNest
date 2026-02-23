@@ -10,4 +10,5 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
     List<TaskSubmission> findByTask_id (long task_id);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);
 
+
 }
