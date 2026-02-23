@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.service.profile.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -16,10 +17,19 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/profile/students")
 @RequiredArgsConstructor
+@Tag(
+        name = "Student profile for mentor",
+        description = "student profile statistics"
+)
 public class MentorViewStudentProfileController {
+
     private final ProfileService profileService;
+
     @GetMapping("/{studentId}")
-    public ResponseEntity<SimpleResponse> getStudentProfile(@PathVariable Long studentId){
+    @Operation(summary = "get cards and student info")
+    public ResponseEntity<SimpleResponse> getStudentProfile(
+            @PathVariable Long studentId
+    ){
      SimpleResponse response=new SimpleResponse();
      response.addMessage("status","Student profile retrieved successfully");
      response.addMessage("Student profile",profileService.profileStudentInformationForMentorResponse(studentId));

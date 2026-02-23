@@ -27,7 +27,11 @@ public class EduNestAuthenticationProvider implements AuthenticationProvider {
         String pwd = authentication.getCredentials().toString();
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-        if(!(userRepository.findByEmail(username).get().isEnabled())) {
+        Boolean enabled = userRepository.isUserEnabled(username)
+                .orElseThrow(() ->
+                        new BadCredentialsException("User not found"));
+
+        if (!enabled) {
             throw new globalLogicEx("This account is not verified, request a new otp...");
         }
 

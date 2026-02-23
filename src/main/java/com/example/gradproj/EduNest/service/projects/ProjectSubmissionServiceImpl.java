@@ -6,10 +6,10 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionRespo
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
@@ -36,6 +36,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
+    private final EnrollmentRepository enrollmentRepository;
 
     private String getCurrentStudentEmail() {
         Authentication authentication =
@@ -53,37 +54,51 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
 
     @Override
     public ProjectSubmissionResponse submit(Long projectId, SubmitProjectRequest req) {
-        Project project= projectRepository.findById(projectId).orElseThrow(() -> new IllegalArgumentException("project not found"));
-        if (project.getStatus() != ProjectStatus.PUBLISHED){
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("project not found"));
+
+        if (project.getStatus() != ProjectStatus.PUBLISHED) {
             throw new globalLogicEx("Project is not published");
         }
 
-        Student student=studentRepository.findByEmail(getCurrentStudentEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("student not found"));
+        String email = getCurrentStudentEmail();
 
-        LocalDateTime now=LocalDateTime.now();
-        boolean isLate= now.isAfter(project.getEndAt());
+        Long studentId = studentRepository.findIdByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
-        Optional<ProjectSubmission> existingOpt=projectSubmissionRepository.findByProject_IdAndStudent_Id(projectId,student.getId());
+        boolean isEnrolled = enrollmentRepository.isStudentEnrolledForProject(projectId, studentId);
 
-        if (existingOpt.isPresent()&&isLate){
-            throw  new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        if (!isEnrolled) {
+            throw new globalLogicEx("You must enroll in this mentorship before submitting tasks.");
         }
 
+        LocalDateTime now = LocalDateTime.now();
+        boolean isLate = now.isAfter(project.getEndAt());
+
+        Optional<ProjectSubmission> existingOpt =
+                projectSubmissionRepository.findByProject_IdAndStudent_Id(projectId, studentId);
+
+        if (existingOpt.isPresent() && isLate) {
+            throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        }
 
         ProjectSubmission sub = existingOpt.orElseGet(() -> {
             ProjectSubmission s = new ProjectSubmission();
-            s.setProject(project);
-            s.setStudent(student);
+
+            // references (proxies) بدون SELECT إضافي
+            s.setProject(projectRepository.getReferenceById(projectId));
+            s.setStudent(studentRepository.getReferenceById(studentId));
+
             s.setStatus(SubmissionStatus.SUBMITTED);
             return s;
         });
-
 
         sub.setFileUrl(req.getFileUrl());
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
+
         sub.setRawScore(null);
         sub.setFinalScore(null);
         sub.setFeedBack(null);

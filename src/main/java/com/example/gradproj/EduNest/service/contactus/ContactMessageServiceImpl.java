@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.example.gradproj.EduNest.utils.SystemUtils.SYSTEM;
-
 @Service
 public class ContactMessageServiceImpl implements ContactMessageService {
 
@@ -26,8 +24,6 @@ public class ContactMessageServiceImpl implements ContactMessageService {
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
                 .message(dto.getMessage())
-                .createdBy(SYSTEM)
-                .updatedBy(SYSTEM)
                 .build();
 
 

@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.service.jwt;
 
+import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.repository.users.projection.UserFullNameProjection;
 import com.example.gradproj.EduNest.utils.Constants;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -25,7 +27,9 @@ import java.util.stream.Collectors;
 public class JwtService implements JwtServiceI{
 
     private static final String DEFAULT_SECRET = Constants.JWT_SECRET_DEFAULT_VALUE;
-    private static final long EXPIRATION_TIME_MS = 24 * (1000 * 60 * 60);
+    private static final long EXPIRATION_TIME_MS = 7 * (24 * (1000 * 60 * 60));
+
+    private final UserRepository userRepository;
 
     private final Environment env;
 
@@ -48,6 +52,10 @@ public class JwtService implements JwtServiceI{
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
+        UserFullNameProjection user =
+                userRepository.findFullNameByEmail(username)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
         return Jwts.builder()
                 .issuer("EduNest")
                 .subject("JWT Token")
@@ -55,6 +63,7 @@ public class JwtService implements JwtServiceI{
                 .expiration(new Date(new Date().getTime() + EXPIRATION_TIME_MS))
                 .claim("username", username)
                 .claim("authorities", authorities)
+                .claim("fullName", user.getFullName())
                 .signWith(secretKey)
                 .compact();
     }
@@ -98,7 +107,7 @@ public class JwtService implements JwtServiceI{
     }
 
     @Override
-    public String extractUsername(String token) {
+    public String extractUserEmail(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("username", String.class);
     }
@@ -107,6 +116,13 @@ public class JwtService implements JwtServiceI{
     public String extractAuthorities(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("authorities", String.class);
+    }
+
+    @Override
+    public String getFullName(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("fullName", String.class);
+
     }
 
     @Override

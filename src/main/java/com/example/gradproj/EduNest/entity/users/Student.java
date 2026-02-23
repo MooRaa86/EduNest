@@ -35,7 +35,8 @@ public class Student extends UserEntity {
     @OneToMany(
             mappedBy = "student",
             cascade = CascadeType.ALL,
-            orphanRemoval = true
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
     )
     private List<Enrollment> enrollments = new ArrayList<>();
 
@@ -43,7 +44,8 @@ public class Student extends UserEntity {
     @OneToMany(
             mappedBy = "student",
             cascade = CascadeType.ALL,
-            orphanRemoval = true
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
     )
     private List<MentorShipReviews> reviews = new ArrayList<>();
 

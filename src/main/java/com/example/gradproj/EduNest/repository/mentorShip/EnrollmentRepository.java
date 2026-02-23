@@ -156,6 +156,20 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     );
 
 
+    @Query("""
+    SELECT COUNT(e) > 0
+    FROM Enrollment e
+    WHERE e.mentorShip.id = (
+        SELECT r.mentorship.id
+        FROM ChatRoom r
+        WHERE r.id = :roomId
+    )
+    AND e.student.email = :email
+""")
+    boolean isUserInRoomMentorship(
+            Long roomId,
+            String email
+    );
 
     List<Enrollment> findByStudent_Id(long studentId);
 
@@ -165,4 +179,28 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
 
     int countByMentorShip(MentorShip mentorShip);
     boolean existsByMentorShip_IdAndStudent_Id(Long mentorshipId, Long studentId);
+
+    @Query("""
+        select (count(e) > 0)
+        from Enrollment e
+        where e.student.id = :studentId
+          and e.mentorShip.id =
+              (select t.week.mentorship.id
+               from Task t
+               where t.id = :taskId)
+    """)
+    boolean isStudentEnrolledForTask(@Param("taskId") Long taskId,
+                                     @Param("studentId") Long studentId);
+
+    @Query("""
+        select (count(e) > 0)
+        from Enrollment e
+        where e.student.id = :studentId
+          and e.mentorShip.id =
+              (select p.week.mentorship.id
+               from Project p
+               where p.id = :projectId)
+    """)
+    boolean isStudentEnrolledForProject(@Param("projectId") Long projectId,
+                                        @Param("studentId") Long studentId);
 }

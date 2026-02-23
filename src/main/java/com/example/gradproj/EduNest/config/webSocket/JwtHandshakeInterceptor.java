@@ -33,9 +33,9 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             HttpServletRequest httpRequest =
                     servletRequest.getServletRequest();
 
-            String token = httpRequest.getHeader("Authorization");
+            String token = httpRequest.getParameter("Authorization");
 
-            if (token == null ) {
+            if (token == null) {
                 return false;
             }
 
@@ -43,15 +43,16 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                 return false;
             }
 
-            String username = jwtService.extractUsername(token);
-            String authorities = jwtService.extractAuthorities(token);
+            String email = jwtService.extractUserEmail(token);
+            String fullName = jwtService.getFullName(token);
 
-            attributes.put("username", username);
-            attributes.put("authorities", authorities);
+            attributes.put("email", email);
+            attributes.put("fullName", fullName);
         }
 
         return true;
     }
+
 
     @Override
     public void afterHandshake(

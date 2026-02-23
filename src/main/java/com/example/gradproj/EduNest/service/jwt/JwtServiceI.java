@@ -9,7 +9,8 @@ public interface JwtServiceI {
     void validateToken(String token);
     SecretKey getSecretKey();
     boolean isTokenValid(String token);
-    String extractUsername(String token);
+    String extractUserEmail(String token);
     String extractAuthorities(String token);
     Claims extractAllClaims(String token);
+    String getFullName(String token);
 }

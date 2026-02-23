@@ -4,6 +4,8 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -107,6 +109,28 @@ public class GlobalExceptionHandler{
     public ResponseEntity<ErrorResponse> handleInvalidJwtToken(InvalidJwtToken ex) {
         return buildErrorResponse("error", ex.getMessage(), HttpStatus.UNAUTHORIZED);
     }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<?> handleEntityNotFound(
+            EntityNotFoundException ex
+    ) {
+
+        return buildErrorResponse("error","entity not found maybe id is invalid bro :)", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDataIntegrity(
+            DataIntegrityViolationException ex
+    ) {
+
+        return buildErrorResponse(
+                "error",
+                "Invalid reference id (foreign key error)",
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInvalidUserName(UsernameNotFoundException ex) {
