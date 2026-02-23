@@ -5,11 +5,14 @@ import com.example.gradproj.EduNest.dto.chat.ChatMessageResponse;
 import com.example.gradproj.EduNest.dto.chat.ChatRoomResponse;
 import com.example.gradproj.EduNest.dto.chat.roomCreateDto;
 import com.example.gradproj.EduNest.repository.chat.projection.ChatRoomProjection;
+import com.example.gradproj.EduNest.repository.chat.projection.RoomMemberProjection;
 import com.example.gradproj.EduNest.service.chat.ChatMessageService;
 import com.example.gradproj.EduNest.service.chat.ChatRoomService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -18,6 +21,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/chat-room")
 @RequiredArgsConstructor
+@Tag(
+        name = "Chat Rooms",
+        description = "create, join room, get messages..."
+)
 public class chatRestControllers {
     private final ChatRoomService chatRoomService;
     private final ChatMessageService chatMessageService;
@@ -57,6 +64,7 @@ public class chatRestControllers {
     }
 
     @GetMapping("/{roomId}/messages")
+    @Operation(summary = "get latest messages of the room")
     public ResponseEntity<SimpleResponse> getMessages(
             @PathVariable Long roomId,
             @RequestParam(required = false) Long beforeId,
@@ -68,6 +76,35 @@ public class chatRestControllers {
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("Messages",messages);
         resp.addMessage("status","messages founded successfully");
+        return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/{roomId}/members")
+    @Operation(summary = "get room members")
+    public ResponseEntity<SimpleResponse> getRoomMembers(
+            @PathVariable Long roomId
+    ) {
+        List<RoomMemberProjection> members =  chatRoomService.getRoomMembers(roomId);
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("members",members);
+        resp.addMessage("status","members founded successfully");
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/{roomId}/join")
+    @Operation(summary = "join room")
+    public ResponseEntity<SimpleResponse> joinRoom(
+            @PathVariable Long roomId,
+            Authentication authentication
+    ) {
+
+        chatRoomService.joinRoom(
+                roomId,
+                authentication.getName() // email
+        );
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("status", authentication.getName() + " joined success");
         return ResponseEntity.ok(resp);
     }
 

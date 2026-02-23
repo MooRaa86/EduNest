@@ -156,6 +156,20 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     );
 
 
+    @Query("""
+    SELECT COUNT(e) > 0
+    FROM Enrollment e
+    WHERE e.mentorShip.id = (
+        SELECT r.mentorship.id
+        FROM ChatRoom r
+        WHERE r.id = :roomId
+    )
+    AND e.student.email = :email
+""")
+    boolean isUserInRoomMentorship(
+            Long roomId,
+            String email
+    );
 
     List<Enrollment> findByStudent_Id(long studentId);
 

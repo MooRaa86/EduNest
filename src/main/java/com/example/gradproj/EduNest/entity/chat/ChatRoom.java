@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.entity.chat;
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,7 +33,18 @@ public class ChatRoom extends BaseEntity {
     @OneToMany(
             mappedBy = "chatRoom",
             cascade = CascadeType.ALL,
-            orphanRemoval = true
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
     )
+    @JsonIgnore
     private List<ChatMessage> messages = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "chatRoom",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    @JsonIgnore
+    private List<ChatRoomMember> members = new ArrayList<>();
 }

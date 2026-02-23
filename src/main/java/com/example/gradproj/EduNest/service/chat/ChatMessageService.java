@@ -77,6 +77,7 @@ public class ChatMessageService {
 
         return messages.stream()
                 .map(m -> ChatMessageResponse.builder()
+                        .id(m.getMessageId())
                         .message(m.getContent())
                         .roomId(roomId)
                         .time(m.getCreatedAt())

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Builder
 @Setter @Getter @AllArgsConstructor
 public class ChatMessageResponse {
+    long id;
     String message;
     String senderName;
     String senderEmail;
