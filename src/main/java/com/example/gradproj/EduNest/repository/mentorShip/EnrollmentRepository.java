@@ -165,4 +165,28 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
 
     int countByMentorShip(MentorShip mentorShip);
     boolean existsByMentorShip_IdAndStudent_Id(Long mentorshipId, Long studentId);
+
+    @Query("""
+        select (count(e) > 0)
+        from Enrollment e
+        where e.student.id = :studentId
+          and e.mentorShip.id =
+              (select t.week.mentorship.id
+               from Task t
+               where t.id = :taskId)
+    """)
+    boolean isStudentEnrolledForTask(@Param("taskId") Long taskId,
+                                     @Param("studentId") Long studentId);
+
+    @Query("""
+        select (count(e) > 0)
+        from Enrollment e
+        where e.student.id = :studentId
+          and e.mentorShip.id =
+              (select p.week.mentorship.id
+               from Project p
+               where p.id = :projectId)
+    """)
+    boolean isStudentEnrolledForProject(@Param("projectId") Long projectId,
+                                        @Param("studentId") Long studentId);
 }

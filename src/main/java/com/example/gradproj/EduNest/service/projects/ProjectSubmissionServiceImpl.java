@@ -6,7 +6,6 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionRespo
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
@@ -55,47 +54,51 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
 
     @Override
     public ProjectSubmissionResponse submit(Long projectId, SubmitProjectRequest req) {
-        Project project= projectRepository.findById(projectId).orElseThrow(() -> new IllegalArgumentException("project not found"));
-        if (project.getStatus() != ProjectStatus.PUBLISHED){
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("project not found"));
+
+        if (project.getStatus() != ProjectStatus.PUBLISHED) {
             throw new globalLogicEx("Project is not published");
         }
 
-        MentorShip mentorShip = project.getWeek().getMentorship();
-        Student student=studentRepository.findByEmail(getCurrentStudentEmail())
+        String email = getCurrentStudentEmail();
+
+        Long studentId = studentRepository.findIdByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
-        boolean isEnrolled = enrollmentRepository
-                .existsByMentorShip_IdAndStudent_Id(
-                        mentorShip.getId(),
-                        student.getId()
-                );
+        boolean isEnrolled = enrollmentRepository.isStudentEnrolledForProject(projectId, studentId);
 
         if (!isEnrolled) {
             throw new globalLogicEx("You must enroll in this mentorship before submitting tasks.");
         }
-        LocalDateTime now=LocalDateTime.now();
-        boolean isLate= now.isAfter(project.getEndAt());
 
-        Optional<ProjectSubmission> existingOpt=projectSubmissionRepository.findByProject_IdAndStudent_Id(projectId,student.getId());
+        LocalDateTime now = LocalDateTime.now();
+        boolean isLate = now.isAfter(project.getEndAt());
 
-        if (existingOpt.isPresent()&&isLate){
-            throw  new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        Optional<ProjectSubmission> existingOpt =
+                projectSubmissionRepository.findByProject_IdAndStudent_Id(projectId, studentId);
+
+        if (existingOpt.isPresent() && isLate) {
+            throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
-
 
         ProjectSubmission sub = existingOpt.orElseGet(() -> {
             ProjectSubmission s = new ProjectSubmission();
-            s.setProject(project);
-            s.setStudent(student);
+
+            // references (proxies) بدون SELECT إضافي
+            s.setProject(projectRepository.getReferenceById(projectId));
+            s.setStudent(studentRepository.getReferenceById(studentId));
+
             s.setStatus(SubmissionStatus.SUBMITTED);
             return s;
         });
-
 
         sub.setFileUrl(req.getFileUrl());
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
+
         sub.setRawScore(null);
         sub.setFinalScore(null);
         sub.setFeedBack(null);
