@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/contact")
 @Tag(
         name = "Contact Us",
-        description = "APIS"
+        description = "APIs for users to send messages or inquiries to the support team and view submitted messages"
 )
 public class ContactMessageController {
 
