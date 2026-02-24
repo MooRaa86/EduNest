@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
@@ -170,12 +169,6 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
             Long roomId,
             String email
     );
-
-    List<Enrollment> findByStudent_Id(long studentId);
-
-    List<Enrollment> findByMentorShip_Id(long mentorShipId);
-
-    Enrollment findByMentorShipAndStudent(MentorShip mentorShip, Student student);
 
     int countByMentorShip(MentorShip mentorShip);
     boolean existsByMentorShip_IdAndStudent_Id(Long mentorshipId, Long studentId);

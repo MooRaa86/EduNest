@@ -43,6 +43,7 @@ public class ProjectSecurityConfig {
                                 "/swagger-resources/**",
                                 "/api/auth/**",
                                 "/api/v1/**",
+                                "/ws/**",
                                 "/api/v1/contact/**"
                         ).permitAll()
                         .anyRequest().permitAll()

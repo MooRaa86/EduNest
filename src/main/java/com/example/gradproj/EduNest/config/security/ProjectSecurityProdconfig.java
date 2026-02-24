@@ -73,7 +73,8 @@ public class ProjectSecurityProdconfig {
                                 "/swagger-resources/**",
                                 "/api/auth/**",
                                 "/ws/**",
-                                "/api/v1/contact/**"
+                                "/api/v1/contact/**",
+                                "/uploads/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/register/**").permitAll()
                         .requestMatchers("/login-api","/forget-password/**").permitAll()
