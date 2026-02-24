@@ -1,8 +1,12 @@
 package com.example.gradproj.EduNest.service.dashboard;
 
+import com.example.gradproj.EduNest.dto.dashboard.DashboardCardsResponse;
+import com.example.gradproj.EduNest.dto.dashboard.MentorDashboardResponse;
+import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
+import com.example.gradproj.EduNest.dto.notification.NotificationDto;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
 import com.example.gradproj.EduNest.entity.users.Mentor;
@@ -13,6 +17,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,10 +31,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.format.TextStyle;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
@@ -40,6 +43,7 @@ public class DashboardService {
     private final EnrollmentRepository enrollmentRepository;
     private final ReviewsRepository reviewsRepository;
     private final LiveSessionRepository liveSessionRepository;
+    private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
         Authentication authentication =
@@ -51,7 +55,7 @@ public class DashboardService {
     }
 
     @PreAuthorize("hasRole('MENTOR')")
-    public Map<String, Object> getDashboardCardsDetails() {
+    public DashboardCardsResponse getDashboardCardsDetails() {
 
         Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
                 .orElseThrow(() -> new RuntimeException("Mentor not found"));
@@ -63,13 +67,13 @@ public class DashboardService {
         Double totalrevenue = enrollmentRepository.getTotalRevenueByMentorId(mentor.getId());
 
 
-        Map<String, Object> dashboardCardsDetails = new HashMap<>();
-        dashboardCardsDetails.put("Total Student", studentsCount);
-        dashboardCardsDetails.put("Total Revenue", totalrevenue);
-        dashboardCardsDetails.put("Total Mentorships", mentorshipCount);
-        dashboardCardsDetails.put("Average Rating", avgRating);
+        return DashboardCardsResponse.builder()
+                .totalStudents(studentsCount)
+                .totalMentorships(mentorshipCount)
+                .averageRating(avgRating)
+                .totalRevenue(totalrevenue)
+                .build();
 
-        return dashboardCardsDetails;
     }
 
     @PreAuthorize("hasRole('MENTOR')")
@@ -135,12 +139,6 @@ public class DashboardService {
                 .build();
     }
 
-    public record SalesChartResponse(
-            String month,
-            Integer year,
-            Double totalRevenue
-    ) {}
-
     public List<SalesChartResponse> getSalesChartData(Integer months) {
 
         String email = getCurrentUserEmail();
@@ -205,6 +203,45 @@ public class DashboardService {
                 .size(result.getSize())
                 .totalElements(result.getTotalElements())
                 .totalPages(result.getTotalPages())
+                .build();
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public MentorDashboardResponse getFullDashboard(
+            int reviewPage,
+            int reviewSize,
+            int sessionPage,
+            int sessionSize,
+            int notificationSize,
+            int notificationPage,
+            Integer months
+    ) {
+
+        DashboardCardsResponse cards =
+                getDashboardCardsDetails();
+
+        PageResponse<ReviewsRsponse> reviews =
+                getReviewsInDashboard(reviewPage, reviewSize);
+
+        PageResponse<DashboardSessionResponse> sessions =
+                getUpcomingSessionsForDashboard(
+                        sessionPage,
+                        sessionSize
+                );
+
+        List<SalesChartResponse> salesChart =
+                getSalesChartData(months);
+
+        PageResponse<NotificationDto> notifications =
+                notificationService.getUserNotifications(getCurrentUserEmail(),
+                        notificationSize,notificationPage);
+
+        return MentorDashboardResponse.builder()
+                .cards(cards)
+                .reviews(reviews)
+                .sessions(sessions)
+                .salesChart(salesChart)
+                .notifications(notifications)
                 .build();
     }
 

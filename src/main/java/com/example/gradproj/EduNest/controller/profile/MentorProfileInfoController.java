@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.service.profile.MentorProfileInfoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,7 +41,7 @@ public class MentorProfileInfoController {
         return ResponseEntity.ok(simpleResponse);
     }
 
-    @PatchMapping("/image")
+    @PatchMapping(value = "/image",consumes = MediaType.MULTIPART_FORM_DATA_VALUE )
     @Operation(
             summary = "Update mentor profile image",
             description = "Uploads a new profile image for the currently authenticated mentor"

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.dashboard;
 
 
+import com.example.gradproj.EduNest.dto.dashboard.MentorshipDashboardResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
@@ -126,6 +127,41 @@ public class MentorshipDashboardService {
                 .size(Page.getSize())
                 .totalPages(Page.getTotalPages())
                 .totalElements(Page.getTotalElements())
+                .build();
+    }
+
+    public MentorshipDashboardResponse getFullMentorshipDashboard(
+
+            Long mentorshipId,
+
+            int reviewsPage,
+            int reviewsSize,
+
+            int topLearnersPage,
+            int topLearnersSize
+    ) {
+
+        MentorshipStatsResponse stats =
+                getStats(mentorshipId);
+
+        PageResponse<ReviewsRsponse> reviews =
+                getReviewsForMentorship(
+                        reviewsPage,
+                        reviewsSize,
+                        mentorshipId
+                );
+
+        PageResponse<TopStudentResponse> topLearners =
+                findTopLearnersByMentorshipId(
+                        mentorshipId,
+                        topLearnersPage,
+                        topLearnersSize
+                );
+
+        return MentorshipDashboardResponse.builder()
+                .stats(stats)
+                .reviews(reviews)
+                .topLearners(topLearners)
                 .build();
     }
 
