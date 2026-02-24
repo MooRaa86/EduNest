@@ -1,8 +1,6 @@
 package com.example.gradproj.EduNest.service.account;
 
-import com.example.gradproj.EduNest.dto.account.request.ChangeEmailRequest;
-import com.example.gradproj.EduNest.dto.account.request.ChangePasswordRequest;
-import com.example.gradproj.EduNest.dto.account.request.UpdateSettingsRequest;
+import com.example.gradproj.EduNest.dto.account.request.*;
 import com.example.gradproj.EduNest.dto.account.response.SettingsResponse;
 import com.example.gradproj.EduNest.entity.account.Settings;
 import com.example.gradproj.EduNest.entity.register.OTP;
@@ -13,7 +11,6 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.OTPRepository;
 import com.example.gradproj.EduNest.repository.account.SettingsRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
-import com.example.gradproj.EduNest.service.jwt.JwtService;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -33,7 +30,6 @@ public class SettingsService {
     private final PasswordEncoder passwordEncoder;
     private final OTPRepository otpRepository;
     private final EmailService emailService;
-    private final JwtService jwtService;
 
     private final int expiryTime = 2;
 
