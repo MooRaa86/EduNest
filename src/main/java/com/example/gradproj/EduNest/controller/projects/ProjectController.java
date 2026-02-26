@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.projects.request.CreateProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.service.projects.ProjectServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,5 +95,24 @@ public class ProjectController {
         simpleResponse.addMessage("projects", response);
 
         return ResponseEntity.ok(simpleResponse);
+    }
+
+    @GetMapping("/{projectId}/statistics")
+    public ResponseEntity<SimpleResponse> getProjectStatistics(
+            @PathVariable Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        ProjectStatisticsDTO stats =
+                projectService.getProjectStatistics(projectId, pageable);
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("message", "Project statistics retrieved successfully");
+        resp.addMessage("projectStatistics", stats);
+
+        return ResponseEntity.status(HttpStatus.OK).body(resp);
     }
 }

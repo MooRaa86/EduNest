@@ -6,12 +6,17 @@ import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
+import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
+import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +33,8 @@ public class TaskServiceImpl implements TaskService{
     private final TaskRepository taskRepository;
     private final MentorShipRepository mentorShipRepository;
     private final WeekRepository weekRepository;
+    private final TaskSubmissionRepository taskSubmissionRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
 
 
@@ -198,4 +205,56 @@ public class TaskServiceImpl implements TaskService{
                 .orElse(0.0);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public TaskStatisticsDTO getTaskStatistics(Long taskId, Pageable pageable) {
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        Long mentorshipId = task.getWeek().getMentorship().getId();
+
+        int totalStudents = (int) enrollmentRepository.countStudentsByMentorship(mentorshipId);
+
+        Page<TaskSubmission> submissionsPage =
+                taskSubmissionRepository.findByTask_Id(taskId, pageable);
+
+        Page<TaskSubmissionResponse> mapped =
+                submissionsPage.map(this::mapToSubmissionResponseForStats);
+
+        PageResponse<TaskSubmissionResponse> pageResponse =
+                PageResponse.<TaskSubmissionResponse>builder()
+                        .content(mapped.getContent())
+                        .page(mapped.getNumber())
+                        .size(mapped.getSize())
+                        .totalElements(mapped.getTotalElements())
+                        .totalPages(mapped.getTotalPages())
+                        .build();
+
+        return TaskStatisticsDTO.builder()
+                .status(task.getStatus())
+                .totalStudents(totalStudents)
+                .totalSubmissions((int) submissionsPage.getTotalElements())
+                .pendingReview(totalStudents-submissionsPage.getTotalPages())
+                .createdAt(task.getCreatedAt())
+                .deadLine(task.getDueAt())
+                .totalPoints(task.getPoints())
+                .taskSubmissionResponsePageResponse(pageResponse)
+                .build();
+    }
+
+    private TaskSubmissionResponse mapToSubmissionResponseForStats(TaskSubmission s) {
+        return TaskSubmissionResponse.builder()
+                .submissionId(s.getId())
+                .taskId(s.getTask().getId())
+                .studentId(s.getStudent().getId())
+                .fileUrl(s.getFileUrl())
+                .status(s.getStatus())
+                .isLate(s.getIsLate())
+                .rawScore(s.getRawScore())
+                .finalScore(s.getFinalScore())
+                .submittedAt(s.getSubmittedAt())
+                .feedback(s.getFeedBack())
+                .build();
+    }
 }

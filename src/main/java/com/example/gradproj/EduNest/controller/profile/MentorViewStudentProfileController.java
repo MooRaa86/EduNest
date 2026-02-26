@@ -66,7 +66,6 @@ public class MentorViewStudentProfileController {
         PageResponse<StudentProjectProfileDTO> projects =
                 profileService.getStudentProjects(
                         studentId,
-                        status,
                         page,
                         size
                 );
@@ -82,7 +81,6 @@ public class MentorViewStudentProfileController {
             @PathVariable Long studentId,
             @RequestParam(defaultValue = "0") int mentorshipsPage,
             @RequestParam(defaultValue = "6") int mentorshipsSize,
-            @RequestParam(required = false) SubmissionStatus projectsStatus,
             @RequestParam(defaultValue = "0") int projectsPage,
             @RequestParam(defaultValue = "6") int projectsSize
     ) {
@@ -93,8 +91,7 @@ public class MentorViewStudentProfileController {
                         mentorshipsPage,
                         mentorshipsSize,
                         projectsPage,
-                        projectsSize,
-                        projectsStatus
+                        projectsSize
                 );
 
         SimpleResponse resp = new SimpleResponse();

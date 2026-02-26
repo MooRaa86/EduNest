@@ -9,7 +9,6 @@ import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
-import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.StudentMentorProfileKpiResponse;
@@ -108,7 +107,6 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
 
     public PageResponse<StudentProjectProfileDTO> getStudentProjects(
             Long studentId,
-            SubmissionStatus status,
             int page,
             int size
     ) {
@@ -117,7 +115,7 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
 
         Page<ProjectSubmission> submissions =
                 projectSubmissionRepository
-                        .findForStudentProfile(studentId, status, pageable);
+                        .findForStudentProfile(studentId, pageable);
 
         List<StudentProjectProfileDTO> content =
                 submissions.getContent()
@@ -159,12 +157,9 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
             int mentorshipsPage,
             int mentorshipsSize,
             int projectsPage,
-            int projectsSize,
-            SubmissionStatus projectsStatus
+            int projectsSize
     ) {
-        if (projectsStatus == null) {
-            projectsStatus = SubmissionStatus.SUBMITTED;
-        }
+
         ProfileStudentInformationForMentorResponse profile =
                 profileStudentInformationForMentorResponse(studentId);
 
@@ -177,7 +172,6 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
         PageResponse<StudentProjectProfileDTO> projects =
                 getStudentProjects(
                         studentId,
-                        projectsStatus,
                         projectsPage,
                         projectsSize
                 );

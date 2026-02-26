@@ -181,4 +181,10 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     """)
     boolean isStudentEnrolledForProject(@Param("projectId") Long projectId,
                                         @Param("studentId") Long studentId);
+    @Query("""
+    select count(e)
+    from Enrollment e
+    where e.mentorShip.id = :mentorShipId
+""")
+    long countStudentsByMentorship(@Param("mentorShipId") Long mentorShipId);
 }
