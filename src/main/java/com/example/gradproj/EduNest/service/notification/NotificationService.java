@@ -3,9 +3,11 @@ package com.example.gradproj.EduNest.service.notification;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
 import com.example.gradproj.EduNest.entity.notification.Notification;
+import com.example.gradproj.EduNest.entity.notification.UserNotification;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.repository.notification.NotificationRepository;
+import com.example.gradproj.EduNest.repository.notification.UserNotificationRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,16 +26,21 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationRepository notificationRepo;
+    private final UserNotificationRepository userNotificationRepo;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepo;
 
-    private NotificationDto mapToResponse(Notification n){
+
+    private NotificationDto mapToDto(UserNotification u){
+
+        Notification n = u.getNotification();
+
         return NotificationDto.builder()
-                .id(n.getId())
+                .id(u.getId())
                 .title(n.getTitle())
                 .content(n.getContent())
-                .isRead(n.isRead())
                 .type(n.getType())
+                .isRead(u.isRead())
                 .build();
     }
 
@@ -45,27 +51,36 @@ public class NotificationService {
             NotificationType type
     ){
 
+        UserEntity user =
+                userRepo.getReferenceById(
+                        userRepo.findIdByEmail(email)
+                                .orElseThrow(() ->
+                                        new UsernameNotFoundException("User not found"))
+                );
+
         Notification notification =
                 Notification.builder()
                         .title(title)
                         .content(content)
                         .type(type)
-                        .user(userRepo.getReferenceById(userRepo.findIdByEmail(email).orElseThrow(
-                                () -> new UsernameNotFoundException("User not found")
-                        )))
-                        .isRead(false)
                         .build();
 
         notificationRepo.save(notification);
 
-        NotificationDto dto = mapToResponse(notification);
+        UserNotification relation =
+                UserNotification.builder()
+                        .user(user)
+                        .notification(notification)
+                        .isRead(false)
+                        .build();
+
+        userNotificationRepo.save(relation);
 
         messagingTemplate.convertAndSendToUser(
                 email,
                 "/queue/notifications",
-                dto
+                mapToDto(relation)
         );
-
     }
 
     public void sendToUsers(
@@ -75,37 +90,37 @@ public class NotificationService {
             NotificationType type
     ){
 
-        List<Notification> notifications =
+        Notification notification =
+                Notification.builder()
+                        .title(title)
+                        .content(content)
+                        .type(type)
+                        .build();
+
+        notificationRepo.save(notification);
+
+        List<UserNotification> relations =
                 users.stream()
                         .map(user ->
-                                Notification.builder()
-                                        .title(title)
-                                        .content(content)
-                                        .type(type)
+                                UserNotification.builder()
                                         .user(user)
+                                        .notification(notification)
                                         .isRead(false)
                                         .build()
                         )
-                        .collect(Collectors.toList());
+                        .toList();
 
-        notificationRepo.saveAll(notifications);
+        userNotificationRepo.saveAll(relations);
 
-
-        for (Notification notification : notifications){
-
-            NotificationDto dto = mapToResponse(notification);
-
-            String email = notification.getUser().getEmail();
+        for(int i = 0; i < relations.size(); i++){
 
             messagingTemplate.convertAndSendToUser(
-                    email,
+                    users.get(i).getEmail(),
                     "/queue/notifications",
-                    dto
+                    mapToDto(relations.get(i))
             );
-
         }
     }
-
 
     @Transactional(readOnly = true)
     public PageResponse<NotificationDto> getUserNotifications(
@@ -113,53 +128,56 @@ public class NotificationService {
             int size,
             int page
     ){
+
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<Notification> response = notificationRepo
-                .findByUserEmailOrderByCreatedAtDesc(email,pageable);
+        Page<UserNotification> response =
+                userNotificationRepo
+                        .findWithNotification(email, pageable);
 
-        List<NotificationDto> notifications =
-                        response.getContent()
+        List<NotificationDto> content =
+                response.getContent()
                         .stream()
-                        .map(this::mapToResponse)
-                .toList();
+                        .map(this::mapToDto)
+                        .toList();
 
         return PageResponse.<NotificationDto>builder()
-                .content(notifications)
+                .content(content)
                 .totalElements(response.getTotalElements())
                 .page(response.getNumber())
                 .size(response.getSize())
                 .totalPages(response.getTotalPages())
                 .build();
-
     }
-
 
     @Transactional(readOnly = true)
     public long getUnreadCount(String email){
 
-        return notificationRepo
+        return userNotificationRepo
                 .countByUserEmailAndIsReadFalse(email);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<NotificationDto> getUnreadNotificationsForUser(
             String email,
             int size,
             int page
     ){
+
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<Notification> response =
-                notificationRepo
-                        .findByUserEmailAndIsReadFalseOrderByCreatedAtDesc(email,pageable);
+        Page<UserNotification> response =
+                userNotificationRepo
+                        .findUnreadWithNotification(email, pageable);
 
-        List<NotificationDto> notifications =
+        List<NotificationDto> content =
                 response.getContent()
-                        .stream().map(this::mapToResponse)
-                .toList();
+                        .stream()
+                        .map(this::mapToDto)
+                        .toList();
 
         return PageResponse.<NotificationDto>builder()
-                .content(notifications)
+                .content(content)
                 .page(response.getNumber())
                 .size(response.getSize())
                 .totalElements(response.getTotalElements())
@@ -167,12 +185,22 @@ public class NotificationService {
                 .build();
     }
 
+    /**
+     * actions
+     */
     public void markAllAsRead(String email){
-        notificationRepo.markAllAsRead(email);
+        userNotificationRepo.markAllAsRead(email);
     }
 
-    public void markOneAsRead(Long id){
-        notificationRepo.markNotificationAsRead(id);
+    public void markOneAsRead(Long relationId){
+        userNotificationRepo.markOneAsRead(relationId);
     }
 
+    public void deleteNotification(Long relationId){
+        userNotificationRepo.deleteById(relationId);
+    }
+
+    public void deleteAllNotificationsForUser(String email){
+        userNotificationRepo.deleteAllByUserEmail(email);
+    }
 }

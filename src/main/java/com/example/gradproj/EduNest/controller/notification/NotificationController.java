@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.controller.notification;
 
+import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
 import com.example.gradproj.EduNest.dto.notification.NotificationSendRequest;
@@ -82,5 +83,22 @@ public class NotificationController {
                 request.getContent(),
                 request.getType()
         );
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<SimpleResponse> deleteNotification(@PathVariable Long id ){
+        notificationService.deleteNotification(id);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("status","notification deleted successfully");
+        return ResponseEntity.ok(simpleResponse);
+    }
+
+    @DeleteMapping("/delete-for-user")
+    public ResponseEntity<SimpleResponse> deleteAllNotifications(Authentication authentication){
+        String email = authentication.getName();
+        notificationService.deleteAllNotificationsForUser(email);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("status","notifications deleted successfully");
+        return ResponseEntity.ok(simpleResponse);
     }
 }
