@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.profile;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
+import com.example.gradproj.EduNest.dto.profile.FullProfileStudentInformationForMentorResponse;
 import com.example.gradproj.EduNest.dto.profile.ProfileStudentInformationForMentorResponse;
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
@@ -153,5 +154,38 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
                 .finalScore(ps.getFinalScore())
                 .build();
     }
+    public FullProfileStudentInformationForMentorResponse getFullStudentProfileForMentor(
+            Long studentId,
+            int mentorshipsPage,
+            int mentorshipsSize,
+            int projectsPage,
+            int projectsSize,
+            SubmissionStatus projectsStatus
+    ) {
+        if (projectsStatus == null) {
+            projectsStatus = SubmissionStatus.SUBMITTED;
+        }
+        ProfileStudentInformationForMentorResponse profile =
+                profileStudentInformationForMentorResponse(studentId);
 
+        PageResponse<EnrolledMentorshipProgressDto> mentorshipsProgress =
+                getEnrolledMentorshipProgress(
+                        studentId,
+                        PageRequest.of(mentorshipsPage, mentorshipsSize)
+                );
+
+        PageResponse<StudentProjectProfileDTO> projects =
+                getStudentProjects(
+                        studentId,
+                        projectsStatus,
+                        projectsPage,
+                        projectsSize
+                );
+
+        return FullProfileStudentInformationForMentorResponse.builder()
+                .profileStudentInformationForMentorResponse(profile)
+                .enrolledMentorshipProgressDtoPageResponse(mentorshipsProgress)
+                .projectProfileDTOPageResponse(projects)
+                .build();
+    }
 }

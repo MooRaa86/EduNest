@@ -37,11 +37,18 @@ public class TaskSubmissionController {
 
     @GetMapping("/{taskId}")
     @Operation(summary = "get task submissions")
-    public ResponseEntity<SimpleResponse> listByTask(@PathVariable Long taskId) {
-       SimpleResponse response=new SimpleResponse();
-       response.addMessage("message","all submissions for this task");
-       response.addMessage("submissions",submissionService.listByTask(taskId));
-        return  ResponseEntity.status(HttpStatus.OK).body(response);
+    public ResponseEntity<SimpleResponse> listByTask(
+            @PathVariable Long taskId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "all submissions for this task");
+        response.addMessage("submissions",
+                submissionService.listByTask(taskId, page, size));
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @PostMapping("/{submissionId}/grade")

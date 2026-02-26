@@ -3,9 +3,6 @@ package com.example.gradproj.EduNest.controller.projects;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
 import com.example.gradproj.EduNest.dto.projects.request.SubmitProjectRequest;
-import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
-import com.example.gradproj.EduNest.service.projects.ProjectServiceImpl;
 import com.example.gradproj.EduNest.service.projects.ProjectSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,14 +33,20 @@ public class ProjectSubmissionController {
         response.addMessage("submission",submissionService.submit(projectId,req));
         return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
     @Operation(summary = "get submissions by project Id")
     @GetMapping("/{projectId}/submissions")
-    public ResponseEntity<SimpleResponse> listByProject(@PathVariable Long projectId) {
-        SimpleResponse response=new SimpleResponse();
-        response.addMessage("message","all submissions for this project");
-        response.addMessage("submissions",submissionService.listByProject(projectId));
-        return  ResponseEntity.status(HttpStatus.OK).body(response);
+    public ResponseEntity<SimpleResponse> listByProject(
+            @PathVariable Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "all submissions for this project");
+        response.addMessage("submissions", submissionService.listByProject(projectId, page, size));
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
     @Operation(summary = "grade project submission by submission Id")
     @PostMapping("/submissions/{submissionId}/grade")
     public ResponseEntity<SimpleResponse> grade(

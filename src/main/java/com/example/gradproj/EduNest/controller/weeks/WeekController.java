@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.dto.weeks.WeekResponse;
 import com.example.gradproj.EduNest.service.week.WeekService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class WeekController {
 
     @PostMapping("/create")
     @Operation(summary = "create week for mentorship")
-    public ResponseEntity<SimpleResponse>create(@RequestBody CreateWeekrequest createWeekrequest){
+    public ResponseEntity<SimpleResponse>create(@Valid @RequestBody CreateWeekrequest createWeekrequest){
         WeekResponse create=weekService.createWeek(createWeekrequest);
         SimpleResponse response=new SimpleResponse();
         response.addMessage("message","week created successfully");
@@ -41,7 +42,7 @@ public class WeekController {
     }
     @PatchMapping("/{id}")
     @Operation(summary = "update the week title")
-    public ResponseEntity<SimpleResponse>update(@PathVariable Long id, @RequestBody UpdateWeekRequest updateWeekRequest) {
+    public ResponseEntity<SimpleResponse>update(@PathVariable Long id,@Valid @RequestBody UpdateWeekRequest updateWeekRequest) {
         WeekResponse update = weekService.updateWeekTitle(id, updateWeekRequest);
 
         SimpleResponse response = new SimpleResponse();
