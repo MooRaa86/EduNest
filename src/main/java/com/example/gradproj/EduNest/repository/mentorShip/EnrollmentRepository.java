@@ -71,54 +71,39 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 // profile total enrolled mentorships
 @Query(
         value = """
-        SELECT
-            m.id AS mentorshipId,
-            m.title AS title,
-            m.status AS status,
-
-            COALESCE(
-                (SELECT tp.totalPoints
-                 FROM TotalPoints tp
-                 WHERE tp.student.id = :studentId
-                   AND tp.mentorship.id = m.id),
-                0
-            ) AS totalPoints,
-
-            (SELECT COUNT(DISTINCT t.id)
-             FROM Task t
-             WHERE t.week.mentorship.id = m.id) AS totalTasks,
-
-            (SELECT COUNT(DISTINCT ts.task.id)
-             FROM TaskSubmission ts
-             WHERE ts.student.id = :studentId
-               AND ts.task.week.mentorship.id = m.id
-               AND ts.status IN (
-                    com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.SUBMITTED,
-                    com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
-               )
-            ) AS submittedTasks,
-
-            (SELECT COUNT(DISTINCT q.id)
-             FROM Quiz q
-             WHERE q.week.mentorship.id = m.id) AS totalQuizzes,
-
-            (SELECT COUNT(DISTINCT qs.quiz.id)
-             FROM QuizSubmission qs
-             WHERE qs.student.id = :studentId
-               AND qs.quiz.week.mentorship.id = m.id
-            ) AS submittedQuizzes
-
-        FROM Enrollment e
-        JOIN e.mentorShip m
-        WHERE e.student.id = :studentId
-          AND m.mentor.id = :mentorId
+    SELECT
+        m.id AS mentorshipId,
+        m.title AS title,
+        m.status AS status,
+        COALESCE(tp.totalPoints, 0) AS totalPoints,
+        COUNT(DISTINCT t.id) AS totalTasks,
+        COUNT(DISTINCT ts.task.id) AS submittedTasks,
+        COUNT(DISTINCT q.id) AS totalQuizzes,
+        COUNT(DISTINCT qs.quiz.id) AS submittedQuizzes
+    FROM Enrollment e
+    JOIN e.mentorShip m
+    LEFT JOIN m.weeks w
+    LEFT JOIN TotalPoints tp ON tp.student.id = :studentId AND tp.mentorship.id = m.id
+    LEFT JOIN w.tasks t
+    LEFT JOIN TaskSubmission ts
+        ON ts.student.id = :studentId
+        AND ts.task.id = t.id
+        AND ts.status IN (
+            com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.SUBMITTED,
+            com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
+        )
+    LEFT JOIN w.quizzes q
+    LEFT JOIN QuizSubmission qs ON qs.student.id = :studentId AND qs.quiz.id = q.id
+    WHERE e.student.id = :studentId
+      AND m.mentor.id = :mentorId
+    GROUP BY m.id, m.title, m.status, tp.totalPoints
     """,
         countQuery = """
-        SELECT COUNT(e.id)
-        FROM Enrollment e
-        JOIN e.mentorShip m
-        WHERE e.student.id = :studentId
-          AND m.mentor.id = :mentorId
+    SELECT COUNT(e.id)
+    FROM Enrollment e
+    JOIN e.mentorShip m
+    WHERE e.student.id = :studentId
+      AND m.mentor.id = :mentorId
     """
 )
 Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMentorAndStudent(

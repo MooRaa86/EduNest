@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.projects;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
 import com.example.gradproj.EduNest.dto.projects.request.SubmitProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
@@ -15,6 +16,9 @@ import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionReposit
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -108,15 +111,34 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
         return mapToSubmissionResponse(saved);
     }
 
-    @Override
-    public List<ProjectSubmissionResponse> listByProject(Long projectId) {
-        if(!projectRepository.existsById(projectId)){
+    public PageResponse<ProjectSubmissionResponse> listByProject(
+            Long projectId,
+            int page,
+            int size
+    ) {
+
+        if (!projectRepository.existsById(projectId)) {
             throw new globalLogicEx("project not found with this id");
         }
 
-        return projectSubmissionRepository.findByProject_id(projectId).stream()
-                .map(this::mapToSubmissionResponse)
-                .collect(Collectors.toList());
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<ProjectSubmission> submissionsPage =
+                projectSubmissionRepository.findByProject_Id(projectId, pageable);
+
+        List<ProjectSubmissionResponse> content =
+                submissionsPage.getContent()
+                        .stream()
+                        .map(this::mapToSubmissionResponse)
+                        .toList();
+
+        return PageResponse.<ProjectSubmissionResponse>builder()
+                .content(content)
+                .page(submissionsPage.getNumber())
+                .size(submissionsPage.getSize())
+                .totalElements(submissionsPage.getTotalElements())
+                .totalPages(submissionsPage.getTotalPages())
+                .build();
     }
 
     @Override

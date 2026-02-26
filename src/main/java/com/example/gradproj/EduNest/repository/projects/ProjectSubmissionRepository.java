@@ -7,11 +7,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
-    List<ProjectSubmission> findByProject_id (long project_Id);
+    Page<ProjectSubmission> findByProject_Id(Long projectId, Pageable pageable);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
     @Query(
             value = """
