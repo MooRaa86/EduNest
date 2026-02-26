@@ -44,7 +44,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final MentorShipRepository MentorShipRepository;
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
-    private final imageStorageService imageService;
+    private final ImageStorageService imageService;
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final ReviewsRepository reviewsRepository;

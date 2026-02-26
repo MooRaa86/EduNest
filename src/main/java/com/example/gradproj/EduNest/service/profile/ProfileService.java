@@ -2,13 +2,13 @@ package com.example.gradproj.EduNest.service.profile;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
+import com.example.gradproj.EduNest.dto.profile.FullProfileStudentInformationForMentorResponse;
 import com.example.gradproj.EduNest.dto.profile.ProfileStudentInformationForMentorResponse;
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
-import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.StudentMentorProfileKpiResponse;
@@ -107,7 +107,6 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
 
     public PageResponse<StudentProjectProfileDTO> getStudentProjects(
             Long studentId,
-            SubmissionStatus status,
             int page,
             int size
     ) {
@@ -116,7 +115,7 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
 
         Page<ProjectSubmission> submissions =
                 projectSubmissionRepository
-                        .findForStudentProfile(studentId, status, pageable);
+                        .findForStudentProfile(studentId, pageable);
 
         List<StudentProjectProfileDTO> content =
                 submissions.getContent()
@@ -153,5 +152,34 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
                 .finalScore(ps.getFinalScore())
                 .build();
     }
+    public FullProfileStudentInformationForMentorResponse getFullStudentProfileForMentor(
+            Long studentId,
+            int mentorshipsPage,
+            int mentorshipsSize,
+            int projectsPage,
+            int projectsSize
+    ) {
 
+        ProfileStudentInformationForMentorResponse profile =
+                profileStudentInformationForMentorResponse(studentId);
+
+        PageResponse<EnrolledMentorshipProgressDto> mentorshipsProgress =
+                getEnrolledMentorshipProgress(
+                        studentId,
+                        PageRequest.of(mentorshipsPage, mentorshipsSize)
+                );
+
+        PageResponse<StudentProjectProfileDTO> projects =
+                getStudentProjects(
+                        studentId,
+                        projectsPage,
+                        projectsSize
+                );
+
+        return FullProfileStudentInformationForMentorResponse.builder()
+                .profileStudentInformationForMentorResponse(profile)
+                .enrolledMentorshipProgressDtoPageResponse(mentorshipsProgress)
+                .projectProfileDTOPageResponse(projects)
+                .build();
+    }
 }

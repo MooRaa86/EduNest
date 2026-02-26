@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
@@ -15,6 +16,9 @@ import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -24,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -106,15 +109,34 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TaskSubmissionResponse> listByTask(Long taskId) {
+    public PageResponse<TaskSubmissionResponse> listByTask(
+            Long taskId,
+            int page,
+            int size
+    ) {
 
-        if(!taskRepository.existsById(taskId)){
+        if (!taskRepository.existsById(taskId)) {
             throw new globalLogicEx("Task not found with this id");
         }
 
-        return submissionRepository.findByTask_id(taskId).stream()
-                .map(this::mapToSubmissionResponse)
-                .collect(Collectors.toList());
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<TaskSubmission> submissionsPage =
+                submissionRepository.findByTask_Id(taskId, pageable);
+
+        List<TaskSubmissionResponse> content =
+                submissionsPage.getContent()
+                        .stream()
+                        .map(this::mapToSubmissionResponse)
+                        .toList();
+
+        return PageResponse.<TaskSubmissionResponse>builder()
+                .content(content)
+                .page(submissionsPage.getNumber())
+                .size(submissionsPage.getSize())
+                .totalElements(submissionsPage.getTotalElements())
+                .totalPages(submissionsPage.getTotalPages())
+                .build();
     }
 
     @Override

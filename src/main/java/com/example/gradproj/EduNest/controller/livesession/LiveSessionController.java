@@ -19,12 +19,16 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(
         name = "Live Session",
-        description = "APIS"
+        description = "APIs for managing live sessions (create, update, start, join, end, attendance)"
 )
 public class LiveSessionController {
 
     private final LiveSessionService liveSessionService;
 
+    @Operation(
+            summary = "Create a new live session",
+            description = "Create a live session and get its details"
+    )
     @PostMapping("/create")
     public ResponseEntity<SimpleResponse> createSession(@RequestBody CreateSessionDto createSessionDto) {
         SessionResponseDto sessionResponseDto = liveSessionService.createSession(createSessionDto);
@@ -33,6 +37,10 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Update live session",
+            description = "Update an existing live session by session ID"
+    )
     @PatchMapping("/update/{sessionId}")
     public ResponseEntity<SimpleResponse> updateSession(
             @PathVariable Long sessionId,
@@ -46,6 +54,10 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Get live session details",
+            description = "Retrieve details of a live session using session ID"
+    )
     @GetMapping("/{sessionId}")
     public ResponseEntity<SimpleResponse> getSession(@PathVariable Long sessionId) {
 
@@ -57,16 +69,24 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Delete live session",
+            description = "Delete a live session by session ID"
+    )
     @DeleteMapping("/delete/{sessionId}")
     public ResponseEntity<SimpleResponse> deleteSession(@PathVariable Long sessionId) {
 
         liveSessionService.deleteSession(sessionId);
 
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("Message","Session deleted successfully");
+        response.addMessage("Message", "Session deleted successfully");
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Start live session",
+            description = "Start a live session by session ID"
+    )
     @PostMapping("/start/{sessionId}")
     public ResponseEntity<SimpleResponse> startSession(@PathVariable Long sessionId) {
 
@@ -78,6 +98,10 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Join live session",
+            description = "Join a live session using session ID"
+    )
     @GetMapping("/join/{sessionId}")
     public ResponseEntity<SimpleResponse> joinSession(@PathVariable Long sessionId) {
 
@@ -89,6 +113,10 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "End live session",
+            description = "End an ongoing live session by session ID"
+    )
     @PostMapping("/end/{sessionId}")
     public ResponseEntity<SimpleResponse> endSession(@PathVariable Long sessionId) {
 
@@ -100,22 +128,28 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Record snapshot", description = "Record attendance snapshot for a session")
+    @Operation(
+            summary = "Record attendance snapshot",
+            description = "Record attendance snapshot for a session by providing student IDs"
+    )
     @PostMapping("/snapshot/{sessionId}")
     public ResponseEntity<SimpleResponse> recordSnapshot(@PathVariable Long sessionId,
                                                          @RequestBody List<Long> studentIds) {
         liveSessionService.recordSnapshot(sessionId, studentIds);
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("Message","Snapshots recorded successfully");
+        response.addMessage("Message", "Snapshots recorded successfully");
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get session attendance", description = "Fetch attendance report for a session")
+    @Operation(
+            summary = "Get session attendance",
+            description = "Fetch attendance report for a session using session ID"
+    )
     @GetMapping("/attendance/{sessionId}")
     public ResponseEntity<SimpleResponse> getAttendance(@PathVariable Long sessionId) {
         List<AttendanceResponse> attendance = liveSessionService.getSessionAttendance(sessionId);
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("Attendance report for session "+ sessionId, attendance);
+        response.addMessage("Attendance report for session " + sessionId, attendance);
         return ResponseEntity.ok(response);
     }
 }

@@ -1,6 +1,10 @@
 package com.example.gradproj.EduNest.controller.MentorDashboard;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.dto.dashboard.DashboardCardsResponse;
+import com.example.gradproj.EduNest.dto.dashboard.MentorDashboardResponse;
+import com.example.gradproj.EduNest.dto.dashboard.MentorshipDashboardResponse;
+import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
@@ -17,7 +21,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -34,7 +37,7 @@ public class MentorDashboardController {
     @GetMapping("/cards")
     @Operation(summary = "get cards data")
     public ResponseEntity<SimpleResponse> getDashboardCardsDetails() {
-        Map<String, Object> Cards = mentorDashboardService.getDashboardCardsDetails();
+        DashboardCardsResponse Cards = mentorDashboardService.getDashboardCardsDetails();
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("cards", Cards);
         return ResponseEntity.ok(resp);
@@ -73,7 +76,7 @@ public class MentorDashboardController {
     public ResponseEntity<SimpleResponse> getRevenueChart(
             @RequestParam(required = false) Integer months
     ) {
-        List<DashboardService.SalesChartResponse> chartDetails = mentorDashboardService.getSalesChartData(months);
+        List<SalesChartResponse> chartDetails = mentorDashboardService.getSalesChartData(months);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("sales-chart", chartDetails);
         return ResponseEntity.ok(resp);
@@ -138,6 +141,68 @@ public class MentorDashboardController {
                 mentorDashboardService.getStudents(page, size);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("students", students);
+        return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping
+    @Operation(summary = "get full mentor dashboard")
+    public ResponseEntity<SimpleResponse> getDashboard(
+
+            @RequestParam(defaultValue = "0") int reviewPage,
+            @RequestParam(defaultValue = "6") int reviewSize,
+
+            @RequestParam(defaultValue = "0") int sessionPage,
+            @RequestParam(defaultValue = "5") int sessionSize,
+
+            @RequestParam(defaultValue = "0") int notificationPage,
+            @RequestParam(defaultValue = "3") int notificationSize,
+
+            @RequestParam(required = false) Integer months
+    ) {
+
+        MentorDashboardResponse dashboard =
+                mentorDashboardService.getFullDashboard(
+                        reviewPage,
+                        reviewSize,
+                        sessionPage,
+                        sessionSize,
+                        notificationSize,
+                        notificationPage,
+                        months
+                );
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("dashboard", dashboard);
+
+        return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/mentorship/{id}")
+    @Operation(summary = "get full mentorship dashboard")
+    public ResponseEntity<SimpleResponse> getMentorshipDashboard(
+
+            @PathVariable Long id,
+
+            @RequestParam(defaultValue = "0") int reviewsPage,
+            @RequestParam(defaultValue = "6") int reviewsSize,
+
+            @RequestParam(defaultValue = "0") int topPage,
+            @RequestParam(defaultValue = "3") int topSize
+    ) {
+
+        MentorshipDashboardResponse dashboard =
+                mentorshipDashboardService
+                        .getFullMentorshipDashboard(
+                                id,
+                                reviewsPage,
+                                reviewsSize,
+                                topPage,
+                                topSize
+                        );
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("dashboard", dashboard);
+
         return ResponseEntity.ok(resp);
     }
 }

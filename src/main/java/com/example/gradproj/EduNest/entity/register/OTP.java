@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.entity.register;
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
-import com.example.gradproj.EduNest.utils.SystemUtils;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;

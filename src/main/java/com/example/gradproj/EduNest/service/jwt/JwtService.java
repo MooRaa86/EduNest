@@ -77,6 +77,9 @@ public class JwtService implements JwtServiceI{
         Claims claims = Jwts.parser().verifyWith(secretKey)
                 .build().parseSignedClaims(token).getPayload();
         String username = String.valueOf(claims.get("username"));
+        if (!userRepository.existsByEmail(username)){
+            throw new UsernameNotFoundException("User not found");
+        }
         String authorities = String.valueOf(claims.get("authorities"));
         Authentication authentication = new UsernamePasswordAuthenticationToken(username,null,
                 AuthorityUtils.commaSeparatedStringToAuthorityList(authorities));
@@ -87,7 +90,6 @@ public class JwtService implements JwtServiceI{
 
     /**
      * WebSocket validations ->
-     *
      * */
 
     @Override

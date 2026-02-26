@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.controller.profile;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
+import com.example.gradproj.EduNest.dto.profile.FullProfileStudentInformationForMentorResponse;
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.service.profile.ProfileService;
@@ -65,7 +66,6 @@ public class MentorViewStudentProfileController {
         PageResponse<StudentProjectProfileDTO> projects =
                 profileService.getStudentProjects(
                         studentId,
-                        status,
                         page,
                         size
                 );
@@ -74,6 +74,31 @@ public class MentorViewStudentProfileController {
         resp.addMessage("studentProjects", projects);
 
         return ResponseEntity.ok(resp);
+    }
+    @GetMapping("/{studentId}/full-profile")
+    @Operation(summary = "Get full student profile (info + mentorship progress + projects)")
+    public ResponseEntity<SimpleResponse> getFullStudentProfile(
+            @PathVariable Long studentId,
+            @RequestParam(defaultValue = "0") int mentorshipsPage,
+            @RequestParam(defaultValue = "6") int mentorshipsSize,
+            @RequestParam(defaultValue = "0") int projectsPage,
+            @RequestParam(defaultValue = "6") int projectsSize
+    ) {
+
+        FullProfileStudentInformationForMentorResponse data =
+                profileService.getFullStudentProfileForMentor(
+                        studentId,
+                        mentorshipsPage,
+                        mentorshipsSize,
+                        projectsPage,
+                        projectsSize
+                );
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("status", "Student full profile retrieved successfully");
+        resp.addMessage("studentFullProfile", data);
+
+        return ResponseEntity.status(HttpStatus.OK).body(resp);
     }
 
 

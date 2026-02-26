@@ -5,7 +5,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
+@Setter @Getter
+@AllArgsConstructor @NoArgsConstructor
 @Builder
 public class SessionResponseDto {
 
