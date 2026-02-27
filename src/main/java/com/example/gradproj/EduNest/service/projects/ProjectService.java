@@ -6,8 +6,8 @@ import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
-
 import org.springframework.data.domain.Pageable;
 
 public interface ProjectService {
@@ -18,4 +18,5 @@ public interface ProjectService {
     ProjectResponse updateProjectStatus(Long projectId, UpdateProjectStatusRequest req);
     PageResponse<ProjectResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable);
     ProjectDashboardDTO getProjectDashboard(Long mentorShipId);
+    ProjectStatisticsDTO getProjectStatistics(Long projectId, Pageable pageable);
 }

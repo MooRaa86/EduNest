@@ -7,16 +7,17 @@ import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Pageable;
 
 
 @RestController
@@ -110,6 +111,24 @@ public ResponseEntity<SimpleResponse> updateStatus(
         simpleResponse.addMessage("message","Dashboard retrieved successfully");
         simpleResponse.addMessage("Dashboard Details",taskDashboardDTO);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
+    @GetMapping("/{taskId}/statistics")
+    @Operation(summary = "get task statistics (students/submissions + submissions page)")
+    public ResponseEntity<SimpleResponse> getTaskStatistics(
+            @PathVariable Long taskId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        TaskStatisticsDTO stats = taskService.getTaskStatistics(taskId, pageable);
+
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("message", "Task statistics retrieved successfully");
+        resp.addMessage("taskStatistics", stats);
+
+        return ResponseEntity.ok(resp);
     }
 
 }

@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import org.springframework.data.domain.Pageable;
 
@@ -17,5 +18,6 @@ public interface TaskService {
     TaskResponse updateTaskStatus(Long taskId, UpdateTaskStatusRequest req);
     PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, Long msid, Pageable pageable);
     TaskDashboardDTO getTaskDashboard(Long mentorShipId);
+    public TaskStatisticsDTO getTaskStatistics(Long taskId, Pageable pageable);
 }
 

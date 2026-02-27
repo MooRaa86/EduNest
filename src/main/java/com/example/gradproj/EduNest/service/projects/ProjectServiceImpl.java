@@ -6,12 +6,17 @@ import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
-import com.example.gradproj.EduNest.entity.projects.Project;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
+import com.example.gradproj.EduNest.entity.projects.Project;
+import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
+import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +34,8 @@ public class ProjectServiceImpl implements ProjectService{
     private final ProjectRepository projectRepository;
     private final MentorShipRepository mentorShipRepository;
     private final WeekRepository weekRepository;
+    private final ProjectSubmissionRepository submissionRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
 
     @Override
@@ -182,6 +189,62 @@ public class ProjectServiceImpl implements ProjectService{
                 .status(project.getStatus().name())
                 .weekId(project.getWeek().getId())
                 .createdAt(project.getCreatedAt())
+                .build();
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectStatisticsDTO getProjectStatistics(Long projectId, Pageable pageable) {
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+
+        Long mentorshipId = project.getWeek().getMentorship().getId();
+
+        int totalStudents = (int) enrollmentRepository.countStudentsByMentorship(mentorshipId);
+
+        Page<ProjectSubmission> submissionsPage =
+                submissionRepository.findByProject_Id(projectId, pageable);
+
+        int totalSubmissions = (int) submissionsPage.getTotalElements();
+
+
+        int pendingReview = totalStudents-totalSubmissions;
+
+        Page<ProjectSubmissionResponse> mapped =
+                submissionsPage.map(this::mapToProjectSubmissionResponse);
+
+        PageResponse<ProjectSubmissionResponse> pageResponse =
+                PageResponse.<ProjectSubmissionResponse>builder()
+                        .content(mapped.getContent())
+                        .page(mapped.getNumber())
+                        .size(mapped.getSize())
+                        .totalElements(mapped.getTotalElements())
+                        .totalPages(mapped.getTotalPages())
+                        .build();
+
+        return ProjectStatisticsDTO.builder()
+                .status(project.getStatus())
+                .totalStudents(totalStudents)
+                .totalSubmissions(totalSubmissions)
+                .pendingReview(pendingReview)
+                .createdAt(project.getCreatedAt())
+                .deadLine(project.getEndAt())
+                .totalPoints(project.getPoints())
+                .taskSubmissionResponsePageResponse(pageResponse)
+                .build();
+    }
+    private ProjectSubmissionResponse mapToProjectSubmissionResponse(ProjectSubmission s) {
+        return ProjectSubmissionResponse.builder()
+                .submissionId(s.getId())
+                .projectId(s.getProject().getId())
+                .studentId(s.getStudent().getId())
+                .fileUrl(s.getFileUrl())
+                .submittedAt(s.getSubmittedAt())
+                .isLate(s.getIsLate())
+                .status(s.getStatus())
+                .rawScore(s.getRawScore())
+                .finalScore(s.getFinalScore())
+                .feedback(s.getFeedBack())
                 .build();
     }
 }
