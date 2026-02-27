@@ -5,9 +5,7 @@ import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizUpdateDto;
-import com.example.gradproj.EduNest.dto.quiz.response.MentorshipQuizzesOverviewResponseDto;
-import com.example.gradproj.EduNest.dto.quiz.response.QuizOverviewDto;
-import com.example.gradproj.EduNest.dto.quiz.response.QuizResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.*;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.quiz.Question;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
@@ -17,6 +15,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.quiz.submission.QuizSubmissionService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,6 +33,7 @@ public class QuizServiceImpl implements QuizService {
     private final MentorShipRepository mentorshipRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final WeekRepository weekRepository;
+    private final QuizSubmissionService quizSubmissionService;
 
 
     @Override
@@ -183,6 +183,7 @@ public class QuizServiceImpl implements QuizService {
                 .reduce(0, Integer::sum);
 
         return QuizStatisticsDTO.builder()
+                .quizTitle(quiz.getTitle())
                 .status(quiz.getStatus())
                 .averageScore(calculateAverageScore(quiz))
                 .totalStudents(quiz.getWeek().getMentorship() != null ? enrollmentRepository.countByMentorShip(quiz.getWeek().getMentorship()) : 0)
@@ -215,6 +216,29 @@ public class QuizServiceImpl implements QuizService {
                 .builder()
                 .quizDashboardDTO(getQuizDashboard(mentorShipId))
                 .quizOverviewDtoPageResponse(pageResponse)
+                .build();
+    }
+
+    @Override
+    public QuizOverviewResponseDto getQuizOverviewDto(Long quizId,int page,int size) {
+        QuizStatisticsDTO quizStatisticsDTO=getQuizStatistics(quizId);
+        List<QuizSubmissionResponseDTO> submissions=quizSubmissionService.getAllSubmissionsByQuiz(quizId,page,size);
+         double fullMark=quizStatisticsDTO.getTotalPoints();
+         for (QuizSubmissionResponseDTO submission : submissions) {
+             if (submission.getScore() == null) {
+                 submission.setStatus("Not Submitted");
+             }
+             else if (submission.getScore() >= (fullMark / 2)) {
+                 submission.setStatus("Passed");
+             }
+             else {
+                 submission.setStatus("Failed");
+             }
+         }
+
+        return QuizOverviewResponseDto.builder()
+                .quizStatistics(quizStatisticsDTO)
+                .submissions(submissions)
                 .build();
     }
     @Override

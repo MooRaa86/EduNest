@@ -16,6 +16,7 @@ import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -107,12 +108,11 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         QuizSubmission saved = quizSubmissionRepository.save(quizSubmission);
 
         MentorShip mentorship = saved.getQuiz().getWeek().getMentorship();
-        totalPointsService.applyDelta(saved.getStudent(), mentorship, saved.getScore());
+        totalPointsService.applyDelta(saved.getStudent(), mentorship,saved.getScore().intValue() );
 
         return QuizSubmissionResponseDTO.builder()
                 .id(saved.getId())
                 .studentId(student.getId())
-                .quizId(quiz.getId())
                 .score(saved.getScore())
                 .build();
 
@@ -137,7 +137,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .map(sub -> QuizSubmissionResponseDTO.builder()
                         .id(sub.getId())
                         .studentId(studentId)
-                        .quizId(sub.getQuiz().getId())
                         .score(sub.getScore())
                         .build())
                 .toList();
@@ -145,20 +144,27 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     @Override
     public List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId, int page, int size){
-        return quizSubmissionRepository.findAllByQuiz_Id(quizId,PageRequest.of(page, size))
+        if(!quizRepository.existsById(quizId)) {
+            throw new globalLogicEx("Quiz not found");
+        }
+
+        return  quizSubmissionRepository.findAllByQuiz_Id(quizId, PageRequest.of(page, size))
                 .stream()
-                .map(sub -> QuizSubmissionResponseDTO.builder()
-                        .id(sub.getId())
-                        .studentId(sub.getStudent().getId())
-                        .quizId(sub.getQuiz().getId())
-                        .score(sub.getScore())
-                        .build())
+                .map(sub -> {
+
+                    return QuizSubmissionResponseDTO.builder()
+                            .id(sub.getId())
+                            .studentId(sub.getStudent().getId())
+                            .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
+                            .score(sub.getScore())
+                            .build();
+                })
                 .toList();
     }
 
 
     private ScoreResult calculateScore(List<StudentAnswerDTO> answers, Map<Long, Question> questions) {
-        int score = 0;
+        double score = 0;
         int numOfCorrect = 0;
 
         for (StudentAnswerDTO studentAnswer : answers) {
@@ -177,10 +183,10 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     @Getter
     public static class ScoreResult {
-        private int totalScore;
+        private double totalScore;
         private int numCorrect;
 
-        public ScoreResult(int totalScore, int numCorrect) {
+        public ScoreResult(double totalScore, int numCorrect) {
             this.totalScore = totalScore;
             this.numCorrect = numCorrect;
         }

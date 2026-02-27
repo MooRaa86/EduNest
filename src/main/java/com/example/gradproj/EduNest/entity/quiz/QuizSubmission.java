@@ -29,7 +29,7 @@ public class QuizSubmission extends BaseEntity {
     private Quiz quiz;
 
     @Min(value = 0, message = "Score cannot be negative")
-    private Integer score;
+    private Double score;
 
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentAnswer> answers;
