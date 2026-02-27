@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizUpdateDto;
+import com.example.gradproj.EduNest.dto.quiz.response.MentorshipQuizzesOverviewResponseDto;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import org.springframework.data.domain.Pageable;
@@ -25,4 +26,5 @@ public interface QuizService {
     QuizStatisticsDTO getQuizStatistics(Long quizId);
 
     void changeStatus(Long quizId, QuizStatus quizStatus);
+    MentorshipQuizzesOverviewResponseDto getMentorshipQuizzesOverview(Long mentorShipId, int page, int size);
 }

@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizUpdateDto;
+import com.example.gradproj.EduNest.dto.quiz.response.MentorshipQuizzesOverviewResponseDto;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.service.quiz.quiz.QuizService;
@@ -141,6 +142,15 @@ public class QuizController {
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz status changed successfully");
         simpleResponse.addMessage("Quiz Status", status);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
+    @GetMapping("/mentorshipQuizzesOverview/{mentorshipId}")
+    public ResponseEntity<SimpleResponse> getMentorshipQuizzesOverview(@PathVariable Long mentorshipId,int page, int size) {
+        MentorshipQuizzesOverviewResponseDto mentorshipQuizzesOverviewResponseDto=quizService.getMentorshipQuizzesOverview(mentorshipId,page,size);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Mentorship quizzes retrieved successfully");
+        simpleResponse.addMessage("Mentorship Details", mentorshipQuizzesOverviewResponseDto);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
