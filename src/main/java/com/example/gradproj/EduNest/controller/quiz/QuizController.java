@@ -7,6 +7,8 @@ import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizStatisticsDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizUpdateDto;
+import com.example.gradproj.EduNest.dto.quiz.response.MentorshipQuizzesOverviewResponseDto;
+import com.example.gradproj.EduNest.dto.quiz.response.QuizOverviewResponseDto;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizResponseDTO;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.service.quiz.quiz.QuizService;
@@ -144,4 +146,29 @@ public class QuizController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
+    @Operation(
+            summary = "Get Mentorship-Quizzes-Overview",
+            description = "Retrieve statistics for a specific Mentorship-Quizzes"
+    )
+    @GetMapping("/mentorshipQuizzesOverview/{mentorshipId}")
+    public ResponseEntity<SimpleResponse> getMentorshipQuizzesOverview(@PathVariable Long mentorshipId,int page, int size) {
+        MentorshipQuizzesOverviewResponseDto mentorshipQuizzesOverviewResponseDto=quizService.getMentorshipQuizzesOverview(mentorshipId,page,size);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Mentorship quizzes retrieved successfully");
+        simpleResponse.addMessage("Mentorship Details", mentorshipQuizzesOverviewResponseDto);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
+    @Operation(
+            summary = "Get Quiz Overview",
+            description = "Retrieve overview for a specific Quiz"
+    )
+    @GetMapping("/QuizOverview/{quizId}")
+    public ResponseEntity<SimpleResponse> getQuizOverview(@PathVariable Long quizId,int page, int size) {
+        QuizOverviewResponseDto quizOverviewResponseDto=quizService.getQuizOverviewDto(quizId,page,size);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Quiz overview retrieved successfully");
+        simpleResponse.addMessage("Quiz Details", quizOverviewResponseDto);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
 }

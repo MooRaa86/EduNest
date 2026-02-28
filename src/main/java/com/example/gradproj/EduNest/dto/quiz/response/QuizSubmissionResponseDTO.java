@@ -8,15 +8,9 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class QuizSubmissionResponseDTO {
-
-
     private Long id;
-
     private Long studentId;
-
-    private Long quizId;
-
-    private Integer score;
-
-    private LocalDateTime submittedAt;
+    private String studentName;
+    private Double score;
+    private String status;
 }
