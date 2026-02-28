@@ -51,7 +51,7 @@ public class Task extends BaseEntity {
     private List<TaskSubmission> submissions = new ArrayList<>();
 
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false,cascade = CascadeType.ALL)
     @JoinColumn(name = "week_id",nullable = false)
     private Week week;
 
