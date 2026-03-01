@@ -6,6 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "users")
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -36,11 +39,11 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
     @Column(nullable = false)
     private boolean enabled = false;
 
-    @OneToOne(
+    @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    private SocialMedia socialMedia;
+    private List<SocialMedia> socialMediaLinks = new ArrayList<>();
 }
