@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.dto.profile.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 @Getter
@@ -7,10 +8,10 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = false)
 public class UpdateMentorProfileRequest {
     private String firstName;
     private String lastName;
-    private String email;
     private String bio;
     private String jobTitle;
     private Double yearsOfExperience;
