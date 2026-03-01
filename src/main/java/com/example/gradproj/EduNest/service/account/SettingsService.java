@@ -1,15 +1,11 @@
 package com.example.gradproj.EduNest.service.account;
 
 import com.example.gradproj.EduNest.dto.account.request.*;
-import com.example.gradproj.EduNest.dto.account.response.SettingsResponse;
-import com.example.gradproj.EduNest.entity.account.Settings;
 import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
-import com.example.gradproj.EduNest.enums.account.ThemeMode;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.OTPRepository;
-import com.example.gradproj.EduNest.repository.account.SettingsRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -25,81 +21,12 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class SettingsService {
 
-    private final SettingsRepository settingsRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OTPRepository otpRepository;
     private final EmailService emailService;
 
     private final int expiryTime = 2;
-
-
-    @Transactional
-    public SettingsResponse changeSettings(UpdateSettingsRequest request) {
-
-        UserEntity user = getCurrentUser();
-
-        Settings settings = settingsRepository.findByUser(user)
-                .orElseGet(this::setDefaultSettings);
-
-        if (request.getEmailNotifications() != null)
-            settings.setEmailNotifications(request.getEmailNotifications());
-
-        if (request.getPushNotifications() != null)
-            settings.setPushNotifications(request.getPushNotifications());
-
-        if (request.getWeeklyDigest() != null)
-            settings.setWeeklyDigest(request.getWeeklyDigest());
-
-        if (request.getMessageNotifications() != null)
-            settings.setMessageNotifications(request.getMessageNotifications());
-
-        if (request.getMode() != null)
-            settings.setMode(request.getMode());
-
-        settingsRepository.save(settings);
-
-        return buildResponse(settings);
-    }
-
-    @Transactional
-    public Settings setDefaultSettings() {
-
-        UserEntity user = getCurrentUser();
-
-        Settings settings = Settings.builder()
-                .user(user)
-                .emailNotifications(true)
-                .pushNotifications(true)
-                .weeklyDigest(true)
-                .messageNotifications(true)
-                .mode(ThemeMode.LIGHT)
-                .build();
-
-        return settingsRepository.save(settings);
-    }
-
-    public SettingsResponse getMySettings() {
-
-        UserEntity user = getCurrentUser();
-
-        Settings settings = settingsRepository.findByUserEmail(user.getEmail())
-                .orElseGet(this::setDefaultSettings);
-
-        return buildResponse(settings);
-    }
-
-    private SettingsResponse buildResponse(Settings settings) {
-        return SettingsResponse.builder()
-                .email(settings.getUser().getEmail())
-                .emailNotifications(settings.isEmailNotifications())
-                .pushNotifications(settings.isPushNotifications())
-                .weeklyDigest(settings.isWeeklyDigest())
-                .messageNotifications(settings.isMessageNotifications())
-                .mode(settings.getMode().name())
-                .build();
-    }
-
 
     @Transactional
     public void changeEmail(ChangeEmailRequest request) {
@@ -136,6 +63,19 @@ public class SettingsService {
         userRepository.save(user);
     }
 
+
+    @Transactional
+    public void deactivateAccount(String password){
+        UserEntity  user = getCurrentUser();
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new globalLogicEx("Password is incorrect");
+        }
+
+        user.setEnabled(false);
+        userRepository.save(user);
+
+        SecurityContextHolder.clearContext();
+    }
 
     @Transactional
     public void deleteAccount() {
@@ -184,7 +124,6 @@ public class SettingsService {
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.DELETE);
 
-        settingsRepository.deleteByUser(user);
 
         userRepository.delete(user);
     }
