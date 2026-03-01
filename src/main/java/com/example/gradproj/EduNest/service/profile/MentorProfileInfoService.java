@@ -5,11 +5,13 @@ import com.example.gradproj.EduNest.dto.profile.response.MentorProfileInformatio
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
+import com.example.gradproj.EduNest.enums.socialMedia.Media;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -24,11 +26,24 @@ public class MentorProfileInfoService {
     private final ImageStorageService imageStorageService;
     private static final String MENTOR_IMAGE_FOLDER = "mentor";
 
+    @PreAuthorize("hasRole('MENTOR')")
     public MentorProfileInformationResponse getCurrentUserInformation() {
         UserEntity user = getCurrentUser();
 
         Mentor mentor = mentorRepository.findByEmail(user.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
+
+        String githubLink = mentor.getSocialMediaLinks().stream()
+                .filter(sm -> Media.GITHUB.equals(sm.getName()))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        String linkedInLink = mentor.getSocialMediaLinks().stream()
+                .filter(sm -> Media.LINKEDIN.equals(sm.getName()))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
 
         return MentorProfileInformationResponse
                 .builder()
@@ -39,12 +54,13 @@ public class MentorProfileInfoService {
                 .bio(mentor.getBio())
                 .jobTitle(mentor.getJobTitle())
                 .yearsOfExperience(mentor.getYearsOfExperience())
-                .githubLink(mentor.getSocialMedia() != null ? mentor.getSocialMedia().getGithub() : null)
-                .linkedInLink(mentor.getSocialMedia() != null ? mentor.getSocialMedia().getLinkedin() : null)
+                .githubLink(githubLink)
+                .linkedInLink(linkedInLink)
                 .profileImageUrl(mentor.getProfileImageUrl())
                 .build();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public void updateProfile(UpdateMentorProfileRequest request) {
         UserEntity user = getCurrentUser();
         Mentor mentor = mentorRepository.findByEmail(user.getEmail())
@@ -53,26 +69,43 @@ public class MentorProfileInfoService {
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
         if (request.getLastName() != null) user.setLastName(request.getLastName());
 
-
         if (request.getBio() != null) mentor.setBio(request.getBio());
         if (request.getJobTitle() != null) mentor.setJobTitle(request.getJobTitle());
         if (request.getYearsOfExperience() != null) mentor.setYearsOfExperience(request.getYearsOfExperience());
 
         if (request.getGithubLink() != null) {
-            if (mentor.getSocialMedia() == null) mentor.setSocialMedia(new SocialMedia());
-            mentor.getSocialMedia().setGithub(request.getGithubLink());
+            mentor.getSocialMediaLinks().stream()
+                    .filter(sm -> Media.GITHUB.equals(sm.getName()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            sm -> sm.setUrl(request.getGithubLink()),
+                            () -> mentor.getSocialMediaLinks().add(SocialMedia.builder()
+                                    .name(Media.GITHUB)
+                                    .url(request.getGithubLink())
+                                    .user(mentor)
+                                    .build())
+                    );
         }
         if (request.getLinkedInLink() != null) {
-            if (mentor.getSocialMedia() == null) mentor.setSocialMedia(new SocialMedia());
-            mentor.getSocialMedia().setLinkedin(request.getLinkedInLink());
+            mentor.getSocialMediaLinks().stream()
+                    .filter(sm -> Media.LINKEDIN.equals(sm.getName()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            sm -> sm.setUrl(request.getLinkedInLink()),
+                            () -> mentor.getSocialMediaLinks().add(SocialMedia.builder()
+                                    .name(Media.LINKEDIN)
+                                    .url(request.getLinkedInLink())
+                                    .user(mentor)
+                                    .build())
+                    );
         }
-
 
         userRepository.save(user);
         mentorRepository.save(mentor);
     }
 
 
+    @PreAuthorize("hasRole('MENTOR')")
     public String updateProfileImage(MultipartFile image) {
         UserEntity user = getCurrentUser();
         Mentor mentor = mentorRepository.findByEmail(user.getEmail())

@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.CreateProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
+import com.example.gradproj.EduNest.dto.projects.response.FullProjectDashBoardDto;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
@@ -245,6 +246,17 @@ public class ProjectServiceImpl implements ProjectService{
                 .rawScore(s.getRawScore())
                 .finalScore(s.getFinalScore())
                 .feedback(s.getFeedBack())
+                .build();
+    }
+
+    @Override
+    public FullProjectDashBoardDto getFullProjectDashboard(Long mentorShipId, String projectName, ProjectStatus status, Pageable pageable) {
+        ProjectDashboardDTO dashboard = getProjectDashboard(mentorShipId);
+        PageResponse<ProjectResponse> projects = getProject(projectName, status, mentorShipId, pageable);
+        
+        return FullProjectDashBoardDto.builder()
+                .projectDashboardDTO(dashboard)
+                .projectResponsePageResponse(projects)
                 .build();
     }
 }

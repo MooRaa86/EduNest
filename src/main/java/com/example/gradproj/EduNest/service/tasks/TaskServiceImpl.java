@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.FullTaskDashBoardDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
@@ -11,6 +12,7 @@ import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -18,6 +20,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +38,7 @@ public class TaskServiceImpl implements TaskService{
     private final WeekRepository weekRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final NotificationService notificationService;
 
 
 
@@ -61,6 +65,14 @@ public class TaskServiceImpl implements TaskService{
                 .week(week)
                 .build();
         Task saved=taskRepository.save(task);
+
+        notificationService.sendToMentorshipStudents(
+                week.getMentorship().getId(),
+                "New Task",
+                "a new task " + saved.getTitle()
+                        + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                NotificationType.TASK
+        );
 
         return mapToTaskResponse(saved);
 
@@ -255,6 +267,17 @@ public class TaskServiceImpl implements TaskService{
                 .finalScore(s.getFinalScore())
                 .submittedAt(s.getSubmittedAt())
                 .feedback(s.getFeedBack())
+                .build();
+    }
+
+    @Override
+    public FullTaskDashBoardDto getFullTaskDashboard(Long mentorShipId, String taskName, TaskStatus status, Pageable pageable) {
+        TaskDashboardDTO dashboard = getTaskDashboard(mentorShipId);
+        PageResponse<TaskResponse> tasks = getTasks(taskName, status, mentorShipId, pageable);
+        
+        return FullTaskDashBoardDto.builder()
+                .taskDashboardDTO(dashboard)
+                .taskResponsePageResponse(tasks)
                 .build();
     }
 }

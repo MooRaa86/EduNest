@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -44,6 +45,7 @@ public class ProfileService {
         }
         return authentication.getName();
     }
+    @PreAuthorize("hasRole('MENTOR')")
     public ProfileStudentInformationForMentorResponse profileStudentInformationForMentorResponse(Long studentId){
 
         Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
@@ -55,11 +57,27 @@ public class ProfileService {
         StudentMentorProfileKpiResponse kpi =
                 enrollmentRepository.getStudentMentorProfileKpis(mentor.getId(), student.getId());
 
-        SocialMedia sm = student.getSocialMedia();
-
         Long active = (kpi != null && kpi.getActiveMentorships() != null) ? kpi.getActiveMentorships() : 0L;
         Long completed = (kpi != null && kpi.getCompletedMentorships() != null) ? kpi.getCompletedMentorships() : 0L;
         Integer totalPoints = (kpi != null && kpi.getTotalPoints() != null) ? kpi.getTotalPoints() : 0;
+
+        String facebookLink = student.getSocialMediaLinks().stream()
+                .filter(s -> "Facebook".equalsIgnoreCase(String.valueOf(s.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        String linkedInLink = student.getSocialMediaLinks().stream()
+                .filter(s -> "LinkedIn".equalsIgnoreCase(String.valueOf(s.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        String githubLink = student.getSocialMediaLinks().stream()
+                .filter(s -> "GitHub".equalsIgnoreCase(String.valueOf(s.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
 
         return ProfileStudentInformationForMentorResponse.builder()
                 .name((student.getFirstName() + " " + student.getLastName()).trim())
@@ -68,11 +86,12 @@ public class ProfileService {
                 .activeMentorships(active)
                 .completedMentorships(completed)
                 .totalPoints(totalPoints)
-                .facebookLink(sm != null ? sm.getFacebook() : null)
-                .linkedInLink(sm != null ? sm.getLinkedin() : null)
-                .githubLink(sm != null ? sm.getGithub() : null)
+                .facebookLink(facebookLink)
+                .linkedInLink(linkedInLink)
+                .githubLink(githubLink)
                 .build();
     }
+    @PreAuthorize("hasRole('MENTOR')")
 public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress(Long studentId, Pageable pageable){
     Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
             .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
@@ -105,6 +124,7 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
             .build();
 }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<StudentProjectProfileDTO> getStudentProjects(
             Long studentId,
             int page,
@@ -152,6 +172,7 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
                 .finalScore(ps.getFinalScore())
                 .build();
     }
+    @PreAuthorize("hasRole('MENTOR')")
     public FullProfileStudentInformationForMentorResponse getFullStudentProfileForMentor(
             Long studentId,
             int mentorshipsPage,

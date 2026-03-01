@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.FullTaskDashBoardDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
@@ -128,6 +129,25 @@ public ResponseEntity<SimpleResponse> updateStatus(
         resp.addMessage("message", "Task statistics retrieved successfully");
         resp.addMessage("taskStatistics", stats);
 
+        return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/full-dashboard/{mentorshipId}")
+    @Operation(summary = "get full task dashboard (dashboard + tasks list)")
+    public ResponseEntity<SimpleResponse> getFullDashboard(
+            @PathVariable Long mentorshipId,
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) TaskStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "4") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        FullTaskDashBoardDto fullDashboard = taskService.getFullTaskDashboard(mentorshipId, taskName, status, pageable);
+        
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("message", "Full dashboard retrieved successfully");
+        resp.addMessage("fullDashboard", fullDashboard);
+        
         return ResponseEntity.ok(resp);
     }
 

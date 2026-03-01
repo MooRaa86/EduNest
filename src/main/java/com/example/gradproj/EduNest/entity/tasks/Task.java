@@ -47,7 +47,7 @@ public class Task extends BaseEntity {
     @Column(name = "task_attachment_url")
     private String attachmentUrl;
 
-    @OneToMany(mappedBy = "task", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TaskSubmission> submissions = new ArrayList<>();
 
 

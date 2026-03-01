@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -42,6 +43,7 @@ public class MentorshipDashboardService {
         return authentication.getName();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<MentorShipListResponse> getMentorMentorships(
             int page,
             int size
@@ -87,6 +89,7 @@ public class MentorshipDashboardService {
         return stats;
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<ReviewsRsponse> getReviewsForMentorship(
             int page , int size ,long id
     ){
@@ -115,6 +118,7 @@ public class MentorshipDashboardService {
 
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<TopStudentResponse> findTopLearnersByMentorshipId(
         long mentorshipId , int page, int size
     ){
@@ -130,6 +134,7 @@ public class MentorshipDashboardService {
                 .build();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public MentorshipDashboardResponse getFullMentorshipDashboard(
 
             Long mentorshipId,
