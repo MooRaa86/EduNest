@@ -47,11 +47,11 @@ public class Task extends BaseEntity {
     @Column(name = "task_attachment_url")
     private String attachmentUrl;
 
-    @OneToMany(mappedBy = "task", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TaskSubmission> submissions = new ArrayList<>();
 
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false,cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "week_id",nullable = false)
     private Week week;
 

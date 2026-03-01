@@ -48,7 +48,7 @@ public class Project extends BaseEntity {
         @Column(name = "project_status", nullable = false)
         private ProjectStatus status = ProjectStatus.DRAFT;
 
-        @OneToMany(mappedBy = "project", cascade = CascadeType.REMOVE, orphanRemoval = true)
+        @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
         private List<ProjectSubmission> submissions = new ArrayList<>();
 
 

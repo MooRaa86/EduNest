@@ -33,19 +33,19 @@ public class Week extends BaseEntity {
     @Column(nullable = false)
     private String title;
 
-    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Task> tasks;
 
-    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Quiz> quizzes;
 
-    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Project> projects;
 
-    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Session> liveSessions;
 
-    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "week", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Lecture> lectures;
 
 }

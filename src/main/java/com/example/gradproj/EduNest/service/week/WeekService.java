@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ public class WeekService {
     private final LectureRepository lectureRepository;
 
 
+    @PreAuthorize("hasRole('MENTOR')")
     public WeekResponse createWeek(CreateWeekrequest createWeekrequest) {
         MentorShip mentorShip = mentorShipRepository.findById(createWeekrequest.getMentorshipId()).orElseThrow(
                 () -> new globalLogicEx("mentorShip not found")
@@ -48,6 +50,7 @@ public class WeekService {
 
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public void deleteWeek(Long weekId) {
         if (!weekRepository.existsById(weekId)) {
             throw new globalLogicEx("Week not found");
@@ -56,6 +59,7 @@ public class WeekService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
     public WeekResponse updateWeekTitle(Long id, UpdateWeekRequest request) {
         Week week = weekRepository.findById(id).orElseThrow(() -> new globalLogicEx("Week not found"));
         week.setTitle(request.getTitle());

@@ -53,7 +53,7 @@ public class WeekController {
 
     @GetMapping("/{mentorshipId}/weeks")
     @Operation(summary = "get weeks for a specific mentorship by its id")
-    public ResponseEntity<SimpleResponse> getWeeksByMentorship(Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getWeeksByMentorship( @PathVariable Long mentorshipId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status","all weeks retrieved successfully");
         response.addMessage("weeks",weekService.getWeeksByMentorship(mentorshipId));

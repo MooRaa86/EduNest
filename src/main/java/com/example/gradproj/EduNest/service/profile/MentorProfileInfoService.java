@@ -11,6 +11,7 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +26,7 @@ public class MentorProfileInfoService {
     private final ImageStorageService imageStorageService;
     private static final String MENTOR_IMAGE_FOLDER = "mentor";
 
+    @PreAuthorize("hasRole('MENTOR')")
     public MentorProfileInformationResponse getCurrentUserInformation() {
         UserEntity user = getCurrentUser();
 
@@ -58,6 +60,7 @@ public class MentorProfileInfoService {
                 .build();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public void updateProfile(UpdateMentorProfileRequest request) {
         UserEntity user = getCurrentUser();
         Mentor mentor = mentorRepository.findByEmail(user.getEmail())
@@ -103,6 +106,7 @@ public class MentorProfileInfoService {
     }
 
 
+    @PreAuthorize("hasRole('MENTOR')")
     public String updateProfileImage(MultipartFile image) {
         UserEntity user = getCurrentUser();
         Mentor mentor = mentorRepository.findByEmail(user.getEmail())
