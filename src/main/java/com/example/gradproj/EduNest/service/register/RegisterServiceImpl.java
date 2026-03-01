@@ -9,6 +9,7 @@ import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
+import com.example.gradproj.EduNest.enums.socialMedia.Media;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
 import com.example.gradproj.EduNest.repository.OTPRepository;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 
 import static com.example.gradproj.EduNest.utils.SystemUtils.*;
 
@@ -115,10 +117,6 @@ public class RegisterServiceImpl implements RegistrationService {
 
         Roles role = roleRepository.findByName(MENTOR)
                 .orElseThrow(() -> new RoleNotFoundException("Error: Role MENTOR not found."));
-        SocialMedia socialMedia = SocialMedia.builder()
-                .github(mentorRequestDto.getGithubUrl())
-                .linkedin(mentorRequestDto.getLinkedInUrl())
-                .build();
 
         Mentor mentor = Mentor.builder()
                 .firstName(mentorRequestDto.getFirstName())
@@ -131,11 +129,25 @@ public class RegisterServiceImpl implements RegistrationService {
                 .bio(mentorRequestDto.getBio())
                 .yearsOfExperience(mentorRequestDto.getYearsOfExperience())
                 .enabled(false)
+                .socialMediaLinks(new ArrayList<>())
                 .build();
 
-// ✅ اربط من الناحيتين
-        mentor.setSocialMedia(socialMedia);
-        socialMedia.setUser(mentor);
+        if (mentorRequestDto.getGithubUrl() != null) {
+            SocialMedia github = SocialMedia.builder()
+                    .name(Media.GITHUB)
+                    .url(mentorRequestDto.getGithubUrl())
+                    .user(mentor)
+                    .build();
+            mentor.getSocialMediaLinks().add(github);
+        }
+        if (mentorRequestDto.getLinkedInUrl() != null) {
+            SocialMedia linkedin = SocialMedia.builder()
+                    .name(Media.LINKEDIN)
+                    .url(mentorRequestDto.getLinkedInUrl())
+                    .user(mentor)
+                    .build();
+            mentor.getSocialMediaLinks().add(linkedin);
+        }
 
         mentorRepository.save(mentor);
 

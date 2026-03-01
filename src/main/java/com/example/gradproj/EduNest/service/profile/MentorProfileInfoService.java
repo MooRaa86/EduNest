@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.profile.response.MentorProfileInformatio
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
+import com.example.gradproj.EduNest.enums.socialMedia.Media;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
@@ -30,6 +31,18 @@ public class MentorProfileInfoService {
         Mentor mentor = mentorRepository.findByEmail(user.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
+        String githubLink = mentor.getSocialMediaLinks().stream()
+                .filter(sm -> "GitHub".equalsIgnoreCase(String.valueOf(sm.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        String linkedInLink = mentor.getSocialMediaLinks().stream()
+                .filter(sm -> "LinkedIn".equalsIgnoreCase(String.valueOf(sm.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
         return MentorProfileInformationResponse
                 .builder()
                 .firstName(user.getFirstName())
@@ -39,8 +52,8 @@ public class MentorProfileInfoService {
                 .bio(mentor.getBio())
                 .jobTitle(mentor.getJobTitle())
                 .yearsOfExperience(mentor.getYearsOfExperience())
-                .githubLink(mentor.getSocialMedia() != null ? mentor.getSocialMedia().getGithub() : null)
-                .linkedInLink(mentor.getSocialMedia() != null ? mentor.getSocialMedia().getLinkedin() : null)
+                .githubLink(githubLink)
+                .linkedInLink(linkedInLink)
                 .profileImageUrl(mentor.getProfileImageUrl())
                 .build();
     }
@@ -54,20 +67,28 @@ public class MentorProfileInfoService {
         if (request.getLastName() != null) user.setLastName(request.getLastName());
         if (request.getEmail() != null) user.setEmail(request.getEmail());
 
-
         if (request.getBio() != null) mentor.setBio(request.getBio());
         if (request.getJobTitle() != null) mentor.setJobTitle(request.getJobTitle());
         if (request.getYearsOfExperience() != null) mentor.setYearsOfExperience(request.getYearsOfExperience());
 
         if (request.getGithubLink() != null) {
-            if (mentor.getSocialMedia() == null) mentor.setSocialMedia(new SocialMedia());
-            mentor.getSocialMedia().setGithub(request.getGithubLink());
+            mentor.getSocialMediaLinks().removeIf(sm -> "GitHub".equalsIgnoreCase(String.valueOf(sm.getName())));
+            SocialMedia github = SocialMedia.builder()
+                    .name(Media.GITHUB)
+                    .url(request.getGithubLink())
+                    .user(mentor)
+                    .build();
+            mentor.getSocialMediaLinks().add(github);
         }
         if (request.getLinkedInLink() != null) {
-            if (mentor.getSocialMedia() == null) mentor.setSocialMedia(new SocialMedia());
-            mentor.getSocialMedia().setLinkedin(request.getLinkedInLink());
+            mentor.getSocialMediaLinks().removeIf(sm -> "LinkedIn".equalsIgnoreCase(String.valueOf(sm.getName())));
+            SocialMedia linkedin = SocialMedia.builder()
+                    .name(Media.LINKEDIN)
+                    .url(request.getLinkedInLink())
+                    .user(mentor)
+                    .build();
+            mentor.getSocialMediaLinks().add(linkedin);
         }
-
 
         userRepository.save(user);
         mentorRepository.save(mentor);

@@ -55,11 +55,27 @@ public class ProfileService {
         StudentMentorProfileKpiResponse kpi =
                 enrollmentRepository.getStudentMentorProfileKpis(mentor.getId(), student.getId());
 
-        SocialMedia sm = student.getSocialMedia();
-
         Long active = (kpi != null && kpi.getActiveMentorships() != null) ? kpi.getActiveMentorships() : 0L;
         Long completed = (kpi != null && kpi.getCompletedMentorships() != null) ? kpi.getCompletedMentorships() : 0L;
         Integer totalPoints = (kpi != null && kpi.getTotalPoints() != null) ? kpi.getTotalPoints() : 0;
+
+        String facebookLink = student.getSocialMediaLinks().stream()
+                .filter(s -> "Facebook".equalsIgnoreCase(String.valueOf(s.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        String linkedInLink = student.getSocialMediaLinks().stream()
+                .filter(s -> "LinkedIn".equalsIgnoreCase(String.valueOf(s.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
+
+        String githubLink = student.getSocialMediaLinks().stream()
+                .filter(s -> "GitHub".equalsIgnoreCase(String.valueOf(s.getName())))
+                .map(SocialMedia::getUrl)
+                .findFirst()
+                .orElse(null);
 
         return ProfileStudentInformationForMentorResponse.builder()
                 .name((student.getFirstName() + " " + student.getLastName()).trim())
@@ -68,9 +84,9 @@ public class ProfileService {
                 .activeMentorships(active)
                 .completedMentorships(completed)
                 .totalPoints(totalPoints)
-                .facebookLink(sm != null ? sm.getFacebook() : null)
-                .linkedInLink(sm != null ? sm.getLinkedin() : null)
-                .githubLink(sm != null ? sm.getGithub() : null)
+                .facebookLink(facebookLink)
+                .linkedInLink(linkedInLink)
+                .githubLink(githubLink)
                 .build();
     }
 public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress(Long studentId, Pageable pageable){
