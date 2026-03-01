@@ -23,7 +23,7 @@ public class Lecture extends BaseEntity {
     @Column(name = "lecture_url")
     private String lectureUrl;
 
-    @ManyToOne
-    @JoinColumn(name = "week_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "week_id", nullable = false)
     private Week week;
 }

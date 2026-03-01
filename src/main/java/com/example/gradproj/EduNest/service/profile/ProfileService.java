@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -44,6 +45,7 @@ public class ProfileService {
         }
         return authentication.getName();
     }
+    @PreAuthorize("hasRole('MENTOR')")
     public ProfileStudentInformationForMentorResponse profileStudentInformationForMentorResponse(Long studentId){
 
         Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
@@ -89,6 +91,7 @@ public class ProfileService {
                 .githubLink(githubLink)
                 .build();
     }
+    @PreAuthorize("hasRole('MENTOR')")
 public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress(Long studentId, Pageable pageable){
     Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
             .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
@@ -121,6 +124,7 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
             .build();
 }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<StudentProjectProfileDTO> getStudentProjects(
             Long studentId,
             int page,
@@ -168,6 +172,7 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
                 .finalScore(ps.getFinalScore())
                 .build();
     }
+    @PreAuthorize("hasRole('MENTOR')")
     public FullProfileStudentInformationForMentorResponse getFullStudentProfileForMentor(
             Long studentId,
             int mentorshipsPage,

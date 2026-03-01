@@ -38,6 +38,6 @@ public class Quiz extends BaseEntity {
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true ,fetch = FetchType.LAZY)
     private List<Question> questions;
 
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<QuizSubmission> submissions;
 }

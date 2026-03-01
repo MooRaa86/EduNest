@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.filters;
 
+import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.service.jwt.JwtServiceI;
 import com.example.gradproj.EduNest.utils.Constants;
 import jakarta.servlet.FilterChain;
@@ -26,7 +27,17 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
         }
         try {
             jwtService.validateToken(jwtToken);
-        }catch (Exception ex) {
+        } catch (InvalidJwtToken ex){
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("""
+                    {
+                      "error": "Invalid token: user is deactivated, please login again"
+                    }
+                    """);
+            return;
+
+        } catch (Exception ex) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("""

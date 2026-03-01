@@ -9,6 +9,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,6 +19,8 @@ import java.util.List;
 public class LectureService {
     private final LectureRepository lectureRepository;
     private final WeekRepository weekRepository;
+
+    @PreAuthorize("hasRole('MENTOR')")
     public LectureResponse createLecture(CreateLecturerequest createLecturerequest) {
        Week week=weekRepository.findById(createLecturerequest.getWeekId()).orElseThrow(
                ()->new globalLogicEx("week not found")
@@ -31,12 +34,14 @@ public class LectureService {
 
         return mapToLectureResponse(saved);
     }
+    @PreAuthorize("hasRole('MENTOR')")
     public void deleteLecture(Long lectureId){
         if (!(lectureRepository.existsById(lectureId))) {
             throw new globalLogicEx("lecture not found");
         }
         lectureRepository.deleteById(lectureId);
     }
+    @PreAuthorize("hasRole('MENTOR')")
 public LectureResponse updateLecture(Long lectureId, UpdeteLectureRequest request){
     Lecture lecture=lectureRepository.findById(lectureId).orElseThrow(
             ()->new globalLogicEx("lecture not found")
