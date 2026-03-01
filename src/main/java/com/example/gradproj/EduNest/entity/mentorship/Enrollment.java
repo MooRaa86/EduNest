@@ -28,10 +28,6 @@ public class Enrollment extends BaseEntity {
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorShip;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "mentor_id", nullable = false)
-//    private Mentor mentor;
-
     private Double price;
 
     @Column(name = "joined_at", nullable = false)

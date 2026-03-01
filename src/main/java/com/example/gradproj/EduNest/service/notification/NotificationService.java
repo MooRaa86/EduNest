@@ -4,8 +4,10 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
 import com.example.gradproj.EduNest.entity.notification.Notification;
 import com.example.gradproj.EduNest.entity.notification.UserNotification;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.notification.NotificationRepository;
 import com.example.gradproj.EduNest.repository.notification.UserNotificationRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
@@ -29,6 +31,7 @@ public class NotificationService {
     private final UserNotificationRepository userNotificationRepo;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepo;
+    private final EnrollmentRepository enrollmentRepo;
 
 
     private NotificationDto mapToDto(UserNotification u){
@@ -83,12 +86,55 @@ public class NotificationService {
         );
     }
 
-    public void sendToUsers(
-            List<UserEntity> users,
+//    public void sendToUsers(
+//            List<UserEntity> users,
+//            String title,
+//            String content,
+//            NotificationType type
+//    ){
+//
+//        Notification notification =
+//                Notification.builder()
+//                        .title(title)
+//                        .content(content)
+//                        .type(type)
+//                        .build();
+//
+//        notificationRepo.save(notification);
+//
+//        List<UserNotification> relations =
+//                users.stream()
+//                        .map(user ->
+//                                UserNotification.builder()
+//                                        .user(user)
+//                                        .notification(notification)
+//                                        .isRead(false)
+//                                        .build()
+//                        )
+//                        .toList();
+//
+//        userNotificationRepo.saveAll(relations);
+//
+//        for(int i = 0; i < relations.size(); i++){
+//
+//            messagingTemplate.convertAndSendToUser(
+//                    users.get(i).getEmail(),
+//                    "/queue/notifications",
+//                    mapToDto(relations.get(i))
+//            );
+//        }
+//    }
+
+    @Transactional
+    public void sendToMentorshipStudents(
+            Long mentorshipId,
             String title,
             String content,
             NotificationType type
-    ){
+    ) {
+
+        List<Student> students =
+                enrollmentRepo.findStudentsByMentorshipId(mentorshipId);
 
         Notification notification =
                 Notification.builder()
@@ -100,10 +146,10 @@ public class NotificationService {
         notificationRepo.save(notification);
 
         List<UserNotification> relations =
-                users.stream()
-                        .map(user ->
+                students.stream()
+                        .map(student ->
                                 UserNotification.builder()
-                                        .user(user)
+                                        .user(student)
                                         .notification(notification)
                                         .isRead(false)
                                         .build()
@@ -112,12 +158,12 @@ public class NotificationService {
 
         userNotificationRepo.saveAll(relations);
 
-        for(int i = 0; i < relations.size(); i++){
+        for (UserNotification relation : relations) {
 
             messagingTemplate.convertAndSendToUser(
-                    users.get(i).getEmail(),
+                    relation.getUser().getEmail(),
                     "/queue/notifications",
-                    mapToDto(relations.get(i))
+                    mapToDto(relation)
             );
         }
     }
