@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: edunest-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD:-12345}
       MYSQL_DATABASE: edunest
     ports:
       - "3306:3306"
