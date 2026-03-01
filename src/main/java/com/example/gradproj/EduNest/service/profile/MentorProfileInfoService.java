@@ -32,13 +32,13 @@ public class MentorProfileInfoService {
                 .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
         String githubLink = mentor.getSocialMediaLinks().stream()
-                .filter(sm -> "GitHub".equalsIgnoreCase(String.valueOf(sm.getName())))
+                .filter(sm -> Media.GITHUB.equals(sm.getName()))
                 .map(SocialMedia::getUrl)
                 .findFirst()
                 .orElse(null);
 
         String linkedInLink = mentor.getSocialMediaLinks().stream()
-                .filter(sm -> "LinkedIn".equalsIgnoreCase(String.valueOf(sm.getName())))
+                .filter(sm -> Media.LINKEDIN.equals(sm.getName()))
                 .map(SocialMedia::getUrl)
                 .findFirst()
                 .orElse(null);
@@ -72,22 +72,30 @@ public class MentorProfileInfoService {
         if (request.getYearsOfExperience() != null) mentor.setYearsOfExperience(request.getYearsOfExperience());
 
         if (request.getGithubLink() != null) {
-            mentor.getSocialMediaLinks().removeIf(sm -> "GitHub".equalsIgnoreCase(String.valueOf(sm.getName())));
-            SocialMedia github = SocialMedia.builder()
-                    .name(Media.GITHUB)
-                    .url(request.getGithubLink())
-                    .user(mentor)
-                    .build();
-            mentor.getSocialMediaLinks().add(github);
+            mentor.getSocialMediaLinks().stream()
+                    .filter(sm -> Media.GITHUB.equals(sm.getName()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            sm -> sm.setUrl(request.getGithubLink()),
+                            () -> mentor.getSocialMediaLinks().add(SocialMedia.builder()
+                                    .name(Media.GITHUB)
+                                    .url(request.getGithubLink())
+                                    .user(mentor)
+                                    .build())
+                    );
         }
         if (request.getLinkedInLink() != null) {
-            mentor.getSocialMediaLinks().removeIf(sm -> "LinkedIn".equalsIgnoreCase(String.valueOf(sm.getName())));
-            SocialMedia linkedin = SocialMedia.builder()
-                    .name(Media.LINKEDIN)
-                    .url(request.getLinkedInLink())
-                    .user(mentor)
-                    .build();
-            mentor.getSocialMediaLinks().add(linkedin);
+            mentor.getSocialMediaLinks().stream()
+                    .filter(sm -> Media.LINKEDIN.equals(sm.getName()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            sm -> sm.setUrl(request.getLinkedInLink()),
+                            () -> mentor.getSocialMediaLinks().add(SocialMedia.builder()
+                                    .name(Media.LINKEDIN)
+                                    .url(request.getLinkedInLink())
+                                    .user(mentor)
+                                    .build())
+                    );
         }
 
         userRepository.save(user);

@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.CreateProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequest;
+import com.example.gradproj.EduNest.dto.projects.response.FullProjectDashBoardDto;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
@@ -114,5 +115,24 @@ public class ProjectController {
         resp.addMessage("projectStatistics", stats);
 
         return ResponseEntity.status(HttpStatus.OK).body(resp);
+    }
+
+    @GetMapping("/full-dashboard/{mentorshipId}")
+    @Operation(summary = "get full project dashboard (dashboard + projects list)")
+    public ResponseEntity<SimpleResponse> getFullDashboard(
+            @PathVariable Long mentorshipId,
+            @RequestParam(required = false) String projectName,
+            @RequestParam(required = false) ProjectStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "4") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        FullProjectDashBoardDto fullDashboard = projectService.getFullProjectDashboard(mentorshipId, projectName, status, pageable);
+        
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("message", "Full dashboard retrieved successfully");
+        resp.addMessage("fullDashboard", fullDashboard);
+        
+        return ResponseEntity.ok(resp);
     }
 }

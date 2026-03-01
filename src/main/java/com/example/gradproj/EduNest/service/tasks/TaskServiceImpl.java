@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
+import com.example.gradproj.EduNest.dto.tasks.response.FullTaskDashBoardDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
@@ -255,6 +256,17 @@ public class TaskServiceImpl implements TaskService{
                 .finalScore(s.getFinalScore())
                 .submittedAt(s.getSubmittedAt())
                 .feedback(s.getFeedBack())
+                .build();
+    }
+
+    @Override
+    public FullTaskDashBoardDto getFullTaskDashboard(Long mentorShipId, String taskName, TaskStatus status, Pageable pageable) {
+        TaskDashboardDTO dashboard = getTaskDashboard(mentorShipId);
+        PageResponse<TaskResponse> tasks = getTasks(taskName, status, mentorShipId, pageable);
+        
+        return FullTaskDashBoardDto.builder()
+                .taskDashboardDTO(dashboard)
+                .taskResponsePageResponse(tasks)
                 .build();
     }
 }
