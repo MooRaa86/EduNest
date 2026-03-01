@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.jwt;
 
+import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.repository.users.projection.UserFullNameProjection;
 import com.example.gradproj.EduNest.utils.Constants;
@@ -77,9 +78,11 @@ public class JwtService implements JwtServiceI{
         Claims claims = Jwts.parser().verifyWith(secretKey)
                 .build().parseSignedClaims(token).getPayload();
         String username = String.valueOf(claims.get("username"));
-        if (!userRepository.existsByEmail(username)){
-            throw new UsernameNotFoundException("User not found");
+
+        if (!userRepository.existsByEmailAndEnabledTrue(username)) {
+            throw new InvalidJwtToken("Invalid token: user is deactivated, please login again");
         }
+
         String authorities = String.valueOf(claims.get("authorities"));
         Authentication authentication = new UsernamePasswordAuthenticationToken(username,null,
                 AuthorityUtils.commaSeparatedStringToAuthorityList(authorities));
