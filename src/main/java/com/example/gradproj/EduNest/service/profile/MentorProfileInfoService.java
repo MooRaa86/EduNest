@@ -68,7 +68,6 @@ public class MentorProfileInfoService {
 
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
         if (request.getLastName() != null) user.setLastName(request.getLastName());
-        if (request.getEmail() != null) user.setEmail(request.getEmail());
 
         if (request.getBio() != null) mentor.setBio(request.getBio());
         if (request.getJobTitle() != null) mentor.setJobTitle(request.getJobTitle());

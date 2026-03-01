@@ -24,29 +24,7 @@ public class SettingsController {
 
     private final SettingsService settingsService;
 
-    @Operation(
-            summary = "Get current user settings",
-            description = "Retrieve the current user's settings"
-    )
-    @GetMapping
-    public ResponseEntity<SimpleResponse> getSettings() {
-        SettingsResponse settingsResponse = settingsService.getMySettings();
-        SimpleResponse simpleResponse = new SimpleResponse();
-        simpleResponse.addMessage("My Settings", settingsResponse);
-        return ResponseEntity.ok(simpleResponse);
-    }
 
-    @Operation(
-            summary = "Update user settings",
-            description = "Update user settings"
-    )
-    @PatchMapping
-    public ResponseEntity<SimpleResponse> changeSettings(@Valid @RequestBody UpdateSettingsRequest updateSettingsRequest) {
-        SettingsResponse settingsResponse = settingsService.changeSettings(updateSettingsRequest);
-        SimpleResponse simpleResponse = new SimpleResponse();
-        simpleResponse.addMessage("Settings Updated", settingsResponse);
-        return ResponseEntity.ok(simpleResponse);
-    }
 
     @Operation(
             summary = "Change user email",
@@ -96,4 +74,17 @@ public class SettingsController {
         simpleResponse.addMessage("Account Deleted", "Account Deleted Successfully");
         return ResponseEntity.ok(simpleResponse);
     }
+
+    @Operation(
+            summary = "Deactivate account",
+            description = "Deactivate account  by providing the Password"
+    )
+    @PostMapping("/deactivate")
+    public ResponseEntity<SimpleResponse>deactivateAccount(@RequestParam String password) {
+        SimpleResponse simpleResponse = new SimpleResponse();
+        settingsService.deactivateAccount(password);
+        simpleResponse.addMessage("Account Deactivated", "Account Deactivated Successfully");
+        return ResponseEntity.ok(simpleResponse);
+    }
+
 }
