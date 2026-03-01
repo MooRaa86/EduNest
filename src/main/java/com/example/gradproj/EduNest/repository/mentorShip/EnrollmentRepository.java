@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
@@ -187,4 +188,11 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     where e.mentorShip.id = :mentorShipId
 """)
     long countStudentsByMentorship(@Param("mentorShipId") Long mentorShipId);
+
+    @Query("""
+       select e.student
+       from Enrollment e
+       where e.mentorShip.id = :mentorshipId
+       """)
+    List<Student> findStudentsByMentorshipId(Long mentorshipId);
 }
