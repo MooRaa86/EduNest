@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.entity.users;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.Roles;
+import com.example.gradproj.EduNest.entity.chat.ChatRoom;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -46,4 +47,11 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
             fetch = FetchType.LAZY
     )
     private List<SocialMedia> socialMediaLinks = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "creator",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    private List<ChatRoom> rooms = new ArrayList<>();
 }

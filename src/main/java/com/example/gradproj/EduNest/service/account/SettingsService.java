@@ -1,11 +1,13 @@
 package com.example.gradproj.EduNest.service.account;
 
-import com.example.gradproj.EduNest.dto.account.request.*;
+import com.example.gradproj.EduNest.dto.account.request.ChangeEmailRequest;
+import com.example.gradproj.EduNest.dto.account.request.ChangePasswordRequest;
 import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.OTPRepository;
+import com.example.gradproj.EduNest.repository.chat.ConversationRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class SettingsService {
     private final PasswordEncoder passwordEncoder;
     private final OTPRepository otpRepository;
     private final EmailService emailService;
+    private final ConversationRepository conversationRepository;
 
     private final int expiryTime = 2;
 
@@ -124,7 +127,7 @@ public class SettingsService {
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.DELETE);
 
-
+        conversationRepository.deleteByUser1OrUser2(user, user);
         userRepository.delete(user);
     }
 
