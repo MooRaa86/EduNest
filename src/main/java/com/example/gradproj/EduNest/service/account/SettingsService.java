@@ -1,13 +1,11 @@
 package com.example.gradproj.EduNest.service.account;
 
-import com.example.gradproj.EduNest.dto.account.request.ChangeEmailRequest;
 import com.example.gradproj.EduNest.dto.account.request.ChangePasswordRequest;
 import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.OTPRepository;
-import com.example.gradproj.EduNest.repository.chat.ConversationRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
@@ -27,25 +26,67 @@ public class SettingsService {
     private final PasswordEncoder passwordEncoder;
     private final OTPRepository otpRepository;
     private final EmailService emailService;
-    private final ConversationRepository conversationRepository;
-
     private final int expiryTime = 2;
 
     @Transactional
-    public void changeEmail(ChangeEmailRequest request) {
+    public void requestChangeEmail(String newEmail) {
 
         UserEntity user = getCurrentUser();
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new globalLogicEx("Password is incorrect");
+        if (user.getEmail().equals(newEmail)) {
+            throw new globalLogicEx("You are already using this email");
         }
 
-        if (userRepository.existsByEmail(request.getNewEmail())) {
+        if (userRepository.existsByEmail(newEmail)) {
             throw new globalLogicEx("Email already in use");
         }
 
-        user.setEmail(request.getNewEmail());
+        otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
+
+        String otpCode = generateOtp();
+
+        OTP otp = OTP.builder()
+                .otpCode(otpCode)
+                .user(user)
+                .otpType(OtpType.CHANGE_EMAIL)
+                .pendingEmail(newEmail)
+                .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
+                .build();
+
+        otpRepository.save(otp);
+
+        String template = emailService.getEmailTemplate("change-email.html");
+
+        String html = template
+                .replace("{{otp}}", otpCode)
+                .replace("{{name}}", user.getFirstName())
+                .replace("{{minutes}}", String.valueOf(expiryTime));
+
+        emailService.sendEmail(
+                newEmail,
+                "Change Your Email",
+                html
+        );
+    }
+
+    @Transactional
+    public void confirmChangeEmail(String otpCode) {
+        UserEntity user = getCurrentUser();
+
+        OTP otp = otpRepository
+                .findByUserAndOtpCodeAndOtpType(user, otpCode, OtpType.CHANGE_EMAIL)
+                .orElseThrow(() -> new globalLogicEx("Invalid OTP"));
+
+        if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
+            otpRepository.delete(otp);
+            throw new globalLogicEx("OTP expired");
+        }
+
+        user.setEmail(otp.getPendingEmail());
         userRepository.save(user);
+        otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
+        SecurityContextHolder.clearContext();
+
     }
 
 
@@ -68,8 +109,8 @@ public class SettingsService {
 
 
     @Transactional
-    public void deactivateAccount(String password){
-        UserEntity  user = getCurrentUser();
+    public void deactivateAccount(String password) {
+        UserEntity user = getCurrentUser();
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new globalLogicEx("Password is incorrect");
         }
@@ -149,6 +190,8 @@ public class SettingsService {
     }
 
     private String generateOtp() {
-        return String.valueOf((int) (Math.random() * 900000) + 100000);
+        SecureRandom random = new SecureRandom();
+        int otp = 100000 + random.nextInt(900000);
+        return String.valueOf(otp);
     }
 }

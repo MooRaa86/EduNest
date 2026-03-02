@@ -16,7 +16,4 @@ public class ChangeEmailRequest {
     @Email
     @NotBlank
     private String newEmail;
-
-    @NotBlank
-    private String password;
 }
