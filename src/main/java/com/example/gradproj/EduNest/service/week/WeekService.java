@@ -16,13 +16,18 @@ import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,13 +39,46 @@ public class WeekService {
     private final ProjectRepository projectRepository;
     private final LiveSessionRepository sessionRepository;
     private final LectureRepository lectureRepository;
+    private final MentorRepository mentorRepository;
+
+    private String getCurrentUserEmail() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+    }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private void validateMentorOwnership(Long mentorshipId) {
+        Long mentorId = mentorShipRepository.findById(mentorshipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"))
+                .getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this mentorship");
+        }
+    }
+
+    private Week validateMentorOwnsWeek(Long weekId) {
+        Week week = weekRepository.findById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Long mentorId = week.getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this week");
+        }
+        return week;
+    }
 
 
     @PreAuthorize("hasRole('MENTOR')")
     public WeekResponse createWeek(CreateWeekrequest createWeekrequest) {
-        MentorShip mentorShip = mentorShipRepository.findById(createWeekrequest.getMentorshipId()).orElseThrow(
-                () -> new globalLogicEx("mentorShip not found")
-        );
+        validateMentorOwnership(createWeekrequest.getMentorshipId());
+        MentorShip mentorShip = mentorShipRepository.findById(createWeekrequest.getMentorshipId())
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
         Week week = Week.builder()
                 .title(createWeekrequest.getTitle())
                 .mentorship(mentorShip)
@@ -52,16 +90,14 @@ public class WeekService {
 
     @PreAuthorize("hasRole('MENTOR')")
     public void deleteWeek(Long weekId) {
-        if (!weekRepository.existsById(weekId)) {
-            throw new globalLogicEx("Week not found");
-        }
+        validateMentorOwnsWeek(weekId);
         weekRepository.deleteById(weekId);
     }
 
     @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public WeekResponse updateWeekTitle(Long id, UpdateWeekRequest request) {
-        Week week = weekRepository.findById(id).orElseThrow(() -> new globalLogicEx("Week not found"));
+        Week week = validateMentorOwnsWeek(id);
         week.setTitle(request.getTitle());
         return mapToWeekResponse(weekRepository.save(week));
 
@@ -76,7 +112,6 @@ public class WeekService {
 
     @Transactional(readOnly = true)
     public WeekContentsResponse getWeekContents(Long weekId) {
-
         Week week = weekRepository.findById(weekId)
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
 
@@ -130,7 +165,6 @@ public class WeekService {
                     .title(l.getTitle())
                     .createdAt(l.getCreatedAt())
                     .build());
-
         }
 
 

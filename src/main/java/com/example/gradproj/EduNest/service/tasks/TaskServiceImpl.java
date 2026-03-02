@@ -19,16 +19,21 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -39,6 +44,39 @@ public class TaskServiceImpl implements TaskService{
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
+    private final MentorRepository mentorRepository;
+
+    private String getCurrentUserEmail() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+    }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private void validateMentorshipOwnership(Long mentorShipId) {
+        Long mentorId = mentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"))
+                .getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this mentorship");
+        }
+    }
+
+    private Task validateMentorOwnershipAndGetTask(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Long mentorId = task.getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this task");
+        }
+        return task;
+    }
 
 
 
@@ -51,6 +89,10 @@ public class TaskServiceImpl implements TaskService{
         Week week=weekRepository.findById(req.getWeekId()).orElseThrow(
                 ()->new  globalLogicEx("weekId not found")
         );
+        Long mentorId = week.getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to create tasks for this mentorship");
+        }
 
 
         Task task= Task.builder()
@@ -90,7 +132,7 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public TaskResponse updateTask(long taskId, PatchTaskRequest request) {
-        Task task=taskRepository.findById(taskId).orElseThrow(()->new IllegalArgumentException("Task not found "));
+        Task task = validateMentorOwnershipAndGetTask(taskId);
         if (task.getStatus() == TaskStatus.CLOSED){
             throw new globalLogicEx("cannot update closed task");
         }
@@ -116,16 +158,13 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public void deleteTask(Long taskId) {
-       if (!(taskRepository.existsById(taskId))) {
-           throw   new globalLogicEx("Task not found");
-       }
+       validateMentorOwnershipAndGetTask(taskId);
        taskRepository.deleteById(taskId);
     }
 
     @Override
     public TaskResponse updateTaskStatus(Long taskId, UpdateTaskStatusRequest req) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Task task = validateMentorOwnershipAndGetTask(taskId);
 
         if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
             throw new globalLogicEx("Cannot revert published task to draft");
@@ -182,9 +221,7 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
-        if (!(mentorShipRepository.existsById(mentorShipId))) {
-            throw  new globalLogicEx("mentorShip not found");
-        }
+        validateMentorshipOwnership(mentorShipId);
         List<Task> allTasks = taskRepository.findByWeek_Mentorship_Id(mentorShipId);
 
         int totalTasks = allTasks.size();
@@ -220,9 +257,7 @@ public class TaskServiceImpl implements TaskService{
     @Override
     @Transactional(readOnly = true)
     public TaskStatisticsDTO getTaskStatistics(Long taskId, Pageable pageable) {
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Task task = validateMentorOwnershipAndGetTask(taskId);
 
         Long mentorshipId = task.getWeek().getMentorship().getId();
 

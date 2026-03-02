@@ -13,12 +13,14 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -38,22 +40,47 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
+    private final MentorRepository mentorRepository;
 
+    private String getCurrentUserEmail() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+    }
 
+    private Long getCurrentStudentId() {
+        return studentRepository.findIdByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+    }
 
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
 
-    private String getCurrentStudentEmail() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("Unauthenticated user");
+    private void validateMentorOwnsTask(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Long mentorId = task.getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this task");
         }
-        return authentication.getName();
+    }
+
+    private TaskSubmission validateMentorOwnsSubmission(Long submissionId) {
+        TaskSubmission sub = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        Long mentorId = sub.getTask().getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to grade this submission");
+        }
+        return sub;
     }
 
     @Override
     public TaskSubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
-
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
 
@@ -61,10 +88,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             throw new globalLogicEx("Task is not published");
         }
 
-        String email = getCurrentStudentEmail();
-
-        Long studentId = studentRepository.findIdByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+        Long studentId = getCurrentStudentId();
 
         boolean isEnrolled = enrollmentRepository.isStudentEnrolledForTask(taskId, studentId);
 
@@ -84,11 +108,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         TaskSubmission sub = existingOpt.orElseGet(() -> {
             TaskSubmission s = new TaskSubmission();
-
-            // IMPORTANT: references (proxies) بدون تحميل كامل
             s.setTask(taskRepository.getReferenceById(taskId));
             s.setStudent(studentRepository.getReferenceById(studentId));
-
             s.setStatus(SubmissionStatus.SUBMITTED);
             return s;
         });
@@ -109,15 +130,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<TaskSubmissionResponse> listByTask(
-            Long taskId,
-            int page,
-            int size
-    ) {
-
-        if (!taskRepository.existsById(taskId)) {
-            throw new globalLogicEx("Task not found with this id");
-        }
+    public PageResponse<TaskSubmissionResponse> listByTask(Long taskId, int page, int size) {
+        validateMentorOwnsTask(taskId);
 
         Pageable pageable = PageRequest.of(page, size);
 
@@ -141,9 +155,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     @Override
     public TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req) {
-
-        TaskSubmission sub = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new IllegalArgumentException("Submission not found"));
+        TaskSubmission sub = validateMentorOwnsSubmission(submissionId);
 
         Task task = sub.getTask();
 
@@ -156,7 +168,6 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         sub.setFinalScore(req.getScore());
         sub.setStatus(SubmissionStatus.GRADED);
         sub.setGradedAt(LocalDateTime.now());
-
 
         MentorShip mentorship = task.getWeek().getMentorship();
         int newScore = sub.getFinalScore();
