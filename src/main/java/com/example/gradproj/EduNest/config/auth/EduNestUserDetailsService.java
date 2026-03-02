@@ -26,10 +26,16 @@ public class EduNestUserDetailsService implements UserDetailsService {
         AuthUserProjection user =
                 userRepository.findAuthUser(username)
                         .orElseThrow(() ->
-                                new UsernameNotFoundException("User not found"));
+                                new UsernameNotFoundException("User not found for this email : " + username));
 
         if (user.getRoleName() == null) {
             throw new globalLogicEx("User has no role assigned!");
+        }
+        if(Boolean.FALSE.equals(user.getEnabled())){
+            throw new globalLogicEx("This account is not verified, request a new otp...");
+        }
+        if(Boolean.TRUE.equals(user.getDeleted())){
+            throw new globalLogicEx("This User is deleted! Contact us..");
         }
         String roleName = "ROLE_" + user.getRoleName();
         List<GrantedAuthority> authorities =

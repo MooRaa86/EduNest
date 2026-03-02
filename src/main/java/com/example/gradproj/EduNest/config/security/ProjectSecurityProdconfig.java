@@ -100,26 +100,9 @@ public class ProjectSecurityProdconfig {
             PasswordEncoder passwordEncoder,
             UserRepository userRepository
     ){
-        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder,userRepository);
+        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder);
         ProviderManager providerManager = new ProviderManager(authProvider);
         providerManager.setEraseCredentialsAfterAuthentication(false);
         return providerManager;
     }
-
-
-//    @Bean
-//    public CorsConfigurationSource corsConfigurationSource() {
-//        CorsConfiguration config = new CorsConfiguration();
-//
-//        config.setAllowedOriginPatterns(List.of("*"));
-//        config.setAllowedMethods(List.of("*"));
-//        config.setAllowedHeaders(List.of("*"));
-//        config.setAllowCredentials(false);
-//
-//        UrlBasedCorsConfigurationSource source =
-//                new UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", config);
-//
-//        return source;
-//    }
 }

@@ -12,4 +12,6 @@ public interface RegistrationService {
     void forgetPassword(String email);
     void verifyForgetPasswordOtp(String email, String otpCode);
     void resetPassword(String email, String newPassword);
+    void restoreAccount(String email);
+    void confirmRestoreAccount(String email, String otpCode);
 }

@@ -79,8 +79,8 @@ public class JwtService implements JwtServiceI{
                 .build().parseSignedClaims(token).getPayload();
         String username = String.valueOf(claims.get("username"));
 
-        if (!userRepository.existsByEmailAndEnabledTrue(username)) {
-            throw new InvalidJwtToken("Invalid token: user is deactivated, please login again");
+        if (!userRepository.isUserEnabledAndNotDeleted(username).orElse(false)) {
+            throw new InvalidJwtToken("Invalid token: user is deactivated or deleted, please login again");
         }
 
         String authorities = String.valueOf(claims.get("authorities"));

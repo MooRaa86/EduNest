@@ -122,13 +122,14 @@ public class SettingsService {
                 .orElseThrow(() -> new globalLogicEx("Invalid OTP"));
 
         if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
+            otpRepository.delete(otp);
             throw new globalLogicEx("OTP expired");
         }
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.DELETE);
 
-        conversationRepository.deleteByUser1OrUser2(user, user);
-        userRepository.delete(user);
+        user.setDeleted(Boolean.TRUE);
+        userRepository.save(user);
     }
 
 
