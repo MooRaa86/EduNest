@@ -47,7 +47,8 @@ select
     u.email as email,
     u.password as password,
     u.enabled as enabled,
-    r.name as roleName
+    r.name as roleName,
+    u.deleted as deleted
 from UserEntity u
 join u.role r
 where u.email = :email
@@ -60,6 +61,13 @@ where u.email = :email
     where u.email = :email
 """)
     Optional<Boolean> isUserEnabled(String email);
+
+    @Query("""
+    select case when (u.enabled = true and u.deleted = false) then true else false end
+    from UserEntity u
+    where u.email = :email
+""")
+    Optional<Boolean> isUserEnabledAndNotDeleted(String email);
 
 
 

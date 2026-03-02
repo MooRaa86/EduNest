@@ -18,6 +18,7 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -253,5 +254,64 @@ public class RegisterServiceImpl implements RegistrationService {
         otpRepository.delete(otp);
 
     }
+
+    @Override
+    @Transactional
+    public void restoreAccount(String email){
+        UserEntity user = userRepository.findByEmail(email).orElseThrow(
+                ()-> new UsernameNotFoundException("User not found"));
+
+        if(!user.isDeleted()){
+            throw new globalLogicEx("Account isn't deleted try to login");
+        }
+
+        otpRepository.deleteByUserAndOtpType(user, OtpType.RESTORE);
+
+        String otpCode = generateOTP();
+
+        OTP otp = OTP.builder()
+                .otpCode(otpCode)
+                .user(user)
+                .otpType(OtpType.RESTORE)
+                .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
+                .build();
+
+        otpRepository.save(otp);
+
+        String template = emailService.getEmailTemplate("restore-account.html");
+
+        String html = template
+                .replace("{{USER_NAME}}", user.getFirstName())
+                .replace("{{OTP_CODE}}", otpCode)
+                .replace("{{EXPIRY_MINUTES}}", String.valueOf(expiryTime));
+
+        emailService.sendEmail(
+                user.getEmail(),
+                "Restore Your EduNest Account",
+                html
+        );
+    }
+
+    @Override
+    @Transactional
+    public void confirmRestoreAccount(String email, String otpCode) {
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        OTP otp = otpRepository
+                .findByUserAndOtpCodeAndOtpType(user, otpCode, OtpType.RESTORE)
+                .orElseThrow(() -> new globalLogicEx("Invalid OTP"));
+
+        if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
+            otpRepository.delete(otp);
+            throw new globalLogicEx("OTP expired");
+        }
+
+        otpRepository.deleteByUserAndOtpType(user, OtpType.RESTORE);
+
+        user.setDeleted(false);
+        userRepository.save(user);
+    }
+
 
 }

@@ -11,4 +11,6 @@ public interface AuthUserProjection {
     Boolean getEnabled();
 
     String getRoleName();
+
+    Boolean getDeleted();
 }

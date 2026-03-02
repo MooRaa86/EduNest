@@ -54,4 +54,8 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
             orphanRemoval = true,
             fetch = FetchType.LAZY)
     private List<ChatRoom> rooms = new ArrayList<>();
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 }

@@ -3,8 +3,6 @@ package com.example.gradproj.EduNest.controller.account;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.account.request.ChangeEmailRequest;
 import com.example.gradproj.EduNest.dto.account.request.ChangePasswordRequest;
-import com.example.gradproj.EduNest.dto.account.request.UpdateSettingsRequest;
-import com.example.gradproj.EduNest.dto.account.response.SettingsResponse;
 import com.example.gradproj.EduNest.service.account.SettingsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

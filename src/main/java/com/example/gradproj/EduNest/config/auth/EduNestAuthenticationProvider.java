@@ -1,7 +1,5 @@
 package com.example.gradproj.EduNest.config.auth;
 
-import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
-import com.example.gradproj.EduNest.repository.users.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -19,21 +17,12 @@ public class EduNestAuthenticationProvider implements AuthenticationProvider {
 
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
-    private final UserRepository userRepository;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         String username = authentication.getName();
         String pwd = authentication.getCredentials().toString();
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-        Boolean enabled = userRepository.isUserEnabled(username)
-                .orElseThrow(() ->
-                        new BadCredentialsException("User not found"));
-
-        if (!enabled) {
-            throw new globalLogicEx("This account is not verified, request a new otp...");
-        }
 
         if (passwordEncoder.matches(pwd, userDetails.getPassword())) {
             return new UsernamePasswordAuthenticationToken(username,pwd,userDetails.getAuthorities());

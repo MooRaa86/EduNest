@@ -1,7 +1,9 @@
 package com.example.gradproj.EduNest.controller.register;
 
-import com.example.gradproj.EduNest.dto.register.MentorRequestDto;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.dto.account.request.ConfirmRestoreAccountRequest;
+import com.example.gradproj.EduNest.dto.account.request.RestoreAccountRequest;
+import com.example.gradproj.EduNest.dto.register.MentorRequestDto;
 import com.example.gradproj.EduNest.dto.register.StudentRequestDto;
 import com.example.gradproj.EduNest.dto.register.VerifyAccountDto;
 import com.example.gradproj.EduNest.service.register.RegistrationService;
@@ -62,6 +64,30 @@ public class UserManagementController {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status", "OTP sent successfully. Email: " + email);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @Operation(
+            summary = "Request account restoration",
+            description = "Send OTP to user's email to restore deleted account"
+    )
+    @PostMapping("/restore")
+    public ResponseEntity<SimpleResponse> restoreAccount(@Valid @RequestBody RestoreAccountRequest request) {
+        registerationService.restoreAccount(request.getEmail());
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("Account Restore Request", "OTP Sent Successfully");
+        return ResponseEntity.ok(simpleResponse);
+    }
+
+    @Operation(
+            summary = "Confirm account restoration",
+            description = "Confirm account restoration by providing email and OTP"
+    )
+    @PostMapping("/confirm-restore")
+    public ResponseEntity<SimpleResponse> confirmRestoreAccount(@Valid @RequestBody ConfirmRestoreAccountRequest request) {
+        registerationService.confirmRestoreAccount(request.getEmail(), request.getOtp());
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("Account Restored", "Account Restored Successfully");
+        return ResponseEntity.ok(simpleResponse);
     }
 
 }
