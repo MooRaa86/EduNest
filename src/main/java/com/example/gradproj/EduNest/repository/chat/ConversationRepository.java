@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.chat;
 
 import com.example.gradproj.EduNest.entity.chat.Conversation;
+import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.repository.chat.projection.ConversationListProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -49,4 +50,6 @@ WHERE c.user1.email = :email
 ORDER BY m.sentAt DESC
 """)
     List<ConversationListProjection> findUserConversations(String email);
+
+    void deleteByUser1OrUser2(UserEntity user1, UserEntity user2);
 }
