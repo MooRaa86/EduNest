@@ -41,24 +41,29 @@ public class SettingsService {
             throw new globalLogicEx("Email already in use");
         }
 
-        otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
+        OTP otp = otpRepository.findByUserAndOtpType(user, OtpType.CHANGE_EMAIL)
+                .orElse(null);
 
-        String otpCode = generateOtp();
-
-        OTP otp = OTP.builder()
-                .otpCode(otpCode)
-                .user(user)
-                .otpType(OtpType.CHANGE_EMAIL)
-                .pendingEmail(newEmail)
-                .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
-                .build();
+        if (otp != null) {
+            otp.setOtpCode(generateOtp());
+            otp.setPendingEmail(newEmail);
+            otp.setExpiresAt(LocalDateTime.now().plusMinutes(expiryTime));
+        } else {
+            otp = OTP.builder()
+                    .otpCode(generateOtp())
+                    .user(user)
+                    .otpType(OtpType.CHANGE_EMAIL)
+                    .pendingEmail(newEmail)
+                    .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
+                    .build();
+        }
 
         otpRepository.save(otp);
 
         String template = emailService.getEmailTemplate("change-email.html");
 
         String html = template
-                .replace("{{otp}}", otpCode)
+                .replace("{{otp}}", otp.getOtpCode())
                 .replace("{{name}}", user.getFirstName())
                 .replace("{{minutes}}", String.valueOf(expiryTime));
 
@@ -88,6 +93,7 @@ public class SettingsService {
         SecurityContextHolder.clearContext();
 
     }
+
 
     @Transactional
     public void changePassword(ChangePasswordRequest request) {
