@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.service.tasks;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
-import com.example.gradproj.EduNest.dto.tasks.requests.SubmitTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
@@ -26,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +41,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
+    private final TaskFileStorageService fileStorageService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -80,7 +81,11 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     }
 
     @Override
-    public TaskSubmissionResponse submit(Long taskId, SubmitTaskRequest req) {
+    public TaskSubmissionResponse submit(Long taskId, MultipartFile file, String fileUrl) {
+        if ((file == null || file.isEmpty()) && (fileUrl == null || fileUrl.isBlank())) {
+            throw new globalLogicEx("Either file upload or file URL must be provided");
+        }
+
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
 
@@ -106,6 +111,11 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
 
+        String uploadedPath = null;
+        if (file != null && !file.isEmpty()) {
+            uploadedPath = fileStorageService.saveFile("task", taskId, studentId, file);
+        }
+
         TaskSubmission sub = existingOpt.orElseGet(() -> {
             TaskSubmission s = new TaskSubmission();
             s.setTask(taskRepository.getReferenceById(taskId));
@@ -114,7 +124,8 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             return s;
         });
 
-        sub.setFileUrl(req.getFileUrl());
+        sub.setFileUrl(fileUrl);
+        sub.setUploadedFilePath(uploadedPath);
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
@@ -192,6 +203,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
                 .taskId(s.getTask().getId())
                 .studentId(s.getStudent().getId())
                 .fileUrl(s.getFileUrl())
+                .uploadedFilePath(s.getUploadedFilePath())
                 .status(SubmissionStatus.valueOf(s.getStatus().name()))
                 .isLate(s.getIsLate())
                 .rawScore(s.getRawScore())

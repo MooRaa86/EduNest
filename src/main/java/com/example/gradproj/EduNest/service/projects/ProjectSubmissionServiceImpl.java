@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.service.projects;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
-import com.example.gradproj.EduNest.dto.projects.request.SubmitProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
@@ -16,6 +15,7 @@ import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionReposit
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +42,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
+    private final TaskFileStorageService fileStorageService;
 
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -81,7 +83,11 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     }
 
     @Override
-    public ProjectSubmissionResponse submit(Long projectId, SubmitProjectRequest req) {
+    public ProjectSubmissionResponse submit(Long projectId, MultipartFile file, String fileUrl) {
+        if ((file == null || file.isEmpty()) && (fileUrl == null || fileUrl.isBlank())) {
+            throw new globalLogicEx("Either file upload or file URL must be provided");
+        }
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new globalLogicEx("project not found"));
 
@@ -107,6 +113,11 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
 
+        String uploadedPath = null;
+        if (file != null && !file.isEmpty()) {
+            uploadedPath = fileStorageService.saveFile("project", projectId, studentId, file);
+        }
+
         ProjectSubmission sub = existingOpt.orElseGet(() -> {
             ProjectSubmission s = new ProjectSubmission();
             s.setProject(projectRepository.getReferenceById(projectId));
@@ -115,7 +126,8 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
             return s;
         });
 
-        sub.setFileUrl(req.getFileUrl());
+        sub.setFileUrl(fileUrl);
+        sub.setUploadedFilePath(uploadedPath);
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
@@ -193,6 +205,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
                 .projectId(s.getProject().getId())
                 .studentId(s.getStudent().getId())
                 .fileUrl(s.getFileUrl())
+                .uploadedFilePath(s.getUploadedFilePath())
                 .status(s.getStatus())
                 .isLate(s.getIsLate())
                 .rawScore(s.getRawScore())

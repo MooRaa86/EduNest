@@ -26,6 +26,9 @@ public class TaskSubmission extends BaseEntity {
     @Column(name = "file_url")
     private String fileUrl;
 
+    @Column(name = "uploaded_file_path")
+    private String uploadedFilePath;
+
     @Column(name = "raw_score")
     private Integer rawScore;
 
