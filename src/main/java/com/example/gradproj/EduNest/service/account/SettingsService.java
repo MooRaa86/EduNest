@@ -89,6 +89,7 @@ public class SettingsService {
 
     }
 
+
     @Transactional
     public void changePassword(ChangePasswordRequest request) {
 
