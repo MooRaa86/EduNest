@@ -26,4 +26,6 @@ public class OTP extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "otp_type")
     private OtpType otpType = OtpType.DEFAULT;
+
+    private String pendingEmail;
 }

@@ -23,14 +23,25 @@ public class SettingsController {
     private final SettingsService settingsService;
 
 
+    @Operation(
+            summary = "request-email-change",
+            description = "Request change the user's email address. Requires newEmail validation and send otp to newEmail"
+    )
+    @PostMapping("/request-email-change")
+    public ResponseEntity<SimpleResponse> changeEmail(@Valid @RequestBody ChangeEmailRequest request) {
+        settingsService.requestChangeEmail(request.getNewEmail());
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("Change email Request", "Otp Sent Successfully");
+        return ResponseEntity.ok(simpleResponse);
+    }
 
     @Operation(
             summary = "Change user email",
-            description = "Change the user's email address. Requires password validation. Forces logout after change."
+            description = "Change the user's email address. Requires otpCode validation. Forces logout after change."
     )
-    @PatchMapping("/email")
-    public ResponseEntity<SimpleResponse> changeEmail(@Valid @RequestBody ChangeEmailRequest request) {
-        settingsService.changeEmail(request);
+    @PatchMapping("/confirm-email-change")
+    public ResponseEntity<SimpleResponse> confirmChangeEmail(@RequestParam String otpCode) {
+        settingsService.confirmChangeEmail(otpCode);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("Settings Updated", "Email Changed Successfully");
         simpleResponse.addMessage("forceLogout", "Please login again");
@@ -78,7 +89,7 @@ public class SettingsController {
             description = "Deactivate account  by providing the Password"
     )
     @PostMapping("/deactivate")
-    public ResponseEntity<SimpleResponse>deactivateAccount(@RequestParam String password) {
+    public ResponseEntity<SimpleResponse> deactivateAccount(@RequestParam String password) {
         SimpleResponse simpleResponse = new SimpleResponse();
         settingsService.deactivateAccount(password);
         simpleResponse.addMessage("Account Deactivated", "Account Deactivated Successfully");
