@@ -18,15 +18,20 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -37,11 +42,48 @@ public class ProjectServiceImpl implements ProjectService{
     private final WeekRepository weekRepository;
     private final ProjectSubmissionRepository submissionRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final MentorRepository mentorRepository;
+
+    private String getCurrentUserEmail() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+    }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private void validateMentorshipOwnership(Long mentorShipId) {
+        Long mentorId = mentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"))
+                .getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this mentorship");
+        }
+    }
+
+    private Project validateMentorOwnershipAndGetProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        Long mentorId = project.getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this project");
+        }
+        return project;
+    }
 
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req) {
         Week week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
+        Long mentorId = week.getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to create projects for this mentorship");
+        }
         if (req.getEndAt().isBefore(req.getStartAt())) {
             throw new globalLogicEx("endAt must be after startAt");
         }
@@ -70,9 +112,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectResponse updateProject(long projectId, PatchProjectRequest req) {
-
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        Project project = validateMentorOwnershipAndGetProject(projectId);
 
         if (project.getStatus() == ProjectStatus.CLOSED) {
             throw new globalLogicEx("Cannot update closed project");
@@ -100,17 +140,13 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public void deleteProject(Long projectId) {
-        if (!projectRepository.existsById(projectId)) {
-            throw  new globalLogicEx("project not found");
-        }
+        validateMentorOwnershipAndGetProject(projectId);
         projectRepository.deleteById(projectId);
-
     }
 
     @Override
     public ProjectResponse updateProjectStatus(Long projectId, UpdateProjectStatusRequest req) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        Project project = validateMentorOwnershipAndGetProject(projectId);
 
         if ((project.getStatus() == ProjectStatus.PUBLISHED) && (req.getStatus() == ProjectStatus.DRAFT)) {
             throw new globalLogicEx("Cannot revert published project to draft");
@@ -142,9 +178,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectDashboardDTO getProjectDashboard(Long mentorShipId) {
-        if (!(mentorShipRepository.existsById(mentorShipId))) {
-            throw   new globalLogicEx("mentorShip not found");
-        }
+        validateMentorshipOwnership(mentorShipId);
         List<Project> allProjects = projectRepository.findByWeek_Mentorship_Id(mentorShipId);
 
         int totalProjects = allProjects.size();
@@ -195,9 +229,7 @@ public class ProjectServiceImpl implements ProjectService{
     @Override
     @Transactional(readOnly = true)
     public ProjectStatisticsDTO getProjectStatistics(Long projectId, Pageable pageable) {
-
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        Project project = validateMentorOwnershipAndGetProject(projectId);
 
         Long mentorshipId = project.getWeek().getMentorship().getId();
 
@@ -251,6 +283,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public FullProjectDashBoardDto getFullProjectDashboard(Long mentorShipId, String projectName, ProjectStatus status, Pageable pageable) {
+        validateMentorshipOwnership(mentorShipId);
         ProjectDashboardDTO dashboard = getProjectDashboard(mentorShipId);
         PageResponse<ProjectResponse> projects = getProject(projectName, status, mentorShipId, pageable);
         

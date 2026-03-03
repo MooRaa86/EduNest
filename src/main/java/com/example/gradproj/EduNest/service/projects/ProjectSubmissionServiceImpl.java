@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.service.projects;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
-import com.example.gradproj.EduNest.dto.projects.request.SubmitProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
@@ -13,19 +12,21 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,35 +41,61 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
+    private final MentorRepository mentorRepository;
+    private final TaskFileStorageService fileStorageService;
 
-    private String getCurrentStudentEmail() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
+    private String getCurrentUserEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("Unauthenticated user");
+            throw new AccessDeniedException("Unauthenticated user");
         }
-
-        if(!(authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_STUDENT")))){
-            throw new BadCredentialsException("you are not allowed to submit project");
-        }
-
         return authentication.getName();
     }
 
+    private Long getCurrentStudentId() {
+        return studentRepository.findIdByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+    }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private void validateMentorOwnsProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        Long mentorId = project.getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this project");
+        }
+    }
+
+    private ProjectSubmission validateMentorOwnsSubmission(Long submissionId) {
+        ProjectSubmission sub = projectSubmissionRepository.findById(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        Long mentorId = sub.getProject().getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to grade this submission");
+        }
+        return sub;
+    }
+
     @Override
-    public ProjectSubmissionResponse submit(Long projectId, SubmitProjectRequest req) {
+    public ProjectSubmissionResponse submit(Long projectId, MultipartFile file, String fileUrl) {
+        if ((file == null || file.isEmpty()) && (fileUrl == null || fileUrl.isBlank())) {
+            throw new globalLogicEx("Either file upload or file URL must be provided");
+        }
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("project not found"));
+                .orElseThrow(() -> new globalLogicEx("project not found"));
 
         if (project.getStatus() != ProjectStatus.PUBLISHED) {
             throw new globalLogicEx("Project is not published");
         }
 
-        String email = getCurrentStudentEmail();
-
-        Long studentId = studentRepository.findIdByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+        Long studentId = getCurrentStudentId();
 
         boolean isEnrolled = enrollmentRepository.isStudentEnrolledForProject(projectId, studentId);
 
@@ -86,18 +113,21 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
 
+        String uploadedPath = null;
+        if (file != null && !file.isEmpty()) {
+            uploadedPath = fileStorageService.saveFile("project", projectId, studentId, file);
+        }
+
         ProjectSubmission sub = existingOpt.orElseGet(() -> {
             ProjectSubmission s = new ProjectSubmission();
-
-            // references (proxies) بدون SELECT إضافي
             s.setProject(projectRepository.getReferenceById(projectId));
             s.setStudent(studentRepository.getReferenceById(studentId));
-
             s.setStatus(SubmissionStatus.SUBMITTED);
             return s;
         });
 
-        sub.setFileUrl(req.getFileUrl());
+        sub.setFileUrl(fileUrl);
+        sub.setUploadedFilePath(uploadedPath);
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
@@ -111,15 +141,8 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
         return mapToSubmissionResponse(saved);
     }
 
-    public PageResponse<ProjectSubmissionResponse> listByProject(
-            Long projectId,
-            int page,
-            int size
-    ) {
-
-        if (!projectRepository.existsById(projectId)) {
-            throw new globalLogicEx("project not found with this id");
-        }
+    public PageResponse<ProjectSubmissionResponse> listByProject(Long projectId, int page, int size) {
+        validateMentorOwnsProject(projectId);
 
         Pageable pageable = PageRequest.of(page, size);
 
@@ -143,9 +166,7 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
 
     @Override
     public ProjectSubmissionResponse gradeProject(Long submissionId, GradeProjectSubmissionRequest req) {
-
-        ProjectSubmission sub = projectSubmissionRepository.findById(submissionId)
-                .orElseThrow(() -> new IllegalArgumentException("Submission not found"));
+        ProjectSubmission sub = validateMentorOwnsSubmission(submissionId);
 
         Project project = sub.getProject();
 
@@ -184,7 +205,8 @@ public class ProjectSubmissionServiceImpl implements  ProjectSubmissionService {
                 .projectId(s.getProject().getId())
                 .studentId(s.getStudent().getId())
                 .fileUrl(s.getFileUrl())
-                .status(s.getStatus()) 
+                .uploadedFilePath(s.getUploadedFilePath())
+                .status(s.getStatus())
                 .isLate(s.getIsLate())
                 .rawScore(s.getRawScore())
                 .finalScore(s.getFinalScore())

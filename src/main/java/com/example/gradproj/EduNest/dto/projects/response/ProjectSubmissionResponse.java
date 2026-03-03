@@ -16,6 +16,7 @@ public class ProjectSubmissionResponse {
     private Long studentId;
 
     private String fileUrl;
+    private String uploadedFilePath;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // for unify the date formate
     private LocalDateTime submittedAt;
 
