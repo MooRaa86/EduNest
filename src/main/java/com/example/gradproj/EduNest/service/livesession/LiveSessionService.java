@@ -3,7 +3,9 @@ package com.example.gradproj.EduNest.service.livesession;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
@@ -26,5 +28,6 @@ public interface LiveSessionService {
     void recordSnapshot(Long sessionId, List<Long> studentIds);
     @PreAuthorize("hasRole('MENTOR')")
     List<AttendanceResponse> getSessionAttendance(Long sessionId);
+    PageResponse<DashboardSessionResponse> getAllSessions(Long mentorshipId, int page, int size);
 
 }

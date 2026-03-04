@@ -42,7 +42,7 @@ public class SettingsService {
         }
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
-
+        otpRepository.flush();
         String otpCode = generateOtp();
 
         OTP otp = OTP.builder()
@@ -127,7 +127,7 @@ public class SettingsService {
         UserEntity user = getCurrentUser();
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.DELETE);
-
+        otpRepository.flush();
         String otpCode = generateOtp();
 
         OTP otp = OTP.builder()

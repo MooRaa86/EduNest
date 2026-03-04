@@ -3,7 +3,9 @@ package com.example.gradproj.EduNest.service.livesession;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.livesession.SessionAttendance;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
@@ -17,6 +19,9 @@ import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -47,7 +52,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Scheduled date/time must be in the future");
         }
 
-        Week week=weekRepository.findById(createSessionDto.getWeekId())
+        Week week = weekRepository.findById(createSessionDto.getWeekId())
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
 
         Session session = Session.builder()
@@ -98,6 +103,23 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    public PageResponse<DashboardSessionResponse> getAllSessions(Long mentorshipId, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<DashboardSessionResponse> allSessions =
+                liveSessionRepository.findAllByMentorshipId(mentorshipId, pageable);
+
+        return PageResponse.<DashboardSessionResponse>builder()
+                .content(allSessions.getContent())
+                .page(allSessions.getNumber())
+                .size(allSessions.getSize())
+                .totalElements(allSessions.getTotalElements())
+                .totalPages(allSessions.getTotalPages())
+                .build();
+    }
+
+    @Override
     public void deleteSession(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -115,6 +137,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         if (session.getStatus() == SessionStatus.LIVE) {
             throw new globalLogicEx("Session already started");
+        }
+
+        if (session.getStatus() == SessionStatus.ENDED) {
+            throw new globalLogicEx("Session already ended");
         }
 
         String meetingUrl = jitsiService.createRoomLink(sessionId);
@@ -268,4 +294,5 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 .sessionStatus(session.getStatus())
                 .build();
     }
+
 }

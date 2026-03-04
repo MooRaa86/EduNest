@@ -4,7 +4,9 @@ import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.service.livesession.LiveSessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,6 +68,24 @@ public class LiveSessionController {
 
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Session fetched successfully", sessionResponseDto);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get All live sessions for specific  mentorship",
+            description = "Retrieve details of all live sessions using mentorship ID"
+    )
+    @GetMapping("/mentorship")
+    public ResponseEntity<SimpleResponse> getAllSession(
+            @RequestParam Long mentorshipId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        PageResponse<DashboardSessionResponse> sessions =
+                liveSessionService.getAllSessions(mentorshipId,page,size);
+
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("Sessions fetched successfully", sessions);
         return ResponseEntity.ok(response);
     }
 
