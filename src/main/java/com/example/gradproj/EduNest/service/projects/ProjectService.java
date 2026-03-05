@@ -11,13 +11,14 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ProjectService {
     @PreAuthorize("hasRole('MENTOR')")
-    ProjectResponse createProject(CreateProjectRequest req);
+    ProjectResponse createProject(CreateProjectRequest req, MultipartFile file);
     ProjectResponse getProjectById(Long projectId);
     @PreAuthorize("hasRole('MENTOR')")
-    ProjectResponse updateProject(long projectId, PatchProjectRequest request);
+    ProjectResponse updateProject(long projectId, PatchProjectRequest request, MultipartFile file);
     @PreAuthorize("hasRole('MENTOR')")
     void deleteProject(Long projectId);
     @PreAuthorize("hasRole('MENTOR')")

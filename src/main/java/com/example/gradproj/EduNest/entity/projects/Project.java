@@ -35,6 +35,9 @@ public class Project extends BaseEntity {
         @Column(name = "project_description_url", length = 1000)
         private String descriptionUrl;
 
+        @Column(name = "uploaded_attachment_path", length = 500)
+        private String uploadedAttachmentPath;
+
         @Column(name = "project_start_at", nullable = false)
         private LocalDateTime startAt;
 

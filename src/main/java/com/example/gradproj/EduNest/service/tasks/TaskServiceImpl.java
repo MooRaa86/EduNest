@@ -30,6 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,6 +46,7 @@ public class TaskServiceImpl implements TaskService{
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
     private final MentorRepository mentorRepository;
+    private final TaskFileStorageService fileStorageService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -82,7 +84,7 @@ public class TaskServiceImpl implements TaskService{
 
 
     @Override
-    public TaskResponse createTask(CreateTaskRequest req) {
+    public TaskResponse createTask(CreateTaskRequest req, MultipartFile file) {
         if (req.getPassPoints()> req.getPoints()){
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
@@ -94,6 +96,10 @@ public class TaskServiceImpl implements TaskService{
             throw new AccessDeniedException("You are not authorized to create tasks for this mentorship");
         }
 
+        String uploadedPath = null;
+        if (file != null && !file.isEmpty()) {
+            uploadedPath = fileStorageService.saveFile("task-attachment", week.getMentorship().getId(), mentorId, file);
+        }
 
         Task task= Task.builder()
                 .title(req.getTitle())
@@ -103,6 +109,7 @@ public class TaskServiceImpl implements TaskService{
                 .estimatedMinutes(req.getEstimatedMinutes())
                 .dueAt(req.getDueAt())
                 .attachmentUrl(req.getAttachmentUrl())
+                .uploadedAttachmentPath(uploadedPath)
                 .status(req.getStatus())
                 .week(week)
                 .build();
@@ -131,24 +138,32 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public TaskResponse updateTask(long taskId, PatchTaskRequest request) {
+    public TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file) {
         Task task = validateMentorOwnershipAndGetTask(taskId);
         if (task.getStatus() == TaskStatus.CLOSED){
             throw new globalLogicEx("cannot update closed task");
         }
-        if (request.getTitle() !=null)task.setTitle(request.getTitle());
-        if (request.getDescription() != null) task.setDescription(request.getDescription());
-        if (request.getPoints() != null) task.setPoints(request.getPoints());
-        if (request.getPassPoints() != null) task.setPassPoints(request.getPassPoints());
-        if (request.getEstimatedMinutes() != null) task.setEstimatedMinutes(request.getEstimatedMinutes());
-        if (request.getAttachmentUrl() != null) task.setAttachmentUrl(request.getAttachmentUrl());
-        if (request.getStatus() != null) task.setStatus(request.getStatus());
-        if (request.getDueAt() != null){
-            if (request.getDueAt().isBefore(LocalDateTime.now())){
-                throw new globalLogicEx("dueAt must be in the future ");
-            }
-            task.setDueAt(request.getDueAt());
+        if (request != null) {
+            if (request.getTitle() !=null)task.setTitle(request.getTitle());
+            if (request.getDescription() != null) task.setDescription(request.getDescription());
+            if (request.getPoints() != null) task.setPoints(request.getPoints());
+            if (request.getPassPoints() != null) task.setPassPoints(request.getPassPoints());
+            if (request.getEstimatedMinutes() != null) task.setEstimatedMinutes(request.getEstimatedMinutes());
+            if (request.getAttachmentUrl() != null) task.setAttachmentUrl(request.getAttachmentUrl());
+            if (request.getStatus() != null) task.setStatus(request.getStatus());
+            if (request.getDueAt() != null){
+                if (request.getDueAt().isBefore(LocalDateTime.now())){
+                    throw new globalLogicEx("dueAt must be in the future ");
+                }
+                task.setDueAt(request.getDueAt());
 
+            }
+        }
+        if (file != null && !file.isEmpty()) {
+            Long mentorId = getCurrentMentorId();
+            Long mentorshipId = task.getWeek().getMentorship().getId();
+            String uploadedPath = fileStorageService.saveFile("task-attachment", mentorshipId, mentorId, file);
+            task.setUploadedAttachmentPath(uploadedPath);
         }
         if (task.getPassPoints()>task.getPoints()){
             throw  new globalLogicEx("Pass points must be less than or equal to points.");
@@ -184,6 +199,7 @@ public class TaskServiceImpl implements TaskService{
                 .status(task.getStatus().name())
                 .dueAt(task.getDueAt())
                 .attachmentUrl(task.getAttachmentUrl())
+                .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                 .build();
 
 
@@ -207,6 +223,7 @@ public class TaskServiceImpl implements TaskService{
                         .status(String.valueOf(task.getStatus()))
                         .dueAt(task.getDueAt())
                         .attachmentUrl(task.getAttachmentUrl())
+                        .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                         .build())
                 .toList();
 
@@ -296,6 +313,7 @@ public class TaskServiceImpl implements TaskService{
                 .taskId(s.getTask().getId())
                 .studentId(s.getStudent().getId())
                 .fileUrl(s.getFileUrl())
+                .uploadedFilePath(s.getUploadedFilePath())
                 .status(s.getStatus())
                 .isLate(s.getIsLate())
                 .rawScore(s.getRawScore())

@@ -20,6 +20,7 @@ import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,6 +45,7 @@ public class ProjectServiceImpl implements ProjectService{
     private final ProjectSubmissionRepository submissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
+    private final TaskFileStorageService fileStorageService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -78,7 +81,7 @@ public class ProjectServiceImpl implements ProjectService{
 
 
     @Override
-    public ProjectResponse createProject(CreateProjectRequest req) {
+    public ProjectResponse createProject(CreateProjectRequest req, MultipartFile file) {
         Week week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
         Long mentorId = week.getMentorship().getMentor().getId();
         if (!mentorId.equals(getCurrentMentorId())) {
@@ -88,11 +91,17 @@ public class ProjectServiceImpl implements ProjectService{
             throw new globalLogicEx("endAt must be after startAt");
         }
 
+        String uploadedPath = null;
+        if (file != null && !file.isEmpty()) {
+            uploadedPath = fileStorageService.saveFile("project-attachment", week.getMentorship().getId(), mentorId, file);
+        }
+
         Project project = Project.builder()
                 .title(req.getTitle())
                 .goal(req.getGoal())
                 .brief(req.getBrief())
                 .descriptionUrl(req.getDescriptionUrl())
+                .uploadedAttachmentPath(uploadedPath)
                 .startAt(req.getStartAt())
                 .endAt(req.getEndAt())
                 .points(req.getPoints())
@@ -111,29 +120,38 @@ public class ProjectServiceImpl implements ProjectService{
     }
 
     @Override
-    public ProjectResponse updateProject(long projectId, PatchProjectRequest req) {
+    public ProjectResponse updateProject(long projectId, PatchProjectRequest req, MultipartFile file) {
         Project project = validateMentorOwnershipAndGetProject(projectId);
 
         if (project.getStatus() == ProjectStatus.CLOSED) {
             throw new globalLogicEx("Cannot update closed project");
         }
 
-        if (req.getTitle() != null) project.setTitle(req.getTitle());
-        if (req.getGoal() != null) project.setGoal(req.getGoal());
-        if (req.getBrief() != null) project.setBrief(req.getBrief());
-        if (req.getDescriptionUrl() != null) project.setDescriptionUrl(req.getDescriptionUrl());
-        if (req.getPoints() != null) project.setPoints(req.getPoints());
-        if (req.getStatus()!= null) project.setStatus(req.getStatus());
+        if (req != null) {
+            if (req.getTitle() != null) project.setTitle(req.getTitle());
+            if (req.getGoal() != null) project.setGoal(req.getGoal());
+            if (req.getBrief() != null) project.setBrief(req.getBrief());
+            if (req.getDescriptionUrl() != null) project.setDescriptionUrl(req.getDescriptionUrl());
+            if (req.getPoints() != null) project.setPoints(req.getPoints());
+            if (req.getStatus()!= null) project.setStatus(req.getStatus());
 
-        LocalDateTime start = req.getStartAt() != null ? req.getStartAt() : project.getStartAt();
-        LocalDateTime end   = req.getEndAt()   != null ? req.getEndAt()   : project.getEndAt();
+            LocalDateTime start = req.getStartAt() != null ? req.getStartAt() : project.getStartAt();
+            LocalDateTime end   = req.getEndAt()   != null ? req.getEndAt()   : project.getEndAt();
 
-        if (end.isBefore(start)) {
-            throw new globalLogicEx("endAt must be after startAt");
+            if (end.isBefore(start)) {
+                throw new globalLogicEx("endAt must be after startAt");
+            }
+
+            if (req.getStartAt() != null) project.setStartAt(req.getStartAt());
+            if (req.getEndAt() != null) project.setEndAt(req.getEndAt());
         }
 
-        if (req.getStartAt() != null) project.setStartAt(req.getStartAt());
-        if (req.getEndAt() != null) project.setEndAt(req.getEndAt());
+        if (file != null && !file.isEmpty()) {
+            Long mentorId = getCurrentMentorId();
+            Long mentorshipId = project.getWeek().getMentorship().getId();
+            String uploadedPath = fileStorageService.saveFile("project-attachment", mentorshipId, mentorId, file);
+            project.setUploadedAttachmentPath(uploadedPath);
+        }
 
         return mapToProjectResponse(project);
     }
@@ -218,6 +236,7 @@ public class ProjectServiceImpl implements ProjectService{
                 .goal(project.getGoal())
                 .brief(project.getBrief())
                 .descriptionUrl(project.getDescriptionUrl())
+                .uploadedAttachmentPath(project.getUploadedAttachmentPath())
                 .startAt(project.getStartAt())
                 .endAt(project.getEndAt())
                 .points(project.getPoints())

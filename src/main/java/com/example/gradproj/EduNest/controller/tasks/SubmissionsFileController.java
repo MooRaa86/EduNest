@@ -16,7 +16,7 @@ import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/uploads/submissions")
-@Tag(name = "Submission Files", description = "Download/View uploaded task and project submission files")
+@Tag(name = "fetch Files", description = "Download/View uploaded  files ")
 @Slf4j
 public class SubmissionsFileController {
 
@@ -24,7 +24,7 @@ public class SubmissionsFileController {
     private String uploadDir;
 
     @GetMapping("/{fileName:.+}")
-    @Operation(summary = "Download or view uploaded submission file (task or project)")
+    @Operation(summary = "Download or view uploaded  file ")
     public ResponseEntity<Resource> serveFile(@PathVariable String fileName) {
         try {
             Path filePath = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(fileName);

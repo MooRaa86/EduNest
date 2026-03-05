@@ -11,13 +11,14 @@ import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface TaskService {
     @PreAuthorize("hasRole('MENTOR')")
-    TaskResponse createTask(CreateTaskRequest req);
+    TaskResponse createTask(CreateTaskRequest req, MultipartFile file);
     TaskResponse getTaskById(Long taskId);
     @PreAuthorize("hasRole('MENTOR')")
-    TaskResponse updateTask(long taskId, PatchTaskRequest request);
+    TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file);
     @PreAuthorize("hasRole('MENTOR')")
     void deleteTask(Long taskId);
     @PreAuthorize("hasRole('MENTOR')")

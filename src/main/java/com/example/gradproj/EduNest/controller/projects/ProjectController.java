@@ -10,6 +10,7 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.service.projects.ProjectServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,8 +18,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/project")
@@ -29,11 +32,16 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ProjectController {
     private final ProjectServiceImpl projectService;
+    private final ObjectMapper objectMapper;
 
-    @PostMapping
-    @Operation(summary = "create project")
-    public ResponseEntity<SimpleResponse> create(@RequestBody CreateProjectRequest req){
-        ProjectResponse created =projectService.createProject(req);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "create project with optional file attachment")
+    public ResponseEntity<SimpleResponse> create(
+            @RequestPart("req") String reqJson,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) throws Exception {
+        CreateProjectRequest req = objectMapper.readValue(reqJson, CreateProjectRequest.class);
+        ProjectResponse created = projectService.createProject(req, file);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "project created successfully");
         response.addMessage("project", created);
@@ -59,15 +67,27 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     @Operation(summary = "update project Entity")
-    @PatchMapping("/{id}")
+    @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SimpleResponse> patch(
             @PathVariable Long id,
-            @RequestBody @Valid PatchProjectRequest req
-    ) {
+            @RequestPart(value = "req", required = false) String reqJson,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) throws Exception {
+        PatchProjectRequest req = null;
+        if (reqJson != null && !reqJson.isBlank()) {
+            try {
+                req = objectMapper.readValue(reqJson, PatchProjectRequest.class);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid JSON format in req parameter: " + e.getMessage());
+            }
+        }
+        if (req == null && (file == null || file.isEmpty())) {
+            throw new IllegalArgumentException("At least one of 'req' or 'file' must be provided");
+        }
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "project updated successfully");
-        response.addMessage("project", projectService.updateProject(id, req));
-        return  ResponseEntity.status(HttpStatus.OK).body(response);
+        response.addMessage("project", projectService.updateProject(id, req, file));
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     @Operation(summary = "delete project by project id")
     @DeleteMapping("/{id}")
