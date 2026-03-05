@@ -11,14 +11,18 @@ import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @RestController
@@ -27,17 +31,20 @@ import org.springframework.web.bind.annotation.*;
         name = "task",
         description = "APIs for managing Tasks (create, update, delete, filter, dashboard"
 )
+@RequiredArgsConstructor
 public class TaskController {
     private final TaskService taskService;
+    private final ObjectMapper objectMapper;
 
-    public TaskController(TaskService taskService) {
-        this.taskService = taskService;
-    }
-    @PostMapping
-    @Operation(summary = "create task")
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "create task with optional file attachment")
     public ResponseEntity<SimpleResponse> create(
-            @RequestBody CreateTaskRequest req){
-        TaskResponse created =taskService.createTask(req);
+            @RequestPart("req") String reqJson,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) throws Exception {
+        CreateTaskRequest req = objectMapper.readValue(reqJson, CreateTaskRequest.class);
+        TaskResponse created = taskService.createTask(req, file);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task created successfully");
         response.addMessage("task", created);
@@ -62,15 +69,27 @@ public ResponseEntity<SimpleResponse> updateStatus(
         response.addMessage("task", taskService.getTaskById(id));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
-    @PatchMapping("/{id}")
-    @Operation(summary = "update task")
+    @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "update task with optional file attachment")
     public ResponseEntity<SimpleResponse> patch(
             @PathVariable Long id,
-            @RequestBody @Valid PatchTaskRequest req
-    ) {
+            @RequestPart(value = "req", required = false) String reqJson,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) throws Exception {
+        PatchTaskRequest req = null;
+        if (reqJson != null && !reqJson.isBlank()) {
+            try {
+                req = objectMapper.readValue(reqJson, PatchTaskRequest.class);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid JSON format in req parameter: " + e.getMessage());
+            }
+        }
+        if (req == null && (file == null || file.isEmpty())) {
+            throw new IllegalArgumentException("At least one of 'req' or 'file' must be provided");
+        }
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task updated successfully");
-       response.addMessage("task", taskService.updateTask(id, req));
+       response.addMessage("task", taskService.updateTask(id, req, file));
        return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

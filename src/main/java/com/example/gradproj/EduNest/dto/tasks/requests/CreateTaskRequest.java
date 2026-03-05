@@ -51,6 +51,6 @@ public class CreateTaskRequest {
     @URL(message = "attachmentUrl must be a valid URL")
     private String attachmentUrl;
 
-    @NotBlank(message = "status is required")
+    @NotNull(message = "status is required")
     private TaskStatus status;
 }

@@ -47,6 +47,9 @@ public class Task extends BaseEntity {
     @Column(name = "task_attachment_url")
     private String attachmentUrl;
 
+    @Column(name = "uploaded_attachment_path")
+    private String uploadedAttachmentPath;
+
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TaskSubmission> submissions = new ArrayList<>();
 

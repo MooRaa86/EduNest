@@ -16,6 +16,7 @@ public class ProjectResponse {
 //    private String difficulty;
     private String brief;
     private String descriptionUrl;
+    private String uploadedAttachmentPath;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startAt;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
