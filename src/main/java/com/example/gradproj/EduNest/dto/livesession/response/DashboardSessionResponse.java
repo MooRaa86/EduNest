@@ -1,7 +1,5 @@
 package com.example.gradproj.EduNest.dto.livesession.response;
 
-import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
-import com.example.gradproj.EduNest.entity.users.Student;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 

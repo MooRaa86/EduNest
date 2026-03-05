@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.repository.points;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto;
 import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.repository.points.projection.TopStudentResponse;
 import jakarta.persistence.LockModeType;
@@ -9,11 +10,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 
 import java.util.Optional;
 
 public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
     Optional<TotalPoints> findByStudent_IdAndMentorship_Id(Long studentId, Long mentorshipId);
+    
+    List<TotalPoints> findByMentorship_Id(Long mentorshipId);
+    
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select tp from TotalPoints tp
@@ -37,6 +42,19 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             Pageable pageable
     );
 
-
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto(
+        s.id,
+        CONCAT(s.firstName, ' ', s.lastName),
+        s.email,
+        tp.totalPoints,
+        CAST(ROW_NUMBER() OVER (ORDER BY tp.totalPoints DESC) AS int)
+    )
+    FROM TotalPoints tp
+    JOIN tp.student s
+    WHERE tp.mentorship.id = :mentorshipId
+    ORDER BY tp.totalPoints DESC
+    """)
+    Page<MentorshipStudentRankDto> findStudentsWithRanksByMentorshipId(@Param("mentorshipId") Long mentorshipId, Pageable pageable);
 
 }

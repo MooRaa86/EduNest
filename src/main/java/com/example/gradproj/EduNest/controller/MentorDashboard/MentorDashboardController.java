@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.dashboard.MentorDashboardResponse;
 import com.example.gradproj.EduNest.dto.dashboard.MentorshipDashboardResponse;
 import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorShipListResponse;
@@ -128,6 +129,20 @@ public class MentorDashboardController {
                 .findTopLearnersByMentorshipId(mentorshipId, page, size);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("top-learners", students);
+        return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/{id}/students-ranks")
+    @Operation(summary = "get students with ranks for a mentorship")
+    public ResponseEntity<SimpleResponse> getStudentsRanks(
+            @PathVariable("id") Long mentorshipId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+        PageResponse<MentorshipStudentRankDto> studentsRanks = mentorshipDashboardService
+                .getStudentsRanksByMentorshipId(mentorshipId, page, size);
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("students-ranks", studentsRanks);
         return ResponseEntity.ok(resp);
     }
 
