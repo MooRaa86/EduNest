@@ -41,29 +41,24 @@ public class SettingsService {
             throw new globalLogicEx("Email already in use");
         }
 
-        OTP otp = otpRepository.findByUserAndOtpType(user, OtpType.CHANGE_EMAIL)
-                .orElse(null);
+        otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
+        otpRepository.flush();
+        String otpCode = generateOtp();
 
-        if (otp != null) {
-            otp.setOtpCode(generateOtp());
-            otp.setPendingEmail(newEmail);
-            otp.setExpiresAt(LocalDateTime.now().plusMinutes(expiryTime));
-        } else {
-            otp = OTP.builder()
-                    .otpCode(generateOtp())
-                    .user(user)
-                    .otpType(OtpType.CHANGE_EMAIL)
-                    .pendingEmail(newEmail)
-                    .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
-                    .build();
-        }
+        OTP otp = OTP.builder()
+                .otpCode(otpCode)
+                .user(user)
+                .otpType(OtpType.CHANGE_EMAIL)
+                .pendingEmail(newEmail)
+                .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
+                .build();
 
         otpRepository.save(otp);
 
         String template = emailService.getEmailTemplate("change-email.html");
 
         String html = template
-                .replace("{{otp}}", otp.getOtpCode())
+                .replace("{{otp}}", otpCode)
                 .replace("{{name}}", user.getFirstName())
                 .replace("{{minutes}}", String.valueOf(expiryTime));
 
@@ -132,7 +127,7 @@ public class SettingsService {
         UserEntity user = getCurrentUser();
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.DELETE);
-
+        otpRepository.flush();
         String otpCode = generateOtp();
 
         OTP otp = OTP.builder()
