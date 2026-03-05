@@ -30,6 +30,7 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
 
     @Query("""
     select new com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse(
+        s.id,
         s.title,
         s.scheduledAt,
         w.title,
