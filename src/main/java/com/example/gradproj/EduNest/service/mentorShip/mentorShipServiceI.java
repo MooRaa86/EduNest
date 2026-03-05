@@ -72,10 +72,12 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShip.builder()
                 .mentor(mentor)
                 .title(dto.getTitle())
+                .subtitle(dto.getSubtitle())
                 .description(dto.getDescription())
                 .category(dto.getCategory().trim().toLowerCase())
                 .difficultyLevel(dto.getDifficultyLevel())
                 .price(dto.getPrice())
+                .discountPercentage(dto.getDiscountPercentage() != null ? dto.getDiscountPercentage() : 0)
                 .duration(dto.getDuration())
                 .build();
 
@@ -118,6 +120,9 @@ public class mentorShipServiceI implements mentorShipService{
         if (dto.getTitle() != null)
             mentorShip.setTitle(dto.getTitle());
 
+        if (dto.getSubtitle() != null)
+            mentorShip.setSubtitle(dto.getSubtitle());
+
         if (dto.getDescription() != null)
             mentorShip.setDescription(dto.getDescription());
 
@@ -129,6 +134,9 @@ public class mentorShipServiceI implements mentorShipService{
 
         if (dto.getPrice() != null)
             mentorShip.setPrice(dto.getPrice());
+
+        if (dto.getDiscountPercentage() != null)
+            mentorShip.setDiscountPercentage(dto.getDiscountPercentage());
 
         if (dto.getWhatWillLearn() != null) {
 
@@ -384,12 +392,19 @@ public class mentorShipServiceI implements mentorShipService{
     }
 
     private mentorShipFDto mapToMentorShipResponse(MentorShip mentorShip) {
+        double price = mentorShip.getPrice();
+        int discount = mentorShip.getDiscountPercentage() != null ? mentorShip.getDiscountPercentage() : 0;
+        double priceAfterDiscount = discount > 0 ? price - (price * discount / 100.0) : price;
+
         return mentorShipFDto.builder()
                 .id(mentorShip.getId())
                 .title(mentorShip.getTitle())
+                .subtitle(mentorShip.getSubtitle())
                 .description(mentorShip.getDescription())
                 .difficultyLevel(mentorShip.getDifficultyLevel())
-                .price(mentorShip.getPrice())
+                .price(price)
+                .discountPercentage(discount)
+                .priceAfterDiscount(priceAfterDiscount)
                 .whatWillLearn(mentorShip.getWhatWillLearn() == null ? List.of() :
                         mentorShip.getWhatWillLearn().stream()
                                 .map(WhatWillLearn::getContent)

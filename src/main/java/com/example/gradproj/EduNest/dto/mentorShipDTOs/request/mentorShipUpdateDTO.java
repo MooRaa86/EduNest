@@ -15,6 +15,9 @@ public class mentorShipUpdateDTO {
     @Size(min = 3, max = 50, message = "Title must be between 3 and 50 characters")
     private String title;
 
+    @Size(min = 3, max = 100, message = "Subtitle must be between 3 and 100 characters")
+    private String subtitle;
+
     @Size(min = 3, max = 500, message = "Description must be between 3 and 500 characters")
     private String description;
 
@@ -25,6 +28,10 @@ public class mentorShipUpdateDTO {
 
     @PositiveOrZero
     private Double price;
+
+    @Min(value = 0, message = "Discount must be between 0 and 100")
+    @Max(value = 100, message = "Discount must be between 0 and 100")
+    private Integer discountPercentage;
 
     @Size(max = 12, message = "Maximum 12 items allowed")
     private List<
