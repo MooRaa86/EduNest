@@ -19,7 +19,8 @@ public interface ChatMessageRepository
         m.content as content,
         m.createdAt as createdAt,
         m.senderEmail as senderEmail,
-        m.senderName as senderName
+        m.senderName as senderName,
+        m.sender.profileImageUrl as senderProfileImageUrl
     from ChatMessage m
     where m.chatRoom.id = :roomId
       and (:beforeId is null or m.id < :beforeId)

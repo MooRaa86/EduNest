@@ -10,6 +10,8 @@ public interface ConversationListProjection {
 
     String getOtherUserName();
 
+    String getOtherUserProfileImageUrl();
+
     String getLastMessage();
 
     LocalDateTime getLastMessageTime();

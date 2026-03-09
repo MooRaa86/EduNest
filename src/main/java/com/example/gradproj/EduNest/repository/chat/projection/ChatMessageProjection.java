@@ -13,4 +13,6 @@ public interface ChatMessageProjection {
     String getSenderEmail();
 
     String getSenderName();
+
+    String getSenderProfileImageUrl();
 }

@@ -36,6 +36,7 @@ public class ConversationService {
                 .conversationId(msg.getConversation().getId())
                 .senderEmail(msg.getSender().getEmail())
                 .senderName(msg.getSender().getFirstName() + " " + msg.getSender().getLastName())
+                .senderProfileImageUrl(msg.getSender().getProfileImageUrl())
                 .sentAt(msg.getSentAt())
                 .content(msg.getContent())
                 .build();
@@ -99,6 +100,7 @@ public class ConversationService {
                         .sentAt(m.getSentAt())
                         .senderEmail(m.getSenderEmail())
                         .senderName(m.getSenderName())
+                        .senderProfileImageUrl(m.getSenderProfileImageUrl())
                         .build())
                 .toList();
     }
@@ -150,6 +152,7 @@ public class ConversationService {
                         .conversationId(c.getConversationId())
                         .otherUserEmail(c.getOtherUserEmail())
                         .otherUserName(c.getOtherUserName())
+                        .otherUserProfileImageUrl(c.getOtherUserProfileImageUrl())
                         .lastMessage(c.getLastMessage())
                         .lastMessageTime(c.getLastMessageTime())
                         .build())

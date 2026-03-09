@@ -44,6 +44,7 @@ public class NotificationService {
                 .content(n.getContent())
                 .type(n.getType())
                 .isRead(u.isRead())
+                .time(n.getCreatedAt())
                 .build();
     }
 

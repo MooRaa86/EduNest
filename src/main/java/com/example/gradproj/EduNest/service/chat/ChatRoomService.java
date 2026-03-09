@@ -13,10 +13,12 @@ import com.example.gradproj.EduNest.repository.chat.projection.RoomMemberProject
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +32,7 @@ public class ChatRoomService {
     private final UserRepository userRepo;
     private final MembersRepo membersRepo;
     private final EnrollmentRepository enrollmentRepo;
+    private final ImageStorageService imageStorageService;
 
     @Transactional
     public ChatRoomResponse createRoom(
@@ -96,6 +99,26 @@ public class ChatRoomService {
     }
 
     @Transactional
+    public String updateRoomImage(Long roomId, String userEmail, MultipartFile image) {
+        ChatRoom room = roomRepo.findRoomById(roomId).orElseThrow(
+                () -> new UsernameNotFoundException("Room not found")
+        );
+
+        if (!room.getCreator().getEmail().equals(userEmail)) {
+            throw new globalLogicEx("Only room creator can update image");
+        }
+
+        if (image != null && !image.isEmpty()) {
+            imageStorageService.deleteImage("chatroom", room.getImageUrl());
+            String newImageUrl = imageStorageService.saveImage("chatroom", room.getId(), image);
+            room.setImageUrl(newImageUrl);
+            roomRepo.save(room);
+            return newImageUrl;
+        }
+        throw new globalLogicEx("Image is empty");
+    }
+
+    @Transactional
     public List<RoomMemberProjection> getRoomMembers(Long roomId) {
         return membersRepo.findRoomMembers(roomId);
     }
@@ -103,6 +126,10 @@ public class ChatRoomService {
 
     public List<ChatRoomProjection> getRoomsforMentorship(Long mentorshipId) {
         return roomRepo.findRoomsByMentorship(mentorshipId);
+    }
+
+    public List<ChatRoomProjection> getUserRooms(String userEmail) {
+        return roomRepo.findRoomsByUserEmail(userEmail);
     }
 
     private ChatRoomResponse mapRoomToResponse(ChatRoom room,Long mentorshipId) {

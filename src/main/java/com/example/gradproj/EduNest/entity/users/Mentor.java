@@ -32,9 +32,6 @@ public class Mentor extends UserEntity {
     @Column(name = "years_of_experience")
     private double yearsOfExperience;
 
-    @Column(name = "profile_image_url")
-    private String profileImageUrl;
-
     @JsonIgnore
     @OneToMany(mappedBy = "mentor",
             cascade = CascadeType.ALL,

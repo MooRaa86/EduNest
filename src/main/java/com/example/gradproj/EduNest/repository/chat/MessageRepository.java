@@ -25,6 +25,7 @@ public interface MessageRepository
         m.sentAt as sentAt,
         m.sender.email as senderEmail,
         CONCAT(m.sender.firstName,' ',m.sender.lastName) as senderName,
+        m.sender.profileImageUrl as senderProfileImageUrl,
         m.conversation.id as conversationId
     FROM Message m
     WHERE m.conversation.id = :conversationId

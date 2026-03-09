@@ -34,6 +34,11 @@ SELECT
    ELSE CONCAT(c.user1.firstName,' ',c.user1.lastName)
  END as otherUserName,
 
+ CASE
+   WHEN c.user1.email = :email THEN c.user2.profileImageUrl
+   ELSE c.user1.profileImageUrl
+ END as otherUserProfileImageUrl,
+
  m.content as lastMessage,
  m.sentAt as lastMessageTime
 

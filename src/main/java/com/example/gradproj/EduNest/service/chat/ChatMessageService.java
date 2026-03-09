@@ -83,6 +83,7 @@ public class ChatMessageService {
                         .time(m.getCreatedAt())
                         .senderName(m.getSenderName())
                         .senderEmail(m.getSenderEmail())
+                        .senderProfileImageUrl(m.getSenderProfileImageUrl())
                         .build())
                 .toList();
     }
@@ -96,6 +97,7 @@ public class ChatMessageService {
                 .time(message.getCreatedAt())
                 .senderName(message.getSenderName())
                 .senderEmail(message.getSenderEmail())
+                .senderProfileImageUrl(message.getSender().getProfileImageUrl())
                 .build();
     }
 

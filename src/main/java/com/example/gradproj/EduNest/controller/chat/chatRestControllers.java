@@ -11,9 +11,11 @@ import com.example.gradproj.EduNest.service.chat.ChatRoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
@@ -105,6 +107,32 @@ public class chatRestControllers {
 
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("status", authentication.getName() + " joined success");
+        return ResponseEntity.ok(resp);
+    }
+
+    @GetMapping("/my-rooms")
+    @Operation(summary = "get all rooms that user is member of")
+    public ResponseEntity<SimpleResponse> getMyRooms(
+            Authentication authentication
+    ) {
+        List<ChatRoomProjection> rooms = chatRoomService.getUserRooms(authentication.getName());
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("Rooms", rooms);
+        resp.addMessage("status", "rooms founded successfully");
+        return ResponseEntity.ok(resp);
+    }
+
+    @PutMapping(value = "/{roomId}/image",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "update chat room image")
+    public ResponseEntity<SimpleResponse> updateRoomImage(
+            @PathVariable Long roomId,
+            @RequestParam("image") MultipartFile image,
+            Authentication authentication
+    ) {
+        String imageUrl = chatRoomService.updateRoomImage(roomId, authentication.getName(), image);
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("imageUrl", imageUrl);
+        resp.addMessage("status", "room image updated successfully");
         return ResponseEntity.ok(resp);
     }
 
