@@ -12,6 +12,7 @@ import com.example.gradproj.EduNest.repository.chat.projection.ChatRoomProjectio
 import com.example.gradproj.EduNest.repository.chat.projection.RoomMemberProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorMentorshipProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
 import jakarta.transaction.Transactional;
@@ -130,6 +131,10 @@ public class ChatRoomService {
 
     public List<ChatRoomProjection> getUserRooms(String userEmail) {
         return roomRepo.findRoomsByUserEmail(userEmail);
+    }
+
+    public List<MentorMentorshipProjection> getMentorMentorships(String mentorEmail) {
+        return mentorshipRepo.findMentorMentorshipsForChatRoom(mentorEmail);
     }
 
     private ChatRoomResponse mapRoomToResponse(ChatRoom room,Long mentorshipId) {

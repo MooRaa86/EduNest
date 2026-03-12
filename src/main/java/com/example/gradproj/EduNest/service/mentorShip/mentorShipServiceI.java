@@ -304,6 +304,22 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public void deleteCoverImage(Long mentorshipId) {
+
+        MentorShip mentorship = MentorShipRepository.findById(mentorshipId)
+                .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
+
+        if (!mentorship.getMentor().getEmail().equals(getCurrentUserEmail())) {
+            throw new globalLogicEx("You are not allowed for this request");
+        }
+
+        imageService.deleteOldCoverImage(mentorship.getCoverImageUrl());
+        mentorship.setCoverImageUrl(null);
+    }
+
+    @Override
+    @Transactional
     public void joinMentorship(Long mentorshipId) {
 
         String email = getCurrentUserEmail();

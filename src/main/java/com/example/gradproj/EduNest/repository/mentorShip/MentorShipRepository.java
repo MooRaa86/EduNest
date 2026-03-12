@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorMentorshipProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorShipListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipStatsResponse;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
@@ -61,7 +64,11 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
             @Param("email") String email
     );
 
-
-
+    @Query("""
+    SELECT m.id AS id, m.title AS name, m.coverImageUrl AS coverImageUrl
+    FROM MentorShip m
+    WHERE m.mentor.email = :email
+""")
+    List<MentorMentorshipProjection> findMentorMentorshipsForChatRoom(@Param("email") String email);
 
 }

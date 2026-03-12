@@ -34,6 +34,8 @@ public interface mentorShipService {
 
     String uploadCoverImage(Long mentorshipId, MultipartFile image);
 
+    void deleteCoverImage(Long mentorshipId);
+
     void joinMentorship(Long mentorshipId);
 
     void rateMentorship(Long mentorshipId, CreateReviewRequest request);

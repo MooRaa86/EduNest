@@ -136,4 +136,14 @@ public class chatRestControllers {
         return ResponseEntity.ok(resp);
     }
 
+    @GetMapping("/mentor/mentorships")
+    @Operation(summary = "get mentor mentorships for creating chat rooms")
+    public ResponseEntity<SimpleResponse> getMentorMentorships(Authentication authentication) {
+        var mentorships = chatRoomService.getMentorMentorships(authentication.getName());
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("mentorships", mentorships);
+        resp.addMessage("status", "mentorships retrieved successfully");
+        return ResponseEntity.ok(resp);
+    }
+
 }
