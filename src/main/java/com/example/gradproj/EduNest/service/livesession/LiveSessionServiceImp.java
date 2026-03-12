@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
+import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.livesession.SessionAttendance;
@@ -22,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -292,6 +295,25 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 .sessionStartDate(session.getScheduledAt())
                 .meetingUrl(session.getMeetingUrl())
                 .sessionStatus(session.getStatus())
+                .build();
+    }
+
+    @Override
+    public PageResponse<StudentUpcomingSessionResponse> getUpcomingSessionsForStudent(int page, int size) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Student student = studentRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<StudentUpcomingSessionResponse> upcomingSessions = liveSessionRepository
+                .findUpcomingSessionsByStudentId(student.getId(), LocalDateTime.now(), pageable);
+
+        return PageResponse.<StudentUpcomingSessionResponse>builder()
+                .content(upcomingSessions.getContent())
+                .page(upcomingSessions.getNumber())
+                .size(upcomingSessions.getSize())
+                .totalElements(upcomingSessions.getTotalElements())
+                .totalPages(upcomingSessions.getTotalPages())
                 .build();
     }
 

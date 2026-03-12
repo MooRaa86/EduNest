@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.SessionResponseDto;
+import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.service.livesession.LiveSessionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -170,6 +171,23 @@ public class LiveSessionController {
         List<AttendanceResponse> attendance = liveSessionService.getSessionAttendance(sessionId);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Attendance report for session " + sessionId, attendance);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get upcoming sessions for student",
+            description = "Fetch all upcoming sessions for the authenticated student across all enrolled mentorships"
+    )
+    @GetMapping("/student/upcoming")
+    public ResponseEntity<SimpleResponse> getUpcomingSessionsForStudent(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        PageResponse<StudentUpcomingSessionResponse> upcomingSessions =
+                liveSessionService.getUpcomingSessionsForStudent(page, size);
+
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("Upcoming sessions fetched successfully", upcomingSessions);
         return ResponseEntity.ok(response);
     }
 }
