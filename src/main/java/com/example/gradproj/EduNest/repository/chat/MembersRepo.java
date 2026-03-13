@@ -18,7 +18,8 @@ public interface MembersRepo extends JpaRepository<ChatRoomMember, Long> {
         m.user.email as email,
         m.user.firstName as firstName,
         m.user.lastName as lastName,
-        m.user.role.name as role
+        m.user.role.name as role,
+        m.user.profileImageUrl as userImageUrl
     FROM ChatRoomMember m
     WHERE m.chatRoom.id = :roomId
 """)

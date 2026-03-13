@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +37,7 @@ public class ChatRoomService {
     private final ImageStorageService imageStorageService;
 
     @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
     public ChatRoomResponse createRoom(
             Long mentorshipId,
             String roomName,
@@ -100,6 +102,7 @@ public class ChatRoomService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
     public String updateRoomImage(Long roomId, String userEmail, MultipartFile image) {
         ChatRoom room = roomRepo.findRoomById(roomId).orElseThrow(
                 () -> new UsernameNotFoundException("Room not found")
@@ -135,6 +138,20 @@ public class ChatRoomService {
 
     public List<MentorMentorshipProjection> getMentorMentorships(String mentorEmail) {
         return mentorshipRepo.findMentorMentorshipsForChatRoom(mentorEmail);
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public void deleteRoom(Long roomId, String userEmail) {
+        ChatRoom room = roomRepo.findRoomById(roomId).orElseThrow(
+                () -> new UsernameNotFoundException("Room not found")
+        );
+
+        if (!room.getCreator().getEmail().equals(userEmail)) {
+            throw new globalLogicEx("Only room creator can delete the room");
+        }
+
+        roomRepo.delete(room);
     }
 
     private ChatRoomResponse mapRoomToResponse(ChatRoom room,Long mentorshipId) {

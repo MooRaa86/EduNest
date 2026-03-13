@@ -146,4 +146,16 @@ public class chatRestControllers {
         return ResponseEntity.ok(resp);
     }
 
+    @DeleteMapping("/{roomId}")
+    @Operation(summary = "delete chat room (creator only)")
+    public ResponseEntity<SimpleResponse> deleteRoom(
+            @PathVariable Long roomId,
+            Authentication authentication
+    ) {
+        chatRoomService.deleteRoom(roomId, authentication.getName());
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("status", "room deleted successfully");
+        return ResponseEntity.ok(resp);
+    }
+
 }
