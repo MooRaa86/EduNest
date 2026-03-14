@@ -8,8 +8,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/task-submission")
@@ -23,15 +25,16 @@ public class TaskSubmissionController {
     public TaskSubmissionController(TaskSubmissionService submissionService) {
         this.submissionService = submissionService;
     }
-    @PostMapping("/{taskId}")
-    @Operation(summary = "submit task answer")
+    @PostMapping(value = "/{taskId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "submit task answer with file upload or external URL")
     public ResponseEntity<SimpleResponse> submit(
             @PathVariable Long taskId,
-            @Valid @RequestBody SubmitTaskRequest req
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileUrl", required = false) String fileUrl
     ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message","task submitted Successfully");
-        response.addMessage("submission",submissionService.submit(taskId,req));
+        response.addMessage("submission",submissionService.submit(taskId, file, fileUrl));
         return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

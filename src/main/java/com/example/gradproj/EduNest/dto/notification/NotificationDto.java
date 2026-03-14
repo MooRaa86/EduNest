@@ -3,6 +3,8 @@ package com.example.gradproj.EduNest.dto.notification;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Builder
 @Setter @Getter @AllArgsConstructor @NoArgsConstructor
 public class NotificationDto {
@@ -12,4 +14,5 @@ public class NotificationDto {
     String content;
     boolean isRead;
     NotificationType type;
+    LocalDateTime time;
 }

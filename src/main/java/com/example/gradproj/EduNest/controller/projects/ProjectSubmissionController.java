@@ -2,15 +2,16 @@ package com.example.gradproj.EduNest.controller.projects;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
-import com.example.gradproj.EduNest.dto.projects.request.SubmitProjectRequest;
 import com.example.gradproj.EduNest.service.projects.ProjectSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/project")
@@ -22,15 +23,16 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectSubmissionController {
     private final ProjectSubmissionService submissionService;
 
-    @Operation(summary = "submit by project Id")
-    @PostMapping("/{projectId}/submissions")
+    @Operation(summary = "submit by project Id with file upload or external URL")
+    @PostMapping(value = "/{projectId}/submissions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SimpleResponse> submit(
             @PathVariable Long projectId,
-            @Valid @RequestBody SubmitProjectRequest req
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "fileUrl", required = false) String fileUrl
     ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message","project submitted Successfully");
-        response.addMessage("submission",submissionService.submit(projectId,req));
+        response.addMessage("submission",submissionService.submit(projectId, file, fileUrl));
         return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

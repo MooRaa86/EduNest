@@ -19,16 +19,22 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -39,19 +45,61 @@ public class TaskServiceImpl implements TaskService{
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
+    private final MentorRepository mentorRepository;
+    private final TaskFileStorageService fileStorageService;
+
+    private String getCurrentUserEmail() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getName)
+                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+    }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private void validateMentorshipOwnership(Long mentorShipId) {
+        Long mentorId = mentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"))
+                .getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this mentorship");
+        }
+    }
+
+    private Task validateMentorOwnershipAndGetTask(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Long mentorId = task.getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this task");
+        }
+        return task;
+    }
 
 
 
 
     @Override
-    public TaskResponse createTask(CreateTaskRequest req) {
+    public TaskResponse createTask(CreateTaskRequest req, MultipartFile file) {
         if (req.getPassPoints()> req.getPoints()){
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
         Week week=weekRepository.findById(req.getWeekId()).orElseThrow(
                 ()->new  globalLogicEx("weekId not found")
         );
+        Long mentorId = week.getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to create tasks for this mentorship");
+        }
 
+        String uploadedPath = null;
+        if (file != null && !file.isEmpty()) {
+            uploadedPath = fileStorageService.saveFile("task-attachment", week.getMentorship().getId(), mentorId, file);
+        }
 
         Task task= Task.builder()
                 .title(req.getTitle())
@@ -61,6 +109,7 @@ public class TaskServiceImpl implements TaskService{
                 .estimatedMinutes(req.getEstimatedMinutes())
                 .dueAt(req.getDueAt())
                 .attachmentUrl(req.getAttachmentUrl())
+                .uploadedAttachmentPath(uploadedPath)
                 .status(req.getStatus())
                 .week(week)
                 .build();
@@ -89,24 +138,32 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public TaskResponse updateTask(long taskId, PatchTaskRequest request) {
-        Task task=taskRepository.findById(taskId).orElseThrow(()->new IllegalArgumentException("Task not found "));
+    public TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file) {
+        Task task = validateMentorOwnershipAndGetTask(taskId);
         if (task.getStatus() == TaskStatus.CLOSED){
             throw new globalLogicEx("cannot update closed task");
         }
-        if (request.getTitle() !=null)task.setTitle(request.getTitle());
-        if (request.getDescription() != null) task.setDescription(request.getDescription());
-        if (request.getPoints() != null) task.setPoints(request.getPoints());
-        if (request.getPassPoints() != null) task.setPassPoints(request.getPassPoints());
-        if (request.getEstimatedMinutes() != null) task.setEstimatedMinutes(request.getEstimatedMinutes());
-        if (request.getAttachmentUrl() != null) task.setAttachmentUrl(request.getAttachmentUrl());
-        if (request.getStatus() != null) task.setStatus(request.getStatus());
-        if (request.getDueAt() != null){
-            if (request.getDueAt().isBefore(LocalDateTime.now())){
-                throw new globalLogicEx("dueAt must be in the future ");
-            }
-            task.setDueAt(request.getDueAt());
+        if (request != null) {
+            if (request.getTitle() !=null)task.setTitle(request.getTitle());
+            if (request.getDescription() != null) task.setDescription(request.getDescription());
+            if (request.getPoints() != null) task.setPoints(request.getPoints());
+            if (request.getPassPoints() != null) task.setPassPoints(request.getPassPoints());
+            if (request.getEstimatedMinutes() != null) task.setEstimatedMinutes(request.getEstimatedMinutes());
+            if (request.getAttachmentUrl() != null) task.setAttachmentUrl(request.getAttachmentUrl());
+            if (request.getStatus() != null) task.setStatus(request.getStatus());
+            if (request.getDueAt() != null){
+                if (request.getDueAt().isBefore(LocalDateTime.now())){
+                    throw new globalLogicEx("dueAt must be in the future ");
+                }
+                task.setDueAt(request.getDueAt());
 
+            }
+        }
+        if (file != null && !file.isEmpty()) {
+            Long mentorId = getCurrentMentorId();
+            Long mentorshipId = task.getWeek().getMentorship().getId();
+            String uploadedPath = fileStorageService.saveFile("task-attachment", mentorshipId, mentorId, file);
+            task.setUploadedAttachmentPath(uploadedPath);
         }
         if (task.getPassPoints()>task.getPoints()){
             throw  new globalLogicEx("Pass points must be less than or equal to points.");
@@ -116,16 +173,13 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public void deleteTask(Long taskId) {
-       if (!(taskRepository.existsById(taskId))) {
-           throw   new globalLogicEx("Task not found");
-       }
+       validateMentorOwnershipAndGetTask(taskId);
        taskRepository.deleteById(taskId);
     }
 
     @Override
     public TaskResponse updateTaskStatus(Long taskId, UpdateTaskStatusRequest req) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Task task = validateMentorOwnershipAndGetTask(taskId);
 
         if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
             throw new globalLogicEx("Cannot revert published task to draft");
@@ -145,6 +199,7 @@ public class TaskServiceImpl implements TaskService{
                 .status(task.getStatus().name())
                 .dueAt(task.getDueAt())
                 .attachmentUrl(task.getAttachmentUrl())
+                .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                 .build();
 
 
@@ -168,6 +223,7 @@ public class TaskServiceImpl implements TaskService{
                         .status(String.valueOf(task.getStatus()))
                         .dueAt(task.getDueAt())
                         .attachmentUrl(task.getAttachmentUrl())
+                        .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                         .build())
                 .toList();
 
@@ -182,9 +238,7 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
-        if (!(mentorShipRepository.existsById(mentorShipId))) {
-            throw  new globalLogicEx("mentorShip not found");
-        }
+        validateMentorshipOwnership(mentorShipId);
         List<Task> allTasks = taskRepository.findByWeek_Mentorship_Id(mentorShipId);
 
         int totalTasks = allTasks.size();
@@ -220,9 +274,7 @@ public class TaskServiceImpl implements TaskService{
     @Override
     @Transactional(readOnly = true)
     public TaskStatisticsDTO getTaskStatistics(Long taskId, Pageable pageable) {
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        Task task = validateMentorOwnershipAndGetTask(taskId);
 
         Long mentorshipId = task.getWeek().getMentorship().getId();
 
@@ -261,6 +313,7 @@ public class TaskServiceImpl implements TaskService{
                 .taskId(s.getTask().getId())
                 .studentId(s.getStudent().getId())
                 .fileUrl(s.getFileUrl())
+                .uploadedFilePath(s.getUploadedFilePath())
                 .status(s.getStatus())
                 .isLate(s.getIsLate())
                 .rawScore(s.getRawScore())

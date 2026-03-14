@@ -16,11 +16,14 @@ public class mentorShipFDto {
     private Long id;
     private Status status;
     private String title;
+    private String subtitle;
     private String description;
     private String category;
     private Double rating;
     private DifficultyLevel difficultyLevel;
     private double price;
+    private Integer discountPercentage;
+    private Double priceAfterDiscount;
     private List<String> whatWillLearn;
     private List<String> tags;
     private Double duration;

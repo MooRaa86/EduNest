@@ -21,4 +21,5 @@ public class TaskResponse {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") // for unify the date formate
     private LocalDateTime dueAt;
     private String attachmentUrl;
+    private String uploadedAttachmentPath;
 }

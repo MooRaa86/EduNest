@@ -14,6 +14,7 @@ public class ConversationListResponse {
     private Long conversationId;
     private String otherUserEmail;
     private String otherUserName;
+    private String otherUserProfileImageUrl;
     private String lastMessage;
     private LocalDateTime lastMessageTime;
 }

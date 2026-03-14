@@ -157,6 +157,18 @@ public class mentorShipControllers {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/{mentorshipId}/delete-cover-image")
+    @Operation(summary = "delete cover image for mentorship")
+    @PreAuthorize("hasRole('MENTOR')")
+    public ResponseEntity<SimpleResponse> deleteCover(
+            @PathVariable Long mentorshipId
+    ) {
+        mentorShipService.deleteCoverImage(mentorshipId);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("status", "Cover image deleted successfully");
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{mentorshipId}/join")
     @Operation(summary = "Student join in mentorship")
     public ResponseEntity<SimpleResponse> joinMentorship(

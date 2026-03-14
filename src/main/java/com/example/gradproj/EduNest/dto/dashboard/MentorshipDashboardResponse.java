@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.dto.dashboard;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipStatsResponse;
@@ -17,4 +18,6 @@ public class MentorshipDashboardResponse {
     private PageResponse<ReviewsRsponse> reviews;
 
     private PageResponse<TopStudentResponse> topLearners;
+
+    private PageResponse<MentorshipStudentRankDto> studentsRanks;
 }

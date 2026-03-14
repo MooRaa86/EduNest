@@ -33,6 +33,9 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
     @Column(name = "phone_number")
     private String phoneNumber;
 
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private Roles role;

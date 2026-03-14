@@ -24,9 +24,6 @@ public class CreateProjectRequest {
     @Size(min = 5, max = 255, message = "goal must be between 5 and 255 characters")
     private String goal;
 
-//    @NotNull(message = "difficulty is required")
-//    private ProjectDifficultyLevel difficulty;
-
     @NotBlank(message = "brief is required")
     @Size(min = 10, max = 10000, message = "brief must be between 10 and 10000 characters")
     private String brief;

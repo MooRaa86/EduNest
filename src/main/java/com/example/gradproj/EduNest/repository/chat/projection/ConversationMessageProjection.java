@@ -14,5 +14,7 @@ public interface ConversationMessageProjection {
 
     String getSenderName();
 
+    String getSenderProfileImageUrl();
+
     Long getConversationId();
 }

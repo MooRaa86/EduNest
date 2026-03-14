@@ -14,13 +14,24 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     select
         cr.id as roomId,
         cr.name as roomName,
+        cr.imageUrl as roomImageUrl,
         m.id as mentorshipId,
         m.title as mentorshipName,
         c.email as creatorEmail,
-        concat(c.firstName, ' ', c.lastName) as creatorName
+        concat(c.firstName, ' ', c.lastName) as creatorName,
+        lastMsg.content as lastMessageContent,
+        lastMsg.createdAt as lastMessageTime,
+        lastMsg.senderEmail as lastMessageSenderEmail,
+        lastMsg.senderName as lastMessageSenderName
     from ChatRoom cr
     join cr.mentorship m
     join cr.creator c
+    left join ChatMessage lastMsg on lastMsg.chatRoom.id = cr.id
+        and lastMsg.createdAt = (
+            select max(msg.createdAt)
+            from ChatMessage msg
+            where msg.chatRoom.id = cr.id
+        )
     where m.id = :mentorshipId
 """)
     List<ChatRoomProjection> findRoomsByMentorship(Long mentorshipId);
@@ -32,6 +43,31 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 """)
     Optional<ChatRoom> findRoomById(Long id);
 
-
+    @Query("""
+    select
+        cr.id as roomId,
+        cr.name as roomName,
+        cr.imageUrl as roomImageUrl,
+        m.id as mentorshipId,
+        m.title as mentorshipName,
+        c.email as creatorEmail,
+        concat(c.firstName, ' ', c.lastName) as creatorName,
+        lastMsg.content as lastMessageContent,
+        lastMsg.createdAt as lastMessageTime,
+        lastMsg.senderEmail as lastMessageSenderEmail,
+        lastMsg.senderName as lastMessageSenderName
+    from ChatRoom cr
+    join cr.mentorship m
+    join cr.creator c
+    join cr.members crm
+    left join ChatMessage lastMsg on lastMsg.chatRoom.id = cr.id
+        and lastMsg.createdAt = (
+            select max(msg.createdAt)
+            from ChatMessage msg
+            where msg.chatRoom.id = cr.id
+        )
+    where crm.user.email = :userEmail
+""")
+    List<ChatRoomProjection> findRoomsByUserEmail(String userEmail);
 
 }

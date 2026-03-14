@@ -19,5 +19,7 @@ public interface OTPRepository extends JpaRepository<OTP, Long> {
     void deleteByUserAndOtpType(UserEntity user, OtpType otpType);
 
     Optional<OTP> findByUserAndOtpCodeAndOtpType(UserEntity user, String otpCode, OtpType otpType);
+
+    Optional<OTP> findByUserAndOtpType(UserEntity user, OtpType type);
 }
 

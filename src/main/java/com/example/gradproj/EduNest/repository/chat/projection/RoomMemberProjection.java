@@ -11,4 +11,6 @@ public interface RoomMemberProjection {
     String getLastName();
 
     String getRole();
+
+    String getUserImageUrl();
 }

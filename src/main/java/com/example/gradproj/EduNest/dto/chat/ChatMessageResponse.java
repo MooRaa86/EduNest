@@ -14,6 +14,7 @@ public class ChatMessageResponse {
     String message;
     String senderName;
     String senderEmail;
+    String senderProfileImageUrl;
     Long roomId;
     LocalDateTime time;
 }

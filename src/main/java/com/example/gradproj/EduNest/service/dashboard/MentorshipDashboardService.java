@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.dashboard;
 
 
 import com.example.gradproj.EduNest.dto.dashboard.MentorshipDashboardResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
@@ -135,6 +136,23 @@ public class MentorshipDashboardService {
     }
 
     @PreAuthorize("hasRole('MENTOR')")
+    public PageResponse<MentorshipStudentRankDto> getStudentsRanksByMentorshipId(
+            long mentorshipId, int page, int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<MentorshipStudentRankDto> studentsPage = totalPointsRepository
+                .findStudentsWithRanksByMentorshipId(mentorshipId, pageable);
+        
+        return PageResponse.<MentorshipStudentRankDto>builder()
+                .content(studentsPage.getContent())
+                .page(studentsPage.getNumber())
+                .size(studentsPage.getSize())
+                .totalElements(studentsPage.getTotalElements())
+                .totalPages(studentsPage.getTotalPages())
+                .build();
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
     public MentorshipDashboardResponse getFullMentorshipDashboard(
 
             Long mentorshipId,
@@ -163,10 +181,14 @@ public class MentorshipDashboardService {
                         topLearnersSize
                 );
 
+        PageResponse<MentorshipStudentRankDto> studentsRanks = 
+                getStudentsRanksByMentorshipId(mentorshipId, 0, 6);
+
         return MentorshipDashboardResponse.builder()
                 .stats(stats)
                 .reviews(reviews)
                 .topLearners(topLearners)
+                .studentsRanks(studentsRanks)
                 .build();
     }
 

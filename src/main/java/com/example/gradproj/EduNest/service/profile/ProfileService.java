@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,24 +39,36 @@ public class ProfileService {
     private final ProjectSubmissionRepository projectSubmissionRepository;
 
     private String getCurrentUserEmail() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("Unauthenticated user");
+            throw new AccessDeniedException("Unauthenticated user");
         }
         return authentication.getName();
     }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private void validateMentorHasAccessToStudent(Long studentId) {
+        Long mentorId = getCurrentMentorId();
+        boolean hasAccess = enrollmentRepository.existsByMentorIdAndStudentId(mentorId, studentId);
+        if (!hasAccess) {
+            throw new AccessDeniedException("You are not authorized to access this student's profile");
+        }
+    }
     @PreAuthorize("hasRole('MENTOR')")
     public ProfileStudentInformationForMentorResponse profileStudentInformationForMentorResponse(Long studentId){
-
-        Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
+        validateMentorHasAccessToStudent(studentId);
+        Long mentorId = getCurrentMentorId();
 
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
         StudentMentorProfileKpiResponse kpi =
-                enrollmentRepository.getStudentMentorProfileKpis(mentor.getId(), student.getId());
+                enrollmentRepository.getStudentMentorProfileKpis(mentorId, student.getId());
 
         Long active = (kpi != null && kpi.getActiveMentorships() != null) ? kpi.getActiveMentorships() : 0L;
         Long completed = (kpi != null && kpi.getCompletedMentorships() != null) ? kpi.getCompletedMentorships() : 0L;
@@ -92,12 +105,12 @@ public class ProfileService {
                 .build();
     }
     @PreAuthorize("hasRole('MENTOR')")
-public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress(Long studentId, Pageable pageable){
-    Mentor mentor = mentorRepository.findByEmail(getCurrentUserEmail())
-            .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
-    Page<EnrolledMentorshipProgressResponse> page =
-            enrollmentRepository.findEnrolledMentorshipsProgressForMentorAndStudent(
-                    mentor.getId(),
+    public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress(Long studentId, Pageable pageable){
+        validateMentorHasAccessToStudent(studentId);
+        Long mentorId = getCurrentMentorId();
+        Page<EnrolledMentorshipProgressResponse> page =
+                enrollmentRepository.findEnrolledMentorshipsProgressForMentorAndStudent(
+                        mentorId,
                     studentId,
                     pageable
             );
@@ -125,11 +138,8 @@ public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress
 }
 
     @PreAuthorize("hasRole('MENTOR')")
-    public PageResponse<StudentProjectProfileDTO> getStudentProjects(
-            Long studentId,
-            int page,
-            int size
-    ) {
+    public PageResponse<StudentProjectProfileDTO> getStudentProjects(Long studentId, int page, int size) {
+        validateMentorHasAccessToStudent(studentId);
 
         Pageable pageable = PageRequest.of(page, size);
 

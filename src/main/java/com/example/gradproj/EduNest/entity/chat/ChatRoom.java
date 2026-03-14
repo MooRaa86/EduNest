@@ -22,6 +22,9 @@ public class ChatRoom extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorship;

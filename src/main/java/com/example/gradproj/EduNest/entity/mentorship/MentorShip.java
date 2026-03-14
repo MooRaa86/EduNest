@@ -23,6 +23,8 @@ public class MentorShip extends BaseEntity {
 
     private String title;
 
+    private String subtitle;
+
     private String description;
 
     private String category; // backEnd,frontEnd
@@ -39,6 +41,10 @@ public class MentorShip extends BaseEntity {
     private Status status = Status.DRAFT;
 
     private Double price;
+
+    @Column(name = "discount_percentage")
+    @Builder.Default
+    private Integer discountPercentage = 0;
 
     @OneToMany(
             mappedBy = "mentorShip",

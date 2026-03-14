@@ -16,8 +16,12 @@ public class mentorShipCreateDTO {
     @Size(min = 3, max = 50, message = "Title must be between 3 and 50 characters")
     private String title;
 
+    @NotBlank(message = "SubTitle is required")
+    @Size(min = 3, max = 100, message = "Subtitle must be between 3 and 100 characters")
+    private String subtitle;
+
     @NotBlank(message = "Description is required")
-    @Size(min = 3, max = 500, message = "Description must be between 3 and 500 characters")
+    @Size(min = 3, max = 800, message = "Description must be between 3 and 500 characters")
     private String description;
 
     @NotBlank(message = "Category is required")
@@ -28,6 +32,11 @@ public class mentorShipCreateDTO {
 
     @PositiveOrZero(message = "Price must be zero or positive")
     private double price;
+
+    @Min(value = 0, message = "Discount must be between 0 and 100")
+    @Max(value = 100, message = "Discount must be between 0 and 100")
+    @Builder.Default
+    private Integer discountPercentage = 0;
 
     @NotEmpty(message = "What will learn list cannot be empty")
     @Size(max = 12, message = "Maximum 12 items allowed")

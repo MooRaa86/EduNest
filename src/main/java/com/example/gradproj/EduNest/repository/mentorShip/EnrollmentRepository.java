@@ -195,4 +195,13 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
        where e.mentorShip.id = :mentorshipId
        """)
     List<Student> findStudentsByMentorshipId(Long mentorshipId);
+
+    @Query("""
+        SELECT COUNT(e) > 0
+        FROM Enrollment e
+        WHERE e.mentorShip.mentor.id = :mentorId
+          AND e.student.id = :studentId
+    """)
+    boolean existsByMentorIdAndStudentId(@Param("mentorId") Long mentorId,
+                                         @Param("studentId") Long studentId);
 }

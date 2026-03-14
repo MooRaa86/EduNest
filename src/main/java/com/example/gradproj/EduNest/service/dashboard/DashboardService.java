@@ -174,6 +174,7 @@ public class DashboardService {
 
     private DashboardSessionResponse mapToSessionResponse(Session session) {
         return DashboardSessionResponse.builder()
+                .id(session.getId())
                 .title(session.getTitle())
                 .sessionStartDate(session.getScheduledAt())
                 .mentorshipTitle(session.getWeek().getMentorship().getTitle())

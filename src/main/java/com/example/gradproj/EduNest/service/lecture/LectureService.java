@@ -7,9 +7,13 @@ import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,12 +23,41 @@ import java.util.List;
 public class LectureService {
     private final LectureRepository lectureRepository;
     private final WeekRepository weekRepository;
+    private final MentorRepository mentorRepository;
+
+    private String getCurrentUserEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AccessDeniedException("Unauthenticated user");
+        }
+        return authentication.getName();
+    }
+
+    private Long getCurrentMentorId() {
+        return mentorRepository.findByEmail(getCurrentUserEmail())
+                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
+                .getId();
+    }
+
+    private Lecture validateMentorOwnsLecture(Long lectureId) {
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new globalLogicEx("lecture not found"));
+        Long mentorId = lecture.getWeek().getMentorship().getMentor().getId();
+        if (!mentorId.equals(getCurrentMentorId())) {
+            throw new AccessDeniedException("You are not authorized to access this lecture");
+        }
+        return lecture;
+    }
 
     @PreAuthorize("hasRole('MENTOR')")
     public LectureResponse createLecture(CreateLecturerequest createLecturerequest) {
        Week week=weekRepository.findById(createLecturerequest.getWeekId()).orElseThrow(
                ()->new globalLogicEx("week not found")
        );
+       Long mentorId = week.getMentorship().getMentor().getId();
+       if (!mentorId.equals(getCurrentMentorId())) {
+           throw new AccessDeniedException("You are not authorized to create lectures for this mentorship");
+       }
        Lecture lecture=Lecture.builder()
                .title(createLecturerequest.getTitle())
                .lectureUrl(createLecturerequest.getLectureUrl())
@@ -36,20 +69,16 @@ public class LectureService {
     }
     @PreAuthorize("hasRole('MENTOR')")
     public void deleteLecture(Long lectureId){
-        if (!(lectureRepository.existsById(lectureId))) {
-            throw new globalLogicEx("lecture not found");
-        }
+        validateMentorOwnsLecture(lectureId);
         lectureRepository.deleteById(lectureId);
     }
     @PreAuthorize("hasRole('MENTOR')")
-public LectureResponse updateLecture(Long lectureId, UpdeteLectureRequest request){
-    Lecture lecture=lectureRepository.findById(lectureId).orElseThrow(
-            ()->new globalLogicEx("lecture not found")
-    );
-    if (request.getTitle() !=null) lecture.setTitle(request.getTitle());
-    if (request.getLectureUrl() != null) lecture.setLectureUrl(request.getLectureUrl());
-    return mapToLectureResponse(lectureRepository.save(lecture));
-}
+    public LectureResponse updateLecture(Long lectureId, UpdeteLectureRequest request){
+        Lecture lecture = validateMentorOwnsLecture(lectureId);
+        if (request.getTitle() !=null) lecture.setTitle(request.getTitle());
+        if (request.getLectureUrl() != null) lecture.setLectureUrl(request.getLectureUrl());
+        return mapToLectureResponse(lectureRepository.save(lecture));
+    }
 
     private LectureResponse mapToLectureResponse(Lecture lecture) {
         LectureResponse response=LectureResponse.builder()
@@ -59,7 +88,7 @@ public LectureResponse updateLecture(Long lectureId, UpdeteLectureRequest reques
                 .build();
         return response;
     }
-    public LectureResponse getLectureById (Long LectureId ){
+    public LectureResponse getLectureById(Long LectureId){
         Lecture lecture=lectureRepository.findById(LectureId).orElseThrow(
                 ()->new globalLogicEx("lecture not found")
         );

@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.controller.chat;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.chat.ConversationListResponse;
 import com.example.gradproj.EduNest.dto.chat.ConversationMessageResponse;
+import com.example.gradproj.EduNest.dto.chat.DeleteMessageRequest;
 import com.example.gradproj.EduNest.dto.chat.EditMessageRequest;
 import com.example.gradproj.EduNest.service.chat.ConversationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,13 +61,18 @@ public class ConversationRestControllers {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message after update", messageResponse);
 
-        //ToDo review event in the receiver side
-
         messagingTemplate.convertAndSendToUser(
                 authentication.getName(),
                 "/queue/messages",
                 messageResponse
         );
+        
+        messagingTemplate.convertAndSendToUser(
+                request.getRecipientEmail(),
+                "/queue/messages",
+                messageResponse
+        );
+        
         return ResponseEntity.ok(response);
     }
 
@@ -74,12 +80,14 @@ public class ConversationRestControllers {
     @Operation(summary = "Delete a message")
     public void delete(
             @PathVariable Long messageId,
+            @RequestBody DeleteMessageRequest request,
             Authentication authentication
     ) {
         conversationService.deleteMessage(
                 messageId,
                 authentication.getName()
         );
+        
         Map<String,Object> event = Map.of(
                 "type","DELETE",
                 "messageId", messageId
@@ -87,6 +95,12 @@ public class ConversationRestControllers {
 
         messagingTemplate.convertAndSendToUser(
                 authentication.getName(),
+                "/queue/messages",
+                event
+        );
+        
+        messagingTemplate.convertAndSendToUser(
+                request.getRecipientEmail(),
                 "/queue/messages",
                 event
         );
