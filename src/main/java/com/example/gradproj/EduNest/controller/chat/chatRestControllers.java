@@ -13,12 +13,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/chat-room")
@@ -30,6 +32,7 @@ import java.util.List;
 public class chatRestControllers {
     private final ChatRoomService chatRoomService;
     private final ChatMessageService chatMessageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping("/create/{mentorshipId}")
     @Operation(summary = "create room for mentorship by it's id")
@@ -155,6 +158,55 @@ public class chatRestControllers {
         chatRoomService.deleteRoom(roomId, authentication.getName());
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("status", "room deleted successfully");
+        return ResponseEntity.ok(resp);
+    }
+
+    @PatchMapping("/{roomId}/messages/{messageId}")
+    @Operation(summary = "edit chat message (sender only)")
+    public ResponseEntity<SimpleResponse> editMessage(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @RequestParam String content,
+            Authentication authentication
+    ) {
+        ChatMessageResponse updated = chatMessageService.editMessage(
+                messageId,
+                authentication.getName(),
+                content
+        );
+        
+        messagingTemplate.convertAndSend(
+                "/topic/room/" + roomId,
+                updated
+        );
+        
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("message", updated);
+        resp.addMessage("status", "message updated successfully");
+        return ResponseEntity.ok(resp);
+    }
+
+    @DeleteMapping("/{roomId}/messages/{messageId}")
+    @Operation(summary = "delete chat message (sender only)")
+    public ResponseEntity<SimpleResponse> deleteMessage(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            Authentication authentication
+    ) {
+        chatMessageService.deleteMessage(messageId, authentication.getName());
+        
+        Map<String, Object> event = Map.of(
+                "type", "DELETE",
+                "messageId", messageId
+        );
+        
+        messagingTemplate.convertAndSend(
+                "/topic/room/" + roomId,
+                event
+        );
+        
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("status", "message deleted successfully");
         return ResponseEntity.ok(resp);
     }
 

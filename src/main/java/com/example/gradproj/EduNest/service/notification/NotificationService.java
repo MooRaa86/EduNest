@@ -48,7 +48,7 @@ public class NotificationService {
                 .build();
     }
 
-    public void sendToUser(
+    public void sendToUserByEmail(
             String email,
             String title,
             String content,
@@ -87,44 +87,7 @@ public class NotificationService {
         );
     }
 
-//    public void sendToUsers(
-//            List<UserEntity> users,
-//            String title,
-//            String content,
-//            NotificationType type
-//    ){
-//
-//        Notification notification =
-//                Notification.builder()
-//                        .title(title)
-//                        .content(content)
-//                        .type(type)
-//                        .build();
-//
-//        notificationRepo.save(notification);
-//
-//        List<UserNotification> relations =
-//                users.stream()
-//                        .map(user ->
-//                                UserNotification.builder()
-//                                        .user(user)
-//                                        .notification(notification)
-//                                        .isRead(false)
-//                                        .build()
-//                        )
-//                        .toList();
-//
-//        userNotificationRepo.saveAll(relations);
-//
-//        for(int i = 0; i < relations.size(); i++){
-//
-//            messagingTemplate.convertAndSendToUser(
-//                    users.get(i).getEmail(),
-//                    "/queue/notifications",
-//                    mapToDto(relations.get(i))
-//            );
-//        }
-//    }
+    //ToDo make a methode to send a notification for a user by the entity
 
     @Transactional
     public void sendToMentorshipStudents(

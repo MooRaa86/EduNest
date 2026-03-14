@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.repository.chat.projection.ChatMessageProjec
 import com.example.gradproj.EduNest.repository.users.projection.UserNameProjection;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -43,6 +44,12 @@ public interface ChatMessageRepository
 """)
     Optional<UserNameProjection> findSenderInfo(String email);
 
-
+    @Modifying
+    @Query("""
+    DELETE FROM ChatMessage m
+    WHERE m.id = :messageId
+      AND m.sender.email = :senderEmail
+""")
+    int deleteByIdAndSender(Long messageId, String senderEmail);
 
 }

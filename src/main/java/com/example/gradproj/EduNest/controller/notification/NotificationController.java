@@ -89,7 +89,7 @@ public class NotificationController {
             @RequestBody @Valid NotificationSendRequest request
     ){
 
-        notificationService.sendToUser(
+        notificationService.sendToUserByEmail(
                 request.getEmail(),
                 request.getTitle(),
                 request.getContent(),
