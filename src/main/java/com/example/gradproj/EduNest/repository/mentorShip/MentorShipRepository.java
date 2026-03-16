@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorMentorshipProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorShipListResponse;
@@ -70,5 +71,32 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     WHERE m.mentor.email = :email
 """)
     List<MentorMentorshipProjection> findMentorMentorshipsForChatRoom(@Param("email") String email);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage(
+        m.id, m.title, m.subtitle, m.description, m.category,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
+        m.price,
+        m.price * (1.0 - m.discountPercentage / 100.0),
+        m.duration, m.coverImageUrl
+    )
+    FROM MentorShip m
+    WHERE m.status = 'ACTIVE'
+    AND m.mentor.deleted = false
+    AND (:keyword IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+    AND (:category IS NULL OR LOWER(m.category) = LOWER(:category))
+    AND (:minPrice IS NULL OR m.price >= :minPrice)
+    AND (:maxPrice IS NULL OR m.price <= :maxPrice)
+""")
+    Page<AllMentorShipsExplorePage> searchMentorShips(
+            @Param("keyword") String keyword,
+            @Param("category") String category,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice,
+            Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT m.category FROM MentorShip m WHERE m.status = 'ACTIVE' AND m.mentor.deleted = false")
+    List<String> findAllCategories();
 
 }
