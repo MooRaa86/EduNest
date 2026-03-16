@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorMentorshipProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorShipListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipStatsResponse;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.RecommendedMentorshipProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -70,5 +71,59 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     WHERE m.mentor.email = :email
 """)
     List<MentorMentorshipProjection> findMentorMentorshipsForChatRoom(@Param("email") String email);
+
+    @Query(value = """
+    SELECT DISTINCT m.category
+    FROM mentorship m
+    JOIN enrollments e ON e.mentorship_id = m.id
+    JOIN students s ON s.student_id = e.student_id
+    JOIN users u ON u.id = s.student_id
+    WHERE u.email = :email
+    """, nativeQuery = true)
+    List<String> findCategoriesByStudentEmail(@Param("email") String email);
+
+    @Query(value = """
+    SELECT 
+        m.id AS id,
+        m.title AS title,
+        m.subtitle AS subtitle,
+        m.description AS description,
+        m.difficulty_level AS difficultyLevel,
+        m.duration AS duration,
+        m.price AS price,
+        m.discount_percentage AS discountPercentage,
+        m.cover_image_url AS coverImageUrl,
+        CONCAT(u.first_name, ' ', u.last_name) AS mentorName,
+        u.email AS mentorEmail
+    FROM mentorship m
+    JOIN mentors mentor ON m.mentor_id = mentor.mentor_id
+    JOIN users u ON u.id = mentor.mentor_id
+    LEFT JOIN enrollments e ON e.mentorship_id = m.id
+    WHERE m.status = 'ACTIVE'
+      AND u.deleted = false
+      AND m.id NOT IN (
+          SELECT e2.mentorship_id 
+          FROM enrollments e2 
+          JOIN students s ON s.student_id = e2.student_id
+          JOIN users u2 ON u2.id = s.student_id
+          WHERE u2.email = :studentEmail
+      )
+    GROUP BY m.id, m.title, m.subtitle, m.description, m.difficulty_level, 
+             m.duration, m.price, m.discount_percentage, m.cover_image_url,
+             u.first_name, u.last_name, u.email, m.category, m.rating
+    ORDER BY (
+        CASE 
+            WHEN m.category IN (:categories) THEN 100
+            ELSE 0
+        END +
+        (COALESCE(m.rating, 0) * 15) +
+        (COUNT(DISTINCT e.id) * 0.5)
+    ) DESC
+    LIMIT 5
+    """, nativeQuery = true)
+    List<RecommendedMentorshipProjection> findRecommendedMentorships(
+            @Param("studentEmail") String studentEmail,
+            @Param("categories") List<String> categories
+    );
 
 }

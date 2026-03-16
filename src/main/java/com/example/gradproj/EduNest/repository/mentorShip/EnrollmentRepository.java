@@ -3,6 +3,8 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.ContentProgressProjection;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.ContinueLearningProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
@@ -204,4 +206,91 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     """)
     boolean existsByMentorIdAndStudentId(@Param("mentorId") Long mentorId,
                                          @Param("studentId") Long studentId);
+
+    @Query("""
+    SELECT 
+        m.id as mentorshipId,
+        m.title as title,
+        m.coverImageUrl as coverImageUrl,
+        CONCAT(mentor.firstName, ' ', mentor.lastName) as mentorName,
+        m.status as status,
+        COUNT(DISTINCT w.id) as totalWeeks,
+        e.joinedAt as joinedAt
+    FROM Enrollment e
+    JOIN e.mentorShip m
+    JOIN m.mentor mentor
+    LEFT JOIN m.weeks w
+    WHERE e.student.email = :email
+      AND m.status = com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE
+    GROUP BY m.id, m.title, m.coverImageUrl, mentor.firstName, mentor.lastName, m.status, e.joinedAt
+    ORDER BY e.joinedAt DESC
+    """)
+    List<ContinueLearningProjection> findContinueLearningByStudentEmail(
+            @Param("email") String email,
+            Pageable pageable
+    );
+
+    @Query(value = """
+    SELECT 
+        COALESCE(SUM(totalTasks), 0) as totalTasks,
+        COALESCE(SUM(completedTasks), 0) as completedTasks,
+        COALESCE(SUM(totalQuizzes), 0) as totalQuizzes,
+        COALESCE(SUM(completedQuizzes), 0) as completedQuizzes,
+        COALESCE(SUM(totalProjects), 0) as totalProjects,
+        COALESCE(SUM(completedProjects), 0) as completedProjects
+    FROM (
+        SELECT 
+            COUNT(DISTINCT t.id) as totalTasks,
+            COUNT(DISTINCT ts.id) as completedTasks,
+            0 as totalQuizzes,
+            0 as completedQuizzes,
+            0 as totalProjects,
+            0 as completedProjects
+        FROM tasks t
+        JOIN weeks w ON t.week_id = w.id
+        LEFT JOIN task_submission ts ON ts.task_id = t.id
+        LEFT JOIN students s ON ts.student_id = s.student_id
+        LEFT JOIN users u ON s.student_id = u.id AND u.email = :email
+        WHERE w.mentorship_id = :mentorshipId
+          AND t.task_status = 'PUBLISHED'
+        
+        UNION ALL
+        
+        SELECT 
+            0 as totalTasks,
+            0 as completedTasks,
+            COUNT(DISTINCT q.id) as totalQuizzes,
+            COUNT(DISTINCT qs.id) as completedQuizzes,
+            0 as totalProjects,
+            0 as completedProjects
+        FROM quiz q
+        JOIN weeks w ON q.week_id = w.id
+        LEFT JOIN quiz_submission qs ON qs.quiz_id = q.id
+        LEFT JOIN students s ON qs.student_id = s.student_id
+        LEFT JOIN users u ON s.student_id = u.id AND u.email = :email
+        WHERE w.mentorship_id = :mentorshipId
+          AND q.status = 'PUBLISHED'
+        
+        UNION ALL
+        
+        SELECT 
+            0 as totalTasks,
+            0 as completedTasks,
+            0 as totalQuizzes,
+            0 as completedQuizzes,
+            COUNT(DISTINCT p.id) as totalProjects,
+            COUNT(DISTINCT ps.id) as completedProjects
+        FROM projects p
+        JOIN weeks w ON p.week_id = w.id
+        LEFT JOIN project_submission ps ON ps.project_id = p.id
+        LEFT JOIN students s ON ps.student_id = s.student_id
+        LEFT JOIN users u ON s.student_id = u.id AND u.email = :email
+        WHERE w.mentorship_id = :mentorshipId
+          AND p.project_status = 'PUBLISHED'
+    ) combined
+    """, nativeQuery = true)
+    ContentProgressProjection getContentProgress(
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("email") String email
+    );
 }

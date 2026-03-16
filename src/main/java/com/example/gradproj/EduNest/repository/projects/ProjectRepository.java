@@ -2,12 +2,14 @@ package com.example.gradproj.EduNest.repository.projects;
 
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
+import com.example.gradproj.EduNest.repository.projects.projection.UpcomingProjectProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<Project,Long> {
@@ -28,4 +30,30 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
     );
     List<Project> findByWeek_Id(Long weekId);
     void deleteById(Long id);
+
+
+    @Query("""
+    SELECT p.id as id, p.title as title, p.endAt as endAt, p.points as points,
+           w.id as weekId, w.title as weekTitle,
+           m.id as mentorshipId, m.title as mentorshipTitle
+    FROM Project p
+    JOIN p.week w
+    JOIN w.mentorship m
+    JOIN m.enrollments e
+    JOIN e.student student
+    WHERE student.email = :email
+      AND p.status = 'PUBLISHED'
+      AND p.endAt > :now
+      AND NOT EXISTS (
+        SELECT 1 FROM ProjectSubmission ps
+        WHERE ps.project.id = p.id
+        AND ps.student.email = :email
+      )
+    ORDER BY p.endAt ASC
+""")
+    List<UpcomingProjectProjection> findUpcomingProjectsByStudentEmail(
+            @Param("email") String email,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
 }
