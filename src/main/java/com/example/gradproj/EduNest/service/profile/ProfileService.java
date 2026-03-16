@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.profile;
 
+import com.example.gradproj.EduNest.dto.badges.response.BadgeAwardResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.profile.EnrolledMentorshipProgressDto;
 import com.example.gradproj.EduNest.dto.profile.FullProfileStudentInformationForMentorResponse;
@@ -9,6 +10,7 @@ import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.StudentMentorProfileKpiResponse;
@@ -37,6 +39,7 @@ public class ProfileService {
     private final MentorRepository mentorRepository;
     private final StudentRepository studentRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
+    private final BadgeAwardRepository badgeAwardRepository;
 
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -207,10 +210,27 @@ public class ProfileService {
                         projectsSize
                 );
 
+        List<BadgeAwardResponse> badges = badgeAwardRepository
+                .findByStudent_IdOrderByCreatedAtDesc(studentId)
+                .stream()
+                .map(a -> BadgeAwardResponse.builder()
+                        .id(a.getId())
+                        .badgeId(a.getBadge().getId())
+                        .badgeTitle(a.getBadge().getTitle())
+                        .studentId(a.getStudent().getId())
+                        .studentFullName(a.getStudent().getFirstName() + " " + a.getStudent().getLastName())
+                        .awardedById(a.getAwardedBy().getId())
+                        .awardedAt(a.getCreatedAt())
+                        .note(a.getNote())
+                        .badgePoints(a.getBadge().getPoints())
+                        .build())
+                .toList();
+
         return FullProfileStudentInformationForMentorResponse.builder()
                 .profileStudentInformationForMentorResponse(profile)
                 .enrolledMentorshipProgressDtoPageResponse(mentorshipsProgress)
                 .projectProfileDTOPageResponse(projects)
+                .badges(badges)
                 .build();
     }
 }
