@@ -3,10 +3,7 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorStudentListResponse;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.MonthlyRevenueProjection;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.StudentMentorProfileKpiResponse;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -212,4 +209,66 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     """)
     boolean existsByMentorIdAndStudentId(@Param("mentorId") Long mentorId,
                                          @Param("studentId") Long studentId);
+
+    @Query(value = """
+    SELECT 
+        m.id as mentorshipId,
+        m.title as title,
+        m.cover_image_url as coverImageUrl,
+        CONCAT(u.first_name, ' ', u.last_name) as mentorName,
+        COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) as totalTasks,
+        COUNT(DISTINCT ts.id) as completedTasks,
+        COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) as totalQuizzes,
+        COUNT(DISTINCT qs.id) as completedQuizzes,
+        COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) as totalProjects,
+        COUNT(DISTINCT ps.id) as completedProjects
+    FROM enrollments e
+    JOIN mentorship m ON e.mentorship_id = m.id
+    JOIN mentors mentor ON m.mentor_id = mentor.mentor_id
+    JOIN users u ON u.id = mentor.mentor_id
+    JOIN students s ON s.student_id = e.student_id
+    JOIN users student_user ON student_user.id = s.student_id
+    LEFT JOIN weeks w ON w.mentorship_id = m.id
+    LEFT JOIN tasks t ON t.week_id = w.id
+    LEFT JOIN task_submission ts ON ts.task_id = t.id AND ts.student_id = s.student_id
+    LEFT JOIN quiz q ON q.week_id = w.id
+    LEFT JOIN quiz_submission qs ON qs.quiz_id = q.id AND qs.student_id = s.student_id
+    LEFT JOIN projects p ON p.week_id = w.id
+    LEFT JOIN project_submission ps ON ps.project_id = p.id AND ps.student_id = s.student_id
+    WHERE student_user.email = :email
+      AND m.status = 'ACTIVE'
+    GROUP BY m.id, m.title, m.cover_image_url, u.first_name, u.last_name
+    ORDER BY (
+        (COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) - COUNT(DISTINCT ts.id)) +
+        (COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) - COUNT(DISTINCT qs.id)) +
+        (COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) - COUNT(DISTINCT ps.id))
+    ) DESC
+    LIMIT :limit
+    """, nativeQuery = true)
+    List<ContinueLearningWithProgressProjection> findContinueLearningWithProgress(
+            @Param("email") String email,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+    SELECT 
+        COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) as totalTasks,
+        COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) as completedTasks,
+        COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) as totalQuizzes,
+        COUNT(DISTINCT CASE WHEN qs.student_id IS NOT NULL THEN qs.id END) as completedQuizzes,
+        COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) as totalProjects,
+        COUNT(DISTINCT CASE WHEN ps.student_id IS NOT NULL THEN ps.id END) as completedProjects
+    FROM weeks w
+    LEFT JOIN tasks t ON t.week_id = w.id
+    LEFT JOIN task_submission ts ON ts.task_id = t.id AND ts.student_id = (SELECT s.student_id FROM students s JOIN users u ON s.student_id = u.id WHERE u.email = :email)
+    LEFT JOIN quiz q ON q.week_id = w.id
+    LEFT JOIN quiz_submission qs ON qs.quiz_id = q.id AND qs.student_id = (SELECT s.student_id FROM students s JOIN users u ON s.student_id = u.id WHERE u.email = :email)
+    LEFT JOIN projects p ON p.week_id = w.id
+    LEFT JOIN project_submission ps ON ps.project_id = p.id AND ps.student_id = (SELECT s.student_id FROM students s JOIN users u ON s.student_id = u.id WHERE u.email = :email)
+    WHERE w.mentorship_id = :mentorshipId
+    """, nativeQuery = true)
+    ContentProgressProjection getContentProgress(
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("email") String email
+    );
 }

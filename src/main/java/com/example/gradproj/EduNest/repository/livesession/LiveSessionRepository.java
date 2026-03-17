@@ -62,13 +62,45 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     JOIN s.week w
     JOIN w.mentorship m
     JOIN m.mentor mentor
-    JOIN m.enrollments e
-    WHERE e.student.id = :studentId
-      AND s.scheduledAt > :now
+    WHERE s.scheduledAt > :now
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.id = :studentId
+      )
     ORDER BY s.scheduledAt ASC
 """)
     Page<StudentUpcomingSessionResponse> findUpcomingSessionsByStudentId(
             @Param("studentId") Long studentId,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse(
+        s.id,
+        s.title,
+        CONCAT(mentor.firstName, ' ', mentor.lastName),
+        m.id,
+        m.title,
+        w.title,
+        s.scheduledAt,
+        s.meetingUrl
+    )
+    FROM Session s
+    JOIN s.week w
+    JOIN w.mentorship m
+    JOIN m.mentor mentor
+    WHERE s.scheduledAt > :now
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
+    ORDER BY s.scheduledAt ASC
+""")
+    Page<StudentUpcomingSessionResponse> findUpcomingSessionsByStudentEmail(
+            @Param("email") String email,
             @Param("now") LocalDateTime now,
             Pageable pageable
     );

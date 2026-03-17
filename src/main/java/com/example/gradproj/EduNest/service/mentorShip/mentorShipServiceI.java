@@ -345,7 +345,7 @@ public class mentorShipServiceI implements mentorShipService{
         Enrollment enrollment = Enrollment.builder()
                 .student(student)
                 .mentorShip(mentorShip)
-                .price(mentorShip.getPrice())
+                .price(mentorShip.getPrice() - (mentorShip.getPrice() * mentorShip.getDiscountPercentage()/100)  )
                 .joinedAt(LocalDateTime.now())
                 .build();
 
