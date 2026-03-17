@@ -9,15 +9,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
-
 @Entity
-@Table(name = "session_attendance")
+@Table(name = "session_attendance_result")
 @Setter @Getter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SessionAttendance extends BaseEntity{
+public class SessionAttendanceResult extends BaseEntity {
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
     private Session session;
@@ -26,6 +25,5 @@ public class SessionAttendance extends BaseEntity{
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    private LocalDateTime snapshotTime;
-
+    private boolean attended;
 }

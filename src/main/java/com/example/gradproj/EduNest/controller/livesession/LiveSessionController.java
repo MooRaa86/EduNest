@@ -162,15 +162,20 @@ public class LiveSessionController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(
-            summary = "Get session attendance",
-            description = "Fetch attendance report for a session using session ID"
-    )
+    @Operation(summary = "Get session attendance", description = "Fetch attendance report for a session using session ID")
     @GetMapping("/attendance/{sessionId}")
     public ResponseEntity<SimpleResponse> getAttendance(@PathVariable Long sessionId) {
-        List<AttendanceResponse> attendance = liveSessionService.getSessionAttendance(sessionId);
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("Attendance report for session " + sessionId, attendance);
+        response.addMessage("attendance", liveSessionService.getAttendanceResult(sessionId));
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get student attendance", description = "Fetch attendance result for a specific student in a session")
+    @GetMapping("/myAttendance/{sessionId}")
+    public ResponseEntity<SimpleResponse> getStudentAttendance(
+            @PathVariable Long sessionId) {
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("attendance", liveSessionService.getStudentAttendanceResult(sessionId));
         return ResponseEntity.ok(response);
     }
 
