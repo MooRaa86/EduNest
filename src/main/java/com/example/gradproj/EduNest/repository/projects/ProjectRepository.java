@@ -39,15 +39,17 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
     FROM Project p
     JOIN p.week w
     JOIN w.mentorship m
-    JOIN m.enrollments e
-    JOIN e.student student
-    WHERE student.email = :email
-      AND p.status = 'PUBLISHED'
+    WHERE p.status = 'PUBLISHED'
       AND p.endAt > :now
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
       AND NOT EXISTS (
         SELECT 1 FROM ProjectSubmission ps
         WHERE ps.project.id = p.id
-        AND ps.student.email = :email
+          AND ps.student.email = :email
       )
     ORDER BY p.endAt ASC
 """)

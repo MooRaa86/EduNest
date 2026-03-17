@@ -101,19 +101,20 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     LEFT JOIN enrollments e ON e.mentorship_id = m.id
     WHERE m.status = 'ACTIVE'
       AND u.deleted = false
-      AND m.id NOT IN (
-          SELECT e2.mentorship_id 
-          FROM enrollments e2 
-          JOIN students s ON s.student_id = e2.student_id
-          JOIN users u2 ON u2.id = s.student_id
-          WHERE u2.email = :studentEmail
+      AND NOT EXISTS (
+        SELECT 1
+        FROM enrollments e2
+        JOIN students s ON s.student_id = e2.student_id
+        JOIN users u2 ON u2.id = s.student_id
+        WHERE u2.email = :studentEmail
+          AND e2.mentorship_id = m.id
       )
     GROUP BY m.id, m.title, m.subtitle, m.description, m.difficulty_level, 
              m.duration, m.price, m.discount_percentage, m.cover_image_url,
              u.first_name, u.last_name, u.email, m.category, m.rating
     ORDER BY (
         CASE 
-            WHEN m.category IN (:categories) THEN 100
+            WHEN :hasCategories = true AND LOWER(m.category) IN (:categories) THEN 100
             ELSE 0
         END +
         (COALESCE(m.rating, 0) * 15) +
@@ -123,7 +124,8 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     """, nativeQuery = true)
     List<RecommendedMentorshipProjection> findRecommendedMentorships(
             @Param("studentEmail") String studentEmail,
-            @Param("categories") List<String> categories
+            @Param("categories") List<String> categories,
+            @Param("hasCategories") boolean hasCategories
     );
 
 }

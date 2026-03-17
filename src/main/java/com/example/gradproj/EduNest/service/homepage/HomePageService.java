@@ -8,7 +8,7 @@ import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSess
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.ContinueLearningProjection;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.ContinueLearningWithProgressProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.RecommendedMentorshipProjection;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.projection.UpcomingProjectProjection;
@@ -102,53 +102,56 @@ public class HomePageService {
 
         allItems.sort(Comparator.comparing(UpcomingItemDto::getDueDate));
 
-        List<ContinueLearningProjection> mentorships = enrollmentRepository
-                .findContinueLearningByStudentEmail(email, PageRequest.of(0, 2));
+        List<ContinueLearningWithProgressProjection> mentorships = enrollmentRepository
+                .findContinueLearningWithProgress(email, 2);
 
-        //ToDo راجع كده هنا ان في كويري بتجيب المينتورشيبس وفي n كويري بتحسب البروجريس
+        List<ContinueLearningDto> continueLearning = mentorships.stream()
+                .map(m -> {
+                    long totalItems = (m.getTotalTasks() != null ? m.getTotalTasks() : 0) +
+                            (m.getTotalQuizzes() != null ? m.getTotalQuizzes() : 0) +
+                            (m.getTotalProjects() != null ? m.getTotalProjects() : 0);
 
-        List<ContinueLearningDto> continueLearning = new ArrayList<>();
+                    long completedItems = (m.getCompletedTasks() != null ? m.getCompletedTasks() : 0) +
+                            (m.getCompletedQuizzes() != null ? m.getCompletedQuizzes() : 0) +
+                            (m.getCompletedProjects() != null ? m.getCompletedProjects() : 0);
 
-        mentorships.forEach(m -> {
-            var progress = enrollmentRepository.getContentProgress(m.getMentorshipId(), email);
-            
-            long totalItems = (progress.getTotalTasks() != null ? progress.getTotalTasks() : 0) +
-                             (progress.getTotalQuizzes() != null ? progress.getTotalQuizzes() : 0) +
-                             (progress.getTotalProjects() != null ? progress.getTotalProjects() : 0);
-            
-            long completedItems = (progress.getCompletedTasks() != null ? progress.getCompletedTasks() : 0) +
-                                 (progress.getCompletedQuizzes() != null ? progress.getCompletedQuizzes() : 0) +
-                                 (progress.getCompletedProjects() != null ? progress.getCompletedProjects() : 0);
-            
-            int progressPercentage = totalItems > 0 ? (int)((completedItems * 100) / totalItems) : 0;
-            
-            continueLearning.add(ContinueLearningDto.builder()
-                    .mentorshipId(m.getMentorshipId())
-                    .title(m.getTitle())
-                    .coverImageUrl(m.getCoverImageUrl())
-                    .mentorName(m.getMentorName())
-                    .status(m.getStatus())
-                    .progressPercentage(progressPercentage)
-                    .totalWeeks(m.getTotalWeeks())
-                    .completedItems((int)completedItems)
-                    .totalItems((int)totalItems)
-                    .build());
-        });
+                    int progressPercentage = totalItems > 0 ? (int)((completedItems * 100) / totalItems) : 0;
+
+                    return ContinueLearningDto.builder()
+                            .mentorshipId(m.getMentorshipId())
+                            .title(m.getTitle())
+                            .coverImageUrl(m.getCoverImageUrl())
+                            .mentorName(m.getMentorName())
+                            .progressPercentage(progressPercentage)
+                            .completedItems((int)completedItems)
+                            .totalItems((int)totalItems)
+                            .build();
+                })
+                .toList();
+
+        List<RecommendedMentorshipProjection> recommended = getRecommendedMentorships(email);
 
         return StudentHomePageResponse.builder()
                 .upcomingItems(allItems)
                 .continueLearning(continueLearning)
+                .recommendedMentorships(recommended)
                 .build();
     }
 
     public List<RecommendedMentorshipProjection> getRecommendedMentorships(String email) {
         List<String> categories = mentorShipRepository.findCategoriesByStudentEmail(email);
+
+        categories = categories.stream()
+                .map(String::toLowerCase)
+                .toList();
+
+        boolean hasCategories = !categories.isEmpty();
         
-        if (categories.isEmpty()) {
+        if (!hasCategories) {
             categories = List.of("");
         }
         
-        return mentorShipRepository.findRecommendedMentorships(email, categories);
+        return mentorShipRepository.findRecommendedMentorships(email, categories, hasCategories);
     }
 
 }

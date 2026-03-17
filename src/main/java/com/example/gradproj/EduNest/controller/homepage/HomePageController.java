@@ -17,19 +17,19 @@ import org.springframework.web.bind.annotation.*;
 public class HomePageController {
     private final HomePageService homePageService;
 
-    @GetMapping("/upcoming")
-    @Operation(summary = "Get upcoming items for authenticated student (top 2 sessions, tasks, projects) - excluding submitted items + Continue Learning mentorships")
+    @GetMapping("/full")
+    @Operation(summary = "continue learning + upcoming items + recommended section")
     public ResponseEntity<SimpleResponse> getStudentUpcoming(Authentication authentication) {
         String email = authentication.getName();
         StudentHomePageResponse response = homePageService.getStudentHomePage(email);
         SimpleResponse simpleResponse = new SimpleResponse();
-        simpleResponse.addMessage("message", "Upcoming items retrieved successfully");
+        simpleResponse.addMessage("message", "full home page retrived");
         simpleResponse.addMessage("data", response);
         return ResponseEntity.ok(simpleResponse);
     }
 
     @GetMapping("/progress/{mentorshipId}")
-    @Operation(summary = "Get student progress for a specific mentorship")
+    @Operation(summary = "Get student progress for a specific mentorship (don't try)")
     public ResponseEntity<SimpleResponse> getStudentProgress(
             @PathVariable Long mentorshipId,
             Authentication authentication
@@ -43,7 +43,7 @@ public class HomePageController {
     }
 
     @GetMapping("/recommended")
-    @Operation(summary = "Get recommended mentorships for authenticated student based on enrolled categories, rating, and enrollment count")
+    @Operation(summary = "Get recommended mentorships for authenticated student based on enrolled categories, rating, and enrollment count (don't try)")
     public ResponseEntity<SimpleResponse> getRecommendedMentorships(
             Authentication authentication
     ) {

@@ -42,15 +42,17 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
     FROM Task t
     JOIN t.week w
     JOIN w.mentorship m
-    JOIN m.enrollments e
-    JOIN e.student student
-    WHERE student.email = :email
-      AND t.status = 'PUBLISHED'
+    WHERE t.status = 'PUBLISHED'
       AND t.dueAt > :now
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
       AND NOT EXISTS (
         SELECT 1 FROM TaskSubmission ts
         WHERE ts.task.id = t.id
-        AND ts.student.email = :email
+          AND ts.student.email = :email
       )
     ORDER BY t.dueAt ASC
 """)

@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.dto.homepage;
 
+import com.example.gradproj.EduNest.repository.mentorShip.projections.RecommendedMentorshipProjection;
 import lombok.*;
 
 import java.util.List;
@@ -12,4 +13,5 @@ import java.util.List;
 public class StudentHomePageResponse {
     private List<UpcomingItemDto> upcomingItems;
     private List<ContinueLearningDto> continueLearning;
+    private List<RecommendedMentorshipProjection> recommendedMentorships;
 }

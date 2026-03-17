@@ -62,9 +62,12 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     JOIN s.week w
     JOIN w.mentorship m
     JOIN m.mentor mentor
-    JOIN m.enrollments e
-    WHERE e.student.id = :studentId
-      AND s.scheduledAt > :now
+    WHERE s.scheduledAt > :now
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.id = :studentId
+      )
     ORDER BY s.scheduledAt ASC
 """)
     Page<StudentUpcomingSessionResponse> findUpcomingSessionsByStudentId(
@@ -88,10 +91,12 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     JOIN s.week w
     JOIN w.mentorship m
     JOIN m.mentor mentor
-    JOIN m.enrollments e
-    JOIN e.student student
-    WHERE student.email = :email
-      AND s.scheduledAt > :now
+    WHERE s.scheduledAt > :now
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
     ORDER BY s.scheduledAt ASC
 """)
     Page<StudentUpcomingSessionResponse> findUpcomingSessionsByStudentEmail(
