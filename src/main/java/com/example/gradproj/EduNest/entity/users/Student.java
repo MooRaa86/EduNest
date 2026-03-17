@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.entity.users;
 
+import com.example.gradproj.EduNest.entity.badges.BadgeAward;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
@@ -48,5 +49,13 @@ public class Student extends UserEntity {
             fetch = FetchType.LAZY
     )
     private List<MentorShipReviews> reviews = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "student",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<BadgeAward> badgeAwards = new ArrayList<>();
 
 }

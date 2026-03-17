@@ -76,7 +76,7 @@ public class MentorViewStudentProfileController {
         return ResponseEntity.ok(resp);
     }
     @GetMapping("/{studentId}/full-profile")
-    @Operation(summary = "Get full student profile (info + mentorship progress + projects)")
+    @Operation(summary = "Get full student profile (info + mentorship progress + projects +badges)")
     public ResponseEntity<SimpleResponse> getFullStudentProfile(
             @PathVariable Long studentId,
             @RequestParam(defaultValue = "0") int mentorshipsPage,

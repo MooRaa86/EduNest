@@ -1,7 +1,10 @@
 package com.example.gradproj.EduNest.dto.profile;
 
+import com.example.gradproj.EduNest.dto.badges.response.BadgeAwardResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -10,6 +13,7 @@ import lombok.*;
 @Builder
 public class FullProfileStudentInformationForMentorResponse {
     private ProfileStudentInformationForMentorResponse profileStudentInformationForMentorResponse;
-    private  PageResponse<EnrolledMentorshipProgressDto> enrolledMentorshipProgressDtoPageResponse;
+    private PageResponse<EnrolledMentorshipProgressDto> enrolledMentorshipProgressDtoPageResponse;
     private PageResponse<StudentProjectProfileDTO> projectProfileDTOPageResponse;
+    private List<BadgeAwardResponse> badges;
 }
