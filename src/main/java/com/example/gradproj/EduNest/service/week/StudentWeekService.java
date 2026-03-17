@@ -4,12 +4,14 @@ import com.example.gradproj.EduNest.dto.weeks.StudentWeekContentItemDTO;
 import com.example.gradproj.EduNest.dto.weeks.StudentWeekContentsResponse;
 import com.example.gradproj.EduNest.dto.weeks.WeekResponse;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
+import com.example.gradproj.EduNest.entity.livesession.SessionAttendanceResult;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
+import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResultRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
@@ -43,6 +45,7 @@ public class StudentWeekService {
     private final ProjectRepository projectRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final LiveSessionRepository sessionRepository;
+    private final SessionAttendanceResultRepository attendanceResultRepository;
     private final LectureRepository lectureRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
@@ -100,11 +103,16 @@ public class StudentWeekService {
         sessionRepository.findByWeek_Id(weekId).forEach(s ->
                 items.add(StudentWeekContentItemDTO.builder()
                         .type("SESSION").id(s.getId()).title(s.getTitle()).createdAt(s.getCreatedAt())
+                        .completed(attendanceResultRepository
+                                .findBySession_IdAndStudent_Id(s.getId(), studentId)
+                                .map(SessionAttendanceResult::isAttended)
+                                .orElse(false))
                         .build()));
 
         lectureRepository.findByWeek_Id(weekId).forEach(l ->
                 items.add(StudentWeekContentItemDTO.builder()
                         .type("LECTURE").id(l.getId()).title(l.getTitle()).createdAt(l.getCreatedAt())
+                        .completed(true)
                         .build()));
 
         taskRepository.findByWeek_IdAndStatusNot(weekId, TaskStatus.DRAFT).forEach(t ->
