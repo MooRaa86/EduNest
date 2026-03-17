@@ -13,8 +13,8 @@ public class AllMentorShipsExplorePage {
     private String description;
     private String category;
     private String mentorName;
-    private Double price;
-    private Double priceAfterDiscount;
-    private Double duration;
+    private double price;
+    private double priceAfterDiscount;
+    private double duration;
     private String coverImageUrl;
 }
