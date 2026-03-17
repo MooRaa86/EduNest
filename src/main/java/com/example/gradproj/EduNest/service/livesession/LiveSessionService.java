@@ -28,7 +28,8 @@ public interface LiveSessionService {
     @PreAuthorize("hasRole('MENTOR')")
     void recordSnapshot(Long sessionId, List<Long> studentIds);
     @PreAuthorize("hasRole('MENTOR')")
-    List<AttendanceResponse> getSessionAttendance(Long sessionId);
+    List<AttendanceResponse> getAttendanceResult(Long sessionId);
+    AttendanceResponse getStudentAttendanceResult(Long sessionId);
     PageResponse<DashboardSessionResponse> getAllSessions(Long mentorshipId, int page, int size);
     @PreAuthorize("hasRole('STUDENT')")
     PageResponse<StudentUpcomingSessionResponse> getUpcomingSessionsForStudent(int page, int size);

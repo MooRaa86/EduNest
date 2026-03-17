@@ -9,12 +9,14 @@ import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSess
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.livesession.SessionAttendance;
+import com.example.gradproj.EduNest.entity.livesession.SessionAttendanceResult;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
+import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResultRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
@@ -43,6 +45,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final AttendanceRepository attendanceRepository;
+    private final SessionAttendanceResultRepository sessionAttendanceResultRepository;
     private final JitsiService jitsiService;
     private final TotalPointsServiceImp totalPointsService;
 
@@ -219,7 +222,36 @@ public class LiveSessionServiceImp implements LiveSessionService {
         }
     }
 
-    public List<AttendanceResponse> getSessionAttendance(Long sessionId) {
+    @Override
+    public AttendanceResponse getStudentAttendanceResult(Long sessionId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Student student = studentRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+
+        SessionAttendanceResult result = sessionAttendanceResultRepository
+                .findBySession_IdAndStudent_Id(sessionId, student.getId())
+                .orElseThrow(() -> new globalLogicEx("Attendance not found"));
+
+        return AttendanceResponse.builder()
+                .sessionId(result.getSession().getId())
+                .studentId(result.getStudent().getId())
+                .status(result.isAttended() ? "Present" : "Absent")
+                .build();
+    }
+
+    @Override
+    public List<AttendanceResponse> getAttendanceResult(Long sessionId) {
+        List<SessionAttendanceResult> results = sessionAttendanceResultRepository.findBySession_Id(sessionId);
+        return results.stream()
+                .map(r -> AttendanceResponse.builder()
+                        .sessionId(r.getSession().getId())
+                        .studentId(r.getStudent().getId())
+                        .status(r.isAttended() ? "Present" : "Absent")
+                        .build())
+                .toList();
+    }
+
+    private List<AttendanceResponse> getSessionAttendance(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -270,20 +302,30 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     private void calculateAttendancePoints(Session session) {
-        List<AttendanceResponse> results =
-                getSessionAttendance(session.getId());
+        List<AttendanceResponse> results = getSessionAttendance(session.getId());
+        Long mentorshipId = session.getWeek().getMentorship().getId();
 
+        Map<Long, String> attendanceMap = new HashMap<>();
         for (AttendanceResponse result : results) {
-            if ("Present".equals(result.getStatus())) {
+            attendanceMap.put(result.getStudentId(), result.getStatus());
+        }
 
-                Student student = studentRepository.findById(result.getStudentId())
-                        .orElseThrow(() -> new globalLogicEx("Student not found"));
+        List<Student> allStudents = enrollmentRepository.findStudentsByMentorshipId(mentorshipId);
 
-                totalPointsService.applyDelta(
-                        student,
-                        session.getWeek().getMentorship(),
-                        5
-                );
+        for (Student student : allStudents) {
+            String status = attendanceMap.getOrDefault(student.getId(), "Absent");
+            boolean attended = "Present".equals(status);
+
+            SessionAttendanceResult attendanceResult = SessionAttendanceResult.builder()
+                    .session(session)
+                    .student(student)
+                    .attended(attended)
+                    .build();
+
+            sessionAttendanceResultRepository.save(attendanceResult);
+
+            if (attended) {
+                totalPointsService.applyDelta(student, session.getWeek().getMentorship(), 5);
             }
         }
     }

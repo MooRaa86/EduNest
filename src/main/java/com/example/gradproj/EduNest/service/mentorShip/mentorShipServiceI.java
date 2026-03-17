@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.mentorShip;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
@@ -406,6 +407,25 @@ public class mentorShipServiceI implements mentorShipService{
 
         mentorShip.setRating(avgRating != null ? avgRating : 0.0);
     }
+
+    @Override
+    public PageResponse<AllMentorShipsExplorePage> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AllMentorShipsExplorePage> result = MentorShipRepository.searchMentorShips(keyword, category, minPrice, maxPrice, pageable);
+        return PageResponse.<AllMentorShipsExplorePage>builder()
+                .content(result.getContent())
+                .page(result.getNumber())
+                .size(result.getSize())
+                .totalElements(result.getTotalElements())
+                .totalPages(result.getTotalPages())
+                .build();
+    }
+
+    @Override
+    public List<String> getCategories() {
+        return MentorShipRepository.findAllCategories();
+    }
+
 
     private mentorShipFDto mapToMentorShipResponse(MentorShip mentorShip) {
         double price = mentorShip.getPrice();
