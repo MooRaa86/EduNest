@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipReviewProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,5 +38,27 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     WHERE r.mentorShip.id = :mentorshipId
 """)
     Double calculateAverageRating(@Param("mentorshipId") Long mentorshipId);
+
+    @Query("""
+    SELECT 
+        r.id as reviewId,
+        r.feedBack as feedback,
+        r.rating as rating,
+        CONCAT(s.firstName, ' ', s.lastName) as studentFullName,
+        s.profileImageUrl as studentProfileImageUrl,
+        s.email as studentEmail
+    FROM MentorShipReviews r
+    JOIN r.student s
+    WHERE r.mentorShip.id = :mentorshipId
+    ORDER BY 
+        CASE WHEN s.email = :studentEmail THEN 0 ELSE 1 END,
+        r.rating DESC,
+        r.createdAt DESC
+    """)
+    Page<MentorshipReviewProjection> findMentorshipReviews(
+        @Param("mentorshipId") Long mentorshipId,
+        @Param("studentEmail") String studentEmail,
+        Pageable pageable
+    );
 
 }
