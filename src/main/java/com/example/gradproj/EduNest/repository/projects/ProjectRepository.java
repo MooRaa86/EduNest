@@ -27,5 +27,6 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             Pageable pageable
     );
     List<Project> findByWeek_Id(Long weekId);
+    List<Project> findByWeek_IdAndStatusNot(Long weekId, ProjectStatus status);
     void deleteById(Long id);
 }

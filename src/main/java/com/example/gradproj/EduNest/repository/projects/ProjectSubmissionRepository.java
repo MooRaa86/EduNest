@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
     Page<ProjectSubmission> findByProject_Id(Long projectId, Pageable pageable);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
+    boolean existsByProject_IdAndStudent_Id(Long projectId, Long studentId);
     @Query(
             value = """
         SELECT ps

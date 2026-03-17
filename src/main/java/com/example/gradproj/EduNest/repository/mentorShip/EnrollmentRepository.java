@@ -160,6 +160,14 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     boolean existsByMentorShip_IdAndStudent_Id(Long mentorshipId, Long studentId);
 
     @Query("""
+        SELECT COUNT(e) > 0 FROM Enrollment e
+        WHERE e.student.id = :studentId
+          AND e.mentorShip.id = (SELECT w.mentorship.id FROM Week w WHERE w.id = :weekId)
+    """)
+    boolean isStudentEnrolledInWeekMentorship(@Param("weekId") Long weekId,
+                                              @Param("studentId") Long studentId);
+
+    @Query("""
         select (count(e) > 0)
         from Enrollment e
         where e.student.id = :studentId

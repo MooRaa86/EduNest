@@ -104,16 +104,18 @@ public class WeekService {
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('MENTOR')")
     public List<WeekResponse> getWeeksByMentorship(Long mentorshipId) {
+        validateMentorOwnership(mentorshipId);
         return weekRepository.findByMentorship_IdOrderByIdAsc(mentorshipId)
                 .stream().map(this::mapToWeekResponse).toList();
     }
 
 
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('MENTOR')")
     public WeekContentsResponse getWeekContents(Long weekId) {
-        Week week = weekRepository.findById(weekId)
-                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Week week = validateMentorOwnsWeek(weekId);
 
         var tasks = taskRepository.findByWeek_Id(weekId);
         var quizzes = quizRepository.findByWeek_Id(weekId);
