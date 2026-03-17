@@ -10,10 +10,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class WeekContentItemDTO {
+public class StudentWeekContentItemDTO {
     private String type;
     private Long id;
     private String title;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
+    private boolean completed;
 }

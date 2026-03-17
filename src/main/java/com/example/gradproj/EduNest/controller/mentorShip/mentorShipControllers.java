@@ -57,6 +57,30 @@ public class mentorShipControllers {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/explore")
+    @Operation(summary = "explore mentorships with optional filters")
+    public ResponseEntity<SimpleResponse> exploreMentorShips(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("mentorShips", mentorShipService.getMentorShipsExplorePage(keyword, category, minPrice, maxPrice, page, size));
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/categories")
+    @Operation(summary = "get all available categories")
+    public ResponseEntity<SimpleResponse> getCategories() {
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("categories", mentorShipService.getCategories());
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping
     @Operation(summary = "create a mentorship")
     public ResponseEntity<SimpleResponse> createMentorShip(

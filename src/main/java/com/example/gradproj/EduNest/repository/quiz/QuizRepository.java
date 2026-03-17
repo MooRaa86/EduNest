@@ -29,5 +29,6 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     Page<Quiz> findByWeek_Mentorship_Id(Long mentorshipId, Pageable pageable);
     void deleteById(Long id);
     List<Quiz> findByWeek_Id(Long weekId);
+    List<Quiz> findByWeek_IdAndStatusNot(Long weekId, QuizStatus status);
     boolean existsById(Long id);
 }

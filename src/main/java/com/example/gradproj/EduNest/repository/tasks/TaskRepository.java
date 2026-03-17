@@ -33,6 +33,7 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
     void deleteById(Long taskId);
 
     List<Task> findByWeek_Id(Long weekId);
+    List<Task> findByWeek_IdAndStatusNot(Long weekId, TaskStatus status);
 
 
     @Query("""

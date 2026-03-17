@@ -10,6 +10,6 @@ import java.util.Optional;
 public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,Long> {
     Page<TaskSubmission> findByTask_Id(Long taskId, Pageable pageable);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);
-
+    boolean existsByTask_IdAndStudent_Id(Long taskId, Long studentId);
 
 }
