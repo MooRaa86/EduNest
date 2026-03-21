@@ -297,6 +297,7 @@ public class TaskServiceImpl implements TaskService{
 
         return TaskStatisticsDTO.builder()
                 .status(task.getStatus())
+                .taskTitle(task.getTitle())
                 .totalStudents(totalStudents)
                 .totalSubmissions((int) submissionsPage.getTotalElements())
                 .pendingReview(totalStudents-submissionsPage.getTotalPages())
@@ -312,6 +313,7 @@ public class TaskServiceImpl implements TaskService{
                 .submissionId(s.getId())
                 .taskId(s.getTask().getId())
                 .studentId(s.getStudent().getId())
+                .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
                 .status(s.getStatus())
@@ -327,7 +329,7 @@ public class TaskServiceImpl implements TaskService{
     public FullTaskDashBoardDto getFullTaskDashboard(Long mentorShipId, String taskName, TaskStatus status, Pageable pageable) {
         TaskDashboardDTO dashboard = getTaskDashboard(mentorShipId);
         PageResponse<TaskResponse> tasks = getTasks(taskName, status, mentorShipId, pageable);
-        
+
         return FullTaskDashBoardDto.builder()
                 .taskDashboardDTO(dashboard)
                 .taskResponsePageResponse(tasks)

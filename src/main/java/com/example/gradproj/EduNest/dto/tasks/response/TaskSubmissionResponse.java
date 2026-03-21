@@ -15,6 +15,7 @@ public class TaskSubmissionResponse {
     private Long submissionId;
     private Long taskId;
     private Long studentId;
+    private String studentFullName;
 
     private String fileUrl;
     private String uploadedFilePath;

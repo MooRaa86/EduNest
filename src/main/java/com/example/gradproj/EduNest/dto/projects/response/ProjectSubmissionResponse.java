@@ -14,6 +14,7 @@ public class ProjectSubmissionResponse {
     private Long submissionId;
     private Long projectId;
     private Long studentId;
+    private String studentFullName;
 
     private String fileUrl;
     private String uploadedFilePath;

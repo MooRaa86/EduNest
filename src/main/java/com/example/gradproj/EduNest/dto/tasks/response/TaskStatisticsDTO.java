@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 public class TaskStatisticsDTO {
     private TaskStatus status;
+    private String taskTitle;
     private int totalStudents;
     private int totalSubmissions;
     private int pendingReview;
