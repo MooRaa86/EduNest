@@ -1,11 +1,8 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
-import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorMentorshipProjection;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorShipListResponse;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipStatsResponse;
-import com.example.gradproj.EduNest.repository.mentorShip.projections.RecommendedMentorshipProjection;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -74,10 +71,11 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     List<MentorMentorshipProjection> findMentorMentorshipsForChatRoom(@Param("email") String email);
 
     @Query("""
-    SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage(
+    SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
         m.id, m.title, m.subtitle, m.description, m.category,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
         m.price,
+        m.discountPercentage,
         m.price * (1.0 - m.discountPercentage / 100.0),
         m.duration, m.coverImageUrl
     )
@@ -89,7 +87,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     AND (:minPrice IS NULL OR m.price >= :minPrice)
     AND (:maxPrice IS NULL OR m.price <= :maxPrice)
 """)
-    Page<AllMentorShipsExplorePage> searchMentorShips(
+    Page<MentorshipExploreDto> searchMentorShips(
             @Param("keyword") String keyword,
             @Param("category") String category,
             @Param("minPrice") Double minPrice,
@@ -97,8 +95,52 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
             Pageable pageable
     );
 
-    @Query("SELECT DISTINCT m.category FROM MentorShip m WHERE m.status = 'ACTIVE' AND m.mentor.deleted = false")
+    @Query("""
+    SELECT DISTINCT m.category FROM MentorShip m WHERE m.status = 'ACTIVE' AND m.mentor.deleted = false
+    """)
     List<String> findAllCategories();
+
+    @Query("""
+    SELECT 
+        m.id as id,
+        m.title as title,
+        m.subtitle as subtitle,
+        m.description as description,
+        m.category as category,
+        m.difficultyLevel as difficultyLevel,
+        m.duration as duration,
+        m.price as price,
+        m.discountPercentage as discountPercentage,
+        m.coverImageUrl as coverImageUrl,
+        m.status as status,
+        m.rating as rating,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
+        m.mentor.email as mentorEmail,
+        m.mentor.profileImageUrl as mentorProfileImageUrl,
+        m.mentor.yearsOfExperience as mentorYearsOfExperience,
+        CASE WHEN e.id IS NOT NULL THEN true ELSE false END as isEnrolled
+    FROM MentorShip m
+    LEFT JOIN Enrollment e ON e.mentorShip.id = m.id AND e.student.email = :studentEmail
+    WHERE m.id = :mentorshipId
+    """)
+    MentorshipOverviewProjection findMentorshipOverview(
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("studentEmail") String studentEmail
+    );
+
+    @Query("""
+    SELECT t.tag
+    FROM Tags t
+    WHERE t.mentorShip.id = :mentorshipId
+    """)
+    List<String> findTagsByMentorshipId(@Param("mentorshipId") Long mentorshipId);
+
+    @Query("""
+    SELECT w.content
+    FROM WhatWillLearn w
+    WHERE w.mentorShip.id = :mentorshipId
+    """)
+    List<String> findWhatWillLearnByMentorshipId(@Param("mentorshipId") Long mentorshipId);
 
     @Query(value = """
     SELECT DISTINCT m.category
@@ -154,6 +196,25 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
             @Param("studentEmail") String studentEmail,
             @Param("categories") List<String> categories,
             @Param("hasCategories") boolean hasCategories
+    );
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
+        m.id, m.title, m.subtitle, m.description, m.category,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
+        m.price,
+        m.discountPercentage,
+        m.price * (1.0 - m.discountPercentage / 100.0),
+        m.duration, m.coverImageUrl
+    )
+    FROM MentorShip m
+    WHERE m.mentor.email = :mentorEmail
+    AND m.status = 'ACTIVE'
+    ORDER BY m.rating DESC, m.createdAt DESC
+    """)
+    List<MentorshipExploreDto> findTopByMentorEmailOrderByRating(
+            @Param("mentorEmail") String mentorEmail,
+            Pageable pageable
     );
 
 }

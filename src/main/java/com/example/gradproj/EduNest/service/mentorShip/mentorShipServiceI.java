@@ -3,7 +3,7 @@ package com.example.gradproj.EduNest.service.mentorShip;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
-import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
@@ -409,10 +409,10 @@ public class mentorShipServiceI implements mentorShipService{
     }
 
     @Override
-    public PageResponse<AllMentorShipsExplorePage> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size) {
+    public PageResponse<MentorshipExploreDto> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<AllMentorShipsExplorePage> result = MentorShipRepository.searchMentorShips(keyword, category, minPrice, maxPrice, pageable);
-        return PageResponse.<AllMentorShipsExplorePage>builder()
+        Page<MentorshipExploreDto> result = MentorShipRepository.searchMentorShips(keyword, category, minPrice, maxPrice, pageable);
+        return PageResponse.<MentorshipExploreDto>builder()
                 .content(result.getContent())
                 .page(result.getNumber())
                 .size(result.getSize())
