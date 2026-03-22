@@ -202,6 +202,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
                 .submissionId(s.getId())
                 .taskId(s.getTask().getId())
                 .studentId(s.getStudent().getId())
+                .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
                 .status(SubmissionStatus.valueOf(s.getStatus().name()))

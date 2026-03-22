@@ -276,6 +276,7 @@ public class ProjectServiceImpl implements ProjectService{
 
         return ProjectStatisticsDTO.builder()
                 .status(project.getStatus())
+                .projectTitle(project.getTitle())
                 .totalStudents(totalStudents)
                 .totalSubmissions(totalSubmissions)
                 .pendingReview(pendingReview)
@@ -290,6 +291,7 @@ public class ProjectServiceImpl implements ProjectService{
                 .submissionId(s.getId())
                 .projectId(s.getProject().getId())
                 .studentId(s.getStudent().getId())
+                .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .submittedAt(s.getSubmittedAt())
                 .isLate(s.getIsLate())
