@@ -47,13 +47,15 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         COUNT(DISTINCT lec.id) AS totalLessons,
         COUNT(DISTINCT q.id) AS totalQuizzes,
         COUNT(DISTINCT t.id) AS totalAssignments,
-        COUNT(DISTINCT s.id) AS totalSessions
+        COUNT(DISTINCT s.id) AS totalSessions,
+        COUNT(DISTINCT p.id) AS totalProjects
     FROM MentorShip m
     LEFT JOIN m.weeks w
     LEFT JOIN w.lectures lec
     LEFT JOIN w.quizzes q
     LEFT JOIN w.tasks t
     LEFT JOIN w.liveSessions s
+    LEFT JOIN w.projects p
     WHERE m.id = :mentorshipId
       AND m.mentor.email = :email
     GROUP BY m.title, m.status
