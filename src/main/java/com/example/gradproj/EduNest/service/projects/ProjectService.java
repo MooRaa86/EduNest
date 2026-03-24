@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.dto.projects.response.FullProjectDashBoardDt
 import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectWithStatsResponse;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,7 +24,7 @@ public interface ProjectService {
     void deleteProject(Long projectId);
     @PreAuthorize("hasRole('MENTOR')")
     ProjectResponse updateProjectStatus(Long projectId, UpdateProjectStatusRequest req);
-    PageResponse<ProjectResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable);
+    PageResponse<ProjectWithStatsResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable);
     @PreAuthorize("hasRole('MENTOR')")
     ProjectDashboardDTO getProjectDashboard(Long mentorShipId);
     @PreAuthorize("hasRole('MENTOR')")

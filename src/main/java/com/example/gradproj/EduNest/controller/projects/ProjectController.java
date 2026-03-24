@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequ
 import com.example.gradproj.EduNest.dto.projects.response.FullProjectDashBoardDto;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectWithStatsResponse;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.service.projects.ProjectServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,7 +109,7 @@ public class ProjectController {
     ) {
         Pageable pageable = (Pageable) PageRequest.of(page, size);
 
-        PageResponse<ProjectResponse> response =
+        PageResponse<ProjectWithStatsResponse> response =
                 projectService.getProject(projectName, status, msid, pageable);
 
         SimpleResponse simpleResponse = new SimpleResponse();

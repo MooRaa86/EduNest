@@ -10,5 +10,5 @@ import lombok.*;
 @Builder
 public class FullProjectDashBoardDto {
     private ProjectDashboardDTO projectDashboardDTO;
-    private PageResponse<ProjectResponse> projectResponsePageResponse;
+    private PageResponse<ProjectWithStatsResponse> projectResponsePageResponse;
 }

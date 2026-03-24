@@ -19,6 +19,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskDashboardProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
@@ -239,36 +240,13 @@ public class TaskServiceImpl implements TaskService{
     @Override
     public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
         validateMentorshipOwnership(mentorShipId);
-        List<Task> allTasks = taskRepository.findByWeek_Mentorship_Id(mentorShipId);
-
-        int totalTasks = allTasks.size();
-        int publishedCount = 0;
-        int draftCount = 0;
-        double sumAverageScores = 0.0;
-
-        for (Task task : allTasks) {
-            publishedCount += (task.getStatus() == TaskStatus.PUBLISHED ? 1 : 0);
-            draftCount += (task.getStatus() == TaskStatus.DRAFT ? 1 : 0);
-            sumAverageScores += calculateAverageScore(task);
-        }
-        double averageScore = totalTasks > 0 ? sumAverageScores / totalTasks : 0.0;
-
+        var stats = taskRepository.getDashboardStats(mentorShipId);
         return TaskDashboardDTO.builder()
-                .totalTasks(totalTasks)
-                .publishedCount(publishedCount)
-                .draftCount(draftCount)
-                .averageScore(averageScore)
+                .totalTasks(stats.getTotalTasks() != null ? stats.getTotalTasks().intValue() : 0)
+                .publishedCount(stats.getPublishedCount() != null ? stats.getPublishedCount().intValue() : 0)
+                .draftCount(stats.getDraftCount() != null ? stats.getDraftCount().intValue() : 0)
+                .averageScore(stats.getAverageScore() != null ? stats.getAverageScore() : 0.0)
                 .build();
-    }
-
-    private double calculateAverageScore(Task task) {
-        if (task.getSubmissions() == null || task.getSubmissions().isEmpty()) {
-            return 0;
-        }
-        return task.getSubmissions().stream()
-                .mapToDouble(s -> s.getFinalScore() != null ? s.getFinalScore() : 0)
-                .average()
-                .orElse(0.0);
     }
 
     @Override
