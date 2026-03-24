@@ -1,6 +1,6 @@
 package com.example.gradproj.EduNest.dto.dashboard;
 
-import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
@@ -18,7 +18,7 @@ public class MentorDashboardResponse {
 
     private PageResponse<ReviewsRsponse> reviews;
 
-    private PageResponse<DashboardSessionResponse> sessions;
+    private PageResponse<UpcomingSessionResponse> sessions;
 
     private List<SalesChartResponse> salesChart;
 

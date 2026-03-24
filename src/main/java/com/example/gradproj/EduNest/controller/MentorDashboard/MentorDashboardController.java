@@ -5,7 +5,7 @@ import com.example.gradproj.EduNest.dto.dashboard.DashboardCardsResponse;
 import com.example.gradproj.EduNest.dto.dashboard.MentorDashboardResponse;
 import com.example.gradproj.EduNest.dto.dashboard.MentorshipDashboardResponse;
 import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
-import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
@@ -64,7 +64,7 @@ public class MentorDashboardController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size
     ) {
-        PageResponse<DashboardSessionResponse> sessions =
+        PageResponse<UpcomingSessionResponse> sessions =
                 mentorDashboardService
                         .getUpcomingSessionsForDashboard(page, size);
         SimpleResponse resp = new SimpleResponse();

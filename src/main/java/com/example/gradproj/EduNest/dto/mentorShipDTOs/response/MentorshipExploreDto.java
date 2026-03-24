@@ -6,7 +6,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AllMentorShipsExplorePage {
+public class MentorshipExploreDto {
     private Long id;
     private String title;
     private String subtitle;
@@ -14,6 +14,7 @@ public class AllMentorShipsExplorePage {
     private String category;
     private String mentorName;
     private double price;
+    private Integer discountPercentage;
     private double priceAfterDiscount;
     private double duration;
     private String coverImageUrl;

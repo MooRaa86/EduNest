@@ -128,7 +128,18 @@ public class ChatRoomService {
     }
 
 
-    public List<ChatRoomProjection> getRoomsforMentorship(Long mentorshipId) {
+    public List<ChatRoomProjection> getRoomsforMentorship(Long mentorshipId,String studentEmail) {
+        Long studentId = userRepo.findIdByEmail(studentEmail).orElseThrow(
+                () -> new UsernameNotFoundException("Student not found")
+        );
+
+        if(!mentorshipRepo.existsById(mentorshipId)){
+            throw new UsernameNotFoundException("Mentorship not found");
+        }
+
+        if(!(enrollmentRepo.existsByMentorShip_IdAndStudent_Id(mentorshipId,studentId))){
+            throw new globalLogicEx("you can't view this groups enroll first");
+        }
         return roomRepo.findRoomsByMentorship(mentorshipId);
     }
 

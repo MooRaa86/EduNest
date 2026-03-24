@@ -59,9 +59,11 @@ public class chatRestControllers {
     @GetMapping("/{mid}")
     @Operation(summary = "get rooms for the mentorship by it's id")
     public ResponseEntity<SimpleResponse> getRoomsByMid(
-            @PathVariable Long mid
+            @PathVariable Long mid,
+            Authentication authentication
     ){
-        List<ChatRoomProjection> rooms = chatRoomService.getRoomsforMentorship(mid);
+        String email = authentication.getName();
+        List<ChatRoomProjection> rooms = chatRoomService.getRoomsforMentorship(mid,email);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("Rooms",rooms);
         resp.addMessage("status","rooms founded successfully");

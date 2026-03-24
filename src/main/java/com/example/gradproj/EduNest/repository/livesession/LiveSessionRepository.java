@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.repository.livesession;
 
 import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,12 +17,23 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     List<Session> findByWeek_Id(Long weekId);
 
     @Query("""
-    SELECT s
+    SELECT new com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse(
+        s.id,
+        s.title,
+        s.scheduledAt,
+        w.id,
+        w.title,
+        m.id,
+        m.title
+    )
     FROM Session s
+    JOIN s.week w
+    JOIN w.mentorship m
     WHERE s.week.mentorship.mentor.email = :email
       AND s.scheduledAt > :now
+    ORDER BY s.scheduledAt ASC
 """)
-    Page<Session> findUpcomingSessionsByMentorEmail(
+    Page<UpcomingSessionResponse> findUpcomingSessionsByMentorEmail(
             @Param("email") String email,
             @Param("now") LocalDateTime now,
             Pageable pageable
@@ -35,7 +47,6 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
         s.scheduledAt,
         w.title,
         m.title
-     
     )
     from Session s
     join s.week w

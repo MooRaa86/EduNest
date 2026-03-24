@@ -8,6 +8,7 @@ public interface MentorshipStatsResponse {
     Status getStatus();
     Long getTotalLessons();
     Long getTotalQuizzes();
-    Long getTotalAssignments();   // tasks فقط
+    Long getTotalAssignments();
     Long getTotalSessions();
+    Long getTotalProjects();
 }

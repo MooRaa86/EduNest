@@ -3,11 +3,10 @@ package com.example.gradproj.EduNest.service.dashboard;
 import com.example.gradproj.EduNest.dto.dashboard.DashboardCardsResponse;
 import com.example.gradproj.EduNest.dto.dashboard.MentorDashboardResponse;
 import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
-import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse;
+import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
-import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
@@ -104,7 +103,7 @@ public class DashboardService {
     }
 
     @PreAuthorize("hasRole('MENTOR')")
-    public PageResponse<DashboardSessionResponse> getUpcomingSessionsForDashboard(
+    public PageResponse<UpcomingSessionResponse> getUpcomingSessionsForDashboard(
             int page,
             int size
     ) {
@@ -117,7 +116,7 @@ public class DashboardService {
                 Sort.by("scheduledAt").ascending()
         );
 
-        Page<Session> sessions =
+        Page<UpcomingSessionResponse> sessions =
                 liveSessionRepository
                         .findUpcomingSessionsByMentorEmail(
                                 email,
@@ -125,13 +124,8 @@ public class DashboardService {
                                 pageable
                         );
 
-        List<DashboardSessionResponse> content = sessions.getContent()
-                .stream()
-                .map(this::mapToSessionResponse)
-                .toList();
-
-        return PageResponse.<DashboardSessionResponse>builder()
-                .content(content)
+        return PageResponse.<UpcomingSessionResponse>builder()
+                .content(sessions.getContent())
                 .page(sessions.getNumber())
                 .size(sessions.getSize())
                 .totalElements(sessions.getTotalElements())
@@ -169,16 +163,6 @@ public class DashboardService {
                 .mentorShip(mentorShipReviews.getMentorShip().getTitle())
                 .studentName(mentorShipReviews.getStudent().getFirstName() + " " + mentorShipReviews.getStudent().getLastName())
                 .reviewDate(mentorShipReviews.getCreatedAt())
-                .build();
-    }
-
-    private DashboardSessionResponse mapToSessionResponse(Session session) {
-        return DashboardSessionResponse.builder()
-                .id(session.getId())
-                .title(session.getTitle())
-                .sessionStartDate(session.getScheduledAt())
-                .mentorshipTitle(session.getWeek().getMentorship().getTitle())
-                .weekTitle(session.getWeek().getTitle())
                 .build();
     }
 
@@ -224,7 +208,7 @@ public class DashboardService {
         PageResponse<ReviewsRsponse> reviews =
                 getReviewsInDashboard(reviewPage, reviewSize);
 
-        PageResponse<DashboardSessionResponse> sessions =
+        PageResponse<UpcomingSessionResponse> sessions =
                 getUpcomingSessionsForDashboard(
                         sessionPage,
                         sessionSize

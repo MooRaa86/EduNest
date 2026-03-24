@@ -3,7 +3,7 @@ package com.example.gradproj.EduNest.service.mentorShip;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
-import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
@@ -41,7 +41,7 @@ public interface mentorShipService {
 
     void rateMentorship(Long mentorshipId, CreateReviewRequest request);
 
-    PageResponse<AllMentorShipsExplorePage> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size);
+    PageResponse<MentorshipExploreDto> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size);
 
     List<String> getCategories();
 
