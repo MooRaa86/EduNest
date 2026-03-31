@@ -61,9 +61,8 @@ public class StudentWeekService {
 
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('STUDENT')")
-    public List<WeekResponse> getWeeksByMentorship(Long mentorshipId) {
-        Long studentId = getCurrentStudentId();
-        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(mentorshipId, studentId)) {
+    public List<WeekResponse> getWeeksByMentorship(Long mentorshipId,String stEmail) {
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, stEmail)) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
         }
         return weekRepository.findByMentorship_IdOrderByIdAsc(mentorshipId)
@@ -74,9 +73,9 @@ public class StudentWeekService {
 
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('STUDENT')")
-    public List<StudentWeekContentsResponse> getMentorshipWeeksWithContents(Long mentorshipId) {
+    public List<StudentWeekContentsResponse> getMentorshipWeeksWithContents(Long mentorshipId,String stEmail) {
         Long studentId = getCurrentStudentId();
-        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(mentorshipId, studentId)) {
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, stEmail)) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
         }
         return weekRepository.findByMentorship_IdOrderByIdAsc(mentorshipId)

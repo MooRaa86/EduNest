@@ -212,10 +212,16 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.mentor.email = :mentorEmail
     AND m.status = 'ACTIVE'
+    AND NOT EXISTS (
+        SELECT 1 FROM Enrollment e 
+        WHERE e.mentorShip.id = m.id 
+        AND e.student.email = :studentEmail
+    )
     ORDER BY m.rating DESC, m.createdAt DESC
     """)
     List<MentorshipExploreDto> findTopByMentorEmailOrderByRating(
             @Param("mentorEmail") String mentorEmail,
+            @Param("studentEmail") String studentEmail,
             Pageable pageable
     );
 

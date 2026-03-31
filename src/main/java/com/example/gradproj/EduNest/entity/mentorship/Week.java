@@ -48,4 +48,6 @@ public class Week extends BaseEntity {
     @OneToMany(mappedBy = "week", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Lecture> lectures;
 
+    //ToDo List of files (week id , name ,path, url)
+
 }

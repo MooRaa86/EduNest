@@ -154,7 +154,10 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     );
 
     int countByMentorShip(MentorShip mentorShip);
-    boolean existsByMentorShip_IdAndStudent_Id(Long mentorshipId, Long studentId);
+
+    boolean existsByMentorShip_IdAndStudent_Email(Long mentorShipId, String studentEmail);
+
+    boolean existsByMentorShip_IdAndStudent_Id(Long mentorShipId, Long studentId);
 
     @Query("""
         SELECT COUNT(e) > 0 FROM Enrollment e
@@ -163,6 +166,15 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     """)
     boolean isStudentEnrolledInWeekMentorship(@Param("weekId") Long weekId,
                                               @Param("studentId") Long studentId);
+
+    @Query("""
+        SELECT COUNT(e) > 0 FROM Enrollment e
+        JOIN Week w ON w.mentorship.id = e.mentorShip.id
+        WHERE e.student.email = :studentEmail
+          AND w.id = :weekId
+    """)
+    boolean isStudentEnrolledInWeekMentorshipByEmail(@Param("weekId") Long weekId,
+                                                      @Param("studentEmail") String studentEmail);
 
     @Query("""
         select (count(e) > 0)

@@ -56,8 +56,10 @@ public class MentorshipOverviewController {
     @Operation(summary = "Get top mentorships by mentor email ordered by rating")
     public ResponseEntity<SimpleResponse> getTop3MentorshipsByMentor(
             @PathVariable String mentorEmail,
-            @RequestParam(defaultValue = "3") int limit) {
-        List<MentorshipExploreDto> mentorships = mentorshipOverviewService.getTopMentorshipsByMentorEmail(mentorEmail, limit);
+            @RequestParam(defaultValue = "3") int limit,
+            Authentication authentication) {
+        String studentEmail = authentication.getName();
+        List<MentorshipExploreDto> mentorships = mentorshipOverviewService.getTopMentorshipsByMentorEmail(mentorEmail, studentEmail, limit);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Top mentorships retrieved successfully");
         response.addMessage("mentorships", mentorships);
@@ -72,7 +74,7 @@ public class MentorshipOverviewController {
             Authentication authentication) {
         String studentEmail = authentication.getName();
         MentorshipOverviewDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(mentorshipId, studentEmail);
-        List<MentorshipExploreDto> topMentorships = mentorshipOverviewService.getTopMentorshipsByMentorEmail(mentorship.getMentorEmail(), limit);
+        List<MentorshipExploreDto> topMentorships = mentorshipOverviewService.getTopMentorshipsByMentorEmail(mentorship.getMentorEmail(), studentEmail, limit);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Mentorship overview with top mentorships retrieved successfully");
         response.addMessage("mentorship", mentorship);

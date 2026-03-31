@@ -79,7 +79,7 @@ public class MentorshipOverviewService {
                 .build();
     }
 
-    public List<MentorshipExploreDto> getTopMentorshipsByMentorEmail(String mentorEmail, int limit) {
-        return mentorShipRepository.findTopByMentorEmailOrderByRating(mentorEmail, PageRequest.of(0, limit));
+    public List<MentorshipExploreDto> getTopMentorshipsByMentorEmail(String mentorEmail, String studentEmail, int limit) {
+        return mentorShipRepository.findTopByMentorEmailOrderByRating(mentorEmail, studentEmail, PageRequest.of(0, limit));
     }
 }

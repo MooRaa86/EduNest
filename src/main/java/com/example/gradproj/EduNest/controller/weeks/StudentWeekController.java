@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,10 +20,10 @@ public class StudentWeekController {
 
     @GetMapping("/{mentorshipId}/weeks")
     @Operation(summary = "Get all weeks for an enrolled mentorship")
-    public ResponseEntity<SimpleResponse> getWeeks(@PathVariable Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getWeeks(@PathVariable Long mentorshipId, Authentication authentication) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "weeks retrieved successfully");
-        response.addMessage("weeks", studentWeekService.getWeeksByMentorship(mentorshipId));
+        response.addMessage("weeks", studentWeekService.getWeeksByMentorship(mentorshipId,authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -37,10 +38,10 @@ public class StudentWeekController {
 
     @GetMapping("/{mentorshipId}/weeks-with-contents")
     @Operation(summary = "Get all weeks with their published contents for an enrolled mentorship")
-    public ResponseEntity<SimpleResponse> getWeeksWithContents(@PathVariable Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getWeeksWithContents(@PathVariable Long mentorshipId,Authentication authentication) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "weeks with contents retrieved successfully");
-        response.addMessage("weeks", studentWeekService.getMentorshipWeeksWithContents(mentorshipId));
+        response.addMessage("weeks", studentWeekService.getMentorshipWeeksWithContents(mentorshipId,authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
