@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,8 +19,8 @@ public class AiAssistantController {
     private final AiService aiService;
 
     @PostMapping("/ask")
-    @Operation(summary = "Ask global ai (not specific domain)")
-    public String askAi(UserPrompt userPrompt) {
+    @Operation(summary = "Ask global ai (not specific domain) belraha 3al tokens ya ghaly")
+    public String askAi(@RequestBody UserPrompt userPrompt) {
         return aiService.ask(userPrompt.getPrompt());
     }
 

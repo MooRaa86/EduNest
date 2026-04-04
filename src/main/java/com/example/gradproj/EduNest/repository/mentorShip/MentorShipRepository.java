@@ -84,7 +84,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.status = 'ACTIVE'
     AND m.mentor.deleted = false
-    AND (:keyword IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+    AND (:keyword IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%'))) 
     AND (:category IS NULL OR LOWER(m.category) = LOWER(:category))
     AND (:minPrice IS NULL OR m.price >= :minPrice)
     AND (:maxPrice IS NULL OR m.price <= :maxPrice)

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 public class AiService {
 
     private final ChatClient chatClient;
+    private final VectorService vectorService;
 
     public String ask (String prompt) {
         return chatClient.prompt()
@@ -16,4 +17,20 @@ public class AiService {
                 .call()
                 .content();
     }
+
+    public String askWithContext(String query) {
+
+        var docs = vectorService.search(query);
+
+        String context = docs.stream()
+                .map(doc -> doc.getText())
+                .reduce("", (a, b) -> a + "\n" + b);
+
+        return chatClient.prompt()
+                .system("You are an AI assistant. Answer only from the provided context.")
+                .user("Context:\n" + context + "\n\nQuestion:\n" + query)
+                .call()
+                .content();
+    }
+
 }

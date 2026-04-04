@@ -8,8 +8,6 @@ import com.example.gradproj.EduNest.filters.JwtTokenValidatorFilter;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -108,8 +106,4 @@ public class ProjectSecurityProdconfig {
         return providerManager;
     }
 
-    @Bean
-    public ChatClient chatClient(OpenAiChatModel chatModel) {
-        return ChatClient.builder(chatModel).build();
-    }
 }
