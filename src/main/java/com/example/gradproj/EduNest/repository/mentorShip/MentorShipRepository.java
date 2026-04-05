@@ -75,7 +75,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.AllMentorShipsExplorePage(
         m.id, m.title, m.subtitle, m.description, m.category,
-        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.price,
         m.price * (1.0 - m.discountPercentage / 100.0),
         m.duration, m.coverImageUrl
@@ -83,7 +83,10 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.status = 'ACTIVE'
     AND m.mentor.deleted = false
-    AND (:keyword IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+    AND (:keyword IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(m.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(m.subtitle) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE LOWER(CONCAT('%', :keyword, '%')))
     AND (:category IS NULL OR LOWER(m.category) = LOWER(:category))
     AND (:minPrice IS NULL OR m.price >= :minPrice)
     AND (:maxPrice IS NULL OR m.price <= :maxPrice)
