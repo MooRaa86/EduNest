@@ -14,6 +14,7 @@ public class ProjectAchievementResponse {
     private String projectTitle;
     private Long mentorshipId;
     private String mentorshipTitle;
+    private String mentorFullName;
     private SubmissionStatus submissionStatus;
     private String fileUrl;
     private String uploadedFilePath;

@@ -8,8 +8,10 @@ import com.example.gradproj.EduNest.dto.projects.request.UpdateProjectStatusRequ
 import com.example.gradproj.EduNest.dto.projects.response.FullProjectDashBoardDto;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectWithStatsResponse;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.service.projects.ProjectServiceImpl;
+import com.example.gradproj.EduNest.service.projects.ProjectSubmissionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class ProjectController {
     private final ProjectServiceImpl projectService;
+    private final ProjectSubmissionService submissionService;
     private final ObjectMapper objectMapper;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -108,7 +112,7 @@ public class ProjectController {
     ) {
         Pageable pageable = (Pageable) PageRequest.of(page, size);
 
-        PageResponse<ProjectResponse> response =
+        PageResponse<ProjectWithStatsResponse> response =
                 projectService.getProject(projectName, status, msid, pageable);
 
         SimpleResponse simpleResponse = new SimpleResponse();
@@ -154,5 +158,17 @@ public class ProjectController {
         resp.addMessage("fullDashboard", fullDashboard);
         
         return ResponseEntity.ok(resp);
+    }
+
+    @Operation(summary = "get project details with student submission in one response")
+    @GetMapping("/{projectId}/student")
+    public ResponseEntity<SimpleResponse> getProjectWithSubmission(
+            @PathVariable Long projectId,
+            Authentication authentication
+    ) {
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "project with submission retrieved successfully");
+        response.addMessage("data", submissionService.getProjectWithSubmission(projectId, authentication.getName()));
+        return ResponseEntity.ok(response);
     }
 }

@@ -8,7 +8,7 @@ import lombok.*;
 @Getter
 @Setter
 public class ProjectDashboardDTO {
-    private int totalTasks;
+    private int totalProjects;
     private int publishedCount;
     private int draftCount;
     private double averageScore;

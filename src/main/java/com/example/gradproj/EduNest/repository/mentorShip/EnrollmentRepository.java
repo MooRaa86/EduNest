@@ -188,17 +188,17 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     boolean isStudentEnrolledForTask(@Param("taskId") Long taskId,
                                      @Param("studentId") Long studentId);
 
-    @Query("""
+       @Query("""
         select (count(e) > 0)
         from Enrollment e
-        where e.student.id = :studentId
+        where e.student.email = :email
           and e.mentorShip.id =
               (select p.week.mentorship.id
                from Project p
                where p.id = :projectId)
     """)
-    boolean isStudentEnrolledForProject(@Param("projectId") Long projectId,
-                                        @Param("studentId") Long studentId);
+    boolean isStudentEnrolledForProjectByEmail(@Param("projectId") Long projectId,
+                                               @Param("email") String email);
     @Query("""
     select count(e)
     from Enrollment e

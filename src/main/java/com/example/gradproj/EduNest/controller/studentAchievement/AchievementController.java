@@ -18,10 +18,15 @@ public class AchievementController {
 
     @GetMapping("/overview")
     @Operation(summary = "Get all badges and project submissions for the current student")
-    public ResponseEntity<SimpleResponse> getStudentOverview() {
+    public ResponseEntity<SimpleResponse> getStudentOverview(
+            @RequestParam(defaultValue = "0") int badgesPage,
+            @RequestParam(defaultValue = "10") int badgesSize,
+            @RequestParam(defaultValue = "0") int projectsPage,
+            @RequestParam(defaultValue = "10") int projectsSize
+    ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Student overview retrieved successfully");
-        response.addMessage("data", studentAchievementService.getAchievements());
+        response.addMessage("data", studentAchievementService.getAchievements(badgesPage, badgesSize, projectsPage, projectsSize));
         return ResponseEntity.ok(response);
     }
 }

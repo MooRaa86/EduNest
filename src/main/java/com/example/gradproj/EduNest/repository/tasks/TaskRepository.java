@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.repository.tasks;
 
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskDashboardProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.UpcomingTaskProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,18 @@ import java.util.List;
 public interface TaskRepository extends JpaRepository<Task,Long> {
     boolean existsById(Long id);
 List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
+
+    @Query("""
+    SELECT
+        COUNT(t)                                                   AS totalTasks,
+        SUM(CASE WHEN t.status = 'PUBLISHED' THEN 1 ELSE 0 END)   AS publishedCount,
+        SUM(CASE WHEN t.status = 'DRAFT'     THEN 1 ELSE 0 END)   AS draftCount,
+        AVG(COALESCE(s.finalScore, 0))                             AS averageScore
+    FROM Task t
+    LEFT JOIN t.submissions s
+    WHERE t.week.mentorship.id = :mentorshipId
+    """)
+    TaskDashboardProjection getDashboardStats(@Param("mentorshipId") Long mentorshipId);
 
     @Query("""
     SELECT t FROM Task t

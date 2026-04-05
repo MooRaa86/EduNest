@@ -22,7 +22,7 @@ public class TaskFileStorageService {
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-    public String saveFile(String type, Long id, Long studentId, MultipartFile file) {
+    public String saveFile(String type, Long id, Long secondaryId, MultipartFile file) {
         validateFile(file);
 
         try {
@@ -30,7 +30,7 @@ public class TaskFileStorageService {
             Files.createDirectories(uploadPath);
 
             String extension = getFileExtension(file.getOriginalFilename());
-            String fileName = type + "-" + id + "-student-" + studentId + "-" + UUID.randomUUID() + extension;
+            String fileName = type + "-" + id + "-" + secondaryId + "-" + UUID.randomUUID() + extension;
             Path filePath = uploadPath.resolve(fileName).normalize();
 
             if (!filePath.startsWith(uploadPath)) {
@@ -41,7 +41,7 @@ public class TaskFileStorageService {
             return fileName;
 
         } catch (IOException e) {
-            log.error("Failed to store file for {} {} student {}", type, id, studentId, e);
+            log.error("Failed to store file for {} {} {}", type, id, secondaryId, e);
             throw new RuntimeException("Failed to store file", e);
         }
     }

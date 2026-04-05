@@ -9,6 +9,7 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectDashboardDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectResponse;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectStatisticsDTO;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
+import com.example.gradproj.EduNest.dto.projects.response.ProjectWithStatsResponse;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
@@ -18,6 +19,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
+import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithStatsProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
@@ -174,17 +176,20 @@ public class ProjectServiceImpl implements ProjectService{
     }
 
     @Override
-    public PageResponse<ProjectResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable) {
-        Page<Project> projects =
-                projectRepository.findProjectsByMentorship(
-                        msid, projectName, status, pageable);
+    public PageResponse<ProjectWithStatsResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable) {
+        Page<ProjectWithStatsProjection> projects =
+                projectRepository.findProjectsWithStatsByMentorship(msid, projectName, status, pageable);
 
-        List<ProjectResponse> responses = projects.getContent()
+        List<ProjectWithStatsResponse> responses = projects.getContent()
                 .stream()
-                .map(this::mapToProjectResponse)
+                .map(p -> ProjectWithStatsResponse.builder()
+                        .project(mapProjectionToProjectResponse(p))
+                        .totalStudents(p.getTotalStudents())
+                        .submissionsCount(p.getSubmissionsCount())
+                        .build())
                 .toList();
 
-        return PageResponse.<ProjectResponse>builder()
+        return PageResponse.<ProjectWithStatsResponse>builder()
                 .content(responses)
                 .page(projects.getNumber())
                 .size(projects.getSize())
@@ -197,37 +202,32 @@ public class ProjectServiceImpl implements ProjectService{
     @Override
     public ProjectDashboardDTO getProjectDashboard(Long mentorShipId) {
         validateMentorshipOwnership(mentorShipId);
-        List<Project> allProjects = projectRepository.findByWeek_Mentorship_Id(mentorShipId);
-
-        int totalProjects = allProjects.size();
-        int publishedCount = 0;
-        int draftCount = 0;
-        double sumAverageScores = 0.0;
-
-        for (Project project : allProjects) {
-            publishedCount += (project.getStatus() == ProjectStatus.PUBLISHED ? 1 : 0);
-            draftCount += (project.getStatus() == ProjectStatus.DRAFT ? 1 : 0);
-            sumAverageScores += calculateAverageScore(project);
-        }
-        double averageScore = totalProjects > 0 ? sumAverageScores / totalProjects : 0.0;
-
+        var stats = projectRepository.getDashboardStats(mentorShipId);
         return ProjectDashboardDTO.builder()
-                .totalTasks(totalProjects)
-                .publishedCount(publishedCount)
-                .draftCount(draftCount)
-                .averageScore(averageScore)
+                .totalProjects(stats.getTotalProjects() != null ? stats.getTotalProjects().intValue() : 0)
+                .publishedCount(stats.getPublishedCount() != null ? stats.getPublishedCount().intValue() : 0)
+                .draftCount(stats.getDraftCount() != null ? stats.getDraftCount().intValue() : 0)
+                .averageScore(stats.getAverageScore() != null ? stats.getAverageScore() : 0.0)
                 .build();
     }
-    private double calculateAverageScore(Project project) {
-        if (project.getSubmissions() == null || project.getSubmissions().isEmpty()) {
-            return 0;
-        }
-        return project.getSubmissions().stream()
-                .mapToDouble(s -> s.getFinalScore() != null ? s.getFinalScore() : 0)
-                .average()
-                .orElse(0.0);
-    }
 
+
+    private ProjectResponse mapProjectionToProjectResponse(ProjectWithStatsProjection p) {
+        return ProjectResponse.builder()
+                .id(p.getId())
+                .title(p.getTitle())
+                .goal(p.getGoal())
+                .brief(p.getBrief())
+                .descriptionUrl(p.getDescriptionUrl())
+                .uploadedAttachmentPath(p.getUploadedAttachmentPath())
+                .startAt(p.getStartAt())
+                .endAt(p.getEndAt())
+                .points(p.getPoints())
+                .status(p.getStatus().name())
+                .weekId(p.getWeekId())
+                .createdAt(p.getCreatedAt())
+                .build();
+    }
 
     private ProjectResponse mapToProjectResponse(Project project) {
         return ProjectResponse.builder()
@@ -306,7 +306,7 @@ public class ProjectServiceImpl implements ProjectService{
     public FullProjectDashBoardDto getFullProjectDashboard(Long mentorShipId, String projectName, ProjectStatus status, Pageable pageable) {
         validateMentorshipOwnership(mentorShipId);
         ProjectDashboardDTO dashboard = getProjectDashboard(mentorShipId);
-        PageResponse<ProjectResponse> projects = getProject(projectName, status, mentorShipId, pageable);
+        PageResponse<ProjectWithStatsResponse> projects = getProject(projectName, status, mentorShipId, pageable);
         
         return FullProjectDashBoardDto.builder()
                 .projectDashboardDTO(dashboard)

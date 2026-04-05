@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,12 +29,13 @@ public class ProjectSubmissionController {
     public ResponseEntity<SimpleResponse> submit(
             @PathVariable Long projectId,
             @RequestParam(value = "file", required = false) MultipartFile file,
-            @RequestParam(value = "fileUrl", required = false) String fileUrl
+            @RequestParam(value = "fileUrl", required = false) String fileUrl,
+            Authentication authentication
     ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message","project submitted Successfully");
-        response.addMessage("submission",submissionService.submit(projectId, file, fileUrl));
-        return  ResponseEntity.status(HttpStatus.OK).body(response);
+        response.addMessage("submission",submissionService.submit(projectId, file, fileUrl, authentication.getName()));
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @Operation(summary = "get submissions by project Id")
@@ -41,11 +43,12 @@ public class ProjectSubmissionController {
     public ResponseEntity<SimpleResponse> listByProject(
             @PathVariable Long projectId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
     ) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "all submissions for this project");
-        response.addMessage("submissions", submissionService.listByProject(projectId, page, size));
+        response.addMessage("submissions", submissionService.listByProject(projectId, page, size, authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -53,11 +56,12 @@ public class ProjectSubmissionController {
     @PostMapping("/submissions/{submissionId}/grade")
     public ResponseEntity<SimpleResponse> grade(
             @PathVariable Long submissionId,
-            @Valid @RequestBody GradeProjectSubmissionRequest req
+            @Valid @RequestBody GradeProjectSubmissionRequest req,
+            Authentication authentication
     ) {
         SimpleResponse response=new SimpleResponse();
         response.addMessage("message","grade submitted Successfully");
-        response.addMessage("submission",submissionService.gradeProject(submissionId,req));
-        return  ResponseEntity.status(HttpStatus.OK).body(response);
+        response.addMessage("submission",submissionService.gradeProject(submissionId, req, authentication.getName()));
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
