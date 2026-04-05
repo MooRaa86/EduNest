@@ -18,6 +18,8 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     boolean existsById(Long id);
     long countByMentor_Id(Long mentorId);
 
+    boolean existsByIdAndMentor_Email(Long id, String email);
+
     @EntityGraph(attributePaths = {"tags"})
     Page<MentorShip> findAll(Pageable pageable);
 

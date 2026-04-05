@@ -4,11 +4,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
-import com.example.gradproj.EduNest.dto.tasks.response.FullTaskDashBoardDto;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskDashboardDTO;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskStatisticsDTO;
-import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
+import com.example.gradproj.EduNest.dto.tasks.response.*;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
@@ -19,90 +15,62 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
-import com.example.gradproj.EduNest.repository.tasks.projection.TaskDashboardProjection;
-import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class TaskServiceImpl implements TaskService{
+public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final MentorShipRepository mentorShipRepository;
     private final WeekRepository weekRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
-    private final MentorRepository mentorRepository;
     private final TaskFileStorageService fileStorageService;
 
-    private String getCurrentUserEmail() {
-        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                .filter(Authentication::isAuthenticated)
-                .map(Authentication::getName)
-                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
-    }
-
-    private Long getCurrentMentorId() {
-        return mentorRepository.findByEmail(getCurrentUserEmail())
-                .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
-                .getId();
-    }
-
-    private void validateMentorshipOwnership(Long mentorShipId) {
-        Long mentorId = mentorShipRepository.findById(mentorShipId)
-                .orElseThrow(() -> new globalLogicEx("mentorShip not found"))
-                .getMentor().getId();
-        if (!mentorId.equals(getCurrentMentorId())) {
+    private void validateMentorshipOwnership(Long mentorShipId, String email) {
+        if (!mentorShipRepository.existsByIdAndMentor_Email(mentorShipId, email)) {
             throw new AccessDeniedException("You are not authorized to access this mentorship");
         }
     }
 
-    private Task validateMentorOwnershipAndGetTask(Long taskId) {
+    private Task validateMentorOwnershipAndGetTask(Long taskId, String email) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
-        Long mentorId = task.getWeek().getMentorship().getMentor().getId();
-        if (!mentorId.equals(getCurrentMentorId())) {
+        if (!mentorShipRepository.existsByIdAndMentor_Email(task.getWeek().getMentorship().getId(), email)) {
             throw new AccessDeniedException("You are not authorized to access this task");
         }
         return task;
     }
 
-
-
-
     @Override
-    public TaskResponse createTask(CreateTaskRequest req, MultipartFile file) {
-        if (req.getPassPoints()> req.getPoints()){
+    public TaskResponse createTask(CreateTaskRequest req, MultipartFile file, String email) {
+        if (req.getPassPoints() > req.getPoints()) {
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
-        Week week=weekRepository.findById(req.getWeekId()).orElseThrow(
-                ()->new  globalLogicEx("weekId not found")
-        );
-        Long mentorId = week.getMentorship().getMentor().getId();
-        if (!mentorId.equals(getCurrentMentorId())) {
-            throw new AccessDeniedException("You are not authorized to create tasks for this mentorship");
-        }
+        Week week = weekRepository.findById(req.getWeekId())
+                .orElseThrow(() -> new globalLogicEx("weekId not found"));
+        validateMentorshipOwnership(week.getMentorship().getId(), email);
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
-            uploadedPath = fileStorageService.saveFile("task-attachment", week.getMentorship().getId(), mentorId, file);
+            uploadedPath = fileStorageService.saveFile("task-attachment", week.getMentorship().getId(), week.getMentorship().getId(), file);
         }
 
-        Task task= Task.builder()
+        Task task = Task.builder()
                 .title(req.getTitle())
                 .description(req.getDescription())
                 .points(req.getPoints())
@@ -114,7 +82,7 @@ public class TaskServiceImpl implements TaskService{
                 .status(req.getStatus())
                 .week(week)
                 .build();
-        Task saved=taskRepository.save(task);
+        Task saved = taskRepository.save(task);
 
         notificationService.sendToMentorshipStudents(
                 week.getMentorship().getId(),
@@ -125,63 +93,56 @@ public class TaskServiceImpl implements TaskService{
         );
 
         return mapToTaskResponse(saved);
-
     }
-
 
     @Override
     @Transactional(readOnly = true)
     public TaskResponse getTaskById(Long taskId) {
-
-        Task task=taskRepository.findById(taskId)
+        Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
-        return  mapToTaskResponse(task);
+        return mapToTaskResponse(task);
     }
 
     @Override
-    public TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file) {
-        Task task = validateMentorOwnershipAndGetTask(taskId);
-        if (task.getStatus() == TaskStatus.CLOSED){
+    public TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file, String email) {
+        Task task = validateMentorOwnershipAndGetTask(taskId, email);
+        if (task.getStatus() == TaskStatus.CLOSED) {
             throw new globalLogicEx("cannot update closed task");
         }
         if (request != null) {
-            if (request.getTitle() !=null)task.setTitle(request.getTitle());
+            if (request.getTitle() != null) task.setTitle(request.getTitle());
             if (request.getDescription() != null) task.setDescription(request.getDescription());
             if (request.getPoints() != null) task.setPoints(request.getPoints());
             if (request.getPassPoints() != null) task.setPassPoints(request.getPassPoints());
             if (request.getEstimatedMinutes() != null) task.setEstimatedMinutes(request.getEstimatedMinutes());
             if (request.getAttachmentUrl() != null) task.setAttachmentUrl(request.getAttachmentUrl());
             if (request.getStatus() != null) task.setStatus(request.getStatus());
-            if (request.getDueAt() != null){
-                if (request.getDueAt().isBefore(LocalDateTime.now())){
+            if (request.getDueAt() != null) {
+                if (request.getDueAt().isBefore(LocalDateTime.now())) {
                     throw new globalLogicEx("dueAt must be in the future ");
                 }
                 task.setDueAt(request.getDueAt());
-
             }
         }
         if (file != null && !file.isEmpty()) {
-            Long mentorId = getCurrentMentorId();
             Long mentorshipId = task.getWeek().getMentorship().getId();
-            String uploadedPath = fileStorageService.saveFile("task-attachment", mentorshipId, mentorId, file);
-            task.setUploadedAttachmentPath(uploadedPath);
+            task.setUploadedAttachmentPath(fileStorageService.saveFile("task-attachment", mentorshipId, mentorshipId, file));
         }
-        if (task.getPassPoints()>task.getPoints()){
-            throw  new globalLogicEx("Pass points must be less than or equal to points.");
+        if (task.getPassPoints() > task.getPoints()) {
+            throw new globalLogicEx("Pass points must be less than or equal to points.");
         }
         return mapToTaskResponse(task);
     }
 
     @Override
-    public void deleteTask(Long taskId) {
-       validateMentorOwnershipAndGetTask(taskId);
-       taskRepository.deleteById(taskId);
+    public void deleteTask(Long taskId, String email) {
+        validateMentorOwnershipAndGetTask(taskId, email);
+        taskRepository.deleteById(taskId);
     }
 
     @Override
-    public TaskResponse updateTaskStatus(Long taskId, UpdateTaskStatusRequest req) {
-        Task task = validateMentorOwnershipAndGetTask(taskId);
-
+    public TaskResponse updateTaskStatus(Long taskId, UpdateTaskStatusRequest req, String email) {
+        Task task = validateMentorOwnershipAndGetTask(taskId, email);
         if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
             throw new globalLogicEx("Cannot revert published task to draft");
         }
@@ -190,7 +151,7 @@ public class TaskServiceImpl implements TaskService{
     }
 
     private TaskResponse mapToTaskResponse(Task task) {
-        TaskResponse response = TaskResponse.builder()
+        return TaskResponse.builder()
                 .id(task.getId())
                 .title(task.getTitle())
                 .description(task.getDescription())
@@ -202,17 +163,11 @@ public class TaskServiceImpl implements TaskService{
                 .attachmentUrl(task.getAttachmentUrl())
                 .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                 .build();
-
-
-        return response;
     }
-
 
     @Override
     public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, Long msid, Pageable pageable) {
-
-        Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status,pageable);
-
+        Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status, pageable);
         List<TaskResponse> taskDTOs = tasks.getContent().stream()
                 .map(task -> TaskResponse.builder()
                         .id(task.getId())
@@ -238,8 +193,8 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public TaskDashboardDTO getTaskDashboard(Long mentorShipId) {
-        validateMentorshipOwnership(mentorShipId);
+    public TaskDashboardDTO getTaskDashboard(Long mentorShipId, String email) {
+        validateMentorshipOwnership(mentorShipId, email);
         var stats = taskRepository.getDashboardStats(mentorShipId);
         return TaskDashboardDTO.builder()
                 .totalTasks(stats.getTotalTasks() != null ? stats.getTotalTasks().intValue() : 0)
@@ -251,34 +206,28 @@ public class TaskServiceImpl implements TaskService{
 
     @Override
     @Transactional(readOnly = true)
-    public TaskStatisticsDTO getTaskStatistics(Long taskId, Pageable pageable) {
-        Task task = validateMentorOwnershipAndGetTask(taskId);
-
+    public TaskStatisticsDTO getTaskStatistics(Long taskId, Pageable pageable, String email) {
+        Task task = validateMentorOwnershipAndGetTask(taskId, email);
         Long mentorshipId = task.getWeek().getMentorship().getId();
-
         int totalStudents = (int) enrollmentRepository.countStudentsByMentorship(mentorshipId);
 
-        Page<TaskSubmission> submissionsPage =
-                taskSubmissionRepository.findByTask_Id(taskId, pageable);
+        Page<TaskSubmission> submissionsPage = taskSubmissionRepository.findByTask_Id(taskId, pageable);
+        Page<TaskSubmissionResponse> mapped = submissionsPage.map(this::mapToSubmissionResponseForStats);
 
-        Page<TaskSubmissionResponse> mapped =
-                submissionsPage.map(this::mapToSubmissionResponseForStats);
-
-        PageResponse<TaskSubmissionResponse> pageResponse =
-                PageResponse.<TaskSubmissionResponse>builder()
-                        .content(mapped.getContent())
-                        .page(mapped.getNumber())
-                        .size(mapped.getSize())
-                        .totalElements(mapped.getTotalElements())
-                        .totalPages(mapped.getTotalPages())
-                        .build();
+        PageResponse<TaskSubmissionResponse> pageResponse = PageResponse.<TaskSubmissionResponse>builder()
+                .content(mapped.getContent())
+                .page(mapped.getNumber())
+                .size(mapped.getSize())
+                .totalElements(mapped.getTotalElements())
+                .totalPages(mapped.getTotalPages())
+                .build();
 
         return TaskStatisticsDTO.builder()
                 .status(task.getStatus())
                 .taskTitle(task.getTitle())
                 .totalStudents(totalStudents)
                 .totalSubmissions((int) submissionsPage.getTotalElements())
-                .pendingReview(totalStudents-submissionsPage.getTotalPages())
+                .pendingReview(totalStudents - submissionsPage.getTotalPages())
                 .createdAt(task.getCreatedAt())
                 .deadLine(task.getDueAt())
                 .totalPoints(task.getPoints())
@@ -304,13 +253,34 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public FullTaskDashBoardDto getFullTaskDashboard(Long mentorShipId, String taskName, TaskStatus status, Pageable pageable) {
-        TaskDashboardDTO dashboard = getTaskDashboard(mentorShipId);
-        PageResponse<TaskResponse> tasks = getTasks(taskName, status, mentorShipId, pageable);
-
+    public FullTaskDashBoardDto getFullTaskDashboard(Long mentorShipId, String taskName, TaskStatus status, Pageable pageable, String email) {
         return FullTaskDashBoardDto.builder()
-                .taskDashboardDTO(dashboard)
-                .taskResponsePageResponse(tasks)
+                .taskDashboardDTO(getTaskDashboard(mentorShipId, email))
+                .taskResponsePageResponse(getTasks(taskName, status, mentorShipId, pageable))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskWithSubmissionForStudentResponse getTaskWithSubmission(Long taskId, String email) {
+        TaskWithSubmissionProjection p = taskSubmissionRepository.findTaskWithSubmission(taskId, email);
+        if (p == null) throw new globalLogicEx("Task not found");
+        return TaskWithSubmissionForStudentResponse.builder()
+                .taskId(p.getTaskId())
+                .taskTitle(p.getTaskTitle())
+                .points(p.getPoints())
+                .dueAt(p.getDueAt())
+                .description(p.getDescription())
+                .estimatedMinutes(p.getEstimatedMinutes())
+                .attachmentUrl(p.getAttachmentUrl())
+                .uploadedAttachmentPath(p.getUploadedAttachmentPath())
+                .submissionUrl(p.getFileUrl())
+                .score(p.getFinalScore())
+                .totalPoints(p.getTotalPoints())
+                .submissionStatus(p.getSubmissionStatus())
+                .feedback(p.getFeedback())
+                .mentorName(p.getMentorName())
+                .mentorPhoto(p.getMentorPhoto())
                 .build();
     }
 }

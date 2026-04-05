@@ -148,7 +148,7 @@ public class ProfileService {
 
         Page<ProjectSubmission> submissions =
                 projectSubmissionRepository
-                        .findForStudentProfile(studentId, pageable);
+                        .findForStudentProfile(studentId, null, pageable);
 
         List<StudentProjectProfileDTO> content =
                 submissions.getContent()
