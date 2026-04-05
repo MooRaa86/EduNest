@@ -3,7 +3,7 @@ package com.example.gradproj.EduNest.controller.studentMentorship;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
-import com.example.gradproj.EduNest.dto.studentMentorship.MentorshipOverviewDto;
+import com.example.gradproj.EduNest.dto.studentMentorship.MentorshipDetailsDto;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipReviewProjection;
 import com.example.gradproj.EduNest.service.studentMentorship.MentorshipOverviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,18 +23,22 @@ public class MentorshipOverviewController {
 
     private final MentorshipOverviewService mentorshipOverviewService;
 
-    @GetMapping("/{mentorshipId}")
-    @Operation(summary = "Get mentorship overview with enrollment status without mentor ms")
-    public ResponseEntity<SimpleResponse> getMentorshipOverview(
-            @PathVariable Long mentorshipId,
-            Authentication authentication) {
-        String studentEmail = authentication.getName();
-        MentorshipOverviewDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(mentorshipId, studentEmail);
-        SimpleResponse response = new SimpleResponse();
-        response.addMessage("message", "Mentorship overview retrieved successfully");
-        response.addMessage("mentorship", mentorship);
-        return ResponseEntity.ok(response);
-    }
+//    @GetMapping("/{mentorshipId}")
+//    @Operation(summary = "Get mentorship overview with enrollment status without mentor ms")
+//    public ResponseEntity<SimpleResponse> getMentorshipOverview(
+//            @PathVariable Long mentorshipId,
+//            @RequestParam(defaultValue = "0") int UpcomingPage,
+//            @RequestParam(defaultValue = "5") int UpcomingSize,
+//            @RequestParam(defaultValue = "3") int topMentorshipsLimit,
+//            Authentication authentication) {
+//        String studentEmail = authentication.getName();
+//        MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
+//                mentorshipId, studentEmail, UpcomingPage, UpcomingSize, topMentorshipsLimit);
+//        SimpleResponse response = new SimpleResponse();
+//        response.addMessage("message", "Mentorship overview retrieved successfully");
+//        response.addMessage("mentorship", mentorship);
+//        return ResponseEntity.ok(response);
+//    }
 
     @GetMapping("/{mentorshipId}/reviews")
     @Operation(summary = "Get mentorship reviews with pagination")
@@ -46,9 +50,11 @@ public class MentorshipOverviewController {
         String studentEmail = authentication.getName();
         PageResponse<MentorshipReviewProjection> reviews = mentorshipOverviewService
                 .getMentorshipReviews(mentorshipId, studentEmail,page,size);
+        Double averageRating = mentorshipOverviewService.getMentorshipAverageRating(mentorshipId);
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("message", "Mentorship reviews retrieved successfully");
+        response.addMessage("avgRating",averageRating);
         response.addMessage("reviews", reviews);
+        response.addMessage("message", "Mentorship reviews retrieved successfully");
         return ResponseEntity.ok(response);
     }
 
@@ -70,15 +76,16 @@ public class MentorshipOverviewController {
     @Operation(summary = "Get mentorship overview with top mentorships by same mentor")
     public ResponseEntity<SimpleResponse> getMentorshipWithTopMentorships(
             @PathVariable Long mentorshipId,
-            @RequestParam(defaultValue = "3") int limit,
+            @RequestParam(defaultValue = "3") int topMentorshipsLimit,
+            @RequestParam(defaultValue = "0") int UpcomingPage,
+            @RequestParam(defaultValue = "5") int UpcomingSize,
             Authentication authentication) {
         String studentEmail = authentication.getName();
-        MentorshipOverviewDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(mentorshipId, studentEmail);
-        List<MentorshipExploreDto> topMentorships = mentorshipOverviewService.getTopMentorshipsByMentorEmail(mentorship.getMentorEmail(), studentEmail, limit);
+        MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
+                mentorshipId, studentEmail, UpcomingPage, UpcomingSize, topMentorshipsLimit);
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("message", "Mentorship overview with top mentorships retrieved successfully");
+        response.addMessage("message", "Mentorship overview retrieved successfully");
         response.addMessage("mentorship", mentorship);
-        response.addMessage("topMentorships", topMentorships);
         return ResponseEntity.ok(response);
     }
 }

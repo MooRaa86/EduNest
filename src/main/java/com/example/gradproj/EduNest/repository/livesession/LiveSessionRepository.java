@@ -65,6 +65,7 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
         CONCAT(mentor.firstName, ' ', mentor.lastName),
         m.id,
         m.title,
+        w.id,
         w.title,
         s.scheduledAt,
         s.meetingUrl
@@ -94,6 +95,7 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
         CONCAT(mentor.firstName, ' ', mentor.lastName),
         m.id,
         m.title,
+        w.id,
         w.title,
         s.scheduledAt,
         s.meetingUrl
@@ -114,6 +116,37 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
             @Param("email") String email,
             @Param("now") LocalDateTime now,
             Pageable pageable
+    );
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse(
+        s.id,
+        s.title,
+        CONCAT(mentor.firstName, ' ', mentor.lastName),
+        m.id,
+        m.title,
+        w.id,
+        w.title,
+        s.scheduledAt,
+        s.meetingUrl
+    )
+    FROM Session s
+    JOIN s.week w
+    JOIN w.mentorship m
+    JOIN m.mentor mentor
+    WHERE s.scheduledAt > :now
+      AND m.id = :mentorshipId
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
+    ORDER BY s.scheduledAt ASC
+""")
+    List<StudentUpcomingSessionResponse> findUpcomingSessionsByStudentEmailAndMentorship(
+            @Param("email") String email,
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("now") LocalDateTime now
     );
 
 }

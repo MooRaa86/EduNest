@@ -225,4 +225,28 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
             Pageable pageable
     );
 
+    @Query("""
+    SELECT 
+        m.id as id,
+        m.title as title,
+        m.subtitle as subtitle,
+        m.description as description,
+        m.category as category,
+        m.difficultyLevel as difficultyLevel,
+        m.duration as duration,
+        m.price as price,
+        m.discountPercentage as discountPercentage,
+        m.coverImageUrl as coverImageUrl,
+        m.status as status,
+        m.rating as rating,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
+        m.mentor.email as mentorEmail,
+        m.mentor.profileImageUrl as mentorProfileImageUrl,
+        m.mentor.jobTitle as mentorJobTitle,
+        m.mentor.yearsOfExperience as mentorYearsOfExperience
+    FROM MentorShip m
+    WHERE m.id = :mentorshipId
+    """)
+    MentorshipDetailsProjection findMentorshipDetailsById(@Param("mentorshipId") Long mentorshipId);
+
 }

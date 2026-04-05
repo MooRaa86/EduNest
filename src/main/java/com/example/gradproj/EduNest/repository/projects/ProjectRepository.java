@@ -59,4 +59,32 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             @Param("now") LocalDateTime now,
             Pageable pageable
     );
+
+    @Query("""
+    SELECT p.id as id, p.title as title, p.endAt as endAt, p.points as points,
+           w.id as weekId, w.title as weekTitle,
+           m.id as mentorshipId, m.title as mentorshipTitle
+    FROM Project p
+    JOIN p.week w
+    JOIN w.mentorship m
+    WHERE p.status = 'PUBLISHED'
+      AND p.endAt > :now
+      AND m.id = :mentorshipId
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM ProjectSubmission ps
+        WHERE ps.project.id = p.id
+          AND ps.student.email = :email
+      )
+    ORDER BY p.endAt ASC
+""")
+    List<UpcomingProjectProjection> findUpcomingProjectsByStudentEmailAndMentorship(
+            @Param("email") String email,
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("now") LocalDateTime now
+    );
 }

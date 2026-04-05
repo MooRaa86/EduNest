@@ -63,4 +63,32 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
             Pageable pageable
     );
 
+    @Query("""
+    SELECT t.id as id, t.title as title, t.dueAt as dueAt, t.points as points,
+           w.id as weekId, w.title as weekTitle,
+           m.id as mentorshipId, m.title as mentorshipTitle
+    FROM Task t
+    JOIN t.week w
+    JOIN w.mentorship m
+    WHERE t.status = 'PUBLISHED'
+      AND t.dueAt > :now
+      AND m.id = :mentorshipId
+      AND EXISTS (
+        SELECT 1 FROM Enrollment e
+        WHERE e.mentorShip.id = m.id
+          AND e.student.email = :email
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM TaskSubmission ts
+        WHERE ts.task.id = t.id
+          AND ts.student.email = :email
+      )
+    ORDER BY t.dueAt ASC
+""")
+    List<UpcomingTaskProjection> findUpcomingTasksByStudentEmailAndMentorship(
+            @Param("email") String email,
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("now") LocalDateTime now
+    );
+
 }

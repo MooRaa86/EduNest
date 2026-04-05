@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.homepage.StudentHomePageResponse;
 import com.example.gradproj.EduNest.dto.homepage.UpcomingItemDto;
 import com.example.gradproj.EduNest.dto.homepage.studentProgressDto;
 import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -68,9 +69,11 @@ public class HomePageService {
                 .title(s.getSessionName())
                 .type("SESSION")
                 .dueDate(s.getSessionStartDate())
+                .mentorshipId(s.getMentorshipId())
                 .mentorshipTitle(s.getMentorshipName())
+                .weekId(s.getWeekId())
                 .weekTitle(s.getWeekTitle())
-                .build()));  //ToDo add week id
+                .build()));
 
         List<UpcomingTaskProjection> tasks = taskRepository.findUpcomingTasksByStudentEmail(
                 email, now, PageRequest.of(0, 2));
@@ -152,6 +155,66 @@ public class HomePageService {
         }
         
         return mentorShipRepository.findRecommendedMentorships(email, categories, hasCategories);
+    }
+
+    public PageResponse<UpcomingItemDto> getUpcomingItemsByMentorship(String email, Long mentorshipId, int page, int size) {
+        LocalDateTime now = LocalDateTime.now();
+        List<UpcomingItemDto> allItems = new ArrayList<>();
+
+        List<StudentUpcomingSessionResponse> sessions = sessionRepository
+                .findUpcomingSessionsByStudentEmailAndMentorship(email, mentorshipId, now);
+        sessions.forEach(s -> allItems.add(UpcomingItemDto.builder()
+                .id(s.getSessionId())
+                .title(s.getSessionName())
+                .type("SESSION")
+                .dueDate(s.getSessionStartDate())
+                .mentorshipId(s.getMentorshipId())
+                .mentorshipTitle(s.getMentorshipName())
+                .weekId(s.getWeekId())
+                .weekTitle(s.getWeekTitle())
+                .build()));
+
+        List<UpcomingTaskProjection> tasks = taskRepository
+                .findUpcomingTasksByStudentEmailAndMentorship(email, mentorshipId, now);
+        tasks.forEach(t -> allItems.add(UpcomingItemDto.builder()
+                .id(t.getId())
+                .title(t.getTitle())
+                .type("TASK")
+                .dueDate(t.getDueAt())
+                .mentorshipId(t.getMentorshipId())
+                .mentorshipTitle(t.getMentorshipTitle())
+                .weekId(t.getWeekId())
+                .weekTitle(t.getWeekTitle())
+                .points(t.getPoints())
+                .build()));
+
+        List<UpcomingProjectProjection> projects = projectRepository
+                .findUpcomingProjectsByStudentEmailAndMentorship(email, mentorshipId, now);
+        projects.forEach(p -> allItems.add(UpcomingItemDto.builder()
+                .id(p.getId())
+                .title(p.getTitle())
+                .type("PROJECT")
+                .dueDate(p.getEndAt())
+                .mentorshipId(p.getMentorshipId())
+                .mentorshipTitle(p.getMentorshipTitle())
+                .weekId(p.getWeekId())
+                .weekTitle(p.getWeekTitle())
+                .points(p.getPoints())
+                .build()));
+
+        allItems.sort(Comparator.comparing(UpcomingItemDto::getDueDate));
+        
+        int start = page * size;
+        int end = Math.min(start + size, allItems.size());
+        List<UpcomingItemDto> pagedItems = start < allItems.size() ? allItems.subList(start, end) : List.of();
+        
+        return PageResponse.<UpcomingItemDto>builder()
+                .content(pagedItems)
+                .page(page)
+                .size(size)
+                .totalElements(allItems.size())
+                .totalPages((int) Math.ceil((double) allItems.size() / size))
+                .build();
     }
 
 }

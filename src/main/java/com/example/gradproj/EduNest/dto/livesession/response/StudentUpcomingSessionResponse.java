@@ -15,6 +15,7 @@ public class StudentUpcomingSessionResponse {
     private String mentorName;
     private Long mentorshipId;
     private String mentorshipName;
+    private Long weekId;
     private String weekTitle;
     private LocalDateTime sessionStartDate;
     private String meetingUrl;
