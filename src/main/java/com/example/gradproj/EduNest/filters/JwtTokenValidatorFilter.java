@@ -32,7 +32,7 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
             response.setContentType("application/json");
             response.getWriter().write("""
                     {
-                      "error": "Invalid token: user is deactivated, please login again"
+                      "error": "Invalid token: user is deactivated or deleted, please login again"
                     }
                     """);
             return;
