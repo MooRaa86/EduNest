@@ -1,9 +1,13 @@
 package com.example.gradproj.EduNest.entity.register;
+
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
@@ -19,7 +23,7 @@ public class OTP extends BaseEntity {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private UserEntity user;
 
