@@ -260,7 +260,6 @@ public class RegisterServiceImpl implements RegistrationService {
     public void restoreAccount(String email){
         UserEntity user = userRepository.findByEmail(email).orElseThrow(
                 ()-> new UsernameNotFoundException("User not found"));
-        userRepository.flush();
 
         if(!user.isDeleted()){
             throw new globalLogicEx("Account isn't deleted try to login");
@@ -299,12 +298,10 @@ public class RegisterServiceImpl implements RegistrationService {
     public void confirmRestoreAccount(String email, String otpCode) {
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        userRepository.flush();
 
         OTP otp = otpRepository
                 .findByUserAndOtpCodeAndOtpType(user, otpCode, OtpType.RESTORE)
                 .orElseThrow(() -> new globalLogicEx("Invalid OTP"));
-        otpRepository.flush();
 
         if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
             otpRepository.delete(otp);
@@ -312,6 +309,7 @@ public class RegisterServiceImpl implements RegistrationService {
         }
 
         otpRepository.deleteByUserAndOtpType(user, OtpType.RESTORE);
+        otpRepository.flush();
 
         user.setDeleted(false);
         userRepository.save(user);
