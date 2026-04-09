@@ -263,6 +263,69 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     );
 
     @Query(value = """
+    SELECT
+        m.id AS mentorshipId,
+        m.title AS title,
+        m.subtitle AS subtitle,
+        m.category AS category,
+        m.difficulty_level AS difficultyLevel,
+        m.cover_image_url AS coverImageUrl,
+        COALESCE(tp.total_points, 0) AS totalPoints,
+        COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) AS totalTasks,
+        COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) AS submittedTasks,
+        COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) AS totalQuizzes,
+        COUNT(DISTINCT CASE WHEN qs.student_id IS NOT NULL THEN qs.id END) AS submittedQuizzes,
+        COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) AS totalProjects,
+        COUNT(DISTINCT CASE WHEN ps.student_id IS NOT NULL THEN ps.id END) AS submittedProjects,
+        COUNT(DISTINCT lec.id) AS totalLectures,
+        m.status AS status
+    FROM enrollments e
+    JOIN mentorship m ON e.mentorship_id = m.id
+    JOIN students s ON s.student_id = e.student_id
+    JOIN users u ON u.id = s.student_id
+    LEFT JOIN total_points tp ON tp.student_id = s.student_id AND tp.mentorship_id = m.id
+    LEFT JOIN weeks w ON w.mentorship_id = m.id
+    LEFT JOIN tasks t ON t.week_id = w.id
+    LEFT JOIN task_submission ts ON ts.task_id = t.id AND ts.student_id = s.student_id
+    LEFT JOIN quiz q ON q.week_id = w.id
+    LEFT JOIN quiz_submission qs ON qs.quiz_id = q.id AND qs.student_id = s.student_id
+    LEFT JOIN projects p ON p.week_id = w.id
+    LEFT JOIN project_submission ps ON ps.project_id = p.id AND ps.student_id = s.student_id
+    LEFT JOIN lectures lec ON lec.week_id = w.id
+    WHERE u.email = :email
+      AND m.status IN ('ACTIVE', 'COMPLETED')
+    GROUP BY m.id, m.title, m.subtitle, m.category, m.difficulty_level, m.cover_image_url, tp.total_points, m.status
+    ORDER BY 
+        CASE WHEN m.status = 'COMPLETED' THEN 1 ELSE 0 END,
+        CASE 
+            WHEN (COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) + 
+                  COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) + 
+                  COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END)) > 0
+            THEN ((COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) + 
+                   COUNT(DISTINCT CASE WHEN qs.student_id IS NOT NULL THEN qs.id END) + 
+                   COUNT(DISTINCT CASE WHEN ps.student_id IS NOT NULL THEN ps.id END)) * 100.0) / 
+                  (COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) + 
+                   COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) + 
+                   COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END))
+            ELSE 0
+        END
+    """,
+    countQuery = """
+    SELECT COUNT(DISTINCT m.id)
+    FROM enrollments e
+    JOIN mentorship m ON e.mentorship_id = m.id
+    JOIN students s ON s.student_id = e.student_id
+    JOIN users u ON u.id = s.student_id
+    WHERE u.email = :email
+      AND m.status IN ('ACTIVE', 'COMPLETED')
+    """,
+    nativeQuery = true)
+    Page<ActiveMentorshipProgressProjection> findAllEnrolledMentorshipsWithProgress(
+            @Param("email") String email,
+            Pageable pageable
+    );
+
+    @Query(value = """
     SELECT 
         COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) as totalTasks,
         COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) as completedTasks,
