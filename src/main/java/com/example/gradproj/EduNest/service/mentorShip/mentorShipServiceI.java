@@ -339,6 +339,7 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
+        //ToDo complete
         if(mentorShip.getStatus() == Status.DRAFT) {
             throw new globalLogicEx("You can't join this mentorship wait for be published");
         }
