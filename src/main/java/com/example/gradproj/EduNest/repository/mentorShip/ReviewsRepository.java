@@ -52,14 +52,17 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     JOIN r.student s
     WHERE r.mentorShip.id = :mentorshipId
     ORDER BY 
-        CASE WHEN s.email = :studentEmail THEN 0 ELSE 1 END,
+        CASE 
+            WHEN :studentEmail IS NOT NULL AND s.email = :studentEmail THEN 0 
+            ELSE 1 
+        END,
         r.rating DESC,
         r.createdAt DESC
-    """)
+""")
     Page<MentorshipReviewProjection> findMentorshipReviews(
-        @Param("mentorshipId") Long mentorshipId,
-        @Param("studentEmail") String studentEmail,
-        Pageable pageable
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("studentEmail") String studentEmail,
+            Pageable pageable
     );
 
     @Query("""

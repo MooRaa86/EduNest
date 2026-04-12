@@ -32,7 +32,7 @@ public class MentorshipOverviewController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
-        String studentEmail = authentication.getName();
+        String studentEmail = (authentication != null) ? authentication.getName() : null;
         PageResponse<MentorshipReviewProjection> reviews = mentorshipOverviewService
                 .getMentorshipReviews(mentorshipId, studentEmail,page,size);
         Double averageRating = mentorshipOverviewService.getMentorshipAverageRating(mentorshipId);
@@ -65,7 +65,7 @@ public class MentorshipOverviewController {
             @RequestParam(defaultValue = "0") int UpcomingPage,
             @RequestParam(defaultValue = "5") int UpcomingSize,
             Authentication authentication) {
-        String studentEmail = authentication.getName();
+        String studentEmail = (authentication != null) ? authentication.getName() : null;
         MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
                 mentorshipId, studentEmail, UpcomingPage, UpcomingSize, topMentorshipsLimit);
         SimpleResponse response = new SimpleResponse();
