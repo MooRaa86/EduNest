@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EduNest Certificate</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      background-color: #ffffff;
+      border: 1px solid #e0e0e0;
+      padding: 40px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .header h1 {
+      color: #000000;
+      font-size: 28px;
+      margin: 0 0 10px 0;
+      font-weight: bold;
+    }
+    .header p {
+      font-size: 14px;
+      color: #888888;
+      margin: 0 0 30px 0;
+    }
+    .certificate-box {
+      border: 2px solid #000000;
+      padding: 30px;
+      margin: 20px 0;
+    }
+    .certificate-box h2 {
+      font-size: 20px;
+      color: #333333;
+      margin: 0 0 10px 0;
+    }
+    .student-name {
+      font-size: 30px;
+      font-weight: 800;
+      color: #000000;
+      margin: 10px 0;
+    }
+    .mentorship-title {
+      font-size: 18px;
+      color: #333333;
+      margin: 10px 0;
+    }
+    .details {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #555555;
+      line-height: 2;
+    }
+    .footer p {
+      font-size: 14px;
+      margin-top: 30px;
+      color: #888888;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>EduNest</h1>
+    <p>Certificate of Completion</p>
+  </div>
+  <div class="certificate-box">
+    <h2>This is to certify that</h2>
+    <div class="student-name">{{STUDENT_NAME}}</div>
+    <p class="mentorship-title">has successfully completed <strong>{{MENTORSHIP_TITLE}}</strong></p>
+    <div class="details">
+      <div>Mentor: <strong>{{MENTOR_NAME}}</strong></div>
+      <div>Rank: <strong>#{{RANK}}</strong></div>
+      <div>Total Points: <strong>{{TOTAL_POINTS}}</strong></div>
+      <div>Issued At: <strong>{{ISSUED_AT}}</strong></div>
+    </div>
+  </div>
+  <div class="footer">
+    <p>Best regards,<br><strong>EduNest Team</strong></p>
+  </div>
+</div>
+</body>
+</html>
