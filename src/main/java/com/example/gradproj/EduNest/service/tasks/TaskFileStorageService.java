@@ -14,19 +14,18 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-//ToDo make this global file storage service
 public class TaskFileStorageService {
 
-    @Value("${app.upload.submissions-dir:uploads/submissions}")
-    private String uploadDir;
+    @Value("${app.upload.base-dir:uploads}")
+    private String baseDir;
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-    public String saveFile(String type, Long id, Long secondaryId, MultipartFile file) {
+    public String saveFile(String subFolder, String type, Long id, Long secondaryId, MultipartFile file) {
         validateFile(file);
 
         try {
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path uploadPath = Paths.get(baseDir, subFolder).toAbsolutePath().normalize();
             Files.createDirectories(uploadPath);
 
             String extension = getFileExtension(file.getOriginalFilename());
@@ -38,7 +37,7 @@ public class TaskFileStorageService {
             }
 
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return fileName;
+            return filePath.toString();
 
         } catch (IOException e) {
             log.error("Failed to store file for {} {} {}", type, id, secondaryId, e);
@@ -50,7 +49,6 @@ public class TaskFileStorageService {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
-
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("File size exceeds 10MB limit");
         }
