@@ -22,7 +22,7 @@ public class VectorService {
         return vectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(query)
-                        .topK(1)
+                        .topK(10)
                         .build()
         );
     }

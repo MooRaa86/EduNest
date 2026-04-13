@@ -24,4 +24,10 @@ public class AiAssistantController {
         return aiService.ask(userPrompt.getPrompt());
     }
 
+    @PostMapping("/ask/context")
+    @Operation(summary = "Ask ai with contxt")
+    public String askAiWithContext(@RequestBody UserPrompt userPrompt) {
+        return aiService.askWithContext(userPrompt.getPrompt());
+    }
+
 }
