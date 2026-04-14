@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.entity.users;
 import com.example.gradproj.EduNest.entity.badges.BadgeAward;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
+import com.example.gradproj.EduNest.entity.skill.StudentSkill;
 import com.example.gradproj.EduNest.enums.register.EducationalLevel;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -28,9 +29,15 @@ public class Student extends UserEntity {
     // الـ ID بيورثه من الأب (UserEntity)
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false,name = "educational_level")
+    @Column(nullable = false, name = "educational_level")
     private EducationalLevel educationalLevel;
+
     private String address;
+
+    private String jobTitle;
+
+    @Column(length = 500)
+    private String bio;
 
     @JsonIgnore
     @OneToMany(
@@ -57,5 +64,8 @@ public class Student extends UserEntity {
             fetch = FetchType.LAZY
     )
     private List<BadgeAward> badgeAwards = new ArrayList<>();
+
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StudentSkill> skills;
 
 }
