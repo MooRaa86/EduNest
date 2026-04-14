@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
+import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShipReviews;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipReviewProjection;
 import org.springframework.data.domain.Page;
@@ -51,14 +52,37 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     JOIN r.student s
     WHERE r.mentorShip.id = :mentorshipId
     ORDER BY 
-        CASE WHEN s.email = :studentEmail THEN 0 ELSE 1 END,
+        CASE 
+            WHEN :studentEmail IS NOT NULL AND s.email = :studentEmail THEN 0 
+            ELSE 1 
+        END,
         r.rating DESC,
         r.createdAt DESC
-    """)
+""")
     Page<MentorshipReviewProjection> findMentorshipReviews(
-        @Param("mentorshipId") Long mentorshipId,
-        @Param("studentEmail") String studentEmail,
-        Pageable pageable
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("studentEmail") String studentEmail,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
+        r.id,
+        CONCAT(r.student.firstName, ' ', r.student.lastName),
+        r.student.email,
+        r.rating,
+        r.feedBack,
+        r.student.profileImageUrl,
+        r.mentorShip.id,
+        r.mentorShip.title
+    )
+    FROM MentorShipReviews r
+    WHERE r.mentorShip.mentor.email = :email
+    ORDER BY r.rating DESC
+    """)
+    Page<MentorProfileReviews> findReviewsByMentorEmail(
+            @Param("email") String email,
+            Pageable pageable
     );
 
 }

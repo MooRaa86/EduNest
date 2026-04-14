@@ -88,7 +88,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
-            uploadedPath = fileStorageService.saveFile("project", projectId, studentId, file);
+            uploadedPath = fileStorageService.saveFile("submissions", "project", projectId, studentId, file);
         }
 
         ProjectSubmission sub = existingOpt.orElseGet(() -> {

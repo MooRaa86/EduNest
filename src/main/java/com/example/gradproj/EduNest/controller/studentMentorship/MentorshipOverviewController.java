@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExplor
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.studentMentorship.MentorshipDetailsDto;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipReviewProjection;
+import com.example.gradproj.EduNest.service.studentMentorship.MentorshipLeaderboardService;
 import com.example.gradproj.EduNest.service.studentMentorship.MentorshipOverviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,23 +23,7 @@ import java.util.List;
 public class MentorshipOverviewController {
 
     private final MentorshipOverviewService mentorshipOverviewService;
-
-//    @GetMapping("/{mentorshipId}")
-//    @Operation(summary = "Get mentorship overview with enrollment status without mentor ms")
-//    public ResponseEntity<SimpleResponse> getMentorshipOverview(
-//            @PathVariable Long mentorshipId,
-//            @RequestParam(defaultValue = "0") int UpcomingPage,
-//            @RequestParam(defaultValue = "5") int UpcomingSize,
-//            @RequestParam(defaultValue = "3") int topMentorshipsLimit,
-//            Authentication authentication) {
-//        String studentEmail = authentication.getName();
-//        MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
-//                mentorshipId, studentEmail, UpcomingPage, UpcomingSize, topMentorshipsLimit);
-//        SimpleResponse response = new SimpleResponse();
-//        response.addMessage("message", "Mentorship overview retrieved successfully");
-//        response.addMessage("mentorship", mentorship);
-//        return ResponseEntity.ok(response);
-//    }
+    private final MentorshipLeaderboardService mentorshipLeaderboardService;
 
     @GetMapping("/{mentorshipId}/reviews")
     @Operation(summary = "Get mentorship reviews with pagination")
@@ -47,7 +32,7 @@ public class MentorshipOverviewController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
-        String studentEmail = authentication.getName();
+        String studentEmail = (authentication != null) ? authentication.getName() : null;
         PageResponse<MentorshipReviewProjection> reviews = mentorshipOverviewService
                 .getMentorshipReviews(mentorshipId, studentEmail,page,size);
         Double averageRating = mentorshipOverviewService.getMentorshipAverageRating(mentorshipId);
@@ -80,12 +65,27 @@ public class MentorshipOverviewController {
             @RequestParam(defaultValue = "0") int UpcomingPage,
             @RequestParam(defaultValue = "5") int UpcomingSize,
             Authentication authentication) {
-        String studentEmail = authentication.getName();
+        String studentEmail = (authentication != null) ? authentication.getName() : null;
         MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
                 mentorshipId, studentEmail, UpcomingPage, UpcomingSize, topMentorshipsLimit);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Mentorship overview retrieved successfully");
         response.addMessage("mentorship", mentorship);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{mentorshipId}/leaderboard")
+    @Operation(summary = "Get mentorship leaderboard with current user rank")
+    public ResponseEntity<SimpleResponse> getMentorshipLeaderboard(
+            @PathVariable Long mentorshipId,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") int page,
+            Authentication authentication) {
+        String studentEmail = authentication.getName();
+        var leaderboard = mentorshipLeaderboardService.getMentorshipLeaderboard(mentorshipId, size, page, studentEmail);
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("message", "Leaderboard retrieved successfully");
+        response.addMessage("leaderboard", leaderboard);
         return ResponseEntity.ok(response);
     }
 }

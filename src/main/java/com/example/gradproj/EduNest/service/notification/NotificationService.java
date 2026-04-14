@@ -87,8 +87,6 @@ public class NotificationService {
         );
     }
 
-    //ToDo make a methode to send a notification for a user by the entity
-
     @Transactional
     public void sendToMentorshipStudents(
             Long mentorshipId,

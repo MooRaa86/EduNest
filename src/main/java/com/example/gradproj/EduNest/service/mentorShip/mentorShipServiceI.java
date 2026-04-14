@@ -249,6 +249,14 @@ public class mentorShipServiceI implements mentorShipService{
             throw new BadCredentialsException("you are not allowed to update this mentorship");
         }
 
+        if(status == Status.DRAFT && mentorShip.getStatus() == Status.ACTIVE) {
+            throw new globalLogicEx("you can't change status to draft after be published");
+        }
+        
+        if(mentorShip.getStatus() == Status.COMPLETED){
+            throw new globalLogicEx("you can't change status of completed mentorship");
+        }
+
         mentorShip.setStatus(status);
         MentorShipRepository.save(mentorShip);
     }
@@ -331,6 +339,7 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
+        //ToDo complete
         if(mentorShip.getStatus() == Status.DRAFT) {
             throw new globalLogicEx("You can't join this mentorship wait for be published");
         }

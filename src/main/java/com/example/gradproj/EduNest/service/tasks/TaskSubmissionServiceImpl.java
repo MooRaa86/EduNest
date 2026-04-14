@@ -113,7 +113,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
-            uploadedPath = fileStorageService.saveFile("task", taskId, studentId, file);
+            uploadedPath = fileStorageService.saveFile("submissions", "task", taskId, studentId, file);
         }
 
         TaskSubmission sub = existingOpt.orElseGet(() -> {

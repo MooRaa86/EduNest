@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
+import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.*;
 import org.springframework.data.domain.Page;
@@ -108,34 +109,6 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     List<String> findAllCategories();
 
     @Query("""
-    SELECT 
-        m.id as id,
-        m.title as title,
-        m.subtitle as subtitle,
-        m.description as description,
-        m.category as category,
-        m.difficultyLevel as difficultyLevel,
-        m.duration as duration,
-        m.price as price,
-        m.discountPercentage as discountPercentage,
-        m.coverImageUrl as coverImageUrl,
-        m.status as status,
-        m.rating as rating,
-        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
-        m.mentor.email as mentorEmail,
-        m.mentor.profileImageUrl as mentorProfileImageUrl,
-        m.mentor.yearsOfExperience as mentorYearsOfExperience,
-        CASE WHEN e.id IS NOT NULL THEN true ELSE false END as isEnrolled
-    FROM MentorShip m
-    LEFT JOIN Enrollment e ON e.mentorShip.id = m.id AND e.student.email = :studentEmail
-    WHERE m.id = :mentorshipId
-    """)
-    MentorshipOverviewProjection findMentorshipOverview(
-            @Param("mentorshipId") Long mentorshipId,
-            @Param("studentEmail") String studentEmail
-    );
-
-    @Query("""
     SELECT t.tag
     FROM Tags t
     WHERE t.mentorShip.id = :mentorshipId
@@ -217,13 +190,16 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.mentor.email = :mentorEmail
     AND m.status = 'ACTIVE'
-    AND NOT EXISTS (
-        SELECT 1 FROM Enrollment e 
-        WHERE e.mentorShip.id = m.id 
-        AND e.student.email = :studentEmail
+    AND (
+        :studentEmail IS NULL
+        OR NOT EXISTS (
+            SELECT 1 FROM Enrollment e
+            WHERE e.mentorShip.id = m.id
+            AND e.student.email = :studentEmail
+        )
     )
     ORDER BY m.rating DESC, m.createdAt DESC
-    """)
+""")
     List<MentorshipExploreDto> findTopByMentorEmailOrderByRating(
             @Param("mentorEmail") String mentorEmail,
             @Param("studentEmail") String studentEmail,
@@ -253,5 +229,28 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     WHERE m.id = :mentorshipId
     """)
     MentorshipDetailsProjection findMentorshipDetailsById(@Param("mentorshipId") Long mentorshipId);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
+        m.id,
+        m.title,
+        m.subtitle,
+        m.category,
+        m.difficultyLevel,
+        m.price,
+        m.discountPercentage,
+        m.duration,
+        m.coverImageUrl
+    )
+    FROM MentorShip m
+    LEFT JOIN m.enrollments e
+    WHERE m.mentor.email = :email
+    GROUP BY m.id, m.title, m.subtitle, m.category, m.difficultyLevel, m.price, m.discountPercentage, m.duration, m.coverImageUrl, m.rating
+    ORDER BY m.rating DESC, COUNT(e.id) DESC
+    """)
+    Page<MentorProfileMentorshipsDto> findMentorshipsByMentorEmail(
+            @Param("email") String email,
+            Pageable pageable
+    );
 
 }

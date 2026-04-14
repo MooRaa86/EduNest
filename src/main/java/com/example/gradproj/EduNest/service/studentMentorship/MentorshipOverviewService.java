@@ -58,8 +58,12 @@ public class MentorshipOverviewService {
 
     public MentorshipDetailsDto getMentorshipWithEnrollmentStatus(
             Long mentorshipId, String studentEmail, int page, int size, int topMentorshipLimit) {
-        
-        boolean isEnrolled = enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, studentEmail);
+
+        boolean isEnrolled = false;
+
+        if (studentEmail != null) {
+            isEnrolled = enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, studentEmail);
+        }
         
         MentorshipDetailsProjection mentorship = mentorShipRepository.findMentorshipDetailsById(mentorshipId);
         

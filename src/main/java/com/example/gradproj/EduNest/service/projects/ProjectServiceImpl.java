@@ -95,7 +95,7 @@ public class ProjectServiceImpl implements ProjectService{
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
-            uploadedPath = fileStorageService.saveFile("project-attachment", week.getMentorship().getId(), mentorId, file);
+            uploadedPath = fileStorageService.saveFile("project-attachment", "project", week.getMentorship().getId(), mentorId, file);
         }
 
         Project project = Project.builder()
@@ -151,7 +151,7 @@ public class ProjectServiceImpl implements ProjectService{
         if (file != null && !file.isEmpty()) {
             Long mentorId = getCurrentMentorId();
             Long mentorshipId = project.getWeek().getMentorship().getId();
-            String uploadedPath = fileStorageService.saveFile("project-attachment", mentorshipId, mentorId, file);
+            String uploadedPath = fileStorageService.saveFile("project-attachment", "project", mentorshipId, mentorId, file);
             project.setUploadedAttachmentPath(uploadedPath);
         }
 
