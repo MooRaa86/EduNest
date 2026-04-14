@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -37,9 +38,15 @@ public class StudentSkillService {
         studentSkillRepository.save(skill);
     }
 
+    @Transactional
     public void deleteSkill(String skillName){
         Student student=getCurrentStudent();
-        studentSkillRepository.deleteByStudentIdAndSkillName(student.getId(), skillName.trim().toLowerCase());
+        skillName=skillName.trim().toLowerCase();
+        if (studentSkillRepository.existsByStudentIdAndSkillName(student.getId(), skillName)) {
+            studentSkillRepository.deleteByStudentIdAndSkillName(student.getId(), skillName);
+            return;
+        }
+        throw new globalLogicEx("skill is not exist");
     }
 
     public List<SkillResponse>getAllStudentSkills(){
