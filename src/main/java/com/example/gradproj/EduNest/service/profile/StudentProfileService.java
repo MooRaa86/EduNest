@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.profile;
 
+import com.example.gradproj.EduNest.dto.certificate.CertificateResponse;
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.dto.profile.request.UpdateStudentProfileRequest;
 import com.example.gradproj.EduNest.dto.profile.response.StudentProfileInformationResponse;
@@ -12,7 +13,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
-import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.certificate.CertificateService;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
 import com.example.gradproj.EduNest.service.skill.StudentSkillService;
 import lombok.RequiredArgsConstructor;
@@ -29,12 +30,12 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class StudentProfileService {
-    private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final ImageStorageService imageStorageService;
     private final BadgeAwardRepository badgeAwardRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final StudentSkillService studentSkillService;
+    private final CertificateService certificateService;
     private static final String STUDENT_IMAGE_FOLDER = "student";
 
 
@@ -56,27 +57,30 @@ public class StudentProfileService {
                         .build())
                 .toList();
 
-        List<StudentProjectProfileDTO> projects = projectSubmissionRepository
-                .findForStudentProfile(student.getId(), null, PageRequest.of(0, 10))
-                .getContent()
-                .stream()
-                .map(ps -> StudentProjectProfileDTO.builder()
-                        .projectSubmissionId(ps.getId())
-                        .projectTitle(ps.getProject().getTitle())
-                        .mentorshipTitle(ps.getProject().getWeek().getMentorship().getTitle())
-                        .status(ps.getStatus())
-                        .submittedAt(ps.getSubmittedAt())
-                        .gradedAt(ps.getGradedAt())
-                        .submissionLink(ps.getFileUrl())
-                        .feedback(ps.getFeedBack())
-                        .rawScore(ps.getRawScore())
-                        .finalScore(ps.getFinalScore())
-                        .build())
-                .toList();
+        List<StudentProjectProfileDTO> projects =
+                projectSubmissionRepository
+                        .findGradedForStudentProfile(student.getId(), PageRequest.of(0, 10))
+                        .getContent()
+                        .stream()
+                        .map(ps -> StudentProjectProfileDTO.builder()
+                                .projectSubmissionId(ps.getId())
+                                .projectTitle(ps.getProject().getTitle())
+                                .mentorshipTitle(ps.getProject().getWeek().getMentorship().getTitle())
+                                .status(ps.getStatus())
+                                .submittedAt(ps.getSubmittedAt())
+                                .gradedAt(ps.getGradedAt())
+                                .submissionLink(ps.getFileUrl())
+                                .feedback(ps.getFeedBack())
+                                .rawScore(ps.getRawScore())
+                                .finalScore(ps.getFinalScore())
+                                .build())
+                        .toList();
 
         List<String>skills=studentSkillService.getAllStudentSkills().stream()
                 .map(SkillResponse::getSkillName)
                 .toList();
+
+        List<CertificateResponse>certificates=certificateService.getStudentCertificates();
 
         return StudentProfileInformationResponse.builder()
                 .firstName(student.getFirstName())
@@ -91,6 +95,7 @@ public class StudentProfileService {
                 .badges(badges)
                 .projects(projects)
                 .skills(skills)
+                .certificates(certificates)
                 .build();
     }
 

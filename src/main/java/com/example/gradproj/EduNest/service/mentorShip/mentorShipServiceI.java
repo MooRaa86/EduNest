@@ -21,6 +21,7 @@ import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.certificate.CertificateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +47,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
     private final ImageStorageService imageService;
+    private final CertificateService certificateService;
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final ReviewsRepository reviewsRepository;
@@ -254,6 +256,7 @@ public class mentorShipServiceI implements mentorShipService{
         }
         
         if(mentorShip.getStatus() == Status.COMPLETED){
+            certificateService.issueCertificates(mentorShipId);
             throw new globalLogicEx("you can't change status of completed mentorship");
         }
 

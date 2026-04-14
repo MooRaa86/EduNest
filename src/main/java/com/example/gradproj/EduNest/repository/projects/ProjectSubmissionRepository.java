@@ -73,5 +73,19 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
             Pageable pageable
     );
 
-
+    @Query("""
+    SELECT ps
+    FROM ProjectSubmission ps
+    JOIN FETCH ps.project p
+    JOIN FETCH p.week w
+    JOIN FETCH w.mentorship m
+    JOIN FETCH m.mentor mt
+    WHERE ps.student.id = :studentId
+      AND ps.status = com.example.gradproj.EduNest.enums.tasks.SubmissionStatus.GRADED
+    ORDER BY ps.gradedAt DESC
+""")
+    Page<ProjectSubmission> findGradedForStudentProfile(
+            @Param("studentId") Long studentId,
+            Pageable pageable
+    );
 }
