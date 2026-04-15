@@ -1,10 +1,7 @@
 package com.example.gradproj.EduNest.service.profile;
 
 import com.example.gradproj.EduNest.dto.certificate.CertificateResponse;
-<<<<<<< HEAD
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
-=======
->>>>>>> a730537f49ec36c9895dfea6d0b7aa045d3a1e3d
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.dto.profile.request.UpdateStudentProfileRequest;
 import com.example.gradproj.EduNest.dto.profile.response.StudentProfileInformationResponse;
@@ -84,12 +81,9 @@ public class StudentProfileService {
                 .map(SkillResponse::getSkillName)
                 .toList();
 
-<<<<<<< HEAD
+
         PageResponse<CertificateResponse> certificates = certificateService
                 .getStudentCertificates(student.getEmail(), 0, 10);
-=======
-        List<CertificateResponse>certificates=certificateService.getStudentCertificates();
->>>>>>> a730537f49ec36c9895dfea6d0b7aa045d3a1e3d
 
         return StudentProfileInformationResponse.builder()
                 .firstName(student.getFirstName())
