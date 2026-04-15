@@ -1,6 +1,5 @@
 package com.example.gradproj.EduNest.dto.profile.request;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import java.util.List;
@@ -16,4 +15,5 @@ public class UpdateStudentProfileRequest {
     private String bio;
     private String jobTitle;
     private List<SocialMediaRequest> socialMediaLinks;
+    private List<String> skills;
 }
