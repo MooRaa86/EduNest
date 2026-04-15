@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.profile.response;
 
 import com.example.gradproj.EduNest.dto.certificate.CertificateResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.studentAchievement.BadgeAchievementResponse;
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import lombok.*;
@@ -24,6 +25,6 @@ public class StudentProfileInformationResponse {
     private String linkedInLink;
     private List<BadgeAchievementResponse> badges;
     private List<StudentProjectProfileDTO> projects;
-    private List<CertificateResponse>certificates;
+    private PageResponse<CertificateResponse> certificates;
     private List<String> skills;
 }

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.certificate;
 
 import com.example.gradproj.EduNest.dto.certificate.CertificateResponse;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.certificate.Certificate;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.certificate.CertificateRepository;
@@ -8,17 +9,14 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -62,13 +60,15 @@ public class CertificateService {
         certificateRepository.saveAll(toSave);
     }
 
-    @Transactional(readOnly = true)
-    public List<CertificateResponse> getStudentCertificates() {
-        String email = Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                .filter(Authentication::isAuthenticated)
-                .map(Authentication::getName)
-                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+    public PageResponse<CertificateResponse> getStudentCertificates(String email, int page, int size) {
+        var result = certificateRepository.findByStudentEmail(email, PageRequest.of(page, size));
 
-        return certificateRepository.findByStudentEmail(email);
+        return PageResponse.<CertificateResponse>builder()
+                .content(result.getContent())
+                .page(result.getNumber())
+                .size(result.getSize())
+                .totalElements(result.getTotalElements())
+                .totalPages(result.getTotalPages())
+                .build();
     }
 }
