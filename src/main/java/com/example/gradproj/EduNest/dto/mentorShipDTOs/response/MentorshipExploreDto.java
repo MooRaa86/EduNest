@@ -18,4 +18,5 @@ public class MentorshipExploreDto {
     private double priceAfterDiscount;
     private double duration;
     private String coverImageUrl;
+    private Double rating;
 }
