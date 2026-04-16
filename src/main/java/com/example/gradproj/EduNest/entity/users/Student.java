@@ -15,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "students")
@@ -66,6 +67,6 @@ public class Student extends UserEntity {
     private List<BadgeAward> badgeAwards = new ArrayList<>();
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<StudentSkill> skills;
+    private Set<StudentSkill> skills;
 
 }

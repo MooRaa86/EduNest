@@ -82,7 +82,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         m.price,
         m.discountPercentage,
         m.price * (1.0 - m.discountPercentage / 100.0),
-        m.duration, m.coverImageUrl
+        m.duration, m.coverImageUrl,m.rating
     )
     FROM MentorShip m
     WHERE m.status = 'ACTIVE'
@@ -185,7 +185,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         m.price,
         m.discountPercentage,
         m.price * (1.0 - m.discountPercentage / 100.0),
-        m.duration, m.coverImageUrl
+        m.duration, m.coverImageUrl,m.rating
     )
     FROM MentorShip m
     WHERE m.mentor.email = :mentorEmail

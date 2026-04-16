@@ -3,16 +3,16 @@ package com.example.gradproj.EduNest.entity.skill;
 import com.example.gradproj.EduNest.entity.users.Student;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Data
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "student_skill")
-@Builder
+@SuperBuilder
 public class StudentSkill {
 
     @Id

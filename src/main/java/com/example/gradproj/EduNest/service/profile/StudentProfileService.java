@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.dto.profile.request.UpdateStudentProfileRequ
 import com.example.gradproj.EduNest.dto.profile.response.StudentProfileInformationResponse;
 import com.example.gradproj.EduNest.dto.skill.response.SkillResponse;
 import com.example.gradproj.EduNest.dto.studentAchievement.BadgeAchievementResponse;
+import com.example.gradproj.EduNest.entity.skill.StudentSkill;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.socialMedia.Media;
@@ -27,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -124,6 +127,34 @@ public class StudentProfileService {
                                         .user(student)
                                         .build())
                         );
+            });
+        }
+
+        if (request.getSkills() != null) {
+
+            Set<String> newSkills = request.getSkills()
+                    .stream()
+                    .map(String::trim)
+                    .collect(Collectors.toSet());
+
+            student.getSkills().removeIf(skill ->
+                    !newSkills.contains(skill.getSkillName())
+            );
+
+            Set<String> existingSkills = student.getSkills()
+                    .stream()
+                    .map(StudentSkill::getSkillName)
+                    .collect(Collectors.toSet());
+
+            newSkills.forEach(skill -> {
+                if (!existingSkills.contains(skill)) {
+                    student.getSkills().add(
+                            StudentSkill.builder()
+                                    .skillName(skill)
+                                    .student(student)
+                                    .build()
+                    );
+                }
             });
         }
 
