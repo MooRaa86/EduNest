@@ -13,6 +13,7 @@ import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -22,6 +23,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.certificate.CertificateService;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -52,6 +54,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final StudentRepository studentRepository;
     private final ReviewsRepository reviewsRepository;
     private final TotalPointsRepository totalPointsRepository;
+    private final NotificationService notificationService;
 
 
     private String getCurrentUserEmail() {
@@ -176,6 +179,7 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     @PreAuthorize("hasRole('MENTOR')")
+    @Transactional
     public void deleteMentorShip(Long mentorShipId) {
 
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
@@ -187,6 +191,11 @@ public class mentorShipServiceI implements mentorShipService{
 
         if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
             throw new BadCredentialsException("you are not allowed to delete this mentorship");
+        }
+
+        if (mentorShip.getStatus() != Status.DRAFT){
+            throw new globalLogicEx("you can't delete this mentorship, " +
+                    "because it's not in draft status and it's published");
         }
 
         mentorShip.getEnrollments().clear();
@@ -240,27 +249,41 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     @PreAuthorize("hasRole('MENTOR')")
-    public void updateMentorShipStatus(long mentorShipId, Status status) {
-        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
-                () -> new globalLogicEx("MentorShip not found"));
+    @Transactional
+    public void updateMentorShipStatus(long mentorShipId, Status newStatus) {
+        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
 
         Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
         if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
-            throw new BadCredentialsException("you are not allowed to update this mentorship");
+            throw new globalLogicEx("You are not allowed to update this mentorship");
         }
 
-        if(status == Status.DRAFT && mentorShip.getStatus() == Status.ACTIVE) {
-            throw new globalLogicEx("you can't change status to draft after be published");
+        Status currentStatus = mentorShip.getStatus();
+
+        boolean validTransition = switch (currentStatus) {
+            case DRAFT -> newStatus == Status.ACTIVE;
+            case ACTIVE -> newStatus == Status.COMPLETED;
+            case COMPLETED -> false;
+        };
+
+        if (!validTransition) {
+            throw new globalLogicEx(
+                    String.format("mentorship status cannot be changed from %s to %s", currentStatus, newStatus)
+            );
         }
-        
-        if(mentorShip.getStatus() == Status.COMPLETED){
+
+        if (newStatus == Status.COMPLETED) {
             certificateService.issueCertificates(mentorShipId);
-            throw new globalLogicEx("you can't change status of completed mentorship");
+            notificationService.sendToMentorshipStudents(mentorShipId, "Mentorship Certificate",
+                    "Congratulations! The mentorship " + mentorShip.getTitle() + " has been completed. Your certificate is now available " +
+                            "check it in your achievements."
+                            , NotificationType.ANNOUNCEMENT);
         }
 
-        mentorShip.setStatus(status);
+        mentorShip.setStatus(newStatus);
         MentorShipRepository.save(mentorShip);
     }
 
@@ -343,8 +366,8 @@ public class mentorShipServiceI implements mentorShipService{
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
         //ToDo complete
-        if(mentorShip.getStatus() == Status.DRAFT) {
-            throw new globalLogicEx("You can't join this mentorship wait for be published");
+        if(mentorShip.getStatus() == Status.DRAFT || mentorShip.getStatus() == Status.COMPLETED) {
+            throw new globalLogicEx("This mentorship is not available to join");
         }
 
         if (enrollmentRepository.existsByMentorShip_IdAndStudent_Id(

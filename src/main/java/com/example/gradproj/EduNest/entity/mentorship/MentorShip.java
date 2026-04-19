@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.entity.mentorship;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.badges.Badge;
+import com.example.gradproj.EduNest.entity.certificate.Certificate;
 import com.example.gradproj.EduNest.entity.chat.ChatRoom;
 import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.users.Mentor;
@@ -108,6 +109,14 @@ public class MentorShip extends BaseEntity {
             orphanRemoval = true
     )
     private List<Badge> badges = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "mentorship",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<Certificate> certificates = new ArrayList<>();
 
     //ToDo StartDate
 
