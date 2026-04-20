@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent;
 
 import lombok.*;
+import java.util.List;
 
 @Getter
 @Setter
@@ -16,4 +17,5 @@ public class MentorProfileforStudentDto {
     private Double avgReviewRate;
     private String bio;
     private String mentorEmail;
+    private List<SocialMediaLinksDto> socialMediaLinks;
 }

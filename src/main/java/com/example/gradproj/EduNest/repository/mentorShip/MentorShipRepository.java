@@ -245,6 +245,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     LEFT JOIN m.enrollments e
     WHERE m.mentor.email = :email
+    AND m.status = 'ACTIVE'
     GROUP BY m.id, m.title, m.subtitle, m.category, m.difficultyLevel, m.price, m.discountPercentage, m.duration, m.coverImageUrl, m.rating
     ORDER BY m.rating DESC, COUNT(e.id) DESC
     """)

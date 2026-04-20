@@ -21,7 +21,8 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
         COUNT(DISTINCT r.id),
         AVG(r.rating),
         m.bio,
-        m.email
+        m.email,
+        null
     )
     FROM Mentor m
     LEFT JOIN m.mentorships ms

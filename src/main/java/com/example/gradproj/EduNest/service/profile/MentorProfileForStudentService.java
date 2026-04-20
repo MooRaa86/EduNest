@@ -1,18 +1,19 @@
 package com.example.gradproj.EduNest.service.profile;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
-import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileCompleteDto;
-import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto;
-import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews;
-import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto;
+import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.*;
+import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.repository.users.SocialMediaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +23,19 @@ public class MentorProfileForStudentService {
     private final MentorRepository mentorRepository;
     private final MentorShipRepository mentorShipRepository;
     private final ReviewsRepository reviewsRepository;
+    private final SocialMediaRepository socialMediaRepository;
 
     public MentorProfileforStudentDto getMentorProfile(String mentorEmail) {
-        return mentorRepository.findMentorProfileByEmail(mentorEmail);
+        MentorProfileforStudentDto mentorProfile = mentorRepository.findMentorProfileByEmail(mentorEmail);
+        List<SocialMedia> socialMedia = socialMediaRepository.findByUserEmail(mentorEmail);
+        List<SocialMediaLinksDto> socialMediaLinks = socialMedia.stream()
+                .map(s -> SocialMediaLinksDto.builder()
+                        .media(s.getName())
+                        .link(s.getUrl())
+                        .build())
+                .toList();
+        mentorProfile.setSocialMediaLinks(socialMediaLinks);
+        return mentorProfile;
     }
 
     public PageResponse<MentorProfileMentorshipsDto> getMentorMentorships(String mentorEmail, int size,int Page) {

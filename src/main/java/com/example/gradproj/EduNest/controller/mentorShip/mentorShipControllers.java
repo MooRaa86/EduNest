@@ -151,7 +151,7 @@ public class mentorShipControllers {
 
 
     @PostMapping("/update-status/{id}")
-    @Operation(summary = "update mentorship status (Draft,Active)")
+    @Operation(summary = "update mentorship status (DRAFT,ACTIVE,COMPLETED)")
     public ResponseEntity<SimpleResponse> changeStatus(
             @PathVariable long id,
             @RequestBody ChangeStatusRequest request
