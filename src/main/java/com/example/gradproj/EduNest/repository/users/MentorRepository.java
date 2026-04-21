@@ -17,6 +17,7 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
         m.profileImageUrl,
         m.firstName,
         m.lastName,
+        m.yearsOfExperience,
         COUNT(DISTINCT e.id),
         COUNT(DISTINCT r.id),
         AVG(r.rating),
