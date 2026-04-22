@@ -12,6 +12,7 @@ public class MentorProfileforStudentDto {
     private String profileImageUrl;
     private String mentorFirstName;
     private String mentorLastName;
+    private double mentorYearsOfExperience;
     private Long totalLearners;
     private Long totalReviews;
     private Double avgReviewRate;
