@@ -30,6 +30,7 @@ public class CertificateService {
 
     @Transactional
     public void issueCertificates(Long mentorshipId) {
+        System.out.println("Certifications start sending to students");
         var mentorship = mentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
@@ -58,6 +59,7 @@ public class CertificateService {
         }
 
         certificateRepository.saveAll(toSave);
+        System.out.println("Certifications sent to students");
     }
 
     public PageResponse<CertificateResponse> getStudentCertificates(String email, int page, int size) {
