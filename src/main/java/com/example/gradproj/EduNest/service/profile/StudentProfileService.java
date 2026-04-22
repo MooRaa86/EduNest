@@ -85,6 +85,7 @@ public class StudentProfileService {
                 .toList();
 
 
+
         PageResponse<CertificateResponse> certificates = certificateService
                 .getStudentCertificates(student.getEmail(), 0, 10);
 
