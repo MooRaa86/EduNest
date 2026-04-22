@@ -248,43 +248,48 @@ public class mentorShipServiceI implements mentorShipService{
     }
 
     @Override
-    @PreAuthorize("hasRole('MENTOR')")
     @Transactional
-    public void updateMentorShipStatus(long mentorShipId, Status newStatus) {
-        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId)
-                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+    @PreAuthorize("hasRole('MENTOR')")
+    public void updateMentorShipStatus(long mentorShipId, Status status) {
+        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
+                () -> new globalLogicEx("MentorShip not found"));
 
         Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
         if (!mentorShip.getMentor().getId().equals(currentMentor.getId())) {
-            throw new globalLogicEx("You are not allowed to update this mentorship");
+            throw new BadCredentialsException("you are not allowed to update this mentorship");
         }
 
-        Status currentStatus = mentorShip.getStatus();
-
-        boolean validTransition = switch (currentStatus) {
-            case DRAFT -> newStatus == Status.ACTIVE;
-            case ACTIVE -> newStatus == Status.COMPLETED;
-            case COMPLETED -> false;
-        };
-
-        if (!validTransition) {
-            throw new globalLogicEx(
-                    String.format("mentorship status cannot be changed from %s to %s", currentStatus, newStatus)
-            );
+        if (status == mentorShip.getStatus()) {
+            throw new globalLogicEx("Mentorship is already in this status");
         }
 
-        if (newStatus == Status.COMPLETED) {
-            certificateService.issueCertificates(mentorShipId);
-            notificationService.sendToMentorshipStudents(mentorShipId, "Mentorship Certificate",
-                    "Congratulations! The mentorship " + mentorShip.getTitle() + " has been completed. Your certificate is now available " +
-                            "check it in your achievements."
-                            , NotificationType.ANNOUNCEMENT);
+        if(status == Status.DRAFT && mentorShip.getStatus() == Status.ACTIVE) {
+            throw new globalLogicEx("you can't change status to draft after be published");
         }
 
-        mentorShip.setStatus(newStatus);
+        if(status == Status.COMPLETED && mentorShip.getStatus() == Status.DRAFT) {
+            throw new globalLogicEx("you can't change status to completed before being published");
+        }
+
+        if(mentorShip.getStatus() == Status.COMPLETED){
+            throw new globalLogicEx("you can't change status of completed mentorship");
+        }
+
+        if (status == Status.COMPLETED) {
+            long enrolledCount = enrollmentRepository.countStudentsByMentorship(mentorShipId);
+            if (enrolledCount == 0) {
+                throw new globalLogicEx("Cannot complete mentorship with no enrolled students");
+            }
+        }
+
+        mentorShip.setStatus(status);
         MentorShipRepository.save(mentorShip);
+
+        if(status == Status.COMPLETED){
+            certificateService.issueCertificates(mentorShipId);
+        }
     }
 
     @Override
