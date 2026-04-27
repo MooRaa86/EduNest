@@ -43,9 +43,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     ORDER BY YEAR(e.joinedAt), MONTH(e.joinedAt)
 """)
     List<MonthlyRevenueProjection> getMonthlyRevenueForMentor(
-            @Param("email") String email,
-            @Param("startDate") LocalDateTime startDate
-    );
+                    @Param("email") String email,
+                    @Param("startDate") LocalDateTime startDate
+            );
 
     @Query("""
     SELECT 

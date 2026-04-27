@@ -1,15 +1,20 @@
 package com.example.gradproj.EduNest.service.notification;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.dto.notification.AdminNotificationResponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
+import com.example.gradproj.EduNest.entity.notification.AdminNotification;
 import com.example.gradproj.EduNest.entity.notification.Notification;
 import com.example.gradproj.EduNest.entity.notification.UserNotification;
+import com.example.gradproj.EduNest.entity.users.Admin;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
+import com.example.gradproj.EduNest.repository.notification.AdminNotificationRepository;
 import com.example.gradproj.EduNest.repository.notification.NotificationRepository;
 import com.example.gradproj.EduNest.repository.notification.UserNotificationRepository;
+import com.example.gradproj.EduNest.repository.users.AdminRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,6 +38,8 @@ public class NotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepo;
     private final EnrollmentRepository enrollmentRepo;
+    private final AdminRepository adminRepo;
+    private final AdminNotificationRepository adminNotificationRepo;
 
 
     private NotificationDto mapToDto(UserNotification u){
@@ -130,6 +137,72 @@ public class NotificationService {
                     mapToDto(relation)
             );
         }
+    }
+
+    @Transactional
+    @Async
+    public void sendToAdmin(String title, String content, NotificationType type){
+        Admin admin = adminRepo.findTopByOrderByCreatedAtDesc().orElse(null);
+        if(admin == null){
+            return;
+        }
+
+        AdminNotification adminNotification = AdminNotification.builder()
+                .title(title)
+                .content(content)
+                .type(type)
+                .admin(admin)
+                .build();
+
+        var saved = adminNotificationRepo.save(adminNotification);
+
+        var notification = AdminNotificationResponse.builder()
+                .id(saved.getId())
+                .title(saved.getTitle())
+                .content(saved.getContent())
+                .type(saved.getType())
+                .createdAt(saved.getCreatedAt())
+                .build();
+
+        messagingTemplate.convertAndSendToUser(
+                admin.getEmail(),
+                "/queue/notifications",
+                notification
+        );
+
+    }
+
+    public PageResponse<AdminNotificationResponse> getAdminNotifications(int size, int page){
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<AdminNotification> response =
+                adminNotificationRepo.findAllByOrderByCreatedAtDesc(pageable);
+
+        var notifications = response.stream().map(n ->
+                AdminNotificationResponse.builder()
+                        .id(n.getId())
+                        .title(n.getTitle())
+                        .content(n.getContent())
+                        .type(n.getType())
+                        .createdAt(n.getCreatedAt())
+                        .build()).toList();
+
+        return PageResponse.<AdminNotificationResponse>builder()
+                .content(notifications)
+                .page(response.getNumber())
+                .size(response.getSize())
+                .totalElements(response.getTotalElements())
+                .totalPages(response.getTotalPages())
+                .build();
+    }
+
+    public void deleteAdminNotification(Long id){
+        adminNotificationRepo.deleteById(id);
+    }
+
+    public void deleteAllAdminNotifications(){
+        adminNotificationRepo.deleteAll();
     }
 
     @Transactional(readOnly = true)
