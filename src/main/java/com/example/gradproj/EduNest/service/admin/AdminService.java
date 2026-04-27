@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.exception.registerExceptions.RoleNotFoundException;
 import com.example.gradproj.EduNest.repository.RoleRepository;
 import com.example.gradproj.EduNest.repository.users.AdminRepository;
+import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.utils.SystemUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,10 +22,15 @@ public class AdminService {
     private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository rolesRepository;
+    private final UserRepository userRepository;
 
     public AdminAccResponse registerAdmin(RegisterAdminRequest request) {
         if(adminRepository.count() > 0){
-            throw new globalLogicEx("Admin already exist");
+            throw new globalLogicEx("There is already an admin u can't register another one");
+        }
+
+        if(userRepository.existsByEmail(request.getEmail())){
+            throw new globalLogicEx("Email is already in use in other role get out from here !!");
         }
 
         Roles role = rolesRepository.findByName(SystemUtils.ADMIN)
@@ -35,6 +41,7 @@ public class AdminService {
                 .lastName(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .role(role)
                 .build();
 
         adminRepository.save(admin);
@@ -47,8 +54,15 @@ public class AdminService {
     }
 
 
-    public List<Admin> getAllAdmins() {
-        return adminRepository.findAll();
+    public List<AdminAccResponse> getAllAdmins() {
+        return adminRepository.findAll().stream().map(
+                a -> AdminAccResponse.builder()
+                        .email(a.getEmail())
+                        .firstName(a.getFirstName())
+                        .lastName(a.getLastName())
+                        .password(a.getPassword())
+                        .build()
+        ).toList();
     }
 
     public void deleteAdmin(String email) {
