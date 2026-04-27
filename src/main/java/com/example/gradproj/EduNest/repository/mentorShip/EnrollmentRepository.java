@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
@@ -158,6 +159,15 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     boolean existsByMentorShip_IdAndStudent_Email(Long mentorShipId, String studentEmail);
 
     boolean existsByMentorShip_IdAndStudent_Id(Long mentorShipId, Long studentId);
+
+    @Query("""
+        SELECT e.student.id
+        FROM Enrollment e
+        WHERE e.mentorShip.id = :mentorshipId
+          AND e.student.email = :email
+    """)
+    Optional<Long> findStudentIdByMentorshipIdAndEmail(@Param("mentorshipId") Long mentorshipId,
+                                                        @Param("email") String email);
 
     @Query("""
         SELECT COUNT(e) > 0 FROM Enrollment e
@@ -345,5 +355,25 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     ContentProgressProjection getContentProgress(
             @Param("mentorshipId") Long mentorshipId,
             @Param("email") String email
+    );
+
+    @Query(value = """
+        SELECT
+            (SELECT GROUP_CONCAT(s.id) FROM sessions s
+             JOIN session_attendance_result sar ON sar.session_id = s.id
+             WHERE s.week_id = :weekId AND sar.student_id = :studentId AND sar.attended = true) as attendedSessions,
+            (SELECT GROUP_CONCAT(ts.task_id) FROM task_submission ts
+             JOIN tasks t ON ts.task_id = t.id
+             WHERE t.week_id = :weekId AND ts.student_id = :studentId) as submittedTasks,
+            (SELECT GROUP_CONCAT(qs.quiz_id) FROM quiz_submission qs
+             JOIN quiz q ON qs.quiz_id = q.id
+             WHERE q.week_id = :weekId AND qs.student_id = :studentId) as submittedQuizzes,
+            (SELECT GROUP_CONCAT(ps.project_id) FROM project_submission ps
+             JOIN projects p ON ps.project_id = p.id
+             WHERE p.week_id = :weekId AND ps.student_id = :studentId) as submittedProjects
+        """, nativeQuery = true)
+    WeekCompletionsProjection getWeekCompletions(
+            @Param("weekId") Long weekId,
+            @Param("studentId") Long studentId
     );
 }

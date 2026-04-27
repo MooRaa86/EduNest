@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface LectureRepository extends JpaRepository<Lecture, Long> {
     List<Lecture> findByWeek_Id(Long weekId);
+
+    List<Lecture> findByWeek_IdIn(List<Long> weekIds);
 }

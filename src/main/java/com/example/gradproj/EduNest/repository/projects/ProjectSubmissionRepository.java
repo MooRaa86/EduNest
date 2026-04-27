@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
@@ -88,4 +89,24 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
             @Param("studentId") Long studentId,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT ps
+        FROM ProjectSubmission ps
+        JOIN ps.project p
+        WHERE ps.student.id = :studentId
+          AND p.week.id = :weekId
+    """)
+    List<ProjectSubmission> findByStudentIdAndWeekId(@Param("studentId") Long studentId,
+                                                      @Param("weekId") Long weekId);
+
+    @Query("""
+        SELECT ps
+        FROM ProjectSubmission ps
+        JOIN ps.project p
+        WHERE ps.student.id = :studentId
+          AND p.week.id IN :weekIds
+    """)
+    List<ProjectSubmission> findByStudent_IdAndProject_Week_IdIn(@Param("studentId") Long studentId,
+                                                                    @Param("weekIds") List<Long> weekIds);
 }

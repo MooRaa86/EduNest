@@ -16,6 +16,8 @@ import java.util.List;
 public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     List<Session> findByWeek_Id(Long weekId);
 
+    List<Session> findByWeek_IdIn(List<Long> weekIds);
+
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse(
         s.id,

@@ -31,4 +31,8 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     List<Quiz> findByWeek_Id(Long weekId);
     List<Quiz> findByWeek_IdAndStatusNot(Long weekId, QuizStatus status);
     boolean existsById(Long id);
+    List<Quiz> findByWeek_IdIn(List<Long> weekIds);
+
+    @Query("SELECT q FROM Quiz q WHERE q.week.id IN :weekIds AND q.status != :status")
+    List<Quiz> findByWeek_IdInAndStatusNot(@Param("weekIds") List<Long> weekIds, @Param("status") QuizStatus status);
 }

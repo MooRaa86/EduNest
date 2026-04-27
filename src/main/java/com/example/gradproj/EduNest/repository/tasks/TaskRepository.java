@@ -47,6 +47,10 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
 
     List<Task> findByWeek_Id(Long weekId);
     List<Task> findByWeek_IdAndStatusNot(Long weekId, TaskStatus status);
+    List<Task> findByWeek_IdIn(List<Long> weekIds);
+
+    @Query("SELECT t FROM Task t WHERE t.week.id IN :weekIds AND t.status != :status")
+    List<Task> findByWeek_IdInAndStatusNot(@Param("weekIds") List<Long> weekIds, @Param("status") TaskStatus status);
 
 
     @Query("""

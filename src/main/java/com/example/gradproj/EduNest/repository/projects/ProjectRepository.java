@@ -78,6 +78,11 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
     );
     List<Project> findByWeek_Id(Long weekId);
     List<Project> findByWeek_IdAndStatusNot(Long weekId, ProjectStatus status);
+    List<Project> findByWeek_IdIn(List<Long> weekIds);
+
+    @Query("SELECT p FROM Project p WHERE p.week.id IN :weekIds AND p.status != :status")
+    List<Project> findByWeek_IdInAndStatusNot(@Param("weekIds") List<Long> weekIds, @Param("status") ProjectStatus status);
+
     void deleteById(Long id);
 
 
