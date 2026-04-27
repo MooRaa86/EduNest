@@ -1,6 +1,8 @@
 package com.example.gradproj.EduNest.service.jwt;
 
+import com.example.gradproj.EduNest.entity.users.Admin;
 import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
+import com.example.gradproj.EduNest.repository.users.AdminRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.repository.users.projection.UserFullNameProjection;
 import com.example.gradproj.EduNest.utils.Constants;
@@ -31,6 +33,7 @@ public class JwtService implements JwtServiceI{
     private static final long EXPIRATION_TIME_MS = 7 * (24 * (1000 * 60 * 60));
 
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
 
     private final Environment env;
 
@@ -53,9 +56,17 @@ public class JwtService implements JwtServiceI{
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        UserFullNameProjection user =
-                userRepository.findFullNameByEmail(username)
-                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        // Try to get full name from UserRepository first, then AdminRepository
+        String fullName;
+        UserFullNameProjection user = userRepository.findFullNameByEmail(username).orElse(null);
+        if (user != null) {
+            fullName = user.getFullName();
+        } else {
+            // Try to get from AdminRepository
+            Admin admin = adminRepository.findByEmail(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("User or Admin not found"));
+            fullName = admin.getFirstName() + " " + admin.getLastName();
+        }
 
         return Jwts.builder()
                 .issuer("EduNest")
@@ -64,7 +75,7 @@ public class JwtService implements JwtServiceI{
                 .expiration(new Date(new Date().getTime() + EXPIRATION_TIME_MS))
                 .claim("username", username)
                 .claim("authorities", authorities)
-                .claim("fullName", user.getFullName())
+                .claim("fullName", fullName)
                 .signWith(secretKey)
                 .compact();
     }
@@ -79,8 +90,16 @@ public class JwtService implements JwtServiceI{
                 .build().parseSignedClaims(token).getPayload();
         String username = String.valueOf(claims.get("username"));
 
-        if (!userRepository.isUserEnabledAndNotDeleted(username).orElse(false)) {
-            throw new InvalidJwtToken("Invalid token: user is deactivated or deleted, please login again");
+        // Check if user exists and is valid (enabled and not deleted)
+        // For regular users, check enabled and deleted status
+        boolean isValidUser = userRepository.isUserEnabledAndNotDeleted(username).orElse(false);
+
+        if (!isValidUser) {
+            // If not a valid user, check if it's an admin (admins don't have enabled/deleted fields)
+            boolean isAdmin = adminRepository.existsByEmail(username);
+            if (!isAdmin) {
+                throw new InvalidJwtToken("Invalid token: user is deactivated or deleted, please login again");
+            }
         }
 
         String authorities = String.valueOf(claims.get("authorities"));
