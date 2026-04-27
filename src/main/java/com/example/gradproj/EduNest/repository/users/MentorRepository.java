@@ -41,12 +41,13 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
         SELECT
             CONCAT(m.firstName, ' ', m.lastName) as fullName,
             m.email as email,
+            m.profileImageUrl as profileImageUrl,
             COUNT(DISTINCT e.student.id) as totalStudents,
             COALESCE(SUM(e.price), 0) as totalRevenue
         FROM Mentor m
         LEFT JOIN m.mentorships ms
         LEFT JOIN ms.enrollments e
-        GROUP BY m.id, m.firstName, m.lastName, m.email
+        GROUP BY m.id, m.firstName, m.lastName, m.email, m.profileImageUrl
         ORDER BY COUNT(DISTINCT e.student.id) DESC, COALESCE(SUM(e.price), 0) DESC
     """)
     Page<TopMentorProjection> findTopMentorsByTotalStudents(Pageable pageable);

@@ -3,9 +3,9 @@ package com.example.gradproj.EduNest.controller.admin;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.dashboard.AdminDashboard.AdminDashboardCards;
 import com.example.gradproj.EduNest.dto.dashboard.AdminDashboard.AdminFullDashDto;
+import com.example.gradproj.EduNest.dto.dashboard.SessionsChartResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.AdminNotificationResponse;
-import com.example.gradproj.EduNest.repository.livesession.projections.MonthlySessionsProjection;
 import com.example.gradproj.EduNest.repository.users.projection.TopMentorProjection;
 import com.example.gradproj.EduNest.service.admin.Dashboard;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,7 +13,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -41,7 +44,7 @@ public class AdminDashboardController {
     @Operation(summary = "Get monthly sessions chart", description = "Get ended sessions grouped by month for chart visualization")
     public ResponseEntity<SimpleResponse> getMonthlySessionsChart(
             @RequestParam(required = false) Integer months) {
-        List<MonthlySessionsProjection> chart = dashboardService.getMonthlySessionsForLastMonths(months);
+        List<SessionsChartResponse> chart = dashboardService.getMonthlySessionsForLastMonths(months);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Monthly sessions chart retrieved successfully");
         response.addMessage("chart", chart);

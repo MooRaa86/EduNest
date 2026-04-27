@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.admin;
 
 import com.example.gradproj.EduNest.dto.dashboard.AdminDashboard.AdminDashboardCards;
 import com.example.gradproj.EduNest.dto.dashboard.AdminDashboard.AdminFullDashDto;
+import com.example.gradproj.EduNest.dto.dashboard.SessionsChartResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.AdminNotificationResponse;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
@@ -18,7 +19,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.format.TextStyle;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -40,12 +44,20 @@ public class Dashboard {
                 .build();
     }
 
-    public List<MonthlySessionsProjection> getMonthlySessionsForLastMonths(Integer months) {
+    public List<SessionsChartResponse> getMonthlySessionsForLastMonths(Integer months) {
         LocalDateTime startDate = null;
         if (months != null && months > 0) {
             startDate = LocalDateTime.now().minusMonths(months);
         }
-        return liveSessionRepository.getMonthlySessionsForLastPeriod(startDate);
+        List<MonthlySessionsProjection> data = liveSessionRepository.getMonthlySessionsForLastPeriod(startDate);
+
+        return data.stream()
+                .map(p -> new SessionsChartResponse(
+                        Month.of(p.getMonth()).getDisplayName(TextStyle.FULL, Locale.ENGLISH),
+                        p.getYear(),
+                        p.getTotalSessions()
+                ))
+                .toList();
     }
 
     public PageResponse<AdminNotificationResponse> getAdminNotifications(int size, int page) {
