@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExplor
 import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.*;
+import com.example.gradproj.EduNest.repository.mentorShip.projections.AdminDashboardCardsProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -67,6 +68,16 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
             @Param("mentorshipId") Long mentorshipId,
             @Param("email") String email
     );
+
+    @Query(value = """
+        SELECT
+            (SELECT COUNT(*) FROM students) AS totalStudents,
+            (SELECT COUNT(*) FROM mentors) AS totalMentors,
+            (SELECT COUNT(*) FROM mentorship WHERE status = 'ACTIVE') AS activeMentorships,
+            (SELECT COUNT(*) FROM mentorship WHERE status = 'COMPLETED') AS completedMentorships,
+            (SELECT COALESCE(SUM(price), 0) FROM enrollments) AS totalRevenue
+        """, nativeQuery = true)
+    AdminDashboardCardsProjection getAdminDashboardCards();
 
     @Query("""
     SELECT m.id AS id, m.title AS name, m.coverImageUrl AS coverImageUrl

@@ -11,4 +11,5 @@ public interface AdminRepository extends JpaRepository<Admin, Long> {
     void deleteByEmail(String email);
     Optional<Admin> findByEmail(String email);
     boolean existsByEmail(String email);
+    Optional<Admin> findTopByOrderByCreatedAtDesc();
 }

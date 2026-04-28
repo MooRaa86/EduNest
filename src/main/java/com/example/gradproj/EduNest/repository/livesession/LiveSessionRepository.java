@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionRes
 import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
+import com.example.gradproj.EduNest.repository.livesession.projections.MonthlySessionsProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -149,6 +150,21 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
             @Param("email") String email,
             @Param("mentorshipId") Long mentorshipId,
             @Param("now") LocalDateTime now
+    );
+
+    @Query("""
+        SELECT
+            YEAR(s.scheduledAt) as year,
+            MONTH(s.scheduledAt) as month,
+            COUNT(s.id) as totalSessions
+        FROM Session s
+        WHERE (:startDate IS NULL OR s.scheduledAt >= :startDate)
+          AND s.status = 'ENDED'
+        GROUP BY YEAR(s.scheduledAt), MONTH(s.scheduledAt)
+        ORDER BY YEAR(s.scheduledAt), MONTH(s.scheduledAt)
+    """)
+    List<MonthlySessionsProjection> getMonthlySessionsForLastPeriod(
+            @Param("startDate") LocalDateTime startDate
     );
 
 }
