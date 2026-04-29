@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.controller.chat;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.chat.ChatMessageResponse;
 import com.example.gradproj.EduNest.dto.chat.ChatRoomResponse;
+import com.example.gradproj.EduNest.dto.chat.MentorshipRoomDetailsResponse;
 import com.example.gradproj.EduNest.dto.chat.roomCreateDto;
 import com.example.gradproj.EduNest.repository.chat.projection.ChatRoomProjection;
 import com.example.gradproj.EduNest.repository.chat.projection.RoomMemberProjection;
@@ -98,6 +99,22 @@ public class chatRestControllers {
         return ResponseEntity.ok(resp);
     }
 
+    @GetMapping("/mentorship/{mentorshipId}/rooms-with-status")
+    @Operation(summary = "get rooms for mentorship with student join status")
+    public ResponseEntity<SimpleResponse> getMentorshipRoomsWithStatus(
+            @PathVariable Long mentorshipId,
+            Authentication authentication
+    ) {
+        List<MentorshipRoomDetailsResponse> rooms = chatRoomService.getRoomsWithJoinStatus(
+                mentorshipId,
+                authentication.getName()
+        );
+        SimpleResponse resp = new SimpleResponse();
+        resp.addMessage("rooms", rooms);
+        resp.addMessage("status", "rooms retrieved successfully");
+        return ResponseEntity.ok(resp);
+    }
+
     @PostMapping("/{roomId}/join")
     @Operation(summary = "join room")
     public ResponseEntity<SimpleResponse> joinRoom(
@@ -111,7 +128,7 @@ public class chatRestControllers {
         );
 
         SimpleResponse resp = new SimpleResponse();
-        resp.addMessage("status", authentication.getName() + " joined success");
+        resp.addMessage("status", "joined success");
         return ResponseEntity.ok(resp);
     }
 

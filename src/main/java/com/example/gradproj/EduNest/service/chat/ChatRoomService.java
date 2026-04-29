@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.chat;
 
 import com.example.gradproj.EduNest.dto.chat.ChatRoomResponse;
+import com.example.gradproj.EduNest.dto.chat.MentorshipRoomDetailsResponse;
 import com.example.gradproj.EduNest.entity.chat.ChatRoom;
 import com.example.gradproj.EduNest.entity.chat.ChatRoomMember;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
@@ -145,6 +146,11 @@ public class ChatRoomService {
 
     public List<ChatRoomProjection> getUserRooms(String userEmail) {
         return roomRepo.findRoomsByUserEmail(userEmail);
+    }
+
+    @PreAuthorize("hasRole('STUDENT')")
+    public List<MentorshipRoomDetailsResponse> getRoomsWithJoinStatus(Long mentorshipId, String studentEmail) {
+        return roomRepo.findRoomsWithJoinStatusByMentorship(mentorshipId, studentEmail);
     }
 
     public List<MentorMentorshipProjection> getMentorMentorships(String mentorEmail) {

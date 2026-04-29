@@ -1,9 +1,11 @@
 package com.example.gradproj.EduNest.repository.chat;
 
+import com.example.gradproj.EduNest.dto.chat.MentorshipRoomDetailsResponse;
 import com.example.gradproj.EduNest.entity.chat.ChatRoom;
 import com.example.gradproj.EduNest.repository.chat.projection.ChatRoomProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -69,5 +71,25 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     where crm.user.email = :userEmail
 """)
     List<ChatRoomProjection> findRoomsByUserEmail(String userEmail);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.chat.MentorshipRoomDetailsResponse(
+        cr.id,
+        cr.name,
+        cr.imageUrl,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM ChatRoomMember crm
+            WHERE crm.chatRoom.id = cr.id
+            AND crm.user.email = :studentEmail
+        ) THEN true ELSE false END
+    )
+    FROM ChatRoom cr
+    JOIN cr.mentorship m
+    WHERE m.id = :mentorshipId
+""")
+    List<MentorshipRoomDetailsResponse> findRoomsWithJoinStatusByMentorship(
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("studentEmail") String studentEmail
+    );
 
 }
