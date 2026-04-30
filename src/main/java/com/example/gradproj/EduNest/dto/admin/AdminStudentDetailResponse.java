@@ -23,7 +23,7 @@ public class AdminStudentDetailResponse {
         private Long totalCompletedMentorships;
         private Long totalBadgesEarned;
         private List<SocialMediaItem> socialMedia;
-        private List<BadgeAwardSummary> badgeAwards;
+        private List<AdminBadgeSummary> adminBadges;
 
     @Getter
     @Setter
@@ -40,10 +40,10 @@ public class AdminStudentDetailResponse {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class BadgeAwardSummary {
+    public static class AdminBadgeSummary {
             private Long id;
-            private String badgeTitle;
-            private String badgeCategory;
-            private int points;
+            private String name;
+            private String description;
+            private String type;
     }
 }

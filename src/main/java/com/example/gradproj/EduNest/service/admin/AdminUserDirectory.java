@@ -8,14 +8,11 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.admin.UserAdminBadgeRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
-import com.example.gradproj.EduNest.repository.users.projection.MentorStatsProjection;
-import com.example.gradproj.EduNest.repository.users.projection.MonthlyUsersProjection;
-import com.example.gradproj.EduNest.repository.users.projection.StudentStatsProjection;
-import com.example.gradproj.EduNest.repository.users.projection.UserListProjection;
-import com.example.gradproj.EduNest.repository.users.projection.UserRoleProjection;
+import com.example.gradproj.EduNest.repository.users.projection.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +25,7 @@ import java.time.Month;
 import java.time.format.TextStyle;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -36,28 +34,26 @@ public class AdminUserDirectory {
     private final UserRepository userRepository;
     private final MentorRepository mentorRepository;
     private final StudentRepository studentRepository;
+    private final UserAdminBadgeRepository userAdminBadgeRepository;
 
     @Transactional(readOnly = true)
     public Object getUserById(Long id) {
-        UserRoleProjection roleProjection = userRepository.findRoleByUserId(id)
-                .orElseThrow(() -> new globalLogicEx("User not found"));
-
-        String roleName = roleProjection.getRoleName();
-
-        if ("MENTOR".equals(roleName)) {
-            return buildMentorResponse(id);
-        } else if ("STUDENT".equals(roleName)) {
-            return buildStudentResponse(id);
+        Optional<Mentor> mentorOpt = mentorRepository.findMentorWithSocialMediaById(id);
+        if (mentorOpt.isPresent()) {
+            return buildMentorResponse(mentorOpt.get());
         }
 
-        return null;
+        Optional<Student> studentOpt = studentRepository.findStudentWithSocialMediaById(id);
+        if (studentOpt.isPresent()) {
+            return buildStudentResponse(studentOpt.get());
+        }
+
+        throw new globalLogicEx("User not found");
     }
 
-    private AdminMentorDetailResponse buildMentorResponse(Long id) {
-        Mentor mentor = mentorRepository.findMentorWithSocialMediaById(id)
-                .orElseThrow(() -> new globalLogicEx("Mentor not found"));
+    private AdminMentorDetailResponse buildMentorResponse(Mentor mentor) {
 
-        MentorStatsProjection stats = mentorRepository.getMentorStats(id);
+        MentorStatsProjection stats = mentorRepository.getMentorStats(mentor.getId());
 
         List<AdminMentorDetailResponse.SocialMediaItem> socialMedia = mentor.getSocialMediaLinks().stream()
                 .map(sm -> AdminMentorDetailResponse.SocialMediaItem.builder()
@@ -66,12 +62,12 @@ public class AdminUserDirectory {
                         .build())
                 .toList();
 
-        List<AdminMentorDetailResponse.BadgeSummary> badgeSummaries = mentorRepository.getMentorBadges(id).stream()
-                .map(badge -> AdminMentorDetailResponse.BadgeSummary.builder()
+        List<AdminMentorDetailResponse.AdminBadgeSummary> adminBadgeSummaries = userAdminBadgeRepository.findAdminBadgesByUserId(mentor.getId()).stream()
+                .map(badge -> AdminMentorDetailResponse.AdminBadgeSummary.builder()
                         .id(badge.getId())
-                        .title(badge.getTitle())
-                        .category(badge.getCategory())
-                        .points(badge.getPoints())
+                        .name(badge.getName())
+                        .description(badge.getDescription())
+                        .type(badge.getType())
                         .build())
                 .toList();
 
@@ -88,18 +84,16 @@ public class AdminUserDirectory {
                 .totalSessions(stats.getTotalSessions())
                 .totalStudents(stats.getTotalStudents())
                 .averageRating(stats.getAverageRating())
-                .totalBadges(stats.getTotalBadges())
+                .totalBadges((long) adminBadgeSummaries.size())
                 .mentorshipCount(stats.getMentorshipCount())
                 .socialMedia(socialMedia)
-                .badges(badgeSummaries)
+                .adminBadges(adminBadgeSummaries)
                 .build();
     }
 
-    private AdminStudentDetailResponse buildStudentResponse(Long id) {
-        Student student = studentRepository.findStudentWithSocialMediaById(id)
-                .orElseThrow(() -> new globalLogicEx("Student not found"));
+    private AdminStudentDetailResponse buildStudentResponse(Student student) {
 
-        StudentStatsProjection stats = studentRepository.getStudentStats(id);
+        StudentStatsProjection stats = studentRepository.getStudentStats(student.getId());
 
         List<AdminStudentDetailResponse.SocialMediaItem> socialMedia = student.getSocialMediaLinks().stream()
                 .map(sm -> AdminStudentDetailResponse.SocialMediaItem.builder()
@@ -108,12 +102,12 @@ public class AdminUserDirectory {
                         .build())
                 .toList();
 
-        List<AdminStudentDetailResponse.BadgeAwardSummary> badgeAwards = studentRepository.getStudentBadgeAwards(id).stream()
-                .map(badge -> AdminStudentDetailResponse.BadgeAwardSummary.builder()
+        List<AdminStudentDetailResponse.AdminBadgeSummary> adminBadgeSummaries = userAdminBadgeRepository.findAdminBadgesByUserId(student.getId()).stream()
+                .map(badge -> AdminStudentDetailResponse.AdminBadgeSummary.builder()
                         .id(badge.getId())
-                        .badgeTitle(badge.getTitle())
-                        .badgeCategory(badge.getCategory())
-                        .points(badge.getPoints())
+                        .name(badge.getName())
+                        .description(badge.getDescription())
+                        .type(badge.getType())
                         .build())
                 .toList();
 
@@ -129,9 +123,9 @@ public class AdminUserDirectory {
                 .bio(student.getBio())
                 .totalEnrollments(stats.getTotalEnrollments())
                 .totalCompletedMentorships(stats.getTotalCompletedMentorships())
-                .totalBadgesEarned(stats.getTotalBadgesEarned())
+                .totalBadgesEarned((long) adminBadgeSummaries.size())
                 .socialMedia(socialMedia)
-                .badgeAwards(badgeAwards)
+                .adminBadges(adminBadgeSummaries)
                 .build();
     }
 

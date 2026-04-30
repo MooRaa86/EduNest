@@ -25,19 +25,7 @@ public class AdminMentorDetailResponse {
         private Long totalBadges;
         private Long mentorshipCount;
         private List<SocialMediaItem> socialMedia;
-        private List<BadgeSummary> badges;
-
-    @Getter
-    @Setter
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class BadgeSummary {
-            private Long id;
-            private String title;
-            private String category;
-            private int points;
-    }
+        private List<AdminBadgeSummary> adminBadges;
 
     @Getter
     @Setter
@@ -47,5 +35,17 @@ public class AdminMentorDetailResponse {
     public static class SocialMediaItem {
             private String name;
             private String url;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class AdminBadgeSummary {
+            private Long id;
+            private String name;
+            private String description;
+            private String type;
     }
 }

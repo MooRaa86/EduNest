@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduNest — Badge Awarded</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background-color: #f4f6f9;
+      color: #1a1a2e;
+    }
+
+    .wrapper {
+      padding: 40px 16px;
+    }
+
+    .card {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e4e8ef;
+      overflow: hidden;
+    }
+
+    /* ── Top line ── */
+    .top-line {
+      height: 3px;
+      background: #2563eb;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 28px 36px 24px;
+      border-bottom: 1px solid #f0f2f5;
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      letter-spacing: -0.2px;
+    }
+
+    /* ── Body ── */
+    .body {
+      padding: 36px 36px 32px;
+    }
+
+    .greeting {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 24px;
+      line-height: 1.3;
+    }
+
+    /* ── Badge box ── */
+    .badge-box {
+      background: #f8faff;
+      border: 1px solid #e0eaff;
+      border-radius: 10px;
+      padding: 28px 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .badge-type {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #2563eb;
+      margin-bottom: 8px;
+    }
+
+    .badge-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .badge-desc {
+      font-size: 13px;
+      color: #9ca3af;
+      line-height: 1.65;
+    }
+
+    /* ── Note ── */
+    .note {
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+    }
+
+    .note-text {
+      font-size: 13px;
+      color: #92400e;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      padding-top: 24px;
+      border-top: 1px solid #f0f2f5;
+    }
+
+    .footer-text {
+      font-size: 13px;
+      color: #9ca3af;
+      line-height: 1.6;
+    }
+
+    .footer-text strong {
+      color: #374151;
+      font-weight: 500;
+    }
+
+    @media (max-width: 560px) {
+      .header { padding: 22px 24px 18px; }
+      .body   { padding: 28px 24px 24px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="card">
+
+    <div class="top-line"></div>
+
+    <div class="header">
+      <span class="brand">EduNest</span>
+    </div>
+
+    <div class="body">
+
+      <p class="greeting">Dear {{USER_NAME}},</p>
+      <p class="title">You've been awarded a new badge.</p>
+
+      <div class="badge-box">
+        <p class="badge-type">{{BADGE_TYPE}}</p>
+        <p class="badge-name">{{BADGE_NAME}}</p>
+      </div>
+
+      <div class="note">
+        <p class="note-text">{{BADGE_DESCRIPTION}}</p>
+      </div>
+
+      <div class="footer">
+        <p class="footer-text">
+          Keep up the great work.<br>
+          <strong>The EduNest Team</strong>
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -20,12 +20,10 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     @Query("""
         SELECT
             COUNT(DISTINCT e.id) as totalEnrollments,
-            COUNT(DISTINCT CASE WHEN ms.status = 'COMPLETED' THEN ms.id END) as totalCompletedMentorships,
-            COUNT(DISTINCT ba.id) as totalBadgesEarned
+            COUNT(DISTINCT CASE WHEN ms.status = 'COMPLETED' THEN ms.id END) as totalCompletedMentorships
         FROM Student s
         LEFT JOIN s.enrollments e
         LEFT JOIN e.mentorShip ms
-        LEFT JOIN s.badgeAwards ba
         WHERE s.id = :studentId
         """)
     StudentStatsProjection getStudentStats(@Param("studentId") Long studentId);
