@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.dto.contactus;
 
+import com.example.gradproj.EduNest.enums.message.MessageStatus;
 import lombok.*;
 
 @Getter
@@ -13,4 +14,5 @@ public class ContactMessageResponseDto {
     private String email;
     private String phone;
     private String message;
+    private MessageStatus status;
 }
