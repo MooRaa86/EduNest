@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.repository.users;
 
 import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto;
 import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.repository.users.projection.MentorStatsProjection;
 import com.example.gradproj.EduNest.repository.users.projection.TopMentorProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,4 +52,24 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
         ORDER BY COUNT(DISTINCT e.student.id) DESC, COALESCE(SUM(e.price), 0) DESC
     """)
     Page<TopMentorProjection> findTopMentorsByTotalStudents(Pageable pageable);
+
+    @Query("""
+        SELECT
+            COUNT(DISTINCT ls.id) as totalSessions,
+            COUNT(DISTINCT e.student.id) as totalStudents,
+            COALESCE((SELECT AVG(r2.rating) FROM Mentor m2 JOIN m2.mentorships ms2 JOIN ms2.reviews r2 WHERE m2.id = :mentorId), 0.0) as averageRating,
+            0 as totalBadges,
+            COUNT(DISTINCT ms.id) as mentorshipCount
+        FROM Mentor m
+        LEFT JOIN m.mentorships ms
+        LEFT JOIN ms.weeks w
+        LEFT JOIN w.liveSessions ls
+        LEFT JOIN ms.enrollments e
+        WHERE m.id = :mentorId
+        """)
+    MentorStatsProjection getMentorStats(@Param("mentorId") Long mentorId);
+
+
+    @Query("SELECT m FROM Mentor m LEFT JOIN FETCH m.socialMediaLinks WHERE m.id = :id")
+    Optional<Mentor> findMentorWithSocialMediaById(@Param("id") Long id);
 }

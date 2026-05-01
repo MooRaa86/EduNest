@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.Query;
@@ -45,4 +46,24 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
             @Param("taskId") Long taskId,
             @Param("email") String email
     );
+
+    @Query("""
+        SELECT ts
+        FROM TaskSubmission ts
+        JOIN ts.task t
+        WHERE ts.student.id = :studentId
+          AND t.week.id = :weekId
+    """)
+    List<TaskSubmission> findByStudentIdAndWeekId(@Param("studentId") Long studentId,
+                                                   @Param("weekId") Long weekId);
+
+    @Query("""
+        SELECT ts
+        FROM TaskSubmission ts
+        JOIN ts.task t
+        WHERE ts.student.id = :studentId
+          AND t.week.id IN :weekIds
+    """)
+    List<TaskSubmission> findByStudent_IdAndTask_Week_IdIn(@Param("studentId") Long studentId,
+                                                             @Param("weekIds") List<Long> weekIds);
 }

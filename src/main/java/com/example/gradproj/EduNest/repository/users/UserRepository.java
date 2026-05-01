@@ -2,12 +2,18 @@ package com.example.gradproj.EduNest.repository.users;
 
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.repository.users.projection.AuthUserProjection;
+import com.example.gradproj.EduNest.repository.users.projection.MonthlyUsersProjection;
 import com.example.gradproj.EduNest.repository.users.projection.UserFullNameProjection;
+import com.example.gradproj.EduNest.repository.users.projection.UserListProjection;
 import com.example.gradproj.EduNest.repository.users.projection.UserNameProjection;
+import com.example.gradproj.EduNest.repository.users.projection.UserRoleProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
@@ -69,6 +75,58 @@ where u.email = :email
 """)
     Optional<Boolean> isUserEnabledAndNotDeleted(String email);
 
+    @Query("""
+        SELECT
+            YEAR(u.createdAt) as year,
+            MONTH(u.createdAt) as month,
+            COUNT(u.id) as totalUsers
+        FROM UserEntity u
+        WHERE (:startDate IS NULL OR u.createdAt >= :startDate)
+        GROUP BY YEAR(u.createdAt), MONTH(u.createdAt)
+        ORDER BY YEAR(u.createdAt), MONTH(u.createdAt)
+    """)
+    List<MonthlyUsersProjection> getMonthlyUsersForLastPeriod(
+            @Param("startDate") java.time.LocalDateTime startDate
+    );
 
+    @Query("""
+        SELECT
+            u.id as id,
+            u.firstName as firstName,
+            u.lastName as lastName,
+            u.email as email,
+            r.name as roleName,
+            u.profileImageUrl as profileImageUrl,
+            u.enabled as enabled
+        FROM UserEntity u
+        JOIN u.role r
+        """)
+    Page<UserListProjection> findAllUsers(Pageable pageable);
+
+    @Query("""
+        SELECT
+            u.id as id,
+            u.firstName as firstName,
+            u.lastName as lastName,
+            u.email as email,
+            r.name as roleName,
+            u.profileImageUrl as profileImageUrl,
+            u.enabled as enabled
+        FROM UserEntity u
+        JOIN u.role r
+        WHERE r.name = :roleName
+        """)
+    Page<UserListProjection> findUsersByRoleName(
+            @Param("roleName") String roleName,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT r.name as roleName
+        FROM UserEntity u
+        JOIN u.role r
+        WHERE u.id = :userId
+        """)
+    Optional<UserRoleProjection> findRoleByUserId(@Param("userId") Long userId);
 
 }

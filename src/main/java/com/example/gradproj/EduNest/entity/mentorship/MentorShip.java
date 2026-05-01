@@ -25,6 +25,7 @@ public class MentorShip extends BaseEntity {
 
     private String title;
 
+    @Column(name = "subtitle")
     private String subtitle;
 
     private String description;
