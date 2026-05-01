@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.entity.register;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
+import com.example.gradproj.EduNest.entity.users.Admin;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import jakarta.persistence.*;
@@ -26,6 +27,10 @@ public class OTP extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private UserEntity user;
+
+    @ManyToOne
+    @JoinColumn(name = "admin_id")
+    private Admin admin;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "otp_type")

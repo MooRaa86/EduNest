@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.entity.contactus;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
+import com.example.gradproj.EduNest.enums.message.MessageStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -19,7 +20,7 @@ import lombok.experimental.SuperBuilder;
 @Table(name = "contact_message")
 @SuperBuilder
 public class ContactMessageEntity extends BaseEntity {
-    
+
 
     @NotBlank(message = "Name is required")
     @Column(name = "name")
@@ -41,4 +42,7 @@ public class ContactMessageEntity extends BaseEntity {
     @Lob
     @Column(name = "message")
     private String message;
+
+    @Enumerated(EnumType.STRING)
+    private MessageStatus status;
 }
