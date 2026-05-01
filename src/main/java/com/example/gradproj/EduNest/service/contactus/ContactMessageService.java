@@ -33,6 +33,7 @@ public class ContactMessageService {
                 .email(message.getEmail())
                 .phone(message.getPhone())
                 .message(message.getMessage())
+                .status(MessageStatus.PENDING)
                 .build();
 
         contactMessageRepository.save(entity);
@@ -102,6 +103,10 @@ public class ContactMessageService {
     public void sendAdminReply(Long msgId, String reply) {
         ContactMessageEntity message = contactMessageRepository.findById(msgId)
                 .orElseThrow(() -> new globalLogicEx("Message not found"));
+
+        if (message.getStatus() == MessageStatus.COMPLETED) {
+            throw new globalLogicEx("Reply already sent for this message");
+        }
 
         String template = emailService.getEmailTemplate("admin-reply.html");
 

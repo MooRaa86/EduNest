@@ -44,5 +44,5 @@ public class ContactMessageEntity extends BaseEntity {
     private String message;
 
     @Enumerated(EnumType.STRING)
-    private MessageStatus status;
+    private MessageStatus status=MessageStatus.PENDING;
 }
