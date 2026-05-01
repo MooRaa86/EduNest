@@ -2,6 +2,9 @@ package com.example.gradproj.EduNest.repository.users;
 
 import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto;
 import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.repository.users.projection.TopMentorProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,4 +36,19 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     GROUP BY m.id, m.profileImageUrl, m.firstName, m.lastName, m.bio, m.email
     """)
     MentorProfileforStudentDto findMentorProfileByEmail(@Param("email") String email);
+
+    @Query("""
+        SELECT
+            CONCAT(m.firstName, ' ', m.lastName) as fullName,
+            m.email as email,
+            m.profileImageUrl as profileImageUrl,
+            COUNT(DISTINCT e.student.id) as totalStudents,
+            COALESCE(SUM(e.price), 0) as totalRevenue
+        FROM Mentor m
+        LEFT JOIN m.mentorships ms
+        LEFT JOIN ms.enrollments e
+        GROUP BY m.id, m.firstName, m.lastName, m.email, m.profileImageUrl
+        ORDER BY COUNT(DISTINCT e.student.id) DESC, COALESCE(SUM(e.price), 0) DESC
+    """)
+    Page<TopMentorProjection> findTopMentorsByTotalStudents(Pageable pageable);
 }

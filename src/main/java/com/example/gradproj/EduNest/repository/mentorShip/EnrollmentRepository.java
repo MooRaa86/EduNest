@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.repository.mentorShip;
 
+import com.example.gradproj.EduNest.dto.dashboard.EnrollmentPaymentResponse;
 import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Student;
@@ -32,7 +33,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Double getTotalRevenueByMentorId(@Param("mentorId") Long mentorId);
 
     @Query("""
-    SELECT 
+    SELECT
         YEAR(e.joinedAt) as year,
         MONTH(e.joinedAt) as month,
         COALESCE(SUM(e.price), 0) as totalRevenue
@@ -43,12 +44,42 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     ORDER BY YEAR(e.joinedAt), MONTH(e.joinedAt)
 """)
     List<MonthlyRevenueProjection> getMonthlyRevenueForMentor(
-            @Param("email") String email,
+                    @Param("email") String email,
+                    @Param("startDate") LocalDateTime startDate
+            );
+
+    @Query("""
+    SELECT
+        YEAR(e.joinedAt) as year,
+        MONTH(e.joinedAt) as month,
+        COALESCE(SUM(e.price), 0) as totalRevenue
+    FROM Enrollment e
+    WHERE (:startDate IS NULL OR e.joinedAt >= :startDate)
+    GROUP BY YEAR(e.joinedAt), MONTH(e.joinedAt)
+    ORDER BY YEAR(e.joinedAt), MONTH(e.joinedAt)
+""")
+    List<MonthlyRevenueProjection> getMonthlyRevenueForAdmin(
             @Param("startDate") LocalDateTime startDate
     );
 
     @Query("""
-    SELECT 
+    SELECT new com.example.gradproj.EduNest.dto.dashboard.EnrollmentPaymentResponse(
+        CONCAT(e.student.firstName, ' ', e.student.lastName),
+        e.student.email,
+        e.student.profileImageUrl,
+        e.joinedAt,
+        e.price,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
+        m.title
+    )
+    FROM Enrollment e
+    JOIN e.mentorShip m
+    ORDER BY e.joinedAt DESC
+""")
+    Page<EnrollmentPaymentResponse> findAllEnrollmentPayments(Pageable pageable);
+
+    @Query("""
+    SELECT
         e.student.id AS studentId,
         e.student.firstName AS firstName,
         e.student.lastName AS lastName,
