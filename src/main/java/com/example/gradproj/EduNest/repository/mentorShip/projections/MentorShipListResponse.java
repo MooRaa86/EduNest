@@ -13,4 +13,5 @@ public interface MentorShipListResponse {
     Double getRevenue();
     LocalDateTime getCreatedDate();
     DifficultyLevel getDifficultyLevel();
+    String getCoverImageUrl();
 }
