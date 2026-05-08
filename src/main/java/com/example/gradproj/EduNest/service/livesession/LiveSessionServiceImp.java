@@ -149,6 +149,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session already ended");
         }
 
+        if (session.getScheduledAt().isBefore(LocalDateTime.now())) {
+            throw new globalLogicEx("Session cannot be started before scheduled time");
+        }
+
         String meetingUrl = jitsiService.createRoomLink(sessionId);
         session.setMeetingUrl(meetingUrl);
         session.setStatus(SessionStatus.LIVE);
