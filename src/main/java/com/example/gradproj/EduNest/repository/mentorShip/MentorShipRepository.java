@@ -31,7 +31,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         m.title AS title,
         m.rating AS rating,
         COUNT(e.id) AS totalEnroll,
-        COALESCE(SUM(e.price),0) AS revenue,
+        COALESCE(SUM(e.price - e.platformProfit),0) AS revenue,
         m.createdAt AS createdDate,
         m.difficultyLevel AS difficultyLevel,
         m.coverImageUrl AS coverImageUrl

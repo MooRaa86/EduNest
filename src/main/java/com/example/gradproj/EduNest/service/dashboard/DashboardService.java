@@ -133,18 +133,20 @@ public class DashboardService {
                 .build();
     }
 
+    //ToDo review this method
     public List<SalesChartResponse> getSalesChartData(Integer months) {
 
         String email = getCurrentUserEmail();
 
         LocalDateTime startDate = null;
+        LocalDateTime endDate = LocalDateTime.now();
 
         if (months != null && months > 0) {
             startDate = LocalDateTime.now().minusMonths(months);
         }
 
         List<MonthlyRevenueProjection> data =
-                enrollmentRepository.getMonthlyRevenueForMentor(email, startDate);
+                enrollmentRepository.getMonthlyRevenueForMentor(email, startDate, endDate);
 
         return data.stream()
                 .map(p -> new SalesChartResponse(
