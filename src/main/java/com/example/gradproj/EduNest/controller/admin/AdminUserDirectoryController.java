@@ -4,12 +4,15 @@ import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.admin.AdminDashboardSummaryResponse;
 import com.example.gradproj.EduNest.dto.admin.AdminMentorDetailResponse;
 import com.example.gradproj.EduNest.dto.admin.AdminStudentDetailResponse;
+import com.example.gradproj.EduNest.dto.admin.request.SendUserEmailRequest;
+import com.example.gradproj.EduNest.dto.admin.request.SendUserNotificationRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.repository.users.projection.UserListProjection;
 import com.example.gradproj.EduNest.service.admin.AdminUserDirectory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -66,5 +69,23 @@ public class AdminUserDirectoryController {
         response.addMessage("dashboardSummary", summary);
         response.addMessage("message", "Admin dashboard summary retrieved successfully");
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/send-email")
+    @Operation(summary = "send email to specific user")
+    public ResponseEntity<SimpleResponse> sendEmailToUser(@RequestBody SendUserEmailRequest request) {
+        adminUserDirectory.sendEmailToUser(request.getUserId(), request.getSubject(), request.getMessage());
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("Status", "Email sent successfully");
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @PostMapping("/send-notification")
+    @Operation(summary = "send notification to specific user")
+    public ResponseEntity<SimpleResponse> sendNotificationToUser(@RequestBody SendUserNotificationRequest request) {
+        adminUserDirectory.sendNotificationToUser(request.getUserId(), request.getTitle(), request.getContent());
+        SimpleResponse response = new SimpleResponse();
+        response.addMessage("Status", "Notification sent successfully");
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
