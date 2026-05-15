@@ -10,6 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class MentorshipWeeksWithContentsResponse {
+    private Long mentorshipId;
     private String mentorshipTitle;
     private List<StudentWeekContentsResponse> weeks;
 }

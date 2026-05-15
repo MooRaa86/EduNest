@@ -13,7 +13,6 @@ import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
-import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -55,6 +54,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final ReviewsRepository reviewsRepository;
     private final TotalPointsRepository totalPointsRepository;
     private final NotificationService notificationService;
+    private final CommissionService commissionService;
 
 
     private String getCurrentUserEmail() {
@@ -383,10 +383,14 @@ public class mentorShipServiceI implements mentorShipService{
             throw new globalLogicEx("You are already enrolled in this mentorship");
         }
 
+        Double priceAfterDiscount = mentorShip.getPrice() - (mentorShip.getPrice() * mentorShip.getDiscountPercentage()/100);
+        Double platformProfit = commissionService.calculatePlatformCut(priceAfterDiscount);
+
         Enrollment enrollment = Enrollment.builder()
                 .student(student)
                 .mentorShip(mentorShip)
-                .price(mentorShip.getPrice() - (mentorShip.getPrice() * mentorShip.getDiscountPercentage()/100)  )
+                .price(priceAfterDiscount)
+                .platformProfit(platformProfit)
                 .joinedAt(LocalDateTime.now())
                 .build();
 

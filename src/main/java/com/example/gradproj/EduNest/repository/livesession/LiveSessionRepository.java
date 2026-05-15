@@ -153,18 +153,19 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     );
 
     @Query("""
-        SELECT
-            YEAR(s.scheduledAt) as year,
-            MONTH(s.scheduledAt) as month,
-            COUNT(s.id) as totalSessions
-        FROM Session s
-        WHERE (:startDate IS NULL OR s.scheduledAt >= :startDate)
-          AND s.status = 'ENDED'
-        GROUP BY YEAR(s.scheduledAt), MONTH(s.scheduledAt)
-        ORDER BY YEAR(s.scheduledAt), MONTH(s.scheduledAt)
-    """)
+    SELECT
+        YEAR(s.scheduledAt) as year,
+        MONTH(s.scheduledAt) as month,
+        COUNT(s.id) as totalSessions
+    FROM Session s
+    WHERE (:startDate IS NULL OR s.scheduledAt BETWEEN :startDate AND :endDate)
+      AND s.status = 'ENDED'
+    GROUP BY YEAR(s.scheduledAt), MONTH(s.scheduledAt)
+    ORDER BY YEAR(s.scheduledAt), MONTH(s.scheduledAt)
+""")
     List<MonthlySessionsProjection> getMonthlySessionsForLastPeriod(
-            @Param("startDate") LocalDateTime startDate
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
     );
 
 }
