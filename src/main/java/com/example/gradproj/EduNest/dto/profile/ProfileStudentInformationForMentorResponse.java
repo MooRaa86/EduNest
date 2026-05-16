@@ -8,6 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProfileStudentInformationForMentorResponse {
+    private String imageUrl;
     private String name;
     private String email;
     private String address;

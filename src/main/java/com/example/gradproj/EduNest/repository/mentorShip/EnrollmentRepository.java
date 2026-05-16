@@ -88,6 +88,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         e.student.firstName AS firstName,
         e.student.lastName AS lastName,
         e.student.email AS email,
+        e.student.profileImageUrl AS profileImageUrl,
 
         SUM(CASE WHEN m.status = 'ACTIVE' THEN 1 ELSE 0 END) AS activeMentorshipCount,
         SUM(CASE WHEN m.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedMentorshipCount

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.mentorShip.projections;
 
 public interface MentorStudentListResponse {
+    String getProfileImageUrl();
 
     Long getStudentId();
     String getFirstName();
