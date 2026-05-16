@@ -120,6 +120,7 @@ public class ProfileService {
 
     List<EnrolledMentorshipProgressDto> content = page.getContent().stream()
             .map(p -> EnrolledMentorshipProgressDto.builder()
+                    .imageUrl(p.getImageUrl())
                     .mentorshipId(p.getMentorshipId())
                     .title(p.getTitle())
                     .status(p.getStatus())

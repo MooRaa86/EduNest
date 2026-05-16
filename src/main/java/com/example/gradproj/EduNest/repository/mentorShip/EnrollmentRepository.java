@@ -109,6 +109,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         m.id AS mentorshipId,
         m.title AS title,
         m.status AS status,
+        m.coverImageUrl AS imageUrl,
         COALESCE(tp.totalPoints, 0) AS totalPoints,
         COUNT(DISTINCT t.id) AS totalTasks,
         COUNT(DISTINCT ts.task.id) AS submittedTasks,
