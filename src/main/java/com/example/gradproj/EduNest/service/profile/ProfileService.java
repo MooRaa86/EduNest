@@ -7,7 +7,6 @@ import com.example.gradproj.EduNest.dto.profile.FullProfileStudentInformationFor
 import com.example.gradproj.EduNest.dto.profile.ProfileStudentInformationForMentorResponse;
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
-import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
@@ -96,6 +95,7 @@ public class ProfileService {
                 .orElse(null);
 
         return ProfileStudentInformationForMentorResponse.builder()
+                .imageUrl(student.getProfileImageUrl())
                 .name((student.getFirstName() + " " + student.getLastName()).trim())
                 .email(student.getEmail())
                 .address(student.getAddress())
@@ -120,6 +120,7 @@ public class ProfileService {
 
     List<EnrolledMentorshipProgressDto> content = page.getContent().stream()
             .map(p -> EnrolledMentorshipProgressDto.builder()
+                    .imageUrl(p.getImageUrl())
                     .mentorshipId(p.getMentorshipId())
                     .title(p.getTitle())
                     .status(p.getStatus())

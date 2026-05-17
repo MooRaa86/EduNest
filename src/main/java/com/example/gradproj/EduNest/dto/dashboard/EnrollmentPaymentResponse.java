@@ -9,5 +9,6 @@ public record EnrollmentPaymentResponse(
         LocalDateTime joinedDate,
         Double price,
         String mentorName,
-        String mentorshipTitle
+        String mentorshipTitle,
+        Double platformProfit
 ) {}

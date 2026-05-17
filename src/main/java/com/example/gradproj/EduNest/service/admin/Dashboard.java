@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.format.TextStyle;
@@ -45,15 +46,28 @@ public class Dashboard {
     }
 
     public List<SessionsChartResponse> getMonthlySessionsForLastMonths(Integer months) {
+
         LocalDateTime startDate = null;
+        LocalDateTime endDate = LocalDateTime.now();
+
         if (months != null && months > 0) {
-            startDate = LocalDateTime.now().minusMonths(months);
+
+            startDate = LocalDate.now()
+                    .withDayOfMonth(1)
+                    .minusMonths(months - 1)
+                    .atStartOfDay();
         }
-        List<MonthlySessionsProjection> data = liveSessionRepository.getMonthlySessionsForLastPeriod(startDate);
+
+        List<MonthlySessionsProjection> data =
+                liveSessionRepository.getMonthlySessionsForLastPeriod(
+                        startDate,
+                        endDate
+                );
 
         return data.stream()
                 .map(p -> new SessionsChartResponse(
-                        Month.of(p.getMonth()).getDisplayName(TextStyle.FULL, Locale.ENGLISH),
+                        Month.of(p.getMonth())
+                                .getDisplayName(TextStyle.FULL, Locale.ENGLISH),
                         p.getYear(),
                         p.getTotalSessions()
                 ))

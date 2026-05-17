@@ -9,6 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EnrolledMentorshipProgressDto {
+    private String imageUrl;
     private Long mentorshipId;
     private String title;
     private Status status;

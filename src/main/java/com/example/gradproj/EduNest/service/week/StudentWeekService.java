@@ -129,6 +129,7 @@ public class StudentWeekService {
                 .toList();
 
         return MentorshipWeeksWithContentsResponse.builder()
+                .mentorshipId(mentorshipId)
                 .mentorshipTitle(mentorshipTitle)
                 .weeks(weekContents)
                 .build();

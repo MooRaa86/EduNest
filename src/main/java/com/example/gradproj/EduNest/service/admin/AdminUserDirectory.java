@@ -7,12 +7,16 @@ import com.example.gradproj.EduNest.dto.dashboard.UsersChartResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.entity.users.UserEntity;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.admin.UserAdminBadgeRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.repository.users.projection.*;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +39,8 @@ public class AdminUserDirectory {
     private final MentorRepository mentorRepository;
     private final StudentRepository studentRepository;
     private final UserAdminBadgeRepository userAdminBadgeRepository;
+    private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Object getUserById(Long id) {
@@ -176,5 +182,31 @@ public class AdminUserDirectory {
                 .monthlyUsers(monthlyUsers)
                 .allUsersPaginated(allUsersPaginated)
                 .build();
+    }
+
+    private UserEntity findUserById(Long userId) {
+        if (userId == null) {
+            throw new globalLogicEx("userId must be provided");
+        }
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new globalLogicEx("User not found"));
+    }
+
+    @Transactional
+    public void sendEmailToUser(Long userId, String subject, String message) {
+        UserEntity user = findUserById(userId);
+        String template = emailService.getEmailTemplate("admin-message.html");
+        String userName = user.getFirstName() + " " + user.getLastName();
+        String emailBody = template
+                .replace("{{name}}", userName)
+                .replace("{{subject}}", subject)
+                .replace("{{message}}", message);
+        emailService.sendEmail(user.getEmail(), subject, emailBody);
+    }
+
+    @Transactional
+    public void sendNotificationToUser(Long userId, String title, String content) {
+        UserEntity user = findUserById(userId);
+        notificationService.sendToUserByEmail(user.getEmail(), title, content, NotificationType.SUPPORT);
     }
 }

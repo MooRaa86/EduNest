@@ -27,7 +27,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     long countStudentsByMentorId(@Param("mentorId") Long mentorId);
 
     @Query("""
-    SELECT COALESCE(SUM(e.price), 0)
+    SELECT COALESCE(SUM(e.price - e.platformProfit), 0)
     FROM Enrollment e
     WHERE e.mentorShip.mentor.id = :mentorId
 """)
@@ -37,16 +37,18 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     SELECT
         YEAR(e.joinedAt) as year,
         MONTH(e.joinedAt) as month,
-        COALESCE(SUM(e.price), 0) as totalRevenue
+        COALESCE(SUM(e.price - e.platformProfit), 0) as totalRevenue
     FROM Enrollment e
     WHERE e.mentorShip.mentor.email = :email
       AND (:startDate IS NULL OR e.joinedAt >= :startDate)
+      AND (:endDate IS NULL OR e.joinedAt <= :endDate)
     GROUP BY YEAR(e.joinedAt), MONTH(e.joinedAt)
     ORDER BY YEAR(e.joinedAt), MONTH(e.joinedAt)
 """)
     List<MonthlyRevenueProjection> getMonthlyRevenueForMentor(
                     @Param("email") String email,
-                    @Param("startDate") LocalDateTime startDate
+                    @Param("startDate") LocalDateTime startDate,
+                    @Param("endDate") LocalDateTime endDate
             );
 
     @Query("""
@@ -71,7 +73,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         e.joinedAt,
         e.price,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
-        m.title
+        m.title,
+        e.platformProfit
     )
     FROM Enrollment e
     JOIN e.mentorShip m
@@ -85,6 +88,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         e.student.firstName AS firstName,
         e.student.lastName AS lastName,
         e.student.email AS email,
+        e.student.profileImageUrl AS profileImageUrl,
 
         SUM(CASE WHEN m.status = 'ACTIVE' THEN 1 ELSE 0 END) AS activeMentorshipCount,
         SUM(CASE WHEN m.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedMentorshipCount
@@ -105,6 +109,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         m.id AS mentorshipId,
         m.title AS title,
         m.status AS status,
+        m.coverImageUrl AS imageUrl,
         COALESCE(tp.totalPoints, 0) AS totalPoints,
         COUNT(DISTINCT t.id) AS totalTasks,
         COUNT(DISTINCT ts.task.id) AS submittedTasks,

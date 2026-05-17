@@ -173,5 +173,4 @@ public class AdminProfileAndSettingsService {
                 .orElseThrow(() -> new UsernameNotFoundException("admin not found"));
     }
 
-
 }
