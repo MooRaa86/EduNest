@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1")
@@ -25,11 +27,9 @@ import java.util.List;
 public class QuizSubmissionController {
     private final QuizSubmissionService submissionService;
 
-    @Operation(
-            summary = "Submit quiz answers",
-            description = "Submit student answers for a specific quiz and calculate the score"
-    )
+    @Operation(summary = "Submit quiz answers", description = "Submit student answers for a specific quiz and calculate the score")
     @PostMapping("/submit-quiz-answer/{quizId}")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> submitQuizAnswers(@Valid @RequestBody QuizSubmissionDTO quizSubmissionDTO, @PathVariable Long quizId) {
         QuizSubmissionResponseDTO quizSubmissionResponseDTO = submissionService.submitQuizAnswers(quizSubmissionDTO, quizId);
         SimpleResponse simpleResponse = new SimpleResponse();
@@ -38,11 +38,9 @@ public class QuizSubmissionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(simpleResponse);
     }
 
-    @Operation(
-            summary = "Get student answers",
-            description = "Retrieve all answers submitted by a specific student for a quiz"
-    )
+    @Operation(summary = "Get student answers", description = "Retrieve all answers submitted by a specific student for a quiz")
     @GetMapping("/answer/{studentId}/{quizId}")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getStudentAnswers(
             @PathVariable Long studentId,
             @PathVariable Long quizId) {
@@ -54,11 +52,9 @@ public class QuizSubmissionController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-    @Operation(
-            summary = "Get quiz submissions",
-            description = "Retrieve all submissions for a specific quiz with pagination"
-    )
+    @Operation(summary = "Get quiz submissions", description = "Retrieve all submissions for a specific quiz with pagination")
     @GetMapping("/submissions/quiz/{quizId}")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getAllSubmissionsByQuiz(
             @PathVariable Long quizId,
             @RequestParam(defaultValue = "0") int page,
@@ -72,11 +68,9 @@ public class QuizSubmissionController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-    @Operation(
-            summary = "Get student submissions",
-            description = "Retrieve all quiz submissions made by a specific student with pagination"
-    )
+    @Operation(summary = "Get student submissions", description = "Retrieve all quiz submissions made by a specific student with pagination")
     @GetMapping("/submissions/student/{studentId}")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> getAllSubmissionsByStudent(
             @PathVariable Long studentId,
             @RequestParam(defaultValue = "0") int page,

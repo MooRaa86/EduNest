@@ -10,13 +10,14 @@ import com.example.gradproj.EduNest.entity.quiz.Quiz;
 import com.example.gradproj.EduNest.entity.quiz.QuizSubmission;
 import com.example.gradproj.EduNest.entity.quiz.StudentAnswer;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
-import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +40,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final QuizSubmissionRepository quizSubmissionRepository;
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
+    private final NotificationService notificationService;
 
 
 
@@ -109,6 +111,23 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         MentorShip mentorship = saved.getQuiz().getWeek().getMentorship();
         totalPointsService.applyDelta(saved.getStudent(), mentorship,saved.getScore().intValue() );
+
+
+        String mentorEmail = quiz.getWeek().getMentorship().getMentor().getEmail();
+        String studentName = saved.getStudent().getFirstName() + " " + saved.getStudent().getLastName();
+        notificationService.sendToUserByEmail(
+                mentorEmail,
+                "New Quiz Submission",
+                studentName + " submitted quiz " + quiz.getTitle() + " ",
+                NotificationType.QUIZ
+        );
+
+        notificationService.sendToUserByEmail(
+                student.getEmail(),
+                "Quiz Submitted",
+                "You scored " + saved.getScore() + " in quiz " + quiz.getTitle() + " in mentorship " + mentorship.getTitle() ,
+                NotificationType.QUIZ
+        );
 
         return QuizSubmissionResponseDTO.builder()
                 .id(saved.getId())

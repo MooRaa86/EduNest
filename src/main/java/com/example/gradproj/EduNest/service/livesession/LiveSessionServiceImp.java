@@ -21,6 +21,8 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -48,8 +51,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final SessionAttendanceResultRepository sessionAttendanceResultRepository;
     private final JitsiService jitsiService;
     private final TotalPointsServiceImp totalPointsService;
+    private final NotificationService notificationService;
 
     @Override
+    @Transactional
     public SessionResponseDto createSession(CreateSessionDto createSessionDto) {
 
         LocalDateTime scheduledAt = LocalDateTime.of(createSessionDto.getDate(), createSessionDto.getTime());
@@ -70,11 +75,19 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         liveSessionRepository.save(session);
 
+        notificationService.sendToMentorshipStudents(
+                week.getMentorship().getId(),
+                "New Session Scheduled",
+                "A new session " + session.getTitle() + " has been scheduled on " + scheduledAt,
+                NotificationType.LIVE_SESSION
+        );
+
         return mapToDto(session);
     }
 
 
     @Override
+    @Transactional
     public SessionResponseDto updateSession(Long sessionId, UpdateSessionDto updateSessionDto) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -96,10 +109,18 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         liveSessionRepository.save(session);
 
+        notificationService.sendToMentorshipStudents(
+                session.getWeek().getMentorship().getId(),
+                "Session Updated",
+                "The session " + session.getTitle() + " has been updated. New time: " + session.getScheduledAt(),
+                NotificationType.LIVE_SESSION
+        );
+
         return mapToDto(session);
     }
 
     @Override
+    @Transactional
     public SessionResponseDto getSessionById(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -109,6 +130,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    @Transactional
     public PageResponse<DashboardSessionResponse> getAllSessions(Long mentorshipId, int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size);
@@ -126,6 +148,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    @Transactional
     public void deleteSession(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -133,6 +156,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
         if (session.getStatus() == SessionStatus.LIVE) {
             throw new globalLogicEx("Session already started and cannot be deleted");
         }
+
+        notificationService.sendToMentorshipStudents(
+                session.getWeek().getMentorship().getId(),
+                "Session Cancelled",
+                "Session " + session.getTitle() + " has been cancelled.",
+                NotificationType.LIVE_SESSION
+        );
+
         liveSessionRepository.delete(session);
     }
 
@@ -160,10 +191,18 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         liveSessionRepository.save(session);
 
+        notificationService.sendToMentorshipStudents(
+                session.getWeek().getMentorship().getId(),
+                "Session Started",
+                "Session " + session.getTitle() + " has started. Join now!",
+                NotificationType.LIVE_SESSION
+        );
+
         return mapToDto(session);
     }
 
     @Override
+    @Transactional
     public SessionResponseDto joinSession(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -180,10 +219,25 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Meeting link not ready");
         }
 
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Student student = studentRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
+
+        Long mentorshipId = session.getWeek().getMentorship().getId();
+        boolean isStudentEnrolled = enrollmentRepository.existsByMentorShip_IdAndStudent_Id(mentorshipId, student.getId());
+
+        if (!isStudentEnrolled) {
+            throw new globalLogicEx("You are not enrolled in the mentorship program for this session.");
+        }
+
+
+
+
         return mapToDto(session);
     }
 
     @Override
+    @Transactional
     public SessionResponseDto endSession(Long sessionId) {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
@@ -195,6 +249,13 @@ public class LiveSessionServiceImp implements LiveSessionService {
         session.setStatus(SessionStatus.ENDED);
         session.setActualEndTime(LocalDateTime.now());
         liveSessionRepository.save(session);
+
+        notificationService.sendToMentorshipStudents(
+                session.getWeek().getMentorship().getId(),
+                "Session Ended",
+                "Session " + session.getTitle() + " has ended.",
+                NotificationType.LIVE_SESSION
+        );
 
         calculateAttendancePoints(session);
         return mapToDto(session);
@@ -227,6 +288,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    @Transactional
     public AttendanceResponse getStudentAttendanceResult(Long sessionId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Student student = studentRepository.findByEmail(email)
@@ -244,6 +306,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    @Transactional
     public List<AttendanceResponse> getAttendanceResult(Long sessionId) {
         List<SessionAttendanceResult> results = sessionAttendanceResultRepository.findBySession_Id(sessionId);
         return results.stream()
@@ -328,9 +391,19 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
             sessionAttendanceResultRepository.save(attendanceResult);
 
+            int pointsEarned = 0;
             if (attended) {
-                totalPointsService.applyDelta(student, session.getWeek().getMentorship(), 5);
+                pointsEarned = 5;
+                totalPointsService.applyDelta(student, session.getWeek().getMentorship(), pointsEarned);
             }
+
+            notificationService.sendToUserByEmail(
+                    student.getEmail(),
+                    "Session Attendance Result",
+                    "Your attendance for session " + session.getTitle() + " is: " + status +
+                            (attended ? ". You earned " + pointsEarned + " points!" : "."),
+                    NotificationType.LIVE_SESSION
+            );
         }
     }
 
@@ -345,6 +418,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    @Transactional
     public PageResponse<StudentUpcomingSessionResponse> getUpcomingSessionsForStudent(int page, int size) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Student student = studentRepository.findByEmail(email)

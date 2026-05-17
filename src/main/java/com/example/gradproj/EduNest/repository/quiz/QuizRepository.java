@@ -14,7 +14,8 @@ import java.util.List;
 @Repository
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
     @Query("""
-    SELECT q FROM Quiz q
+    SELECT DISTINCT q FROM Quiz q
+    LEFT JOIN FETCH q.submissions
     WHERE q.week.mentorship.id = :mentorshipId
       AND (:quizName IS NULL OR LOWER(q.title) LIKE LOWER(CONCAT('%', :quizName, '%')))
       AND (:status IS NULL OR q.status = :status)
