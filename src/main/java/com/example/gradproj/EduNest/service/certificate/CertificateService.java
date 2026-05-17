@@ -4,11 +4,13 @@ import com.example.gradproj.EduNest.dto.certificate.CertificateResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.certificate.Certificate;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.certificate.CertificateRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +35,7 @@ public class CertificateService {
     private final MentorShipRepository mentorShipRepository;
     private final CertificateRepository certificateRepository;
     private final StudentRepository studentRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public void issueCertificates(Long mentorshipId) {
@@ -74,6 +77,16 @@ public class CertificateService {
 
         certificateRepository.saveAll(toSave);
         log.info("Issued {} certificates for mentorship {}", toSave.size(), mentorshipId);
+
+        // Notify each student about their certificate
+        for (Certificate cert : toSave) {
+            notificationService.sendToUserByEmail(
+                    cert.getStudent().getEmail(),
+                    "Certificate Issued!",
+                    "Congratulations! You earned a certificate in \"" + mentorship.getTitle() + "\" with rank #" + cert.getRank(),
+                    NotificationType.CERTIFICATE
+            );
+        }
     }
 
     public PageResponse<CertificateResponse> getStudentCertificates(String email, int page, int size) {

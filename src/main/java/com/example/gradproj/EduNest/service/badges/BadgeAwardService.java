@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.entity.badges.BadgeAward;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.badges.BadgeRepository;
@@ -14,6 +15,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -37,6 +39,7 @@ public class BadgeAwardService {
     private final EnrollmentRepository enrollmentRepository;
     private final TotalPointsServiceImp totalPointsService;
     private final MentorShipRepository mentorShipRepository;
+    private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -78,6 +81,14 @@ public class BadgeAwardService {
         badgeAwardRepository.save(award);
 
         totalPointsService.applyDelta(student, badge.getMentorship(), badge.getPoints());
+
+        // Notify the student that they received a badge
+        notificationService.sendToUserByEmail(
+                student.getEmail(),
+                "Badge Awarded! ",
+                "Congratulations! You earned the badge \"" + badge.getTitle() + "\" in mentorship \"" + badge.getMentorship().getTitle() + "\". Points: +" + badge.getPoints(),
+                NotificationType.BADGE
+        );
 
         return toDto(award);
     }

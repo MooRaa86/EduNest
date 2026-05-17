@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -16,6 +17,7 @@ import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionReposit
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
     private final TaskFileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     private void validateEnrolled(Long projectId, String email) {
         if (!enrollmentRepository.isStudentEnrolledForProjectByEmail(projectId, email)) {
@@ -109,7 +112,19 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
         sub.setFeedBack(null);
         sub.setGradedAt(null);
 
-        return mapToSubmissionResponse(projectSubmissionRepository.save(sub));
+        ProjectSubmission savedSub = projectSubmissionRepository.save(sub);
+
+        // Notify the mentor that a student submitted a project
+        String mentorEmail = project.getWeek().getMentorship().getMentor().getEmail();
+        String studentName = savedSub.getStudent().getFirstName() + " " + savedSub.getStudent().getLastName();
+        notificationService.sendToUserByEmail(
+                mentorEmail,
+                "New Project Submission",
+                studentName + " submitted project \"" + project.getTitle() + "\"",
+                NotificationType.PROJECT
+        );
+
+        return mapToSubmissionResponse(savedSub);
     }
 
     @Override
@@ -157,6 +172,15 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
         sub.setPointsApplied(sub.getFinalScore());
 
         projectSubmissionRepository.save(sub);
+
+        // Notify the student that their project has been graded
+        notificationService.sendToUserByEmail(
+                sub.getStudent().getEmail(),
+                "Project Graded",
+                "Your project \"" + project.getTitle() + "\" has been graded. Score: " + sub.getFinalScore() + "/" + project.getPoints(),
+                NotificationType.PROJECT
+        );
+
         return mapToSubmissionResponse(sub);
     }
 

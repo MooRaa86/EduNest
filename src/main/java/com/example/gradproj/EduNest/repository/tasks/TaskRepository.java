@@ -108,4 +108,16 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
             @Param("now") LocalDateTime now
     );
 
+    @Query("""
+    SELECT t FROM Task t
+    WHERE t.status = :status
+      AND t.dueAt > :from
+      AND t.dueAt <= :to
+    """)
+    List<Task> findTasksWithUpcomingDeadline(
+            @Param("status") TaskStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
 }

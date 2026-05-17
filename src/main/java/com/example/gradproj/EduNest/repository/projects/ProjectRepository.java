@@ -140,4 +140,16 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             @Param("mentorshipId") Long mentorshipId,
             @Param("now") LocalDateTime now
     );
+
+    @Query("""
+    SELECT p FROM Project p
+    WHERE p.status = :status
+      AND p.endAt > :from
+      AND p.endAt <= :to
+    """)
+    List<Project> findProjectsWithUpcomingDeadline(
+            @Param("status") ProjectStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
 }

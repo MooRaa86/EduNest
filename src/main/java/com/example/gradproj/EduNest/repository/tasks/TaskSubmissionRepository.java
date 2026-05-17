@@ -66,4 +66,11 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
     """)
     List<TaskSubmission> findByStudent_IdAndTask_Week_IdIn(@Param("studentId") Long studentId,
                                                              @Param("weekIds") List<Long> weekIds);
+
+    @Query("""
+        SELECT ts.student.id
+        FROM TaskSubmission ts
+        WHERE ts.task.id = :taskId
+    """)
+    List<Long> findStudentIdsByTaskId(@Param("taskId") Long taskId);
 }

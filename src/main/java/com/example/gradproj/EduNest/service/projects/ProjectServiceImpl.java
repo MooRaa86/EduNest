@@ -14,6 +14,7 @@ import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -22,6 +23,7 @@ import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionReposit
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithStatsProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -48,6 +50,7 @@ public class ProjectServiceImpl implements ProjectService{
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
     private final TaskFileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -111,6 +114,14 @@ public class ProjectServiceImpl implements ProjectService{
                 .week(week)
                 .build();
         projectRepository.save(project);
+
+        notificationService.sendToMentorshipStudents(
+                week.getMentorship().getId(),
+                "New Project",
+                "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                NotificationType.PROJECT
+        );
+
         return mapToProjectResponse(project);
     }
 
