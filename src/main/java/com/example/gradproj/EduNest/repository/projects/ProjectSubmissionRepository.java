@@ -109,4 +109,11 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
     """)
     List<ProjectSubmission> findByStudent_IdAndProject_Week_IdIn(@Param("studentId") Long studentId,
                                                                     @Param("weekIds") List<Long> weekIds);
+
+    @Query("""
+        SELECT ps.student.id
+        FROM ProjectSubmission ps
+        WHERE ps.project.id = :projectId
+    """)
+    List<Long> findStudentIdsByProjectId(@Param("projectId") Long projectId);
 }

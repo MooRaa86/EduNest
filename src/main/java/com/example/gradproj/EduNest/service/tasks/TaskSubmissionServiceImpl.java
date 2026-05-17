@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
@@ -14,6 +15,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -42,6 +44,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
     private final TaskFileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -136,6 +139,17 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         sub.setGradedAt(null);
 
         TaskSubmission saved = submissionRepository.save(sub);
+
+        // Notify the mentor that a student submitted a task
+        String mentorEmail = task.getWeek().getMentorship().getMentor().getEmail();
+        String studentName = saved.getStudent().getFirstName() + " " + saved.getStudent().getLastName();
+        notificationService.sendToUserByEmail(
+                mentorEmail,
+                "New Task Submission",
+                studentName + " submitted task \"" + task.getTitle() + "\"",
+                NotificationType.TASK
+        );
+
         return mapToSubmissionResponse(saved);
     }
 
@@ -192,6 +206,14 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         sub.setPointsApplied(newScore);
 
         submissionRepository.save(sub);
+
+        // Notify the student that their task has been graded
+        notificationService.sendToUserByEmail(
+                sub.getStudent().getEmail(),
+                "Task Graded",
+                "Your task \"" + task.getTitle() + "\" has been graded. Score: " + sub.getFinalScore() + "/" + task.getPoints(),
+                NotificationType.TASK
+        );
 
         return mapToSubmissionResponse(sub);
     }

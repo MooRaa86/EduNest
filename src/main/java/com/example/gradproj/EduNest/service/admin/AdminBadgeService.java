@@ -8,11 +8,13 @@ import com.example.gradproj.EduNest.entity.admin.AdminBadge;
 import com.example.gradproj.EduNest.entity.admin.UserAdminBadge;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.admin.AdminBadgeType;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.admin.AdminBadgeRepository;
 import com.example.gradproj.EduNest.repository.admin.UserAdminBadgeRepository;
 import com.example.gradproj.EduNest.repository.admin.projection.UserAdminBadgeDetailProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +37,7 @@ public class AdminBadgeService {
     private final UserAdminBadgeRepository userAdminBadgeRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final BadgePdfGeneratorService badgePdfGeneratorService;
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -65,6 +68,12 @@ public class AdminBadgeService {
                 sendBadgeAwardEmail(user, badge, recognitionNote);
             }
         });
+        notificationService.sendToUserByEmail(
+                user.getEmail(),
+                "Badge Awarded! ",
+                "Congratulations! You earned the badge \"" + badge.getName()+"\""+" from admin " ,
+                NotificationType.BADGE
+        );
 
         return toUserAdminBadgeDto(saved);
     }
