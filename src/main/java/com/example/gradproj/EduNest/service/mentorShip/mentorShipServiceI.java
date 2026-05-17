@@ -13,6 +13,7 @@ import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -289,6 +290,30 @@ public class mentorShipServiceI implements mentorShipService{
 
         if(status == Status.COMPLETED){
             certificateService.issueCertificates(mentorShipId);
+
+            notificationService.sendToMentorshipStudents(mentorShipId,
+                    "Mentorship Completed",
+                    "Your mentorship " + mentorShip.getTitle() + " has been completed, " +
+                    "You can now download your certificate, " + "Best regards, " + "EduNest Team",
+                    NotificationType.MENTORSHIP
+            );
+
+            String mentorName = currentMentor.getFirstName() + " " + currentMentor.getLastName();
+
+            notificationService.sendToAdmin("Mentorship Completed",
+                    "Mentorship " + mentorShip.getTitle() + " has been completed, " +
+                    "Mentor : " + mentorName,
+                    NotificationType.MENTORSHIP
+            );
+
+        }
+
+        if (status == Status.ACTIVE){
+            notificationService.sendToAdmin("Mentorship Published",
+                    "Mentorship " + mentorShip.getTitle() + " has been published, " +
+                    "Mentor : " + currentMentor.getFirstName() + " " + currentMentor.getLastName(),
+                    NotificationType.MENTORSHIP
+            );
         }
 
     }
@@ -400,6 +425,17 @@ public class mentorShipServiceI implements mentorShipService{
                 .totalPoints(0)
                 .build();
 
+        String mentorEmail = mentorShip.getMentor().getEmail();
+        double mentorEarning = priceAfterDiscount - platformProfit;
+
+        notificationService.sendToUserByEmail(mentorEmail,
+                "New Student Enrolled",
+                "A new student has enrolled in your mentorship: " + mentorShip.getTitle() + ", "
+                        + "Student name: " + student.getFirstName() + " " + student.getLastName() + ", "
+                        + "Student email: " + student.getEmail() +
+                ", you earn " + mentorEarning + "$",
+                NotificationType.MENTORSHIP);
+
         enrollmentRepository.save(enrollment);
         totalPointsRepository.save(tp);
     }
@@ -451,6 +487,17 @@ public class mentorShipServiceI implements mentorShipService{
         Double avgRating = reviewsRepository.calculateAverageRating(mentorshipId);
 
         mentorShip.setRating(avgRating != null ? avgRating : 0.0);
+
+        String mentorEmail = mentorShip.getMentor().getEmail();
+
+        notificationService.sendToUserByEmail(mentorEmail,
+                "New Rate",
+                "you have a new review from student " + student.getFirstName() + " " + student.getLastName() +
+                        " in your mentorship " + mentorShip.getTitle() +
+                ", feedback: " + request.getFeedback() + ", " + "Rating: " + request.getRating() + ", "
+                + "your mentorship now has " + avgRating + " rating"
+                ,NotificationType.REVIEW
+                );
     }
 
     @Override
