@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.OTPRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ public class SettingsService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OTPRepository otpRepository;
+    private final NotificationService notificationService;
     private final EmailService emailService;
     private final int expiryTime = 2;
 
@@ -86,7 +88,6 @@ public class SettingsService {
         userRepository.save(user);
         otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
         SecurityContextHolder.clearContext();
-
     }
 
 

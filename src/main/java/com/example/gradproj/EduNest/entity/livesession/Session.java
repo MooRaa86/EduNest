@@ -29,7 +29,6 @@ public class Session extends BaseEntity {
     private String title;
 
     @NotNull(message = "Scheduled date/time cannot be null")
-    @Future(message = "Scheduled date/time must be in the future")
     private LocalDateTime scheduledAt;
 
     private LocalDateTime actualStartTime;

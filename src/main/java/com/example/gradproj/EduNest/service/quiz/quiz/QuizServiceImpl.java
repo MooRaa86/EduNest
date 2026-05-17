@@ -9,12 +9,14 @@ import com.example.gradproj.EduNest.dto.quiz.response.*;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.quiz.Question;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.quiz.submission.QuizSubmissionService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class QuizServiceImpl implements QuizService {
     private final EnrollmentRepository enrollmentRepository;
     private final WeekRepository weekRepository;
     private final QuizSubmissionService quizSubmissionService;
+    private final NotificationService notificationService;
 
 
     @Override
@@ -53,6 +56,15 @@ public class QuizServiceImpl implements QuizService {
                 .build();
 
         quiz = quizRepository.save(quiz);
+
+        if (quiz.getStatus() == QuizStatus.PUBLISHED) {
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Quiz",
+                    "A new Quiz " + quiz.getTitle() + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.QUIZ
+            );
+        }
 
         return QuizResponseDTO.builder()
                 .id(quiz.getId())
@@ -254,6 +266,23 @@ public class QuizServiceImpl implements QuizService {
             throw new globalLogicEx("Quiz is already published");
         }
 
+        if(quizStatus==QuizStatus.CLOSED) {
+            notificationService.sendToMentorshipStudents(
+                    quiz.getWeek().getMentorship().getId(),
+                    "Quiz Closed",
+                    "A Quiz " + quiz.getTitle() + " has been closed in week " + quiz.getWeek().getTitle() + " in mentorship " + quiz.getWeek().getMentorship().getTitle(),
+                    NotificationType.QUIZ
+            );        }
+
+        if (quizStatus==QuizStatus.PUBLISHED){
+            notificationService.sendToMentorshipStudents(
+                    quiz.getWeek().getMentorship().getId(),
+                    "New Quiz",
+                    "A new Quiz " + quiz.getTitle() + " has been published in week " + quiz.getWeek().getTitle() + " in mentorship " + quiz.getWeek().getMentorship().getTitle()
+                            + " it will be closed in " + quiz.getDurationMinutes() + " minutes",
+                    NotificationType.QUIZ
+            );
+        }
         quiz.setStatus(quizStatus);
         quizRepository.save(quiz);
     }
