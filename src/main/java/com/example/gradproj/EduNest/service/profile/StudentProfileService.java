@@ -71,6 +71,7 @@ public class StudentProfileService {
                                 .projectSubmissionId(ps.getId())
                                 .projectTitle(ps.getProject().getTitle())
                                 .mentorshipTitle(ps.getProject().getWeek().getMentorship().getTitle())
+                                .mentorshipId(ps.getProject().getWeek().getMentorship().getId())
                                 .status(ps.getStatus())
                                 .submittedAt(ps.getSubmittedAt())
                                 .gradedAt(ps.getGradedAt())

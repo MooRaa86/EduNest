@@ -15,6 +15,7 @@ public class StudentProjectProfileDTO {
     private Long projectSubmissionId;
 
     private String projectTitle;
+    private Long mentorshipId;
     private String mentorshipTitle;
 
     private SubmissionStatus status;
