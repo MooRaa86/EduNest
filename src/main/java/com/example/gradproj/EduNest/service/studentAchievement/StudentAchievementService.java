@@ -84,7 +84,8 @@ public class StudentAchievementService {
 
     private ProjectAchievementResponse toProjectDto(ProjectSubmission s) {
         return ProjectAchievementResponse.builder()
-                .id(s.getId())
+                .projectId(s.getProject().getId())
+                .submissionId(s.getId())
                 .projectTitle(s.getProject().getTitle())
                 .mentorshipId(s.getProject().getWeek().getMentorship().getId())
                 .mentorshipTitle(s.getProject().getWeek().getMentorship().getTitle())

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class StudentProjectProfileDTO {
+    private Long projectId;
     private Long projectSubmissionId;
 
     private String projectTitle;

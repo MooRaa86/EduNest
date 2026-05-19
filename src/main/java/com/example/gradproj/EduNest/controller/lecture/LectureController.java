@@ -66,5 +66,17 @@ public class LectureController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
+    @GetMapping("/mentorship/{mentorshipId}")
+    @Operation(summary = "Get all lectures by mentorship id")
+    public ResponseEntity<SimpleResponse> getLecturesByMentorshipId(
+            @PathVariable Long mentorshipId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "lectures fetched successfully");
+        simpleResponse.addMessage("lectures", lectureService.getLecturesByMentorshipId(mentorshipId, page, size));
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
 
 }

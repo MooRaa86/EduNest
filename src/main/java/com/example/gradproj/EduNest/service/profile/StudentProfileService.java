@@ -67,6 +67,7 @@ public class StudentProfileService {
                         .getContent()
                         .stream()
                         .map(ps -> StudentProjectProfileDTO.builder()
+                                .projectId(ps.getProject().getId())
                                 .projectSubmissionId(ps.getId())
                                 .projectTitle(ps.getProject().getTitle())
                                 .mentorshipTitle(ps.getProject().getWeek().getMentorship().getTitle())

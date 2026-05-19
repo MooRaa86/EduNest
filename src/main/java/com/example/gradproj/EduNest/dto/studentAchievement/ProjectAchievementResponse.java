@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class ProjectAchievementResponse {
-    private Long id;
+    private Long projectId;
+    private Long  submissionId;
     private String projectTitle;
     private Long mentorshipId;
     private String mentorshipTitle;
