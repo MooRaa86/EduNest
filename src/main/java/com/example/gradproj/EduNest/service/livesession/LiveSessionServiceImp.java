@@ -180,7 +180,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session already ended");
         }
 
-        if (session.getScheduledAt().isBefore(LocalDateTime.now())) {
+        if (session.getScheduledAt().isAfter(LocalDateTime.now())) {
             throw new globalLogicEx("Session cannot be started before scheduled time");
         }
 

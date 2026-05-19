@@ -73,21 +73,17 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
     JOIN tp.student s
     LEFT JOIN BadgeAward ba
         ON ba.student.id = s.id
-    LEFT JOIN ba.badge b
-        ON b.mentorship.id = :mentorshipId
-    WHERE tp.mentorship.id = :mentorshipId
-    AND (
-        ba.id IS NULL OR
-        ba.createdAt = (
+        AND ba.createdAt = (
             SELECT MAX(ba2.createdAt)
             FROM BadgeAward ba2
             JOIN ba2.badge b2
             WHERE ba2.student.id = s.id
             AND b2.mentorship.id = :mentorshipId
         )
-    )
+    LEFT JOIN ba.badge b
+    WHERE tp.mentorship.id = :mentorshipId
     ORDER BY tp.totalPoints DESC, s.id ASC
-    """)
+""")
     Page<StudentInLeaderboardDto> findLeaderboardByMentorshipId(
             @Param("mentorshipId") Long mentorshipId,
             Pageable pageable

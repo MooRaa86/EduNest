@@ -63,7 +63,7 @@ public class MentorshipOverviewController {
             @PathVariable Long mentorshipId,
             @RequestParam(defaultValue = "3") int topMentorshipsLimit,
             @RequestParam(defaultValue = "0") int UpcomingPage,
-            @RequestParam(defaultValue = "5") int UpcomingSize,
+            @RequestParam(defaultValue = "6") int UpcomingSize,
             Authentication authentication) {
         String studentEmail = (authentication != null) ? authentication.getName() : null;
         MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
