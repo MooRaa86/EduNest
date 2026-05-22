@@ -2,6 +2,8 @@ package com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStuden
 
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @Builder
@@ -16,4 +18,5 @@ public class MentorProfileReviews {
     private String userProfileImageUrl;
     private Long mentorshipId;
     private String mentorshipTitle;
+    private LocalDateTime createdAt;
 }
