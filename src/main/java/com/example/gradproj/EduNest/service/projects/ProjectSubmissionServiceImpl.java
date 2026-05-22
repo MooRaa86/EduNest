@@ -102,8 +102,8 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
             return s;
         });
 
-        sub.setFileUrl(fileUrl);
-        sub.setUploadedFilePath(uploadedPath);
+        if (fileUrl != null && !fileUrl.isBlank()) {sub.setFileUrl(fileUrl);}
+        if (uploadedPath != null) {sub.setUploadedFilePath(uploadedPath);}
         sub.setSubmittedAt(now);
         sub.setIsLate(isLate);
         sub.setStatus(SubmissionStatus.SUBMITTED);
