@@ -47,6 +47,21 @@ public class securityService {
                 .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
     }
 
+    public Boolean isMentorOwnMentorship(Long id,String email){
+        return mentorShipRepository.existsByIdAndMentor_Email(id, email);
+    }
+
+    public Boolean isStudentEnrolledByMentorshipId(String stEmail, Long mentorShipId) {
+        return enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorShipId, stEmail);
+    }
+
+    public Boolean isStudentEnrolledByWeekId(String studentEmail, Long weekId) {
+        return enrollmentRepository.isStudentEnrolledInWeekMentorshipByEmail(weekId, studentEmail);
+    }
+
+//ToDo query joins on Task,Project,Quiz,Session,Lecture & week & mentorshipID & enrollment tables with enrolled status
+//ToDo query joins week on mentorshipId -> MentorshipTable
+
     public Long getCurrentMentorId() {
         return mentorRepository.findByEmail(getCurrentUserEmail())
                 .orElseThrow(() -> new AccessDeniedException("Mentor not found"))
@@ -87,13 +102,8 @@ public class securityService {
         }
     }
 
-    public boolean isStudentEnrolledByMentorshipId(String stEmail, Long mentorShipId) {
-        return enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorShipId, stEmail);
-    }
 
-    public boolean isStudentEnrolledByWeekId(String studentEmail, Long weekId) {
-        return enrollmentRepository.isStudentEnrolledInWeekMentorshipByEmail(weekId, studentEmail);
-    }
+
 
     public Project validateMentorOwnsProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
