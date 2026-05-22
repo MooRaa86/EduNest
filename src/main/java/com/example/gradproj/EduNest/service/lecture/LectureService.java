@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.lecture;
 import com.example.gradproj.EduNest.dto.lectures.CreateLecturerequest;
 import com.example.gradproj.EduNest.dto.lectures.LectureResponse;
 import com.example.gradproj.EduNest.dto.lectures.UpdeteLectureRequest;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
@@ -10,6 +11,9 @@ import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -97,5 +101,20 @@ public class LectureService {
     public List<LectureResponse> getLecturesByWeekId(Long weekId){
         List<Lecture> lectures=lectureRepository.findByWeek_Id(weekId);
         return lectures.stream().map(this::mapToLectureResponse).toList();
+    }
+
+    public PageResponse<LectureResponse> getLecturesByMentorshipId(Long mentorshipId, int page, int size){
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Lecture> lecturePage = lectureRepository.findByWeek_Mentorship_Id(mentorshipId, pageable);
+        List<LectureResponse> lectures = lecturePage.getContent().stream()
+                .map(this::mapToLectureResponse)
+                .toList();
+        return PageResponse.<LectureResponse>builder()
+                .content(lectures)
+                .page(lecturePage.getNumber())
+                .size(lecturePage.getSize())
+                .totalElements(lecturePage.getTotalElements())
+                .totalPages(lecturePage.getTotalPages())
+                .build();
     }
 }

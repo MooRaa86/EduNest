@@ -157,6 +157,7 @@ public class HomePageService {
         return mentorShipRepository.findRecommendedMentorships(email, categories, hasCategories);
     }
 
+    //ToDo make only 2 items return for each type
     public PageResponse<UpcomingItemDto> getUpcomingItemsByMentorship(String email, Long mentorshipId, int page, int size) {
         LocalDateTime now = LocalDateTime.now();
         List<UpcomingItemDto> allItems = new ArrayList<>();
