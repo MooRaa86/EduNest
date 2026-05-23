@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.file;
+package com.example.gradproj.EduNest.service.fileSotageService;
 
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;

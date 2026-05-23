@@ -1,6 +1,6 @@
-package com.example.gradproj.EduNest.controller.tasks;
+package com.example.gradproj.EduNest.controller.file;
 
-import com.example.gradproj.EduNest.service.file.FileAccessService;
+import com.example.gradproj.EduNest.service.fileSotageService.FileAccessService;
 import com.example.gradproj.EduNest.util.FileResponseBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
