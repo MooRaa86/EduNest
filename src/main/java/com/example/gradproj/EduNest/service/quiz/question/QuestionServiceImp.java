@@ -9,7 +9,9 @@ import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quiz.QuestionRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,9 +23,15 @@ public class QuestionServiceImp implements QuestionService {
 
     private final QuestionRepository questionRepository;
     private final QuizRepository quizRepository;
+    private final SecurityService securityService;
 
     @Override
     public QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(questionCreateDTO.getQuizId(), email)) {
+            throw new AccessDeniedException("You are not authorized to add questions to this quiz");
+        }
+
         Quiz quiz = quizRepository.findById(questionCreateDTO.getQuizId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
@@ -48,6 +56,11 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public List<QuestionResponseDTO> getQuestionsByQuizId(Long quizId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(quizId, email)) {
+            throw new AccessDeniedException("You are not authorized to view questions for this quiz");
+        }
+
         if (!quizRepository.existsById(quizId)) {
             throw  new globalLogicEx("Quiz not found");
         }
@@ -56,6 +69,11 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public QuestionResponseDTO getQuestionById(Long id) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuestion(id, email)) {
+            throw new AccessDeniedException("You are not authorized to view this question");
+        }
+
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
         return mapToResponseDTO(question);
@@ -63,6 +81,10 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public QuestionResponseDTO updateQuestion(Long id, QuestionUpdateDto dto) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuestion(id, email)) {
+            throw new AccessDeniedException("You are not authorized to update this question");
+        }
 
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
@@ -105,6 +127,11 @@ public class QuestionServiceImp implements QuestionService {
 
     @Override
     public void deleteQuestion(Long quizId, Long questionId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuestion(questionId, email)) {
+            throw new AccessDeniedException("You are not authorized to delete this question");
+        }
+
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
