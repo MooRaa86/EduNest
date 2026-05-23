@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.service.tasks;
+package com.example.gradproj.EduNest.service.fileSotageService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -164,7 +164,6 @@ public class FileStorageService {
             throw new IllegalArgumentException("Filename is null");
         }
 
-        // Null byte injection prevention
         if (filename.contains("\0")) {
             log.warn("Null byte injection attempt detected");
             throw new SecurityException("Filename contains invalid characters");
@@ -175,7 +174,7 @@ public class FileStorageService {
         basename = basename.replaceAll("[\\x00-\\x1f\\x7f]", "");
 
         basename = basename.replaceAll("\\.{2,}", ".");
-
+        basename = basename.replace(" ", "_");
         if (basename.isBlank() || basename.equals(".") || basename.equals("..")) {
             throw new IllegalArgumentException("Invalid filename after sanitization");
         }
@@ -196,13 +195,11 @@ public class FileStorageService {
 
         String extension = filename.substring(lastDot + 1).toLowerCase().trim();
 
-        // Check blocked extensions first (defense in depth)
         if (BLOCKED_EXTENSIONS.contains(extension)) {
             log.warn("Blocked dangerous extension attempt: {}", extension);
             throw new SecurityException("File type not allowed: ." + extension);
         }
 
-        // Check whitelist
         if (!ALLOWED_FILE_TYPES.containsKey(extension)) {
             throw new IllegalArgumentException(
                     "Extension ." + extension + " not in whitelist. Allowed: " + ALLOWED_FILE_TYPES.keySet());
@@ -213,7 +210,7 @@ public class FileStorageService {
 
     private String detectMimeType(MultipartFile file) {
         try (InputStream is = file.getInputStream()) {
-            // Tika reads magic bytes from stream header
+
             String mimeType = tika.detect(is);
 
             if (mimeType == null || mimeType.isBlank()) {
@@ -263,12 +260,10 @@ public class FileStorageService {
         }
     }
 
-    // ==================== PATH & FILE OPERATIONS ====================
-
     private Path constructSecurePath(String subFolder) {
         Path uploadPath = resolvedBaseDir.resolve(subFolder).normalize();
 
-        // Double-check subFolder didn't escape baseDir
+
         if (!uploadPath.startsWith(resolvedBaseDir)) {
             throw new SecurityException("Subfolder path traversal detected");
         }
@@ -283,14 +278,12 @@ public class FileStorageService {
     }
 
     private String generateSafeFileName(String type, Long id, Long secondaryId, String extension) {
-        // Format: type-id-secondaryId-UUID.ext
-        // No user input in filename except validated extension
+
         return String.format("%s-%d-%d-%s.%s",
                 type, id, secondaryId, UUID.randomUUID(), extension);
     }
 
     private void saveFileAtomically(MultipartFile file, Path targetPath) {
-        // Prevent overwriting existing files
         if (Files.exists(targetPath)) {
             throw new IllegalStateException("File already exists (UUID collision)");
         }
@@ -298,29 +291,23 @@ public class FileStorageService {
         Path tempPath = targetPath.resolveSibling(targetPath.getFileName() + ".tmp");
 
         try {
-            // Write to temp first
             Files.copy(file.getInputStream(), tempPath);
 
-            // Verify file was written correctly
             if (Files.size(tempPath) != file.getSize()) {
                 Files.deleteIfExists(tempPath);
                 throw new IOException("File size mismatch after write");
             }
 
-            // Atomic move to final location
             Files.move(tempPath, targetPath);
 
-            // Set restrictive permissions (owner read/write only on Unix)
             try {
                 Files.setPosixFilePermissions(targetPath,
                         java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             } catch (UnsupportedOperationException e) {
-                // Windows - permissions not supported, log and continue
                 log.debug("POSIX permissions not supported on this filesystem");
             }
 
         } catch (IOException e) {
-            // Cleanup temp file on failure
             try { Files.deleteIfExists(tempPath); } catch (IOException ignored) {}
             log.error("Failed to save file to {}", targetPath, e);
             throw new RuntimeException("Failed to save file", e);
@@ -328,11 +315,6 @@ public class FileStorageService {
     }
 
 
-    // ==================== PUBLIC UTILITY METHODS ====================
-
-    /**
-     * Validates a file without saving it (for pre-upload checks).
-     */
     public void validateOnly(MultipartFile file) {
         validateFileStructure(file);
         String originalFilename = sanitizeFilename(file.getOriginalFilename());
@@ -340,5 +322,47 @@ public class FileStorageService {
         String detectedMimeType = detectMimeType(file);
         validateMimeTypeCompatibility(extension, detectedMimeType);
         validateNotBlockedType(extension, detectedMimeType);
+    }
+
+
+    public void deleteFile(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            log.debug("Delete called with null or blank path, skipping");
+            return;
+        }
+        String cleanPath = relativePath;
+        if (cleanPath.startsWith(baseDir + "/") || cleanPath.startsWith(baseDir + "\\")) {
+            cleanPath = cleanPath.substring(baseDir.length() + 1);
+        }
+
+        Path targetPath;
+        try {
+            targetPath = resolvedBaseDir.resolve(cleanPath).normalize();
+        } catch (Exception e) {
+            log.error("Invalid path format for deletion: {}", relativePath);
+            throw new SecurityException("Invalid file path format");
+        }
+
+        if (!targetPath.startsWith(resolvedBaseDir)) {
+            log.warn("Path traversal attempt in deleteFile blocked: {}", relativePath);
+            throw new SecurityException("Invalid file path for deletion");
+        }
+
+        if (targetPath.equals(resolvedBaseDir)) {
+            log.warn("Attempted to delete base directory blocked");
+            throw new SecurityException("Cannot delete base directory");
+        }
+
+        try {
+            boolean deleted = Files.deleteIfExists(targetPath);
+            if (deleted) {
+                log.info("Deleted file: {}", targetPath);
+            } else {
+                log.warn("File not found for deletion: {}", targetPath);
+            }
+        } catch (IOException e) {
+            log.error("Failed to delete file: {}", targetPath, e);
+            throw new RuntimeException("Failed to delete file: " + relativePath, e);
+        }
     }
 }

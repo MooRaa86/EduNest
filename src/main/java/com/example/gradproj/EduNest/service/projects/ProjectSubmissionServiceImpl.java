@@ -19,7 +19,7 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
-import com.example.gradproj.EduNest.service.tasks.FileStorageService;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -91,6 +91,14 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
+
+            if (existingOpt.isPresent()) {
+                String oldPath = existingOpt.get().getUploadedFilePath();
+                if (oldPath != null && !oldPath.isBlank()) {
+                    fileStorageService.deleteFile(oldPath);
+                }
+            }
+
             uploadedPath = fileStorageService.saveFile("submissions", "project", projectId, studentId, file);
         }
 
@@ -114,7 +122,6 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
 
         ProjectSubmission savedSub = projectSubmissionRepository.save(sub);
 
-        // Notify the mentor that a student submitted a project
         String mentorEmail = project.getWeek().getMentorship().getMentor().getEmail();
         String studentName = savedSub.getStudent().getFirstName() + " " + savedSub.getStudent().getLastName();
         notificationService.sendToUserByEmail(

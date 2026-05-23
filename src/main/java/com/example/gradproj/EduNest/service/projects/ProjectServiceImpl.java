@@ -24,7 +24,7 @@ import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSt
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
-import com.example.gradproj.EduNest.service.tasks.FileStorageService;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -162,6 +162,10 @@ public class ProjectServiceImpl implements ProjectService{
         if (file != null && !file.isEmpty()) {
             Long mentorId = getCurrentMentorId();
             Long mentorshipId = project.getWeek().getMentorship().getId();
+            String oldPath = project.getUploadedAttachmentPath();
+            if (oldPath != null && !oldPath.isBlank()) {
+                fileStorageService.deleteFile(oldPath);
+            }
             String uploadedPath = fileStorageService.saveFile("project-attachment", "project", mentorshipId, mentorId, file);
             project.setUploadedAttachmentPath(uploadedPath);
         }
@@ -171,7 +175,13 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public void deleteProject(Long projectId) {
-        validateMentorOwnershipAndGetProject(projectId);
+        Project project = validateMentorOwnershipAndGetProject(projectId);
+
+        String filePath = project.getUploadedAttachmentPath();
+        if (filePath != null && !filePath.isBlank()) {
+            fileStorageService.deleteFile(filePath);
+        }
+
         projectRepository.deleteById(projectId);
     }
 

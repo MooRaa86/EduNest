@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -126,6 +127,10 @@ public class TaskServiceImpl implements TaskService {
         }
         if (file != null && !file.isEmpty()) {
             Long mentorshipId = task.getWeek().getMentorship().getId();
+            String oldPath = task.getUploadedAttachmentPath();
+            if (oldPath != null && !oldPath.isBlank()) {
+                StorageService.deleteFile(oldPath);
+            }
             task.setUploadedAttachmentPath(StorageService.saveFile("task-attachment","task", mentorshipId, mentorshipId, file));
         }
         if (task.getPassPoints() > task.getPoints()) {
@@ -136,7 +141,13 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public void deleteTask(Long taskId, String email) {
-        validateMentorOwnershipAndGetTask(taskId, email);
+        Task task = validateMentorOwnershipAndGetTask(taskId, email);
+
+        String filePath = task.getUploadedAttachmentPath();
+        if (filePath != null && !filePath.isBlank()) {
+            StorageService.deleteFile(filePath);
+        }
+
         taskRepository.deleteById(taskId);
     }
 
