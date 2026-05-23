@@ -85,13 +85,15 @@ public class TaskServiceImpl implements TaskService {
                 .build();
         Task saved = taskRepository.save(task);
 
-        notificationService.sendToMentorshipStudents(
-                week.getMentorship().getId(),
-                "New Task",
-                "a new task " + saved.getTitle()
-                        + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
-                NotificationType.TASK
-        );
+        if (saved.getStatus() == TaskStatus.PUBLISHED) {
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Task",
+                    "a new task " + saved.getTitle()
+                            + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.TASK
+            );
+        }
 
         return mapToTaskResponse(saved);
     }
@@ -110,6 +112,7 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == TaskStatus.CLOSED) {
             throw new globalLogicEx("cannot update closed task");
         }
+        TaskStatus oldStatus = task.getStatus();
         if (request != null) {
             if (request.getTitle() != null) task.setTitle(request.getTitle());
             if (request.getDescription() != null) task.setDescription(request.getDescription());
@@ -136,6 +139,18 @@ public class TaskServiceImpl implements TaskService {
         if (task.getPassPoints() > task.getPoints()) {
             throw new globalLogicEx("Pass points must be less than or equal to points.");
         }
+        
+        if (oldStatus != TaskStatus.PUBLISHED && task.getStatus() == TaskStatus.PUBLISHED) {
+            Week week = task.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Task",
+                    "a new task " + task.getTitle()
+                            + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.TASK
+            );
+        }
+        
         return mapToTaskResponse(task);
     }
 
@@ -157,7 +172,20 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
             throw new globalLogicEx("Cannot revert published task to draft");
         }
+        TaskStatus oldStatus = task.getStatus();
         task.setStatus(req.getStatus());
+        
+        if (oldStatus != TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.PUBLISHED) {
+            Week week = task.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Task",
+                    "a new task " + task.getTitle()
+                            + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.TASK
+            );
+        }
+        
         return mapToTaskResponse(task);
     }
 

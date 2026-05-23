@@ -93,6 +93,7 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        QuizStatus oldStatus = quiz.getStatus();
         if (quizUpdateDto.getTitle() != null) quiz.setTitle(quizUpdateDto.getTitle());
         if (quizUpdateDto.getDescription() != null) quiz.setDescription(quizUpdateDto.getDescription());
         if (quizUpdateDto.getDurationMinutes() != null) quiz.setDurationMinutes(quizUpdateDto.getDurationMinutes());
@@ -100,6 +101,16 @@ public class QuizServiceImpl implements QuizService {
 
 
         quiz = quizRepository.save(quiz);
+
+        if (oldStatus != QuizStatus.PUBLISHED && quiz.getStatus() == QuizStatus.PUBLISHED) {
+            notificationService.sendToMentorshipStudents(
+                    quiz.getWeek().getMentorship().getId(),
+                    "New Quiz",
+                    "A new Quiz " + quiz.getTitle() + " has been published in week " + quiz.getWeek().getTitle() + " in mentorship " + quiz.getWeek().getMentorship().getTitle()
+                            + " it will be closed in " + quiz.getDurationMinutes() + " minutes",
+                    NotificationType.QUIZ
+            );
+        }
 
         return QuizResponseDTO.builder()
                 .id(quiz.getId())

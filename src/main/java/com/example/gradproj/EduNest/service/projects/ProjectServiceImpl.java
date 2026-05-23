@@ -115,12 +115,14 @@ public class ProjectServiceImpl implements ProjectService{
                 .build();
         projectRepository.save(project);
 
-        notificationService.sendToMentorshipStudents(
-                week.getMentorship().getId(),
-                "New Project",
-                "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
-                NotificationType.PROJECT
-        );
+        if (project.getStatus() == ProjectStatus.PUBLISHED) {
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Project",
+                    "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.PROJECT
+            );
+        }
 
         return mapToProjectResponse(project);
     }
@@ -140,6 +142,7 @@ public class ProjectServiceImpl implements ProjectService{
             throw new globalLogicEx("Cannot update closed project");
         }
 
+        ProjectStatus oldStatus = project.getStatus();
         if (req != null) {
             if (req.getTitle() != null) project.setTitle(req.getTitle());
             if (req.getGoal() != null) project.setGoal(req.getGoal());
@@ -170,6 +173,16 @@ public class ProjectServiceImpl implements ProjectService{
             project.setUploadedAttachmentPath(uploadedPath);
         }
 
+        if (oldStatus != ProjectStatus.PUBLISHED && project.getStatus() == ProjectStatus.PUBLISHED) {
+            Week week = project.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Project",
+                    "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.PROJECT
+            );
+        }
+
         return mapToProjectResponse(project);
     }
 
@@ -192,7 +205,19 @@ public class ProjectServiceImpl implements ProjectService{
         if ((project.getStatus() == ProjectStatus.PUBLISHED) && (req.getStatus() == ProjectStatus.DRAFT)) {
             throw new globalLogicEx("Cannot revert published project to draft");
         }
+        ProjectStatus oldStatus = project.getStatus();
         project.setStatus(req.getStatus());
+        
+        if (oldStatus != ProjectStatus.PUBLISHED && req.getStatus() == ProjectStatus.PUBLISHED) {
+            Week week = project.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Project",
+                    "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.PROJECT
+            );
+        }
+        
         return mapToProjectResponse(project);
     }
 
