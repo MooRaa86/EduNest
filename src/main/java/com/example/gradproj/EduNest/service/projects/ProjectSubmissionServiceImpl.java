@@ -7,8 +7,8 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectWithSubmissionR
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
-import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -19,7 +19,7 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
-import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
+import com.example.gradproj.EduNest.service.tasks.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -43,7 +43,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
-    private final TaskFileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
 
     private void validateEnrolled(Long projectId, String email) {

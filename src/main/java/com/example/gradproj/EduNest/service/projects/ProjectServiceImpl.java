@@ -24,7 +24,7 @@ import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSt
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
-import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
+import com.example.gradproj.EduNest.service.tasks.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,7 +49,7 @@ public class ProjectServiceImpl implements ProjectService{
     private final ProjectSubmissionRepository submissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
-    private final TaskFileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {

@@ -43,7 +43,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
-    private final TaskFileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
