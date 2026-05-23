@@ -78,9 +78,10 @@ public class NotificationController {
     @PatchMapping("/{id}/mark-read")
     @Operation(summary = "mark notification as read")
     public void markOneAsRead(
-            @PathVariable Long id
+            @PathVariable Long id,
+            Authentication authentication
     ){
-        notificationService.markOneAsRead(id);
+        notificationService.markOneAsRead(id, authentication.getName());
     }
 
     @PostMapping("/send")
@@ -99,8 +100,9 @@ public class NotificationController {
 
     @DeleteMapping("/delete/{id}")
     @Operation(summary = "delete notification by id")
-    public ResponseEntity<SimpleResponse> deleteNotification(@PathVariable Long id ){
-        notificationService.deleteNotification(id);
+    public ResponseEntity<SimpleResponse> deleteNotification(
+            @PathVariable Long id ,Authentication authentication){
+        notificationService.deleteNotification(id,authentication.getName());
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("status","notification deleted successfully");
         return ResponseEntity.ok(simpleResponse);

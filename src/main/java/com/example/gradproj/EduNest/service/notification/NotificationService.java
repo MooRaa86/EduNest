@@ -16,12 +16,14 @@ import com.example.gradproj.EduNest.repository.notification.NotificationReposito
 import com.example.gradproj.EduNest.repository.notification.UserNotificationRepository;
 import com.example.gradproj.EduNest.repository.users.AdminRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.security.securityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class NotificationService {
     private final EnrollmentRepository enrollmentRepo;
     private final AdminRepository adminRepo;
     private final AdminNotificationRepository adminNotificationRepo;
+    private final securityService securityService;
 
 
     private NotificationDto mapToDto(UserNotification u){
@@ -97,6 +100,7 @@ public class NotificationService {
 
     @Transactional
     @Async
+    //ToDo : maybe add mentor of the mentorship who can send better
     public void sendToMentorshipStudents(
             Long mentorshipId,
             String title,
@@ -275,11 +279,17 @@ public class NotificationService {
         userNotificationRepo.markAllAsRead(email);
     }
 
-    public void markOneAsRead(Long relationId){
+    public void markOneAsRead(Long relationId,String email){
+        if(!securityService.isUserOwnNotification(relationId, email))
+            throw new AccessDeniedException("You are not the owner of this notification");
+
         userNotificationRepo.markOneAsRead(relationId);
     }
 
-    public void deleteNotification(Long relationId){
+    public void deleteNotification(Long relationId,String email){
+        if(!securityService.isUserOwnNotification(relationId, email))
+            throw new AccessDeniedException("You are not the owner of this notification");
+
         userNotificationRepo.deleteById(relationId);
     }
 
