@@ -1,10 +1,7 @@
 package com.example.gradproj.EduNest.controller.tasks;
 
-import com.example.gradproj.EduNest.entity.projects.Project;
-import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
-import com.example.gradproj.EduNest.entity.tasks.Task;
-import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.service.file.FileAccessService;
+import com.example.gradproj.EduNest.util.FileResponseBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,14 +12,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -45,16 +38,8 @@ public class FileController {
 
     @PostConstruct
     public void init() {
-
-        this.resolvedBaseDir =
-                Path.of(baseDir)
-                        .toAbsolutePath()
-                        .normalize();
-
-        log.info(
-                "Resolved upload directory: {}",
-                resolvedBaseDir
-        );
+        this.resolvedBaseDir = Path.of(baseDir).toAbsolutePath().normalize();
+        log.info("Resolved upload directory: {}", resolvedBaseDir);
     }
 
     @GetMapping(
@@ -79,18 +64,10 @@ public class FileController {
     )
     public ResponseEntity<Resource> serveTaskSubmission(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "false")
-            boolean download
+            @RequestParam(defaultValue = "false") boolean download
     ) {
-
-        TaskSubmission submission =
-                fileAccessService
-                        .authorizeTaskSubmission(id);
-
-        return resolveAndServeFile(
-                submission.getUploadedFilePath(),
-                download
-        );
+        String filePath = fileAccessService.authorizeTaskSubmission(id);
+        return resolveAndServeFile(filePath, download);
     }
 
     @GetMapping(
@@ -100,18 +77,10 @@ public class FileController {
     @Operation(summary = "View task attachment")
     public ResponseEntity<Resource> serveTaskAttachment(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "false")
-            boolean download
+            @RequestParam(defaultValue = "false") boolean download
     ) {
-
-        Task task =
-                fileAccessService
-                        .authorizeTask(id);
-
-        return resolveAndServeFile(
-                task.getUploadedAttachmentPath(),
-                download
-        );
+        String filePath = fileAccessService.authorizeTask(id);
+        return resolveAndServeFile(filePath, download);
     }
 
     @GetMapping(
@@ -121,18 +90,10 @@ public class FileController {
     @Operation(summary = "View project submission")
     public ResponseEntity<Resource> serveProjectSubmission(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "false")
-            boolean download
+            @RequestParam(defaultValue = "false") boolean download
     ) {
-
-        ProjectSubmission submission =
-                fileAccessService
-                        .authorizeProjectSubmission(id);
-
-        return resolveAndServeFile(
-                submission.getUploadedFilePath(),
-                download
-        );
+        String filePath = fileAccessService.authorizeProjectSubmission(id);
+        return resolveAndServeFile(filePath, download);
     }
 
     @GetMapping(
@@ -142,221 +103,58 @@ public class FileController {
     @Operation(summary = "View project attachment")
     public ResponseEntity<Resource> serveProjectAttachment(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "false")
-            boolean download
+            @RequestParam(defaultValue = "false") boolean download
     ) {
-
-        Project project =
-                fileAccessService
-                        .authorizeProject(id);
-
-        return resolveAndServeFile(
-                project.getUploadedAttachmentPath(),
-                download
-        );
+        String filePath = fileAccessService.authorizeProject(id);
+        return resolveAndServeFile(filePath, download);
     }
 
-    private ResponseEntity<Resource> resolveAndServeFile(
-            String filePath,
-            boolean download
-    ) {
-
+    private ResponseEntity<Resource> resolveAndServeFile(String filePath, boolean download) {
         try {
-
-            if (filePath == null
-                    || filePath.isBlank()) {
-
+            if (filePath == null || filePath.isBlank()) {
                 return badRequest();
             }
 
             if (filePath.contains("\0")) {
-
-                log.warn(
-                        "Null byte detected in path: {}",
-                        filePath
-                );
-
+                log.warn("Null byte detected in path: {}", filePath);
                 return badRequest();
             }
 
-            String cleanPath =
-                    filePath.replace("\\", "/")
-                            .replaceFirst(
-                                    "^[\\\\/]+",
-                                    ""
-                            );
+            String cleanPath = filePath.replace("\\", "/").replaceFirst("^[\\\\/]+", "");
 
-            /*
-             * Prevent uploads/uploads duplication
-             */
             if (cleanPath.startsWith(baseDir + "/")) {
-
-                cleanPath =
-                        cleanPath.substring(
-                                baseDir.length() + 1
-                        );
+                cleanPath = cleanPath.substring(baseDir.length() + 1);
             }
 
-            Path targetPath =
-                    resolvedBaseDir
-                            .resolve(cleanPath)
-                            .normalize();
+            Path targetPath = resolvedBaseDir.resolve(cleanPath).normalize();
 
-            log.info(
-                    "Original DB path: {}",
-                    filePath
-            );
+            log.debug("Original DB path: {}", filePath);
+            log.debug("Resolved target path: {}", targetPath);
 
-            log.info(
-                    "Resolved target path: {}",
-                    targetPath
-            );
-
-            log.info(
-                    "File exists: {}",
-                    Files.exists(targetPath)
-            );
-
-            if (!targetPath.startsWith(
-                    resolvedBaseDir
-            )) {
-
-                log.warn(
-                        "Path traversal blocked: {}",
-                        targetPath
-                );
-
+            if (!targetPath.startsWith(resolvedBaseDir)) {
+                log.warn("Path traversal blocked: {}", targetPath);
                 return badRequest();
             }
 
             if (Files.isDirectory(targetPath)) {
-
-                log.warn(
-                        "Directory access blocked: {}",
-                        targetPath
-                );
-
+                log.warn("Directory access blocked: {}", targetPath);
                 return badRequest();
             }
 
-            Resource resource =
-                    new UrlResource(
-                            targetPath.toUri()
-                    );
-
-            if (!resource.exists()
-                    || !resource.isReadable()) {
-
-                log.warn(
-                        "File not found or unreadable: {}",
-                        targetPath
-                );
-
-                return ResponseEntity
-                        .notFound()
-                        .build();
+            if (!Files.exists(targetPath) || !Files.isReadable(targetPath)) {
+                log.warn("File not found or unreadable: {}", targetPath);
+                return ResponseEntity.notFound().build();
             }
 
-            String contentType =
-                    Files.probeContentType(
-                            targetPath
-                    );
-
-            MediaType mediaType =
-                    parseMediaType(contentType);
-
-            boolean safeInline =
-                    mediaType.getType()
-                            .equalsIgnoreCase("image")
-                            || mediaType.equals(
-                            MediaType.APPLICATION_PDF
-                    )
-                            || mediaType.equals(
-                            MediaType.TEXT_PLAIN
-                    );
-
-            ContentDisposition disposition =
-                    (!download && safeInline)
-                            ? ContentDisposition
-                              .inline()
-                              .filename(
-                                      resource.getFilename()
-                              )
-                              .build()
-                            : ContentDisposition
-                              .attachment()
-                              .filename(
-                                      resource.getFilename()
-                              )
-                              .build();
-
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(
-                            HttpHeaders.CONTENT_DISPOSITION,
-                            disposition.toString()
-                    )
-                    .header(
-                            HttpHeaders.CACHE_CONTROL,
-                            "no-store"
-                    )
-                    .header(
-                            "X-Content-Type-Options",
-                            "nosniff"
-                    )
-                    .header(
-                            "Content-Security-Policy",
-                            "default-src 'none'"
-                    )
-                    .body(resource);
-
-        } catch (MalformedURLException e) {
-
-            log.error(
-                    "Malformed file URL: {}",
-                    filePath,
-                    e
-            );
-
-            return badRequest();
+            return FileResponseBuilder.buildResponse(targetPath, download);
 
         } catch (Exception e) {
-
-            log.error(
-                    "Error serving file: {}",
-                    filePath,
-                    e
-            );
-
-            return ResponseEntity
-                    .internalServerError()
-                    .build();
-        }
-    }
-
-    private MediaType parseMediaType(
-            String contentType
-    ) {
-
-        try {
-
-            return contentType != null
-                    ? MediaType.parseMediaType(
-                    contentType
-            )
-                    : MediaType.APPLICATION_OCTET_STREAM;
-
-        } catch (Exception e) {
-
-            return MediaType
-                    .APPLICATION_OCTET_STREAM;
+            log.error("Error serving file: {}", filePath, e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
     private ResponseEntity<Resource> badRequest() {
-
-        return ResponseEntity
-                .badRequest()
-                .build();
+        return ResponseEntity.badRequest().build();
     }
 }
