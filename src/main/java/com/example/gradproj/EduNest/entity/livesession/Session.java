@@ -47,4 +47,7 @@ public class Session extends BaseEntity {
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SessionAttendance> attendances = new ArrayList<>();
 
+    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SessionAttendanceResult> attendanceResults = new ArrayList<>();
+
 }

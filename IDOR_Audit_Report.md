@@ -41,6 +41,15 @@ The following service methods currently do not verify if the requesting user has
 - `getAttendanceResult(Long sessionId)`: Retrieves attendance list without mentor ownership check.
 - `getStudentAttendanceResult(Long sessionId)`: Gets student's own attendance, but lacks robust checks (relying only on finding the student by current email).
 
+### Mentorship Dashboard Service (`MentorshipDashboardService`)
+- `getReviewsForMentorship(...)`: Retrieves reviews for a mentorship ID without verifying if the user is the mentor who owns the mentorship.
+- `findTopLearnersByMentorshipId(...)`: Retrieves top learners without mentor ownership check.
+- `getStudentsRanksByMentorshipId(...)`: Retrieves student ranks without mentor ownership check.
+- `getFullMentorshipDashboard(...)`: Calls the above methods without ownership check.
+
+### Certificate Service (`CertificateService`)
+- `issueCertificates(Long mentorshipId)`: Issues certificates to students based on a mentorship ID without verifying if the user calling the endpoint is actually the mentor who owns the mentorship.
+
 ### Quiz Service (`QuizServiceImpl`)
 - `createQuiz(...)`: Retrieves week by ID and creates a quiz without checking if the mentor owns the week.
 - `deleteQuiz(Long id)`: Deletes a quiz by ID without mentor ownership verification.
@@ -94,6 +103,9 @@ public Boolean isUserOwnNotification(Long notificationId, String userEmail);
 
 // 5. Chat Validations
 public Boolean isUserMemberOfChatRoom(Long roomId, String userEmail);
+
+// 6. Certificate Validations
+// (Can reuse isMentorOwnMentorship from securityService)
 ```
 
 ### Query Logic Specifications (For Repositories)
@@ -130,3 +142,5 @@ public Boolean isUserMemberOfChatRoom(Long roomId, String userEmail);
 | **QuizSubmissionServiceImpl** | `getAllSubmissionsByQuiz` | `if(!securityService.isMentorOwnQuiz(quizId, email)) throw new AccessDeniedException(...)` |
 | **NotificationService** | `markOneAsRead`, `deleteNotification` | `if(!securityService.isUserOwnNotification(relationId, email)) throw new AccessDeniedException(...)` |
 | **ChatRoomService/Controller** | `getMessages`, `getRoomMembers` | `if(!securityService.isUserMemberOfChatRoom(roomId, email)) throw new AccessDeniedException(...)` |
+| **MentorshipDashboardService** | `getReviewsForMentorship`, `findTopLearnersByMentorshipId`, `getStudentsRanksByMentorshipId`, `getFullMentorshipDashboard` | `if(!securityService.isMentorOwnMentorship(mentorshipId, email)) throw new AccessDeniedException(...)` |
+| **CertificateService** | `issueCertificates` | `if(!securityService.isMentorOwnMentorship(mentorshipId, email)) throw new AccessDeniedException(...)` |

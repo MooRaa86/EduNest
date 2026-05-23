@@ -2,8 +2,11 @@ package com.example.gradproj.EduNest.entity.quiz;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.enums.quiz.AnswerChoices;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Entity
 @Table(name = "questions")
@@ -39,4 +42,8 @@ public class Question extends BaseEntity {
 
     @Column(nullable = false)
     private String optionD;
+
+    @JsonManagedReference
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StudentAnswer> studentAnswers;
 }
