@@ -1,16 +1,17 @@
 package com.example.gradproj.EduNest.service.security;
 
+import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
-import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.repository.AuthorizationRepository;
+import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
-import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
@@ -39,6 +40,7 @@ public class securityService {
     private final WeekRepository weekRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
+    private final AuthorizationRepository securityRepository;
 
     public String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -59,8 +61,40 @@ public class securityService {
         return enrollmentRepository.isStudentEnrolledInWeekMentorshipByEmail(weekId, studentEmail);
     }
 
-//ToDo query joins on Task,Project,Quiz,Session,Lecture & week & mentorshipID & enrollment tables with enrolled status
-//ToDo query joins week on mentorshipId -> MentorshipTable
+    //ToDo query joins on Task,Project,Quiz,Session,Lecture & week & mentorshipID & enrollment tables with enrolled status
+    //ToDo query joins week on mentorshipId -> MentorshipTable
+
+    //------------------------------------------------------
+
+    public Boolean isMentorOwnLiveSession(Long sessionId, String email) {
+        return securityRepository.isMentorOwnLiveSession(sessionId, email);
+    }
+
+    public Boolean isStudentEnrolledByLiveSessionId(String email, Long sessionId) {
+        return securityRepository.isStudentEnrolledByLiveSessionId(email, sessionId);
+    }
+
+    public Boolean isMentorOwnQuiz(Long quizId, String email) {
+        return securityRepository.isMentorOwnQuiz(quizId, email);
+    }
+
+    public Boolean isStudentEnrolledByQuizId(String email, Long quizId) {
+        return securityRepository.isStudentEnrolledByQuizId(email, quizId);
+    }
+
+    public Boolean isMentorOwnQuestion(Long questionId, String email) {
+        return securityRepository.isMentorOwnQuestion(questionId, email);
+    }
+
+    public Boolean isUserOwnNotification(Long notificationId, String email) {
+        return securityRepository.isUserOwnNotification(notificationId, email);
+    }
+
+    public Boolean isUserMemberOfChatRoom(Long roomId, String email) {
+        return securityRepository.isUserMemberOfChatRoom(roomId, email);
+    }
+
+    //------------------------------------------------------
 
     public Long getCurrentMentorId() {
         return mentorRepository.findByEmail(getCurrentUserEmail())
