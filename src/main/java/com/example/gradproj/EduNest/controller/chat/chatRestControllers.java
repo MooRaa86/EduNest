@@ -76,10 +76,11 @@ public class chatRestControllers {
     public ResponseEntity<SimpleResponse> getMessages(
             @PathVariable Long roomId,
             @RequestParam(required = false) Long beforeId,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
     ) {
 
-        List<ChatMessageResponse> messages =  chatMessageService.getRoomMessages(roomId, beforeId, size);
+        List<ChatMessageResponse> messages =  chatMessageService.getRoomMessages(roomId, beforeId, size,authentication.getName());
 
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("Messages",messages);
@@ -90,9 +91,10 @@ public class chatRestControllers {
     @GetMapping("/{roomId}/members")
     @Operation(summary = "get room members")
     public ResponseEntity<SimpleResponse> getRoomMembers(
-            @PathVariable Long roomId
+            @PathVariable Long roomId,
+            Authentication authentication
     ) {
-        List<RoomMemberProjection> members =  chatRoomService.getRoomMembers(roomId);
+        List<RoomMemberProjection> members =  chatRoomService.getRoomMembers(roomId,authentication.getName());
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("members",members);
         resp.addMessage("status","members founded successfully");

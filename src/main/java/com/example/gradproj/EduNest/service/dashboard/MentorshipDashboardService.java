@@ -13,11 +13,13 @@ import com.example.gradproj.EduNest.repository.mentorShip.projections.Mentorship
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.points.projection.TopStudentResponse;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.service.security.securityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,6 +36,7 @@ public class MentorshipDashboardService {
     private final MentorShipRepository mentorShipRepository;
     private final MentorRepository mentorRepository;
     private final TotalPointsRepository totalPointsRepository;
+    private final securityService securityService;
 
     private String getCurrentUserEmail() {
         Authentication authentication =
@@ -95,6 +98,10 @@ public class MentorshipDashboardService {
             int page , int size ,long id
     ){
 
+        if(!securityService.isMentorOwnMentorship(id, getCurrentUserEmail())){
+            throw new AccessDeniedException("you are not authorized to access this mentorship");
+        }
+
         Pageable pageable = PageRequest.of(
                 page,
                 size,
@@ -123,6 +130,11 @@ public class MentorshipDashboardService {
     public PageResponse<TopStudentResponse> findTopLearnersByMentorshipId(
         long mentorshipId , int page, int size
     ){
+
+        if(!securityService.isMentorOwnMentorship(mentorshipId, getCurrentUserEmail())){
+            throw new AccessDeniedException("you are not authorized to access this mentorship");
+        }
+
         Pageable pageable = PageRequest.of(page , size, Sort.by("createdAt").descending() );
         Page<TopStudentResponse> Page = totalPointsRepository
                 .findTopStudentsByMentorship(mentorshipId, pageable);
@@ -139,6 +151,11 @@ public class MentorshipDashboardService {
     public PageResponse<MentorshipStudentRankDto> getStudentsRanksByMentorshipId(
             long mentorshipId, int page, int size
     ) {
+
+        if(!securityService.isMentorOwnMentorship(mentorshipId, getCurrentUserEmail())){
+            throw new AccessDeniedException("you are not authorized to access this mentorship");
+        }
+
         Pageable pageable = PageRequest.of(page, size);
         Page<MentorshipStudentRankDto> studentsPage = totalPointsRepository
                 .findStudentsWithRanksByMentorshipId(mentorshipId, pageable);
@@ -163,6 +180,11 @@ public class MentorshipDashboardService {
             int topLearnersPage,
             int topLearnersSize
     ) {
+
+        if(!securityService.isMentorOwnMentorship(mentorshipId, getCurrentUserEmail())){
+            throw new AccessDeniedException("you are not authorized to access this mentorship");
+        }
+
 
         MentorshipStatsResponse stats =
                 getStats(mentorshipId);

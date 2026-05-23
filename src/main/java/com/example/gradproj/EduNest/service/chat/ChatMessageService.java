@@ -10,10 +10,12 @@ import com.example.gradproj.EduNest.repository.chat.ChatMessageRepository;
 import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
 import com.example.gradproj.EduNest.repository.chat.projection.ChatMessageProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.security.securityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class ChatMessageService {
     private final ChatRoomRepository roomRepo;
     private final UserRepository userRepo;
     private final SimpMessagingTemplate messagingTemplate;
+    private final securityService securityService;
 
     public ChatMessageResponse saveMessage(
             Long roomId,
@@ -71,8 +74,13 @@ public class ChatMessageService {
     public List<ChatMessageResponse> getRoomMessages(
             Long roomId,
             Long beforeId,
-            int size
+            int size,
+            String senderEmail
     ) {
+
+        if (!securityService.isUserMemberOfChatRoom(roomId, senderEmail)) {
+            throw new AccessDeniedException("You are not a member of this room");
+        }
 
         Pageable pageable = PageRequest.of(0, size);
 
