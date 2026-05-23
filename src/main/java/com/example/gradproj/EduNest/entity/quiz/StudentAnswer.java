@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.entity.quiz;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,7 @@ public class StudentAnswer extends BaseEntity {
 
     @NotNull(message = "Question must not be null")
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonBackReference
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
