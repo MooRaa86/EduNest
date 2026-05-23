@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -39,7 +40,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
-    private final TaskFileStorageService fileStorageService;
+    private final FileStorageService StorageService;
 
     private void validateMentorshipOwnership(Long mentorShipId, String email) {
         if (!mentorShipRepository.existsByIdAndMentor_Email(mentorShipId, email)) {
@@ -67,7 +68,7 @@ public class TaskServiceImpl implements TaskService {
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
-            uploadedPath = fileStorageService.saveFile("task-attachment", "task",week.getMentorship().getId(), week.getMentorship().getId(), file);
+            uploadedPath = StorageService.saveFile("task-attachment", "task",week.getMentorship().getId(), week.getMentorship().getId(), file);
         }
 
         Task task = Task.builder()
@@ -84,13 +85,15 @@ public class TaskServiceImpl implements TaskService {
                 .build();
         Task saved = taskRepository.save(task);
 
-        notificationService.sendToMentorshipStudents(
-                week.getMentorship().getId(),
-                "New Task",
-                "a new task " + saved.getTitle()
-                        + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
-                NotificationType.TASK
-        );
+        if (saved.getStatus() == TaskStatus.PUBLISHED) {
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Task",
+                    "a new task " + saved.getTitle()
+                            + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.TASK
+            );
+        }
 
         return mapToTaskResponse(saved);
     }
@@ -109,6 +112,7 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == TaskStatus.CLOSED) {
             throw new globalLogicEx("cannot update closed task");
         }
+        TaskStatus oldStatus = task.getStatus();
         if (request != null) {
             if (request.getTitle() != null) task.setTitle(request.getTitle());
             if (request.getDescription() != null) task.setDescription(request.getDescription());
@@ -126,17 +130,39 @@ public class TaskServiceImpl implements TaskService {
         }
         if (file != null && !file.isEmpty()) {
             Long mentorshipId = task.getWeek().getMentorship().getId();
-            task.setUploadedAttachmentPath(fileStorageService.saveFile("task-attachment","task", mentorshipId, mentorshipId, file));
+            String oldPath = task.getUploadedAttachmentPath();
+            if (oldPath != null && !oldPath.isBlank()) {
+                StorageService.deleteFile(oldPath);
+            }
+            task.setUploadedAttachmentPath(StorageService.saveFile("task-attachment","task", mentorshipId, mentorshipId, file));
         }
         if (task.getPassPoints() > task.getPoints()) {
             throw new globalLogicEx("Pass points must be less than or equal to points.");
         }
+        
+        if (oldStatus != TaskStatus.PUBLISHED && task.getStatus() == TaskStatus.PUBLISHED) {
+            Week week = task.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Task",
+                    "a new task " + task.getTitle()
+                            + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.TASK
+            );
+        }
+        
         return mapToTaskResponse(task);
     }
 
     @Override
     public void deleteTask(Long taskId, String email) {
-        validateMentorOwnershipAndGetTask(taskId, email);
+        Task task = validateMentorOwnershipAndGetTask(taskId, email);
+
+        String filePath = task.getUploadedAttachmentPath();
+        if (filePath != null && !filePath.isBlank()) {
+            StorageService.deleteFile(filePath);
+        }
+
         taskRepository.deleteById(taskId);
     }
 
@@ -146,7 +172,20 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.DRAFT) {
             throw new globalLogicEx("Cannot revert published task to draft");
         }
+        TaskStatus oldStatus = task.getStatus();
         task.setStatus(req.getStatus());
+        
+        if (oldStatus != TaskStatus.PUBLISHED && req.getStatus() == TaskStatus.PUBLISHED) {
+            Week week = task.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Task",
+                    "a new task " + task.getTitle()
+                            + " has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.TASK
+            );
+        }
+        
         return mapToTaskResponse(task);
     }
 

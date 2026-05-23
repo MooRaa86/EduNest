@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.repository.tasks;
 
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskDashboardProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.UpcomingTaskProjection;
 import org.springframework.data.domain.Page;
@@ -12,8 +13,30 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task,Long> {
+    @Query("""
+        SELECT t.id AS id,
+               m.email AS mentorEmail,
+               ms.id AS mentorshipId,
+               t.uploadedAttachmentPath AS filePath
+        FROM Task t
+        JOIN t.week w
+        JOIN w.mentorship ms
+        JOIN ms.mentor m
+        WHERE t.id = :id
+    """)
+    Optional<TaskAuthProjection> findAuthProjectionById(@Param("id") Long id);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END
+        FROM Enrollment e
+        WHERE e.mentorShip.id = :mentorshipId
+          AND e.student.email = :email
+    """)
+    boolean isStudentEnrolled(@Param("mentorshipId") Long mentorshipId, @Param("email") String email);
+
     boolean existsById(Long id);
 List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
 

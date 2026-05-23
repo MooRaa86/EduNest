@@ -24,7 +24,7 @@ import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSt
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
-import com.example.gradproj.EduNest.service.tasks.TaskFileStorageService;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,7 +49,7 @@ public class ProjectServiceImpl implements ProjectService{
     private final ProjectSubmissionRepository submissionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
-    private final TaskFileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
@@ -115,12 +115,14 @@ public class ProjectServiceImpl implements ProjectService{
                 .build();
         projectRepository.save(project);
 
-        notificationService.sendToMentorshipStudents(
-                week.getMentorship().getId(),
-                "New Project",
-                "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
-                NotificationType.PROJECT
-        );
+        if (project.getStatus() == ProjectStatus.PUBLISHED) {
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Project",
+                    "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.PROJECT
+            );
+        }
 
         return mapToProjectResponse(project);
     }
@@ -140,6 +142,7 @@ public class ProjectServiceImpl implements ProjectService{
             throw new globalLogicEx("Cannot update closed project");
         }
 
+        ProjectStatus oldStatus = project.getStatus();
         if (req != null) {
             if (req.getTitle() != null) project.setTitle(req.getTitle());
             if (req.getGoal() != null) project.setGoal(req.getGoal());
@@ -162,8 +165,22 @@ public class ProjectServiceImpl implements ProjectService{
         if (file != null && !file.isEmpty()) {
             Long mentorId = getCurrentMentorId();
             Long mentorshipId = project.getWeek().getMentorship().getId();
+            String oldPath = project.getUploadedAttachmentPath();
+            if (oldPath != null && !oldPath.isBlank()) {
+                fileStorageService.deleteFile(oldPath);
+            }
             String uploadedPath = fileStorageService.saveFile("project-attachment", "project", mentorshipId, mentorId, file);
             project.setUploadedAttachmentPath(uploadedPath);
+        }
+
+        if (oldStatus != ProjectStatus.PUBLISHED && project.getStatus() == ProjectStatus.PUBLISHED) {
+            Week week = project.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Project",
+                    "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.PROJECT
+            );
         }
 
         return mapToProjectResponse(project);
@@ -171,7 +188,13 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public void deleteProject(Long projectId) {
-        validateMentorOwnershipAndGetProject(projectId);
+        Project project = validateMentorOwnershipAndGetProject(projectId);
+
+        String filePath = project.getUploadedAttachmentPath();
+        if (filePath != null && !filePath.isBlank()) {
+            fileStorageService.deleteFile(filePath);
+        }
+
         projectRepository.deleteById(projectId);
     }
 
@@ -182,7 +205,19 @@ public class ProjectServiceImpl implements ProjectService{
         if ((project.getStatus() == ProjectStatus.PUBLISHED) && (req.getStatus() == ProjectStatus.DRAFT)) {
             throw new globalLogicEx("Cannot revert published project to draft");
         }
+        ProjectStatus oldStatus = project.getStatus();
         project.setStatus(req.getStatus());
+        
+        if (oldStatus != ProjectStatus.PUBLISHED && req.getStatus() == ProjectStatus.PUBLISHED) {
+            Week week = project.getWeek();
+            notificationService.sendToMentorshipStudents(
+                    week.getMentorship().getId(),
+                    "New Project",
+                    "A new project \"" + project.getTitle() + "\" has been created in week " + week.getTitle() + " in mentorship " + week.getMentorship().getTitle(),
+                    NotificationType.PROJECT
+            );
+        }
+        
         return mapToProjectResponse(project);
     }
 

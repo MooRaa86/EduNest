@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,10 +37,16 @@ public class CertificateService {
     private final CertificateRepository certificateRepository;
     private final StudentRepository studentRepository;
     private final NotificationService notificationService;
+    private final com.example.gradproj.EduNest.service.security.securityService securityService;
 
     @Transactional
     public void issueCertificates(Long mentorshipId) {
         log.info("Start issuing certificates for mentorship {}", mentorshipId);
+
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnMentorship(mentorshipId, email)) {
+            throw new AccessDeniedException("You are not authorized to issue certificates for this mentorship");
+        }
 
         var mentorship = mentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.tasks;
 
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissionProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,Long> {
+    @Query("""
+        SELECT ts.id AS id,
+               s.email AS studentEmail,
+               m.email AS mentorEmail,
+               ts.uploadedFilePath AS filePath
+        FROM TaskSubmission ts
+        JOIN ts.student s
+        JOIN ts.task t
+        JOIN t.week w
+        JOIN w.mentorship ms
+        JOIN ms.mentor m
+        WHERE ts.id = :id
+    """)
+    Optional<TaskSubmissionAuthProjection> findAuthProjectionById(@Param("id") Long id);
+
     @Query("SELECT s FROM TaskSubmission s JOIN FETCH s.student WHERE s.task.id = :taskId")
     Page<TaskSubmission> findByTask_Id(Long taskId, Pageable pageable);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);

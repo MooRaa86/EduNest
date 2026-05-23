@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final EnrollmentRepository enrollmentRepository;
     private final MentorRepository mentorRepository;
-    private final TaskFileStorageService fileStorageService;
+    private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
 
     private String getCurrentUserEmail() {
@@ -116,6 +117,12 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         String uploadedPath = null;
         if (file != null && !file.isEmpty()) {
+            if (existingOpt.isPresent()) {
+                String oldPath = existingOpt.get().getUploadedFilePath();
+                if (oldPath != null && !oldPath.isBlank()) {
+                    fileStorageService.deleteFile(oldPath);
+                }
+            }
             uploadedPath = fileStorageService.saveFile("submissions", "task", taskId, studentId, file);
         }
 

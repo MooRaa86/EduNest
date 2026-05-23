@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.repository.projects;
 
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
+import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,21 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
+    @Query("""
+        SELECT ps.id AS id,
+               s.email AS studentEmail,
+               m.email AS mentorEmail,
+               ps.uploadedFilePath AS filePath
+        FROM ProjectSubmission ps
+        JOIN ps.student s
+        JOIN ps.project p
+        JOIN p.week w
+        JOIN w.mentorship ms
+        JOIN ms.mentor m
+        WHERE ps.id = :id
+    """)
+    Optional<ProjectSubmissionAuthProjection> findAuthProjectionById(@Param("id") Long id);
+
     Page<ProjectSubmission> findByProject_Id(Long projectId, Pageable pageable);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
     boolean existsByProject_IdAndStudent_Id(Long projectId, Long studentId);

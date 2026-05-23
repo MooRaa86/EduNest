@@ -74,8 +74,8 @@ public class ProjectSecurityProdconfig {
                                 "/api/auth/**",
                                 "/ws/**",
                                 "/api/v1/contact/**",
-                                "/uploads/**","/api/v1/student/mentorships/*/overview","/api/v1/student/mentorships/*/reviews",
-                                "/files/**",
+                                "/api/v1/student/mentorships/*/overview",
+                                "/api/v1/student/mentorships/*/reviews",
                                 "/api/v1/admin/register"
                         ).permitAll()
                         .requestMatchers("/api/v1/register/**").permitAll()
