@@ -17,12 +17,14 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import com.example.gradproj.EduNest.service.quiz.submission.QuizSubmissionService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,11 +39,17 @@ public class QuizServiceImpl implements QuizService {
     private final WeekRepository weekRepository;
     private final QuizSubmissionService quizSubmissionService;
     private final NotificationService notificationService;
+    private final SecurityService securityService;
 
 
     @Override
     @Transactional
     public QuizResponseDTO createQuiz(QuizCreateDTO quizCreateDTO) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnWeek(quizCreateDTO.getWeekId(), email)) {
+            throw new AccessDeniedException("You are not authorized to create quiz for this week");
+        }
+
         Week week=weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
                 ()->new globalLogicEx("Week not found")
         );
@@ -80,6 +88,11 @@ public class QuizServiceImpl implements QuizService {
     @Override
     @Transactional
     public void deleteQuiz(Long id) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(id, email)) {
+            throw new AccessDeniedException("You are not authorized to delete this quiz");
+        }
+
         if (!quizRepository.existsById(id)) {
          throw  new globalLogicEx("Quiz not found");
         }
@@ -90,6 +103,11 @@ public class QuizServiceImpl implements QuizService {
     @Override
     @Transactional
     public QuizResponseDTO updateQuiz(Long id, QuizUpdateDto quizUpdateDto) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(id, email)) {
+            throw new AccessDeniedException("You are not authorized to update this quiz");
+        }
+
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
@@ -114,6 +132,14 @@ public class QuizServiceImpl implements QuizService {
 
     @Override
     public QuizResponseDTO getQuizDetails(Long id) {
+        String email = securityService.getCurrentUserEmail();
+        boolean isMentor = securityService.isMentorOwnQuiz(id, email);
+        boolean isStudent = securityService.isStudentEnrolledByQuizId(email, id);
+
+        if (!isMentor && !isStudent) {
+            throw new AccessDeniedException("You are not authorized to access this quiz");
+        }
+
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
@@ -155,6 +181,10 @@ public class QuizServiceImpl implements QuizService {
 
     @Override
     public QuizDashboardDTO getQuizDashboard(Long mentorShipId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnMentorship(mentorShipId, email)) {
+            throw new AccessDeniedException("You are not authorized to view dashboard for this mentorship");
+        }
 
         if (!(mentorshipRepository.existsById(mentorShipId)))
         {
@@ -184,6 +214,11 @@ public class QuizServiceImpl implements QuizService {
 
     @Override
     public QuizStatisticsDTO getQuizStatistics(Long quizId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(quizId, email)) {
+            throw new AccessDeniedException("You are not authorized to view statistics for this quiz");
+        }
+
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
@@ -207,6 +242,11 @@ public class QuizServiceImpl implements QuizService {
     }
     @Override
     public MentorshipQuizzesOverviewResponseDto getMentorshipQuizzesOverview(Long mentorShipId, int page, int size) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnMentorship(mentorShipId, email)) {
+            throw new AccessDeniedException("You are not authorized to view quizzes overview for this mentorship");
+        }
+
         if (!(mentorshipRepository.existsById(mentorShipId)))
         {
             throw  new globalLogicEx("MentorShip not found");
@@ -233,6 +273,11 @@ public class QuizServiceImpl implements QuizService {
 
     @Override
     public QuizOverviewResponseDto getQuizOverviewDto(Long quizId,int page,int size) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(quizId, email)) {
+            throw new AccessDeniedException("You are not authorized to view overview for this quiz");
+        }
+
         QuizStatisticsDTO quizStatisticsDTO=getQuizStatistics(quizId);
         List<QuizSubmissionResponseDTO> submissions=quizSubmissionService.getAllSubmissionsByQuiz(quizId,page,size);
          double fullMark=quizStatisticsDTO.getTotalPoints();
@@ -255,6 +300,11 @@ public class QuizServiceImpl implements QuizService {
     }
     @Override
     public void changeStatus(Long quizId, QuizStatus quizStatus) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(quizId, email)) {
+            throw new AccessDeniedException("You are not authorized to change status of this quiz");
+        }
+
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 

@@ -94,6 +94,10 @@ public class SecurityService {
         return securityRepository.isUserMemberOfChatRoom(roomId, email);
     }
 
+    public Boolean isMentorOwnWeek(Long weekId, String email) {
+        return securityRepository.isMentorOwnWeek(weekId, email);
+    }
+
     //------------------------------------------------------
 
     public Long getCurrentMentorId() {

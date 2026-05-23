@@ -59,6 +59,15 @@ public interface AuthorizationRepository extends JpaRepository<Enrollment, Long>
     Boolean isMentorOwnQuestion(@Param("questionId") Long questionId,
                                 @Param("email") String email);
 
+    @Query("""
+        SELECT COUNT(w) > 0
+        FROM Week w
+        WHERE w.id = :weekId
+        AND w.mentorship.mentor.email = :email
+    """)
+    Boolean isMentorOwnWeek(@Param("weekId") Long weekId,
+                            @Param("email") String email);
+
 
     @Query("""
         SELECT COUNT(un) > 0

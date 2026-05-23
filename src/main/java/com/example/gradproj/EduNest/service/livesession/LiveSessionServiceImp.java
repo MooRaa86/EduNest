@@ -60,12 +60,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public SessionResponseDto createSession(CreateSessionDto createSessionDto) {
 
-        //ToDo
-       // String email = SecurityService.getCurrentUserEmail();
+        String email = securityService.getCurrentUserEmail();
 
-       // if (!SecurityService.isMentorOwnWeek(createSessionDto.getWeekId(), email)) {
-         //   throw new AccessDeniedException("You are not authorized to create session for this week");
-      //  }
+        if (!securityService.isMentorOwnWeek(createSessionDto.getWeekId(), email)) {
+            throw new AccessDeniedException("You are not authorized to create session for this week");
+        }
 
 
         LocalDateTime scheduledAt = LocalDateTime.of(createSessionDto.getDate(), createSessionDto.getTime());
