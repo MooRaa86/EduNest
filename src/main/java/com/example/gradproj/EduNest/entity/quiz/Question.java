@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.enums.quiz.AnswerChoices;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
 
 @Entity
 @Table(name = "questions")
@@ -17,6 +18,11 @@ public class Question extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
+
+    @OneToMany(mappedBy = "question",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    private List<StudentAnswer> studentAnswers;
 
     @Column(nullable = false, length = 500)
     private String text;
