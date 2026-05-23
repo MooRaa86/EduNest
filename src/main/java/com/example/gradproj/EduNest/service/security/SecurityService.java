@@ -29,7 +29,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class securityService {
+public class SecurityService {
     private final EnrollmentRepository enrollmentRepository;
     private final MentorShipRepository mentorShipRepository;
     private final MentorRepository mentorRepository;

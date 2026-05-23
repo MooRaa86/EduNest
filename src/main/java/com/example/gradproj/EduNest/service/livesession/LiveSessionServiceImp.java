@@ -23,10 +23,12 @@ import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -52,10 +54,19 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final JitsiService jitsiService;
     private final TotalPointsServiceImp totalPointsService;
     private final NotificationService notificationService;
+    private final SecurityService securityService;
 
     @Override
     @Transactional
     public SessionResponseDto createSession(CreateSessionDto createSessionDto) {
+
+        //ToDo
+       // String email = SecurityService.getCurrentUserEmail();
+
+       // if (!SecurityService.isMentorOwnWeek(createSessionDto.getWeekId(), email)) {
+         //   throw new AccessDeniedException("You are not authorized to create session for this week");
+      //  }
+
 
         LocalDateTime scheduledAt = LocalDateTime.of(createSessionDto.getDate(), createSessionDto.getTime());
 
@@ -85,10 +96,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
         return mapToDto(session);
     }
 
-
     @Override
     @Transactional
     public SessionResponseDto updateSession(Long sessionId, UpdateSessionDto updateSessionDto) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+            throw new AccessDeniedException("You are not authorized to update this session");
+        }
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -122,6 +137,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Override
     @Transactional
     public SessionResponseDto getSessionById(Long sessionId) {
+        String email = securityService.getCurrentUserEmail();
+        boolean isMentor = securityService.isMentorOwnLiveSession(sessionId, email);
+        boolean isStudent = securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
+
+        if (!isMentor && !isStudent) {
+            throw new AccessDeniedException("You are not authorized to access this session");
+        }
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -131,12 +154,33 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
     @Override
     @Transactional
-    public PageResponse<DashboardSessionResponse> getAllSessions(Long mentorshipId, int page, int size) {
+    public PageResponse<DashboardSessionResponse> getAllSessions(
+            Long mentorshipId,
+            int page,
+            int size
+    ) {
+
+        String email = securityService.getCurrentUserEmail();
+
+        boolean isMentor =
+                securityService.isMentorOwnMentorship(mentorshipId, email);
+
+        boolean isStudent =
+                securityService.isStudentEnrolledByMentorshipId(email, mentorshipId);
+
+        if (!isMentor && !isStudent) {
+            throw new AccessDeniedException(
+                    "You are not authorized to access these sessions"
+            );
+        }
 
         Pageable pageable = PageRequest.of(page, size);
 
         Page<DashboardSessionResponse> allSessions =
-                liveSessionRepository.findAllByMentorshipId(mentorshipId, pageable);
+                liveSessionRepository.findAllByMentorshipId(
+                        mentorshipId,
+                        pageable
+                );
 
         return PageResponse.<DashboardSessionResponse>builder()
                 .content(allSessions.getContent())
@@ -150,6 +194,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Override
     @Transactional
     public void deleteSession(Long sessionId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+            throw new AccessDeniedException("You are not authorized to delete this session");
+        }
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -169,6 +218,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
     @Override
     public SessionResponseDto startLiveSession(Long sessionId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+            throw new AccessDeniedException("You are not authorized to start this session");
+        }
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -204,8 +258,21 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Override
     @Transactional
     public SessionResponseDto joinSession(Long sessionId) {
+
+        String email = securityService.getCurrentUserEmail();
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
+
+        boolean isStudent =
+                securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
+
+        boolean isMentor =
+                securityService.isMentorOwnLiveSession(sessionId, email);
+
+        if (!isStudent && !isMentor) {
+            throw new AccessDeniedException("You are not authorized to join this session");
+        }
 
         if (session.getStatus() == SessionStatus.SCHEDULED) {
             throw new globalLogicEx("Session not started yet");
@@ -219,26 +286,17 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Meeting link not ready");
         }
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Student student = studentRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
-
-        Long mentorshipId = session.getWeek().getMentorship().getId();
-        boolean isStudentEnrolled = enrollmentRepository.existsByMentorShip_IdAndStudent_Id(mentorshipId, student.getId());
-
-        if (!isStudentEnrolled) {
-            throw new globalLogicEx("You are not enrolled in the mentorship program for this session.");
-        }
-
-
-
-
         return mapToDto(session);
     }
 
     @Override
     @Transactional
     public SessionResponseDto endSession(Long sessionId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+            throw new AccessDeniedException("You are not authorized to end this session");
+        }
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -262,6 +320,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     public void recordSnapshot(Long sessionId, List<Long> studentIds) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+            throw new AccessDeniedException("You are not authorized to record attendance for this session");
+        }
+
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
@@ -290,7 +353,13 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Override
     @Transactional
     public AttendanceResponse getStudentAttendanceResult(Long sessionId) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        String email = securityService.getCurrentUserEmail();
+
+        if (!securityService.isStudentEnrolledByLiveSessionId(email, sessionId)) {
+            throw new AccessDeniedException("You are not authorized to access this attendance result");
+        }
+
         Student student = studentRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
@@ -308,6 +377,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Override
     @Transactional
     public List<AttendanceResponse> getAttendanceResult(Long sessionId) {
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+            throw new AccessDeniedException("You are not authorized to view attendance for this session");
+        }
+
         List<SessionAttendanceResult> results = sessionAttendanceResultRepository.findBySession_Id(sessionId);
         return results.stream()
                 .map(r -> AttendanceResponse.builder()
