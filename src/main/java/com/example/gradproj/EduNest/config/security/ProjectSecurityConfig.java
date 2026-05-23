@@ -43,7 +43,11 @@ public class ProjectSecurityConfig {
                                 "/api/auth/**",
                                 "/api/v1/**",
                                 "/ws/**",
-                                "/api/v1/contact/**"
+                                "/api/v1/contact/**",
+                                "/uploads/mentorship-cover-images/**",
+                                "/uploads/profile-images/**",
+                                "/uploads/student-profile/**",
+                                "/uploads/mentor-profile/**"
                         ).permitAll()
                         .anyRequest().permitAll()
                 );
