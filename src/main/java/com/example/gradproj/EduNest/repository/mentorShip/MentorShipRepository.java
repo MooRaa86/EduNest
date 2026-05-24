@@ -34,7 +34,8 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         ROUND(COALESCE(SUM(e.price - e.platformProfit),0), 2) AS revenue,
         m.createdAt AS createdDate,
         m.difficultyLevel AS difficultyLevel,
-        m.coverImageUrl AS coverImageUrl
+        m.coverImageUrl AS coverImageUrl,
+        m.status AS mentorshipStatus
     FROM MentorShip m
     LEFT JOIN m.enrollments e
     WHERE m.mentor.email = :email

@@ -11,6 +11,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -37,7 +38,7 @@ public class CertificateService {
     private final CertificateRepository certificateRepository;
     private final StudentRepository studentRepository;
     private final NotificationService notificationService;
-    private final com.example.gradproj.EduNest.service.security.securityService securityService;
+    private final SecurityService securityService;
 
     @Transactional
     public void issueCertificates(Long mentorshipId) {
