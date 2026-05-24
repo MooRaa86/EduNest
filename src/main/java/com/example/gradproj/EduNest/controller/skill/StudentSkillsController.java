@@ -6,12 +6,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/student/skills")
 @RequiredArgsConstructor
 @Tag(name = "Student Skills", description = "Endpoints to manage student skills")
+@PreAuthorize("hasRole('STUDENT')")
 public class StudentSkillsController {
 
     private final StudentSkillService studentSkillService;
