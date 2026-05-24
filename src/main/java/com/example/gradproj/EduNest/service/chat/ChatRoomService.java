@@ -16,7 +16,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorMentorshipProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
-import com.example.gradproj.EduNest.service.security.securityService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -38,7 +38,7 @@ public class ChatRoomService {
     private final MembersRepo membersRepo;
     private final EnrollmentRepository enrollmentRepo;
     private final ImageStorageService imageStorageService;
-    private final securityService securityService;
+    private final SecurityService securityService;
 
     @Transactional
     @PreAuthorize("hasRole('MENTOR')")

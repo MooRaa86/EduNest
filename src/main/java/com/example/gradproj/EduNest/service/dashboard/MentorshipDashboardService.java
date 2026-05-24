@@ -13,7 +13,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.projections.Mentorship
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.points.projection.TopStudentResponse;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
-import com.example.gradproj.EduNest.service.security.securityService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +36,7 @@ public class MentorshipDashboardService {
     private final MentorShipRepository mentorShipRepository;
     private final MentorRepository mentorRepository;
     private final TotalPointsRepository totalPointsRepository;
-    private final securityService securityService;
+    private final SecurityService securityService;
 
     private String getCurrentUserEmail() {
         Authentication authentication =

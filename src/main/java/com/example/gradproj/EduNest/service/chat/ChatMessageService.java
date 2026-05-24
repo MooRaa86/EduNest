@@ -10,7 +10,7 @@ import com.example.gradproj.EduNest.repository.chat.ChatMessageRepository;
 import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
 import com.example.gradproj.EduNest.repository.chat.projection.ChatMessageProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
-import com.example.gradproj.EduNest.service.security.securityService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,7 +32,7 @@ public class ChatMessageService {
     private final ChatRoomRepository roomRepo;
     private final UserRepository userRepo;
     private final SimpMessagingTemplate messagingTemplate;
-    private final securityService securityService;
+    private final SecurityService securityService;
 
     public ChatMessageResponse saveMessage(
             Long roomId,

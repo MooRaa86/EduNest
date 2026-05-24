@@ -29,7 +29,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class securityService {
+public class SecurityService {
     private final EnrollmentRepository enrollmentRepository;
     private final MentorShipRepository mentorShipRepository;
     private final MentorRepository mentorRepository;
@@ -92,6 +92,10 @@ public class securityService {
 
     public Boolean isUserMemberOfChatRoom(Long roomId, String email) {
         return securityRepository.isUserMemberOfChatRoom(roomId, email);
+    }
+
+    public Boolean isMentorOwnWeek(Long weekId, String email) {
+        return securityRepository.isMentorOwnWeek(weekId, email);
     }
 
     //------------------------------------------------------

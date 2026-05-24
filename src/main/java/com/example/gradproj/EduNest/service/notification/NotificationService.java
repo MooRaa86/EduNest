@@ -16,7 +16,7 @@ import com.example.gradproj.EduNest.repository.notification.NotificationReposito
 import com.example.gradproj.EduNest.repository.notification.UserNotificationRepository;
 import com.example.gradproj.EduNest.repository.users.AdminRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
-import com.example.gradproj.EduNest.service.security.securityService;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +42,7 @@ public class NotificationService {
     private final EnrollmentRepository enrollmentRepo;
     private final AdminRepository adminRepo;
     private final AdminNotificationRepository adminNotificationRepo;
-    private final securityService securityService;
+    private final SecurityService securityService;
 
 
     private NotificationDto mapToDto(UserNotification u){
