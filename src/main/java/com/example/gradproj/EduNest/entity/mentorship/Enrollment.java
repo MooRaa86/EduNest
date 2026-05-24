@@ -12,7 +12,9 @@ import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "enrollments")
+@Table(name = "enrollments", indexes = {
+        @Index(name = "idx_enrollments_student_mentorship", columnList = "student_id, mentorship_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
