@@ -132,6 +132,7 @@ public class mentorShipControllers {
 
     @GetMapping("/count-for-mentor")
     @Operation(summary = "get count of all mentorship for the mentor")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getCountForMentor(
             ){
         long count = mentorShipService.countMentorShipsForMentorId();
@@ -142,6 +143,7 @@ public class mentorShipControllers {
 
     @GetMapping("/count-students-for-mentor")
     @Operation(summary = "get count of students in mentorship for specific mentor")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getCountStudentsForMentor(){
         long count = mentorShipService.countStudentsforMentor();
         SimpleResponse response = new SimpleResponse();
@@ -152,6 +154,7 @@ public class mentorShipControllers {
 
     @PostMapping("/update-status/{id}")
     @Operation(summary = "update mentorship status (DRAFT,ACTIVE,COMPLETED)")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> changeStatus(
             @PathVariable long id,
             @RequestBody ChangeStatusRequest request
@@ -195,6 +198,7 @@ public class mentorShipControllers {
 
     @PostMapping("/{mentorshipId}/join")
     @Operation(summary = "Student join in mentorship")
+    @PreAuthorize("hasRole('Student')")
     public ResponseEntity<SimpleResponse> joinMentorship(
             @PathVariable Long mentorshipId
     ) {
@@ -208,6 +212,7 @@ public class mentorShipControllers {
 
     @PostMapping("/{mentorshipId}/rate")
     @Operation(summary = "rate a mentorship")
+    @PreAuthorize("hasRole('Student')")
     public ResponseEntity<SimpleResponse> rateMentorship(
             @PathVariable Long mentorshipId,
             @RequestBody @Valid CreateReviewRequest request

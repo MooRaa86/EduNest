@@ -202,7 +202,9 @@ public class MentorDashboardController {
             @RequestParam(defaultValue = "6") int reviewsSize,
 
             @RequestParam(defaultValue = "0") int topPage,
-            @RequestParam(defaultValue = "3") int topSize
+            @RequestParam(defaultValue = "3") int topSize,
+            @RequestParam(defaultValue = "0") int studentPage,
+            @RequestParam(defaultValue = "10") int studentSize
     ) {
 
         MentorshipDashboardResponse dashboard =
@@ -212,7 +214,9 @@ public class MentorDashboardController {
                                 reviewsPage,
                                 reviewsSize,
                                 topPage,
-                                topSize
+                                topSize,
+                                studentSize,
+                                studentPage
                         );
 
         SimpleResponse resp = new SimpleResponse();
