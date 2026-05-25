@@ -13,15 +13,13 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 @Component
 @RequiredArgsConstructor
 public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private final JwtService jwtService;
     private final ChatRoomRepository chatRoomRepository;
-    private final ConcurrentHashMap<String, String> connectedUsers = new ConcurrentHashMap<>();
+//    private final ConcurrentHashMap<String, String> connectedUsers = new ConcurrentHashMap<>();
 
     @Override
     public Message<?> preSend(
@@ -63,11 +61,11 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         String email = jwtService.extractUserEmail(token);
         String fullName = jwtService.getFullName(token);
 
-        if (connectedUsers.containsKey(email)) {
-            throw new IllegalStateException("User already connected");
-        }
-
-        connectedUsers.put(email, accessor.getSessionId());
+//        if (connectedUsers.containsKey(email)) {
+//            throw new IllegalStateException("User already connected");
+//        }
+//
+//        connectedUsers.put(email, accessor.getSessionId());
         accessor.setUser(new ChatPrincipal(email, fullName));
     }
 
@@ -151,7 +149,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
         if (accessor.getUser() != null) {
             String email = accessor.getUser().getName();
-            connectedUsers.remove(email);
+//            connectedUsers.remove(email);
             System.out.println("Disconnected: " + email);
         }
     }
