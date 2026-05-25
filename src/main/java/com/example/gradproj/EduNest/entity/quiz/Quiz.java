@@ -10,7 +10,9 @@ import lombok.experimental.SuperBuilder;
 import java.util.List;
 
 @Entity
-@Table(name = "quiz")
+@Table(name = "quiz", indexes = {
+        @Index(name = "idx_quiz_week_id", columnList = "week_id")
+})
 @Setter
 @Getter
 @NoArgsConstructor

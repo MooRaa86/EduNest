@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class BadgeController {
 
     @PostMapping("/mentorship/{mentorshipId}")
     @Operation(summary = "Create a badge for a specific mentorship")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> create(
             @PathVariable Long mentorshipId,
             @Valid @RequestBody CreateBadgeRequest req
@@ -52,6 +54,7 @@ public class BadgeController {
 
     @PatchMapping("/{badgeId}")
     @Operation(summary = "Update a badge")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> update(
             @PathVariable Long badgeId,
             @Valid @RequestBody UpdateBadgeRequest req
@@ -64,6 +67,7 @@ public class BadgeController {
 
     @DeleteMapping("/{badgeId}")
     @Operation(summary = "Delete a badge (only if never awarded)")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> delete(@PathVariable Long badgeId) {
         badgeService.deleteBadge(badgeId);
         SimpleResponse response = new SimpleResponse();

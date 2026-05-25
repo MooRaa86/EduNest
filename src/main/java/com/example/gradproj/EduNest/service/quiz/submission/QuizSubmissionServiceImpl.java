@@ -18,9 +18,11 @@ import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -41,6 +43,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final StudentRepository studentRepository;
     private final TotalPointsServiceImp totalPointsService;
     private final NotificationService notificationService;
+    private final SecurityService securityService;
 
 
 
@@ -58,11 +61,16 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     public QuizSubmissionResponseDTO submitQuizAnswers(
             QuizSubmissionDTO quizSubmissionDTO, Long quizId) {
 
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isStudentEnrolledByQuizId(email, quizId)) {
+            throw new AccessDeniedException("You are not enrolled in this mentorship");
+        }
+
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         Student student = studentRepository
-                .findByEmail(getCurrentStudentEmail())
+                .findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
         if (quiz.getStatus() != QuizStatus.PUBLISHED) {
@@ -138,6 +146,14 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     }
 
     public List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId){
+        String email = securityService.getCurrentUserEmail();
+        Long currentStudentId = securityService.getCurrentStudentId();
+        boolean isMentorOwnQuiz = securityService.isMentorOwnQuiz(quizId, email);
+
+        if (!currentStudentId.equals(studentId) && !isMentorOwnQuiz) {
+            throw new AccessDeniedException("You are not authorized to view these answers");
+        }
+
         QuizSubmission submission = quizSubmissionRepository
                 .findByStudent_IdAndQuiz_Id(studentId, quizId)
                 .orElseThrow(() -> new globalLogicEx("Submission not found"));
@@ -151,6 +167,13 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     }
 
   public  List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size){
+        String email = securityService.getCurrentUserEmail();
+        Long currentStudentId = securityService.getCurrentStudentId();
+
+        if (!currentStudentId.equals(studentId)) {
+            throw new AccessDeniedException("You are not authorized to view submissions for this student");
+        }
+
         return quizSubmissionRepository.findAllByStudent_Id(studentId , PageRequest.of(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
@@ -163,6 +186,11 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     @Override
     public List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId, int page, int size){
+        String email = securityService.getCurrentUserEmail();
+        if (!securityService.isMentorOwnQuiz(quizId, email)) {
+            throw new AccessDeniedException("You are not authorized to view submissions for this quiz");
+        }
+
         if(!quizRepository.existsById(quizId)) {
             throw new globalLogicEx("Quiz not found");
         }

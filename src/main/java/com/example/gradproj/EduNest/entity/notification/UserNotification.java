@@ -17,6 +17,9 @@ import lombok.*;
                         columnNames = {"user_id","notification_id"}
                 )
         }
+        , indexes = {
+        @Index(name = "idx_notifications_user_id", columnList = "user_id")
+}
 )
 public class UserNotification extends BaseEntity {
 
