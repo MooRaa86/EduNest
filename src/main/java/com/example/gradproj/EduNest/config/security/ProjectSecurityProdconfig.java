@@ -80,7 +80,13 @@ public class ProjectSecurityProdconfig {
                                 "/uploads/profile-images/**",
                                 "/uploads/student-profile/**",
                                 "/uploads/mentor-profile/**",
+                                "/uploads/mentor/**",
+                                "/uploads/student/**",
                                 "/uploads/chatroom/**",
+                                "/uploads/**",
+
+                                //ToDo public uploads until front make the security on it
+
                                 "/api/v1/contact/save-message",
                                 "/api/v1/student/mentorships/*/overview",
                                 "/api/v1/student/mentorships/*/reviews",
@@ -137,8 +143,7 @@ public class ProjectSecurityProdconfig {
 //                                "/api/v1/liveSession/student/**",
 //                                "/api/v1/chat-room/*/join"
 //                        ).hasRole("STUDENT")
-                        
-                        //ToDo add prefix with rule MENTOR & STUDENT
+
 
                         // ========== Authenticated Users (Both MENTOR & STUDENT) ==========
                         .requestMatchers(
