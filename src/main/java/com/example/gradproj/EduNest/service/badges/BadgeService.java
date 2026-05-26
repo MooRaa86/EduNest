@@ -4,12 +4,15 @@ import com.example.gradproj.EduNest.dto.badges.request.CreateBadgeRequest;
 import com.example.gradproj.EduNest.dto.badges.request.UpdateBadgeRequest;
 import com.example.gradproj.EduNest.dto.badges.response.BadgeResponse;
 import com.example.gradproj.EduNest.entity.badges.Badge;
+import com.example.gradproj.EduNest.entity.badges.BadgeAward;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.badges.BadgeRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
+import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -29,6 +32,7 @@ public class BadgeService {
     private final BadgeAwardRepository badgeAwardRepository;
     private final MentorShipRepository mentorShipRepository;
     private final MentorRepository mentorRepository;
+    private final TotalPointsRepository totalPointsRepository;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -86,12 +90,21 @@ public class BadgeService {
 
         validateOwnership(badge.getMentorship());
 
+        Integer oldPoints = badge.getPoints();
+
         if (req.getTitle() != null) badge.setTitle(req.getTitle());
         if (req.getCategory() != null) badge.setCategory(req.getCategory());
         if (req.getDescription() != null) badge.setDescription(req.getDescription());
         if (req.getPoints() != null) badge.setPoints(req.getPoints());
 
-        return toDto(badgeRepository.save(badge));
+        Badge savedBadge = badgeRepository.save(badge);
+
+        if (req.getPoints() != null && !oldPoints.equals(req.getPoints())) {
+            int diff = req.getPoints() - oldPoints;
+            totalPointsRepository.updatePointsForBadgeAwards(badgeId, badge.getMentorship().getId(), diff);
+        }
+
+        return toDto(savedBadge);
     }
 
     public void deleteBadge(Long badgeId) {

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -132,5 +133,20 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             @Param("mentorshipId") Long mentorshipId,
             @Param("studentEmail") String studentEmail
     );
+
+    @Modifying
+    @Query("""
+        UPDATE TotalPoints tp
+        SET tp.totalPoints = tp.totalPoints + :delta
+        WHERE tp.student.id IN (
+            SELECT ba.student.id 
+            FROM BadgeAward ba 
+            WHERE ba.badge.id = :badgeId
+        )
+        AND tp.mentorship.id = :mentorshipId
+    """)
+    int updatePointsForBadgeAwards(@Param("badgeId") Long badgeId, 
+                                    @Param("mentorshipId") Long mentorshipId, 
+                                    @Param("delta") int delta);
 
 }
