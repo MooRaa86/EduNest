@@ -13,10 +13,10 @@ public class MentorshipExploreDto {
     private String description;
     private String category;
     private String mentorName;
-    private double price;
+    private Double price;
     private Integer discountPercentage;
-    private double priceAfterDiscount;
-    private double duration;
+    private Double priceAfterDiscount;
+    private Double duration;
     private String coverImageUrl;
     private Double rating;
 }
