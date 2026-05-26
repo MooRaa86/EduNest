@@ -86,7 +86,8 @@ public class ProjectSecurityProdconfig {
                                 "/api/v1/student/mentorships/*/reviews",
                                 "/api/v1/mentorship/explore",
                                 "/api/v1/mentorship/categories",
-                                "/api/v1/profile/mentor/**"
+                                "/api/v1/profile/mentor/**",
+                                "uploads/**"
                         ).permitAll()
                         // ========== ADMIN Only ==========
                         .requestMatchers(
