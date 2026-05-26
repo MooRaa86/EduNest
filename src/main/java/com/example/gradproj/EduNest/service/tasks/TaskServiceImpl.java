@@ -314,6 +314,7 @@ public class TaskServiceImpl implements TaskService {
                 .attachmentUrl(p.getAttachmentUrl())
                 .uploadedAttachmentPath(p.getUploadedAttachmentPath())
                 .submissionUrl(p.getFileUrl())
+                .uploadedSubmissionPath(p.getUploadedSubmissionPath())
                 .score(p.getFinalScore())
                 .totalPoints(p.getTotalPoints())
                 .submissionStatus(p.getSubmissionStatus())
