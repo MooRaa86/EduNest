@@ -17,6 +17,7 @@ public class ProjectWithSubmissionResponse {
     private String title;
     private String brief;
     private String descriptionUrl;
+    private String attachmentPath;
     private Integer points;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startAt;
