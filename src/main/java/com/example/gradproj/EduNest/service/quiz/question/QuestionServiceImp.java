@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.quiz.question;
 import com.example.gradproj.EduNest.dto.quiz.request.QuestionCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quiz.response.QuestionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.StudentQuestionResponseDTO;
 import com.example.gradproj.EduNest.entity.quiz.Question;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
@@ -65,6 +66,26 @@ public class QuestionServiceImp implements QuestionService {
             throw  new globalLogicEx("Quiz not found");
         }
         return questionRepository.findByQuiz_Id(quizId).stream().map(this::mapToResponseDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<StudentQuestionResponseDTO> getQuestionsByQuizIdForStudent(Long quizId) {
+        String email = securityService.getCurrentUserEmail();
+
+        if (!securityService.isStudentEnrolledByQuizId(email, quizId)) {
+            throw new AccessDeniedException("You are not enrolled in this mentorship");
+        }
+
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quiz.getStatus() != QuizStatus.PUBLISHED) {
+            throw new AccessDeniedException("Quiz is not published");
+        }
+
+        return questionRepository.findByQuiz_Id(quizId).stream()
+                .map(this::mapToStudentResponseDTO)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -156,6 +177,18 @@ public class QuestionServiceImp implements QuestionService {
                 .text(question.getText())
                 .points(question.getPoints())
                 .correctAnswer(question.getCorrectAnswer())
+                .optionA(question.getOptionA())
+                .optionB(question.getOptionB())
+                .optionC(question.getOptionC())
+                .optionD(question.getOptionD())
+                .build();
+    }
+
+    private StudentQuestionResponseDTO mapToStudentResponseDTO(Question question) {
+        return StudentQuestionResponseDTO.builder()
+                .id(question.getId())
+                .text(question.getText())
+                .points(question.getPoints())
                 .optionA(question.getOptionA())
                 .optionB(question.getOptionB())
                 .optionC(question.getOptionC())

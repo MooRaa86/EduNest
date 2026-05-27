@@ -96,6 +96,7 @@ public class QuizServiceImpl implements QuizService {
         if (!quizRepository.existsById(id)) {
          throw  new globalLogicEx("Quiz not found");
         }
+
         quizRepository.deleteById(id);
     }
 
@@ -110,6 +111,10 @@ public class QuizServiceImpl implements QuizService {
 
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quiz.getStatus() == QuizStatus.PUBLISHED || quiz.getStatus() == QuizStatus.CLOSED) {
+            throw new globalLogicEx("Cannot update published or closed quiz");
+        }
 
         QuizStatus oldStatus = quiz.getStatus();
         if (quizUpdateDto.getTitle() != null) quiz.setTitle(quizUpdateDto.getTitle());
@@ -154,10 +159,15 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        if (isStudent && quiz.getStatus() != QuizStatus.PUBLISHED) {
+            throw new AccessDeniedException("Quiz is not published");
+        }
+
         return QuizResponseDTO.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
                 .durationMinutes(quiz.getDurationMinutes())
+                .description(quiz.getDescription())
                 .status(quiz.getStatus())
                 .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .averageScore(calculateAverageScore(quiz))
@@ -166,6 +176,14 @@ public class QuizServiceImpl implements QuizService {
 
     @Override
     public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid, Pageable pageable) {
+        String email = securityService.getCurrentUserEmail();
+        boolean isMentor = securityService.isMentorOwnMentorship(msid, email);
+        boolean isStudent = enrollmentRepository.existsByMentorShip_IdAndStudent_Email(msid, email);
+
+        if (!isMentor && !isStudent) {
+            throw new AccessDeniedException("You are not authorized to view quizzes for this mentorship");
+        }
+
         Page<Quiz> quizzes = quizRepository.findQuizzesByMentorship(msid,quizName, status,pageable);
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
@@ -173,6 +191,7 @@ public class QuizServiceImpl implements QuizService {
                         .id(quiz.getId())
                         .title(quiz.getTitle())
                         .durationMinutes(quiz.getDurationMinutes())
+                        .description(quiz.getDescription())
                         .status(quiz.getStatus())
                         .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                         .averageScore(calculateAverageScore(quiz))
@@ -242,6 +261,7 @@ public class QuizServiceImpl implements QuizService {
 
         return QuizStatisticsDTO.builder()
                 .quizTitle(quiz.getTitle())
+                .description(quiz.getDescription())
                 .status(quiz.getStatus())
                 .averageScore(calculateAverageScore(quiz))
                 .totalStudents(quiz.getWeek().getMentorship() != null ? enrollmentRepository.countByMentorShip(quiz.getWeek().getMentorship()) : 0)

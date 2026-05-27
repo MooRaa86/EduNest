@@ -147,11 +147,15 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     public List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId){
         String email = securityService.getCurrentUserEmail();
-        Long currentStudentId = securityService.getCurrentStudentId();
         boolean isMentorOwnQuiz = securityService.isMentorOwnQuiz(quizId, email);
+        boolean isStudentEnrolled = securityService.isStudentEnrolledByQuizId(email, quizId);
 
-        if (!currentStudentId.equals(studentId) && !isMentorOwnQuiz) {
+        if (!isMentorOwnQuiz && !isStudentEnrolled) {
             throw new AccessDeniedException("You are not authorized to view these answers");
+        }
+
+        if (isStudentEnrolled && !securityService.getCurrentStudentId().equals(studentId)) {
+            throw new AccessDeniedException("You can only view your own answers");
         }
 
         QuizSubmission submission = quizSubmissionRepository
@@ -191,19 +195,31 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new AccessDeniedException("You are not authorized to view submissions for this quiz");
         }
 
-        if(!quizRepository.existsById(quizId)) {
-            throw new globalLogicEx("Quiz not found");
-        }
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        double fullMark = quiz.getQuestions().stream()
+                .map(Question::getPoints)
+                .reduce(0, Integer::sum);
 
         return  quizSubmissionRepository.findAllByQuiz_Id(quizId, PageRequest.of(page, size))
                 .stream()
                 .map(sub -> {
+                    String status;
+                    if (sub.getScore() == null) {
+                        status = "Not Submitted";
+                    } else if (sub.getScore() >= (fullMark / 2)) {
+                        status = "Passed";
+                    } else {
+                        status = "Failed";
+                    }
 
                     return QuizSubmissionResponseDTO.builder()
                             .id(sub.getId())
                             .studentId(sub.getStudent().getId())
                             .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                             .score(sub.getScore())
+                            .status(status)
                             .build();
                 })
                 .toList();

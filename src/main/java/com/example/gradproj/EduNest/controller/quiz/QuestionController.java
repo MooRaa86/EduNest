@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.quiz.request.QuestionCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuestionUpdateDto;
 import com.example.gradproj.EduNest.dto.quiz.response.QuestionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.StudentQuestionResponseDTO;
 import com.example.gradproj.EduNest.service.quiz.question.QuestionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,7 +24,6 @@ import java.util.List;
         name = "Quiz Questions",
         description = "APIs for managing quiz questions (create, update, delete, fetch)"
 )
-@PreAuthorize("hasRole('MENTOR')")
 public class QuestionController {
 
     private final QuestionService questionService;
@@ -33,6 +33,7 @@ public class QuestionController {
             description = "Create a new question and attach it to a quiz"
     )
     @PostMapping
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> addQuestion(@Valid @RequestBody QuestionCreateDTO questionCreateDTO){
         QuestionResponseDTO questionResponseDTO=questionService.createQuestion(questionCreateDTO);
         SimpleResponse simpleResponse=new SimpleResponse();
@@ -43,9 +44,10 @@ public class QuestionController {
 
     @Operation(
             summary = "Update question",
-            description = "Update an existing question using question ID"
+            description = "Update an existing question using question ID and Quiz ID"
     )
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateQuestion(@Valid @RequestBody QuestionUpdateDto questionUpdateDto, @PathVariable Long id){
         QuestionResponseDTO  questionResponseDTO=questionService.updateQuestion(id, questionUpdateDto );
         SimpleResponse simpleResponse=new SimpleResponse();
@@ -59,6 +61,7 @@ public class QuestionController {
             description = "Delete a question from a quiz using quiz ID and question ID"
     )
     @DeleteMapping("/{quizId}/{questionId}")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable Long quizId,@PathVariable Long questionId){
         questionService.deleteQuestion(quizId,questionId);
         SimpleResponse simpleResponse=new SimpleResponse();
@@ -66,17 +69,17 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
-
     @Operation(
-            summary = "Get question by ID",
-            description = "Retrieve question details using question ID"
+            summary = "Get questions by quiz ID for student",
+            description = "Retrieve all questions for a specific quiz (without correct answers) - for students only"
     )
-    @GetMapping("/{id}")
-    public ResponseEntity<SimpleResponse> getQuestionById(@PathVariable Long id){
-        QuestionResponseDTO questionResponseDTO=questionService.getQuestionById(id);
-        SimpleResponse simpleResponse=new SimpleResponse();
-        simpleResponse.addMessage("message","Question retrieved successfully");
-        simpleResponse.addMessage("Question Details",questionResponseDTO);
+    @GetMapping("/student/fetch/{quizId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<SimpleResponse> getQuestionByQuizIdForStudent(@PathVariable Long quizId){
+        List<StudentQuestionResponseDTO> allQuestions = questionService.getQuestionsByQuizIdForStudent(quizId);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Questions retrieved successfully");
+        simpleResponse.addMessage("Quiz Questions", allQuestions);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
@@ -85,11 +88,26 @@ public class QuestionController {
             description = "Retrieve all questions that belong to a specific quiz"
     )
     @GetMapping("/fetch/{quizId}")
+    @PreAuthorize("hasRole('MENTOR')")
     public  ResponseEntity<SimpleResponse> getQuestionByQuizId(@PathVariable Long quizId){
         List<QuestionResponseDTO>AllQuestions=questionService.getQuestionsByQuizId(quizId);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Questions retrieved successfully");
         simpleResponse.addMessage("Quiz Questions",AllQuestions);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
+    @Operation(
+            summary = "Get question by ID",
+            description = "Retrieve question details using question ID"
+    )
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('MENTOR')")
+    public ResponseEntity<SimpleResponse> getQuestionById(@PathVariable Long id){
+        QuestionResponseDTO questionResponseDTO=questionService.getQuestionById(id);
+        SimpleResponse simpleResponse=new SimpleResponse();
+        simpleResponse.addMessage("message","Question retrieved successfully");
+        simpleResponse.addMessage("Question Details",questionResponseDTO);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 

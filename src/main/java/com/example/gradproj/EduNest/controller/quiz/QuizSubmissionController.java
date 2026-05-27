@@ -40,7 +40,7 @@ public class QuizSubmissionController {
 
     @Operation(summary = "Get student answers", description = "Retrieve all answers submitted by a specific student for a quiz")
     @GetMapping("/answer/{studentId}/{quizId}")
-    @PreAuthorize("hasRole('MENTOR')")
+    @PreAuthorize("hasRole('MENTOR') or hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> getStudentAnswers(
             @PathVariable Long studentId,
             @PathVariable Long quizId) {

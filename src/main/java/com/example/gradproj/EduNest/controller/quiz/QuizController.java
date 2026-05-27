@@ -85,6 +85,7 @@ public class QuizController {
             description = "Filter quizzes by name and status with pagination for a mentorship"
     )
     @GetMapping("/filter/{mentorshipId}")
+    @PreAuthorize("hasRole('MENTOR') or hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> filterQuizzes(
             @RequestParam(required = false) String quizName,
             @RequestParam(required = false) QuizStatus status,

@@ -8,6 +8,7 @@ import lombok.Data;
 @Builder
 public class QuizStatisticsDTO {
     private String quizTitle;
+    private String description;
     private QuizStatus status;
     private int totalStudents;
     private int totalSubmissions;
