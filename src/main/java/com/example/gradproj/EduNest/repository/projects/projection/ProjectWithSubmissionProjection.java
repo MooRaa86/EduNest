@@ -9,6 +9,7 @@ public interface ProjectWithSubmissionProjection {
     String getTitle();
     String getBrief();
     String getDescriptionUrl();
+    String getAttachmentPath();
     Integer getPoints();
     LocalDateTime getStartAt();
     LocalDateTime getEndAt();

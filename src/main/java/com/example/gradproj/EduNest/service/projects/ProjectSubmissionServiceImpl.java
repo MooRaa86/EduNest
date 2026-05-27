@@ -202,6 +202,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
                 .title(p.getTitle())
                 .brief(p.getBrief())
                 .descriptionUrl(p.getDescriptionUrl())
+                .attachmentPath(p.getAttachmentPath())
                 .points(p.getPoints())
                 .startAt(p.getStartAt())
                 .endAt(p.getEndAt())

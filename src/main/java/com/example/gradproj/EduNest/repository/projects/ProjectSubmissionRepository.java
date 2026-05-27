@@ -39,6 +39,7 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
             p.title                                 AS title,
             p.brief                                 AS brief,
             p.descriptionUrl                        AS descriptionUrl,
+            p.uploadedAttachmentPath                AS attachmentPath,
             p.points                                AS points,
             p.startAt                               AS startAt,
             p.endAt                                 AS endAt,
