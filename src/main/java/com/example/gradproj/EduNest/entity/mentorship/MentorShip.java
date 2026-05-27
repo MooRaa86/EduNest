@@ -20,7 +20,10 @@ import java.util.List;
 @Entity
 @SuperBuilder
 @Setter @Getter @NoArgsConstructor @AllArgsConstructor
-@Table(name = "mentorship")
+@Table(name = "mentorship", indexes = {
+        @Index(name = "idx_mentorship_mentor_id", columnList = "mentor_id"),
+        @Index(name = "idx_mentorship_status", columnList = "status")
+})
 public class MentorShip extends BaseEntity {
 
     private String title;

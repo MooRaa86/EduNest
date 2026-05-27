@@ -1,11 +1,9 @@
 package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
-import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
-import com.example.gradproj.EduNest.dto.tasks.response.*;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +32,7 @@ public class TaskController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "create task with optional file attachment")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> create(
             @RequestPart("req") String reqJson,
             @RequestPart(value = "file", required = false) MultipartFile file,
@@ -47,6 +47,7 @@ public class TaskController {
 
     @PatchMapping("/{id}/status")
     @Operation(summary = "update task status")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateTaskStatusRequest req,
@@ -69,6 +70,7 @@ public class TaskController {
 
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "update task with optional file attachment")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> patch(
             @PathVariable Long id,
             @RequestPart(value = "req", required = false) String reqJson,
@@ -94,6 +96,7 @@ public class TaskController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "delete task by id")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> delete(@PathVariable Long id, Authentication authentication) {
         taskService.deleteTask(id, authentication.getName());
         SimpleResponse simpleResponse = new SimpleResponse();
@@ -119,6 +122,7 @@ public class TaskController {
 
     @GetMapping("/dashboard/{mentorshipId}")
     @Operation(summary = "get task dashboard details")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getDashboard(@PathVariable Long mentorshipId, Authentication authentication) {
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Dashboard retrieved successfully");
@@ -128,6 +132,7 @@ public class TaskController {
 
     @GetMapping("/{taskId}/statistics")
     @Operation(summary = "get task statistics (students/submissions + submissions page)")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getTaskStatistics(
             @PathVariable Long taskId,
             @RequestParam(defaultValue = "0") int page,
@@ -143,6 +148,7 @@ public class TaskController {
 
     @GetMapping("/full-dashboard/{mentorshipId}")
     @Operation(summary = "get full task dashboard (dashboard + tasks list)")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getFullDashboard(
             @PathVariable Long mentorshipId,
             @RequestParam(required = false) String taskName,

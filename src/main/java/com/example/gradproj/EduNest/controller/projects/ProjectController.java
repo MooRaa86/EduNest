@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +41,7 @@ public class ProjectController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "create project with optional file attachment")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> create(
             @RequestPart("req") String reqJson,
             @RequestPart(value = "file", required = false) MultipartFile file
@@ -53,6 +55,7 @@ public class ProjectController {
     }
     @Operation(summary = "update status of project")
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectStatusRequest req
@@ -72,6 +75,7 @@ public class ProjectController {
     }
     @Operation(summary = "update project Entity")
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> patch(
             @PathVariable Long id,
             @RequestPart(value = "req", required = false) String reqJson,
@@ -95,6 +99,7 @@ public class ProjectController {
     }
     @Operation(summary = "delete project by project id")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MENTOR')")
     public  ResponseEntity<SimpleResponse> delete(@PathVariable Long id){
         projectService.deleteProject(id);
         SimpleResponse simpleResponse=new SimpleResponse();
@@ -123,6 +128,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/statistics")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getProjectStatistics(
             @PathVariable Long projectId,
             @RequestParam(defaultValue = "0") int page,
@@ -143,6 +149,7 @@ public class ProjectController {
 
     @GetMapping("/full-dashboard/{mentorshipId}")
     @Operation(summary = "get full project dashboard (dashboard + projects list)")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getFullDashboard(
             @PathVariable Long mentorshipId,
             @RequestParam(required = false) String projectName,

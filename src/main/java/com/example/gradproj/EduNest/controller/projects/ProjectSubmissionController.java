@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +27,7 @@ public class ProjectSubmissionController {
 
     @Operation(summary = "submit by project Id with file upload or external URL")
     @PostMapping(value = "/{projectId}/submissions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> submit(
             @PathVariable Long projectId,
             @RequestParam(value = "file", required = false) MultipartFile file,
@@ -40,6 +42,7 @@ public class ProjectSubmissionController {
 
     @Operation(summary = "get submissions by project Id")
     @GetMapping("/{projectId}/submissions")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> listByProject(
             @PathVariable Long projectId,
             @RequestParam(defaultValue = "0") int page,
@@ -54,6 +57,7 @@ public class ProjectSubmissionController {
 
     @Operation(summary = "grade project submission by submission Id")
     @PostMapping("/submissions/{submissionId}/grade")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> grade(
             @PathVariable Long submissionId,
             @Valid @RequestBody GradeProjectSubmissionRequest req,

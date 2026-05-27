@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/student/profile")
 @RequiredArgsConstructor
 @Tag(name = "Student Profile", description = "Endpoints to manage student profile information")
+@PreAuthorize("hasRole('STUDENT')")
 public class StudentProfileController {
     private final StudentProfileService studentProfileService;
 

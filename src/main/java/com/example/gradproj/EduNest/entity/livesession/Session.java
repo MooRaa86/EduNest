@@ -4,7 +4,6 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -18,7 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "sessions")
+@Table(name = "sessions", indexes = {
+        @Index(name = "idx_session_week_id", columnList = "week_id")
+})
 @Setter @Getter
 @SuperBuilder
 @NoArgsConstructor

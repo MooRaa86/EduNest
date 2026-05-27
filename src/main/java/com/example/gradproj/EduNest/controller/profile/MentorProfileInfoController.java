@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/mentor/profile")
 @RequiredArgsConstructor
 @Tag(name = "Mentor Profile", description = "Endpoints to manage mentor profile information")
+@PreAuthorize("hasRole('MENTOR')")
 public class MentorProfileInfoController {
     private final MentorProfileInfoService mentorProfileInfoService;
 

@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,6 +26,7 @@ public class WeekController {
 
     @PostMapping("/create")
     @Operation(summary = "create week for mentorship")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse>create(@Valid @RequestBody CreateWeekrequest createWeekrequest){
         WeekResponse create=weekService.createWeek(createWeekrequest);
         SimpleResponse response=new SimpleResponse();
@@ -34,6 +36,7 @@ public class WeekController {
     }
     @DeleteMapping("/{id}")
     @Operation(summary = "delete week by id")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse>delete(@PathVariable Long id){
         weekService.deleteWeek(id);
         SimpleResponse simpleResponse=new SimpleResponse();
@@ -42,6 +45,7 @@ public class WeekController {
     }
     @PatchMapping("/{id}")
     @Operation(summary = "update the week title")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse>update(@PathVariable Long id,@Valid @RequestBody UpdateWeekRequest updateWeekRequest) {
         WeekResponse update = weekService.updateWeekTitle(id, updateWeekRequest);
 

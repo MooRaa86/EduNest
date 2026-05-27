@@ -34,7 +34,8 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         ROUND(COALESCE(SUM(e.price - e.platformProfit),0), 2) AS revenue,
         m.createdAt AS createdDate,
         m.difficultyLevel AS difficultyLevel,
-        m.coverImageUrl AS coverImageUrl
+        m.coverImageUrl AS coverImageUrl,
+        m.status AS mentorshipStatus
     FROM MentorShip m
     LEFT JOIN m.enrollments e
     WHERE m.mentor.email = :email
@@ -99,10 +100,14 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.status = 'ACTIVE'
     AND m.mentor.deleted = false
-    AND (:keyword IS NULL OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+    AND (
+        :keyword IS NULL
+        OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
         OR LOWER(m.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
         OR LOWER(m.subtitle) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        OR LOWER(m.category) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE LOWER(CONCAT('%', :keyword, '%'))
+    )
     AND (:category IS NULL OR LOWER(m.category) = LOWER(:category))
     AND (:minPrice IS NULL OR m.price >= :minPrice)
     AND (:maxPrice IS NULL OR m.price <= :maxPrice)

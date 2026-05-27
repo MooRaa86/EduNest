@@ -18,6 +18,7 @@ public interface TaskWithSubmissionProjection {
     Integer getFinalScore();
     Integer getTotalPoints();
     SubmissionStatus getSubmissionStatus();
+    String getUploadedSubmissionPath();
     String getFeedback();
     String getMentorName();
     String getMentorPhoto();

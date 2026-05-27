@@ -109,6 +109,32 @@ public class FileController {
         return resolveAndServeFile(filePath, download);
     }
 
+
+
+    @GetMapping(produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<Resource> serveFile(
+            @RequestParam String filePath,
+            @RequestParam(defaultValue = "false") boolean download
+    ) {
+
+        if (filePath == null || filePath.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // normalize
+        String cleanPath = filePath.replace("\\", "/");
+
+        // remove leading slashes
+        cleanPath = cleanPath.replaceFirst("^[\\\\/]+", "");
+
+        // remove /uploads prefix if exists
+        if (cleanPath.startsWith("uploads/")) {
+            cleanPath = cleanPath.substring("uploads/".length());
+        }
+
+        return resolveAndServeFile(cleanPath, download);
+    }
+
     private ResponseEntity<Resource> resolveAndServeFile(String filePath, boolean download) {
         try {
             if (filePath == null || filePath.isBlank()) {

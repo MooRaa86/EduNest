@@ -6,12 +6,11 @@ import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissi
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
-
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,Long> {
     @Query("""
@@ -48,6 +47,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
             ts.finalScore                           AS finalScore,
             t.points                                AS totalPoints,
             ts.status                               AS submissionStatus,
+            ts.uploadedFilePath                     AS uploadedSubmissionPath,    
             ts.feedBack                             AS feedback,
             CONCAT(m.firstName, ' ', m.lastName)    AS mentorName,
             m.profileImageUrl                       AS mentorPhoto

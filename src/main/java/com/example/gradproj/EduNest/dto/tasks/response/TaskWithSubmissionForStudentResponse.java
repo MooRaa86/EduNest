@@ -24,6 +24,7 @@ public class TaskWithSubmissionForStudentResponse {
     private Integer estimatedMinutes;
 
     private String submissionUrl;
+    private String uploadedSubmissionPath;
     private Integer score;
     private Integer totalPoints;
     private SubmissionStatus submissionStatus;

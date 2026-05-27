@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
         name = "Student profile for mentor",
         description = "student profile statistics"
 )
+@PreAuthorize("hasRole('MENTOR')")
 public class MentorViewStudentProfileController {
 
     private final ProfileService profileService;

@@ -178,7 +178,10 @@ public class MentorshipDashboardService {
             int reviewsSize,
 
             int topLearnersPage,
-            int topLearnersSize
+            int topLearnersSize,
+
+            int studentSize,
+            int studentPage
     ) {
 
         if(!securityService.isMentorOwnMentorship(mentorshipId, getCurrentUserEmail())){
@@ -204,7 +207,7 @@ public class MentorshipDashboardService {
                 );
 
         PageResponse<MentorshipStudentRankDto> studentsRanks = 
-                getStudentsRanksByMentorshipId(mentorshipId, 0, 6);
+                getStudentsRanksByMentorshipId(mentorshipId, studentPage, studentSize);
 
         return MentorshipDashboardResponse.builder()
                 .stats(stats)

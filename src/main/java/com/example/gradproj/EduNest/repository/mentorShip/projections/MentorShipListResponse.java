@@ -14,4 +14,5 @@ public interface MentorShipListResponse {
     LocalDateTime getCreatedDate();
     DifficultyLevel getDifficultyLevel();
     String getCoverImageUrl();
+    String getMentorshipStatus();
 }

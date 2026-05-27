@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @Tag(name = "Admin Profile & Settings", description = "Endpoints to manage admin profile and platform settings")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminProfileAndSettingsController {
 
     private final AdminProfileAndSettingsService adminService;

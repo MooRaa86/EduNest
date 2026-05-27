@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,6 +22,7 @@ public class BadgeAwardController {
 
     @PostMapping("/{badgeId}/award")
     @Operation(summary = "Award a badge to a student")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> award(
             @PathVariable Long badgeId,
             @Valid @RequestBody AwardBadgeRequest req

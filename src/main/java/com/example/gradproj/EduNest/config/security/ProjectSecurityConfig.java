@@ -47,7 +47,8 @@ public class ProjectSecurityConfig {
                                 "/uploads/mentorship-cover-images/**",
                                 "/uploads/profile-images/**",
                                 "/uploads/student-profile/**",
-                                "/uploads/mentor-profile/**"
+                                "/uploads/mentor-profile/**",
+                                "/files/**"
                         ).permitAll()
                         .anyRequest().permitAll()
                 );
