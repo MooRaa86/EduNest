@@ -93,7 +93,7 @@ public class ProjectSecurityProdconfig {
                                 "/api/v1/mentorship/explore",
                                 "/api/v1/mentorship/categories",
                                 "/api/v1/profile/mentor/**",
-                                "uploads/**"
+                                "/uploads/**"
                         ).permitAll()
                         // ========== ADMIN Only ==========
                         .requestMatchers(
@@ -105,47 +105,6 @@ public class ProjectSecurityProdconfig {
                                 "/api/v1/contact/message/**",
                                 "/api/v1/contact/messages/**"
                         ).hasRole("ADMIN")
-
-//                        // ========== MENTOR Only ==========
-//                        .requestMatchers(
-//                                "/api/v1/dashboard/**",
-//                                "/mentor/**",
-//                                "/profile/students/**",
-//                                "/lectures/**",
-//                                "/api/v1/week/**",
-//                                "/api/v1/task/**",
-//                                "/api/v1/task-submission/*/grade",
-//                                "/api/v1/project/**",
-//                                "/api/v1/project/submissions/*/grade",
-//                                "/api/v1/quiz/**",
-//                                "/api/v1/question/**",
-//                                "/api/v1/answer/**",
-//                                "/api/v1/submissions/quiz/**",
-//                                "/api/v1/badges/mentorship/**",
-//                                "/api/v1/badges/*",
-//                                "/api/v1/badge-awards/**",
-//                                "/api/v1/liveSession/**"
-//                        ).hasRole("MENTOR")
-//
-//                        // ========== STUDENT Only ==========
-//                        .requestMatchers(
-//                                "/student/**",
-//                                "/api/v1/my-learning",
-//                                "/api/v1/homepage/**",
-//                                "/api/v1/student/**",
-//                                "/api/v1/mentorship/*/join",
-//                                "/api/v1/mentorship/*/rate",
-//                                "/api/v1/task-submission/**",
-//                                "/api/v1/project/*/submissions",
-//                                "/api/v1/submit-quiz-answer/**",
-//                                "/api/v1/submissions/student/**",
-//                                "/api/v1/liveSession/join/**",
-//                                "/api/v1/liveSession/myAttendance/**",
-//                                "/api/v1/liveSession/student/**",
-//                                "/api/v1/chat-room/*/join"
-//                        ).hasRole("STUDENT")
-
-
                         // ========== Authenticated Users (Both MENTOR & STUDENT) ==========
                         .requestMatchers(
                                 "/settings/**",
