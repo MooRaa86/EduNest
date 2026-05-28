@@ -171,6 +171,7 @@ public class QuizServiceImpl implements QuizService {
                 .status(quiz.getStatus())
                 .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .averageScore(calculateAverageScore(quiz))
+                .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                 .build();
     }
 

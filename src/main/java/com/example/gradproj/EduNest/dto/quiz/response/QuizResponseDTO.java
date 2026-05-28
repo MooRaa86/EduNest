@@ -15,4 +15,5 @@ public class QuizResponseDTO {
     private QuizStatus status;
     private int submissions;
     private double averageScore;
+    private int totalPoints;
 }
