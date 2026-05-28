@@ -12,5 +12,6 @@ public class QuizSubmissionResponseDTO {
     private Long studentId;
     private String studentName;
     private Double score;
+    private int totalPoints;
     private String status;
 }

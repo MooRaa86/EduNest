@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.StudentQuizReviewDTO;
 import com.example.gradproj.EduNest.service.quiz.submission.QuizSubmissionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,13 +35,13 @@ public class QuizSubmissionController {
         QuizSubmissionResponseDTO quizSubmissionResponseDTO = submissionService.submitQuizAnswers(quizSubmissionDTO, quizId);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz submitted successfully");
-        simpleResponse.addMessage("Score", quizSubmissionResponseDTO.getScore().toString());
+        simpleResponse.addMessage("Student details", quizSubmissionResponseDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(simpleResponse);
     }
 
     @Operation(summary = "Get student answers", description = "Retrieve all answers submitted by a specific student for a quiz")
     @GetMapping("/answer/{studentId}/{quizId}")
-    @PreAuthorize("hasRole('MENTOR') or hasRole('STUDENT')")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getStudentAnswers(
             @PathVariable Long studentId,
             @PathVariable Long quizId) {
@@ -49,6 +50,18 @@ public class QuizSubmissionController {
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "All answers");
         simpleResponse.addMessage("Answers", allAnswers);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
+
+    @Operation(summary = "Review quiz answers", description = "Allow a student to review their answers for a quiz including correct answers and choices")
+    @GetMapping("/my-answers/{quizId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<SimpleResponse> getStudentQuizReview(@PathVariable Long quizId) {
+
+        List<StudentQuizReviewDTO> review = submissionService.getStudentQuizReview(quizId);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Quiz review retrieved successfully");
+        simpleResponse.addMessage("Review", review);
         return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
     }
 
@@ -70,7 +83,7 @@ public class QuizSubmissionController {
 
     @Operation(summary = "Get student submissions", description = "Retrieve all quiz submissions made by a specific student with pagination")
     @GetMapping("/submissions/student/{studentId}")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getAllSubmissionsByStudent(
             @PathVariable Long studentId,
             @RequestParam(defaultValue = "0") int page,

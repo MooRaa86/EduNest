@@ -20,6 +20,18 @@ public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, 
 
     Page<QuizSubmission> findAllByStudent_Id(Long studentId, Pageable pageable);
 
+    @Query("""
+        SELECT qs
+        FROM QuizSubmission qs
+        JOIN qs.quiz q
+        WHERE qs.student.id = :studentId
+          AND q.week.mentorship.mentor.id = :mentorId
+    """)
+    Page<QuizSubmission> findAllByStudentAndMentor(
+            @Param("studentId") Long studentId,
+            @Param("mentorId") Long mentorId,
+            Pageable pageable);
+
     Optional<QuizSubmission> findByStudent_IdAndQuiz_Id(Long studentId, Long quizId);
 
     @Query("""

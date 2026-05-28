@@ -26,6 +26,9 @@ public interface QuizService {
 
     PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid ,Pageable pageable);
 
+    @PreAuthorize("hasRole('STUDENT')")
+    PageResponse<QuizResponseDTO> getStudentQuizzes(String quizName, QuizStatus status, Long msid, Pageable pageable);
+
     @PreAuthorize("hasRole('MENTOR')")
     QuizDashboardDTO getQuizDashboard(Long mentorshipID);
 

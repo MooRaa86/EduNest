@@ -26,6 +26,21 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
             @Param("status") QuizStatus status,
             Pageable pageable
     );
+
+    @Query("""
+    SELECT DISTINCT q FROM Quiz q
+    LEFT JOIN FETCH q.submissions
+    WHERE q.week.mentorship.id = :mentorshipId
+      AND (:quizName IS NULL OR LOWER(q.title) LIKE LOWER(CONCAT('%', :quizName, '%')))
+      AND q.status != 'DRAFT'
+      AND (:status IS NULL OR q.status = :status)
+""")
+    Page<Quiz> findStudentQuizzesByMentorship(
+            @Param("mentorshipId") Long mentorshipId,
+            @Param("quizName") String quizName,
+            @Param("status") QuizStatus status,
+            Pageable pageable
+    );
     List<Quiz> findByWeek_Mentorship_Id(Long mentorshipId);
     Page<Quiz> findByWeek_Mentorship_Id(Long mentorshipId, Pageable pageable);
     void deleteById(Long id);

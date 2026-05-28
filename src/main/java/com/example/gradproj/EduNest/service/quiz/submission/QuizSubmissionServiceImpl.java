@@ -4,6 +4,7 @@ package com.example.gradproj.EduNest.service.quiz.submission;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.StudentQuizReviewDTO;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.quiz.Question;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
@@ -140,22 +141,21 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         return QuizSubmissionResponseDTO.builder()
                 .id(saved.getId())
                 .studentId(student.getId())
+                .studentName(student.getFirstName() + " " + student.getLastName())
                 .score(saved.getScore())
+                .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
+                .status("Submitted")
                 .build();
 
     }
 
+    @Override
     public List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId){
         String email = securityService.getCurrentUserEmail();
         boolean isMentorOwnQuiz = securityService.isMentorOwnQuiz(quizId, email);
-        boolean isStudentEnrolled = securityService.isStudentEnrolledByQuizId(email, quizId);
 
-        if (!isMentorOwnQuiz && !isStudentEnrolled) {
+        if (!isMentorOwnQuiz) {
             throw new AccessDeniedException("You are not authorized to view these answers");
-        }
-
-        if (isStudentEnrolled && !securityService.getCurrentStudentId().equals(studentId)) {
-            throw new AccessDeniedException("You can only view your own answers");
         }
 
         QuizSubmission submission = quizSubmissionRepository
@@ -170,19 +170,47 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .toList();
     }
 
-  public  List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size){
+    @Override
+    public List<StudentQuizReviewDTO> getStudentQuizReview(Long quizId){
         String email = securityService.getCurrentUserEmail();
-        Long currentStudentId = securityService.getCurrentStudentId();
+        boolean isStudentEnrolled = securityService.isStudentEnrolledByQuizId(email, quizId);
 
-        if (!currentStudentId.equals(studentId)) {
-            throw new AccessDeniedException("You are not authorized to view submissions for this student");
+        if (!isStudentEnrolled) {
+            throw new AccessDeniedException("You are not enrolled in this mentorship");
         }
 
-        return quizSubmissionRepository.findAllByStudent_Id(studentId , PageRequest.of(page, size))
+        Long studentId = securityService.getCurrentStudentId();
+
+        QuizSubmission submission = quizSubmissionRepository
+                .findByStudent_IdAndQuiz_Id(studentId, quizId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+
+        return submission.getAnswers().stream()
+                .map(ans -> StudentQuizReviewDTO.builder()
+                        .questionId(ans.getQuestion().getId())
+                        .text(ans.getQuestion().getText())
+                        .optionA(ans.getQuestion().getOptionA())
+                        .optionB(ans.getQuestion().getOptionB())
+                        .optionC(ans.getQuestion().getOptionC())
+                        .optionD(ans.getQuestion().getOptionD())
+                        .correctAnswer(String.valueOf(ans.getQuestion().getCorrectAnswer()))
+                        .selectedAnswer(ans.getSelectedAnswer())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    public List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size){
+        Long mentorId = securityService.getCurrentMentorId();
+
+        securityService.validateMentorHasAccessToStudent(studentId);
+
+        return quizSubmissionRepository.findAllByStudentAndMentor(studentId, mentorId, PageRequest.of(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
                         .id(sub.getId())
                         .studentId(studentId)
+                        .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                         .score(sub.getScore())
                         .build())
                 .toList();

@@ -159,7 +159,7 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
-        if (isStudent && quiz.getStatus() != QuizStatus.PUBLISHED) {
+        if (isStudent && quiz.getStatus() == QuizStatus.DRAFT) {
             throw new AccessDeniedException("Quiz is not published");
         }
 
@@ -178,9 +178,8 @@ public class QuizServiceImpl implements QuizService {
     public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid, Pageable pageable) {
         String email = securityService.getCurrentUserEmail();
         boolean isMentor = securityService.isMentorOwnMentorship(msid, email);
-        boolean isStudent = enrollmentRepository.existsByMentorShip_IdAndStudent_Email(msid, email);
 
-        if (!isMentor && !isStudent) {
+        if (!isMentor) {
             throw new AccessDeniedException("You are not authorized to view quizzes for this mentorship");
         }
 
@@ -198,6 +197,38 @@ public class QuizServiceImpl implements QuizService {
                         .build())
                 .toList();
 
+
+        return PageResponse.<QuizResponseDTO>builder()
+                .content(quizDTOs)
+                .page(quizzes.getNumber())
+                .size(quizzes.getSize())
+                .totalElements(quizzes.getTotalElements())
+                .totalPages(quizzes.getTotalPages())
+                .build();
+    }
+
+    @Override
+    public PageResponse<QuizResponseDTO> getStudentQuizzes(String quizName, QuizStatus status, Long msid, Pageable pageable) {
+        String email = securityService.getCurrentUserEmail();
+        boolean isStudent = enrollmentRepository.existsByMentorShip_IdAndStudent_Email(msid, email);
+
+        if (!isStudent) {
+            throw new AccessDeniedException("You are not enrolled in this mentorship");
+        }
+
+        Page<Quiz> quizzes = quizRepository.findStudentQuizzesByMentorship(msid, quizName, status, pageable);
+
+        List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
+                .map(quiz -> QuizResponseDTO.builder()
+                        .id(quiz.getId())
+                        .title(quiz.getTitle())
+                        .durationMinutes(quiz.getDurationMinutes())
+                        .description(quiz.getDescription())
+                        .status(quiz.getStatus())
+                        .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
+                        .averageScore(calculateAverageScore(quiz))
+                        .build())
+                .toList();
 
         return PageResponse.<QuizResponseDTO>builder()
                 .content(quizDTOs)

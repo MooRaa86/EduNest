@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.quiz.submission;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
+import com.example.gradproj.EduNest.dto.quiz.response.StudentQuizReviewDTO;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
@@ -13,6 +14,8 @@ public interface QuizSubmissionService {
     QuizSubmissionResponseDTO submitQuizAnswers(QuizSubmissionDTO quizSubmissionDTO, Long quizId);
 
     List<StudentAnswerDTO> getStudentAnswers(Long studentId, Long quizId);
+
+    List<StudentQuizReviewDTO> getStudentQuizReview(Long quizId);
 
     @PreAuthorize("hasRole('MENTOR')")
     List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(Long quizId, int page, int size);

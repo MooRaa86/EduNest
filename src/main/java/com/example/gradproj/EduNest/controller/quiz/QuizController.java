@@ -85,7 +85,7 @@ public class QuizController {
             description = "Filter quizzes by name and status with pagination for a mentorship"
     )
     @GetMapping("/filter/{mentorshipId}")
-    @PreAuthorize("hasRole('MENTOR') or hasRole('STUDENT')")
+    @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> filterQuizzes(
             @RequestParam(required = false) String quizName,
             @RequestParam(required = false) QuizStatus status,
@@ -96,6 +96,30 @@ public class QuizController {
         Pageable pageable = PageRequest.of(page, size);
         PageResponse<QuizResponseDTO> response =
                 quizService.getQuizzes(quizName, status, mentorshipId, pageable);
+
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Quizzes retrieved successfully");
+        simpleResponse.addMessage("Quizzes", response);
+
+        return ResponseEntity.ok(simpleResponse);
+    }
+
+    @Operation(
+            summary = "Get student quizzes",
+            description = "Filter published and closed quizzes for a student with pagination"
+    )
+    @GetMapping("/student-quizzes/{mentorshipId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<SimpleResponse> getStudentQuizzes(
+            @RequestParam(required = false) String quizName,
+            @RequestParam(required = false) QuizStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "4") int size,
+            @PathVariable Long mentorshipId
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        PageResponse<QuizResponseDTO> response =
+                quizService.getStudentQuizzes(quizName, status, mentorshipId, pageable);
 
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quizzes retrieved successfully");
