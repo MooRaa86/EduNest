@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.PublicKey;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -66,6 +67,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     public QuizSubmissionResponseDTO submitQuizAnswers(
             QuizSubmissionDTO quizSubmissionDTO, Long quizId) {
 
+        String penaltyMessage = "";
+
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isStudentEnrolledByQuizId(email, quizId)) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
@@ -87,20 +90,32 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Answers are required");
         }
 
-        if (quizSubmissionRepository.existsByStudent_IdAndQuiz_Id(student.getId(), quizId)) {
+        QuizSubmission quizSubmission = quizSubmissionRepository
+                .findByStudent_IdAndQuiz_Id(student.getId(), quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not started yet"));
+
+        System.out.println(quizSubmission.getScore());
+        if (quizSubmission.getScore() != null) {
             throw new globalLogicEx("Quiz already submitted");
         }
+
         Map<Long, Question> questions =
                 quiz.getQuestions().stream()
                         .collect(Collectors.toMap(Question::getId, q -> q));
 
         ScoreResult score = calculateScore(quizSubmissionDTO.getAnswers(), questions);
 
-        QuizSubmission quizSubmission = QuizSubmission.builder()
-                .quiz(quiz)
-                .student(student)
-                .score(score.getTotalScore())
-                .build();
+
+        double finalScore = score.getTotalScore();
+        if (LocalDateTime.now().isAfter(quizSubmission.getEndDate())) {
+            long minutesLate = ChronoUnit.MINUTES.between(
+                    quizSubmission.getEndDate(),
+                    LocalDateTime.now()
+            );
+            finalScore = Math.max(0, finalScore - minutesLate);
+            penaltyMessage = " (Late submission: -" + minutesLate + " points penalty)";
+        }
+
 
         List<StudentAnswer> studentAnswers =
                 quizSubmissionDTO.getAnswers().stream()
@@ -118,16 +133,19 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                         .toList();
 
 
-        quizSubmission.setAnswers(studentAnswers);
 
-        QuizSubmission saved = quizSubmissionRepository.save(quizSubmission);
+        quizSubmission.getAnswers().clear();
+        quizSubmission.getAnswers().addAll(studentAnswers);
+        quizSubmission.setScore(finalScore);
 
-        MentorShip mentorship = saved.getQuiz().getWeek().getMentorship();
-        totalPointsService.applyDelta(saved.getStudent(), mentorship,saved.getScore().intValue() );
 
+        quizSubmissionRepository.save(quizSubmission);
+
+        MentorShip mentorship = quizSubmission.getQuiz().getWeek().getMentorship();
+        totalPointsService.applyDelta(quizSubmission.getStudent(), mentorship, (int) finalScore);
 
         String mentorEmail = quiz.getWeek().getMentorship().getMentor().getEmail();
-        String studentName = saved.getStudent().getFirstName() + " " + saved.getStudent().getLastName();
+        String studentName = quizSubmission.getStudent().getFirstName() + " " + quizSubmission.getStudent().getLastName();
         notificationService.sendToUserByEmail(
                 mentorEmail,
                 "New Quiz Submission",
@@ -138,15 +156,16 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         notificationService.sendToUserByEmail(
                 student.getEmail(),
                 "Quiz Submitted",
-                "You scored " + saved.getScore() + " in quiz " + quiz.getTitle() + " in mentorship " + mentorship.getTitle() ,
+                "You scored " + finalScore + " in quiz " + quiz.getTitle() +
+                        " in mentorship " + mentorship.getTitle() + penaltyMessage,
                 NotificationType.QUIZ
         );
 
         return QuizSubmissionResponseDTO.builder()
-                .id(saved.getId())
+                .id(quizSubmission.getId())
                 .studentId(student.getId())
                 .studentName(student.getFirstName() + " " + student.getLastName())
-                .score(saved.getScore())
+                .score(finalScore)
                 .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                 .status("Submitted")
                 .build();

@@ -94,6 +94,21 @@ public class QuestionServiceImp implements QuestionService {
         }
 
 
+        // testtttt
+        boolean alreadyStarted = quizSubmissionRepository
+                .existsByStudent_IdAndQuiz_Id(securityService.getCurrentStudent().getId(), quizId);
+
+        if (!alreadyStarted) {
+            QuizSubmission quizSubmission = new QuizSubmission();
+            quizSubmission.setQuiz(quiz);
+            quizSubmission.setStudent(securityService.getCurrentStudent());
+            quizSubmission.setStartDate(LocalDateTime.now());
+            quizSubmission.setEndDate(LocalDateTime.now().plusMinutes(quiz.getDurationMinutes()));
+            quizSubmissionRepository.save(quizSubmission);
+        }
+// teestttt
+
+
         return questionRepository.findByQuiz_Id(quizId).stream()
                 .map(this::mapToStudentResponseDTO)
                 .collect(Collectors.toList());
