@@ -36,10 +36,6 @@ public class QuizSubmission extends BaseEntity {
 
     private LocalDateTime endDate;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(name = "submission_status")
-//    private SubmissionStatus status=SubmissionStatus.IN_PROGRESS;
-
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentAnswer> answers;
 }
