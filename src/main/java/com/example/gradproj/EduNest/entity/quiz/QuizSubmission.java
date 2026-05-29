@@ -33,7 +33,6 @@ public class QuizSubmission extends BaseEntity {
     private Double score;
 
     private LocalDateTime startDate;
-
     private LocalDateTime endDate;
 
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
