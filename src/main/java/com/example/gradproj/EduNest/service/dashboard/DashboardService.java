@@ -81,7 +81,7 @@ public class DashboardService {
         Pageable pageable = PageRequest.of(
                 page,
                 size,
-                Sort.by("createdAt").descending()
+                Sort.by("updatedAt").descending()
         );
 
         Page<MentorShipReviews> reviews = reviewsRepository.
@@ -133,7 +133,6 @@ public class DashboardService {
                 .build();
     }
 
-    //ToDo review this method
     public List<SalesChartResponse> getSalesChartData(Integer months) {
 
         String email = getCurrentUserEmail();
@@ -164,7 +163,7 @@ public class DashboardService {
                 .rating(mentorShipReviews.getRating())
                 .mentorShip(mentorShipReviews.getMentorShip().getTitle())
                 .studentName(mentorShipReviews.getStudent().getFirstName() + " " + mentorShipReviews.getStudent().getLastName())
-                .reviewDate(mentorShipReviews.getCreatedAt())
+                .reviewDate(mentorShipReviews.getUpdatedAt())
                 .build();
     }
 

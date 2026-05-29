@@ -401,13 +401,17 @@ public class QuizServiceImpl implements QuizService {
 
 
     private double calculateAverageScore(Quiz quiz) {
+
         if (quiz.getSubmissions() == null || quiz.getSubmissions().isEmpty()) {
             return 0;
         }
-        return quiz.getSubmissions().stream()
+
+        double average = quiz.getSubmissions().stream()
                 .mapToDouble(s -> s.getScore() != null ? s.getScore() : 0)
                 .average()
                 .orElse(0.0);
+
+        return Math.round(average * 100.0) / 100.0;
     }
 
     private QuizOverviewDto mapToQuizOverviewDto(Quiz quiz) {

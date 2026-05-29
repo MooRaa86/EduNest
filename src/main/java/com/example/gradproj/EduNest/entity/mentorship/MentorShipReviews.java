@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,7 @@ import lombok.experimental.SuperBuilder;
 )
 public class MentorShipReviews extends BaseEntity {
 
+    @Size(max = 500, message = "Feedback must not exceed 500 characters")
     private String feedBack;
 
     long rating;

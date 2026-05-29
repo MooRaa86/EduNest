@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler{
@@ -117,19 +120,49 @@ public class GlobalExceptionHandler{
         return buildErrorResponse("error","entity not found maybe id is invalid bro :)", HttpStatus.NOT_FOUND);
     }
 
-//    @ExceptionHandler(DataIntegrityViolationException.class)
-//    public ResponseEntity<?> handleDataIntegrity(
-//            DataIntegrityViolationException ex
-//    ) {
-//
-//        return buildErrorResponse(
-//                "error",
-//                "Invalid reference id (foreign key error)",
-//                HttpStatus.BAD_REQUEST
-//        );
-//    }
+        @ExceptionHandler(DataIntegrityViolationException.class)
+        public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
+                DataIntegrityViolationException ex
+        ) {
+
+            Map<String, Object> response = new HashMap<>();
 
 
+            // Duplicate value
+            if (ex.getMostSpecificCause().getMessage().contains("Duplicate")) {
+
+                response.put("error", "This data already exists.");
+
+            }
+            // String too long
+            else if (ex.getMostSpecificCause().getMessage().contains("Data too long")) {
+
+                response.put("error", "One of the fields exceeds the allowed length.");
+
+            }
+            // Null value
+            else if (ex.getMostSpecificCause().getMessage().contains("cannot be null")) {
+
+                response.put("error", "Required data is missing.");
+
+            }
+            // Foreign key issue
+            else if (ex.getMostSpecificCause().getMessage().contains("foreign key")) {
+
+                response.put("error", "Invalid related data provided.");
+
+            }
+            // Generic fallback
+            else {
+
+                response.put("error", "Database constraint violation occurred.");
+
+            }
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(response);
+        }
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInvalidUserName(UsernameNotFoundException ex) {
