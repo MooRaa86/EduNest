@@ -24,8 +24,4 @@ public interface QuizSubmissionService {
 
     List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size);
 
-    void scheduleQuizClose(QuizSubmission quizSubmission);
-    String checkSubmissionStatus(Long submissionId);
-
-
 }

@@ -2,7 +2,6 @@ package com.example.gradproj.EduNest.entity.quiz;
 
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Student;
-import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import lombok.*;
@@ -37,9 +36,9 @@ public class QuizSubmission extends BaseEntity {
 
     private LocalDateTime endDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "submission_status")
-    private SubmissionStatus status=SubmissionStatus.IN_PROGRESS;
+//    @Enumerated(EnumType.STRING)
+//    @Column(name = "submission_status")
+//    private SubmissionStatus status=SubmissionStatus.IN_PROGRESS;
 
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentAnswer> answers;

@@ -94,18 +94,6 @@ public class QuestionServiceImp implements QuestionService {
         }
 
 
-        //testtttt
-        QuizSubmission quizSubmission = new QuizSubmission();
-        quizSubmission.setQuiz(quiz);
-        quizSubmission.setStudent(securityService.getCurrentStudent());
-        quizSubmission.setStartDate(LocalDateTime.now());
-        quizSubmission.setEndDate(LocalDateTime.now().plusMinutes(quiz.getDurationMinutes()));
-        quizSubmission.setStatus(SubmissionStatus.IN_PROGRESS);
-        quizSubmissionRepository.save(quizSubmission);
-        quizSubmissionService.scheduleQuizClose(quizSubmission);
-        //teestttt
-
-
         return questionRepository.findByQuiz_Id(quizId).stream()
                 .map(this::mapToStudentResponseDTO)
                 .collect(Collectors.toList());
