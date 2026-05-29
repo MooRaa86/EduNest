@@ -24,7 +24,6 @@ public class Quiz extends BaseEntity {
     @JoinColumn(name = "week_id",nullable = false)
     private Week week;
 
-
     @Column(nullable = false, length = 100)
     private String title;
 

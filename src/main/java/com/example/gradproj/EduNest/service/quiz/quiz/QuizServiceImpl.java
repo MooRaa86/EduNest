@@ -50,8 +50,8 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to create quiz for this week");
         }
 
-        Week week=weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
-                ()->new globalLogicEx("Week not found")
+        Week week = weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
+                () -> new globalLogicEx("Week not found")
         );
 
 
@@ -94,7 +94,7 @@ public class QuizServiceImpl implements QuizService {
         }
 
         if (!quizRepository.existsById(id)) {
-         throw  new globalLogicEx("Quiz not found");
+            throw new globalLogicEx("Quiz not found");
         }
 
         quizRepository.deleteById(id);
@@ -176,7 +176,7 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
-    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status,Long msid, Pageable pageable) {
+    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, Long msid, Pageable pageable) {
         String email = securityService.getCurrentUserEmail();
         boolean isMentor = securityService.isMentorOwnMentorship(msid, email);
 
@@ -184,7 +184,7 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to view quizzes for this mentorship");
         }
 
-        Page<Quiz> quizzes = quizRepository.findQuizzesByMentorship(msid,quizName, status,pageable);
+        Page<Quiz> quizzes = quizRepository.findQuizzesByMentorship(msid, quizName, status, pageable);
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
                 .map(quiz -> QuizResponseDTO.builder()
@@ -248,9 +248,8 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to view dashboard for this mentorship");
         }
 
-        if (!(mentorshipRepository.existsById(mentorShipId)))
-        {
-            throw  new globalLogicEx("MentorShip not found");
+        if (!(mentorshipRepository.existsById(mentorShipId))) {
+            throw new globalLogicEx("MentorShip not found");
         }
         List<Quiz> allQuizzes = quizRepository.findByWeek_Mentorship_Id(mentorShipId);
 
@@ -303,6 +302,7 @@ public class QuizServiceImpl implements QuizService {
                 .build();
 
     }
+
     @Override
     public MentorshipQuizzesOverviewResponseDto getMentorshipQuizzesOverview(Long mentorShipId, int page, int size) {
         String email = securityService.getCurrentUserEmail();
@@ -310,17 +310,16 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to view quizzes overview for this mentorship");
         }
 
-        if (!(mentorshipRepository.existsById(mentorShipId)))
-        {
-            throw  new globalLogicEx("MentorShip not found");
+        if (!(mentorshipRepository.existsById(mentorShipId))) {
+            throw new globalLogicEx("MentorShip not found");
         }
         Pageable pageable = PageRequest.of(page, size);
-        Page<Quiz>allQuizzes=quizRepository.findByWeek_Mentorship_Id(mentorShipId,pageable);
-        List<QuizOverviewDto>quizOverviewDtos=allQuizzes.stream()
+        Page<Quiz> allQuizzes = quizRepository.findByWeek_Mentorship_Id(mentorShipId, pageable);
+        List<QuizOverviewDto> quizOverviewDtos = allQuizzes.stream()
                 .map(this::mapToQuizOverviewDto)
                 .toList();
 
-        PageResponse<QuizOverviewDto>pageResponse= PageResponse.<QuizOverviewDto>builder()
+        PageResponse<QuizOverviewDto> pageResponse = PageResponse.<QuizOverviewDto>builder()
                 .content(quizOverviewDtos)
                 .page(page)
                 .size(size)
@@ -335,32 +334,31 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
-    public QuizOverviewResponseDto getQuizOverviewDto(Long quizId,int page,int size) {
+    public QuizOverviewResponseDto getQuizOverviewDto(Long quizId, int page, int size) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnQuiz(quizId, email)) {
             throw new AccessDeniedException("You are not authorized to view overview for this quiz");
         }
 
-        QuizStatisticsDTO quizStatisticsDTO=getQuizStatistics(quizId);
-        List<QuizSubmissionResponseDTO> submissions=quizSubmissionService.getAllSubmissionsByQuiz(quizId,page,size);
-         double fullMark=quizStatisticsDTO.getTotalPoints();
-         for (QuizSubmissionResponseDTO submission : submissions) {
-             if (submission.getScore() == null) {
-                 submission.setStatus("Not Submitted");
-             }
-             else if (submission.getScore() >= (fullMark / 2)) {
-                 submission.setStatus("Passed");
-             }
-             else {
-                 submission.setStatus("Failed");
-             }
-         }
+        QuizStatisticsDTO quizStatisticsDTO = getQuizStatistics(quizId);
+        List<QuizSubmissionResponseDTO> submissions = quizSubmissionService.getAllSubmissionsByQuiz(quizId, page, size);
+        double fullMark = quizStatisticsDTO.getTotalPoints();
+        for (QuizSubmissionResponseDTO submission : submissions) {
+            if (submission.getScore() == null) {
+                submission.setStatus("Not Submitted");
+            } else if (submission.getScore() >= (fullMark / 2)) {
+                submission.setStatus("Passed");
+            } else {
+                submission.setStatus("Failed");
+            }
+        }
 
         return QuizOverviewResponseDto.builder()
                 .quizStatistics(quizStatisticsDTO)
                 .submissions(submissions)
                 .build();
     }
+
     @Override
     public void changeStatus(Long quizId, QuizStatus quizStatus) {
         String email = securityService.getCurrentUserEmail();
@@ -379,15 +377,16 @@ public class QuizServiceImpl implements QuizService {
             throw new globalLogicEx("Quiz is already published");
         }
 
-        if(quizStatus==QuizStatus.CLOSED) {
+        if (quizStatus == QuizStatus.CLOSED) {
             notificationService.sendToMentorshipStudents(
                     quiz.getWeek().getMentorship().getId(),
                     "Quiz Closed",
                     "A Quiz " + quiz.getTitle() + " has been closed in week " + quiz.getWeek().getTitle() + " in mentorship " + quiz.getWeek().getMentorship().getTitle(),
                     NotificationType.QUIZ
-            );        }
+            );
+        }
 
-        if (quizStatus==QuizStatus.PUBLISHED){
+        if (quizStatus == QuizStatus.PUBLISHED) {
             notificationService.sendToMentorshipStudents(
                     quiz.getWeek().getMentorship().getId(),
                     "New Quiz",
@@ -400,6 +399,7 @@ public class QuizServiceImpl implements QuizService {
         quizRepository.save(quiz);
     }
 
+
     private double calculateAverageScore(Quiz quiz) {
         if (quiz.getSubmissions() == null || quiz.getSubmissions().isEmpty()) {
             return 0;
@@ -409,6 +409,7 @@ public class QuizServiceImpl implements QuizService {
                 .average()
                 .orElse(0.0);
     }
+
     private QuizOverviewDto mapToQuizOverviewDto(Quiz quiz) {
         return QuizOverviewDto.builder()
                 .id(quiz.getId())

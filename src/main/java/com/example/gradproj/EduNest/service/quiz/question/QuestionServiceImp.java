@@ -6,15 +6,21 @@ import com.example.gradproj.EduNest.dto.quiz.response.QuestionResponseDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.StudentQuestionResponseDTO;
 import com.example.gradproj.EduNest.entity.quiz.Question;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
+import com.example.gradproj.EduNest.entity.quiz.QuizSubmission;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quiz.QuestionRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
+import com.example.gradproj.EduNest.service.quiz.quiz.QuizService;
+import com.example.gradproj.EduNest.service.quiz.submission.QuizSubmissionService;
 import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +31,10 @@ public class QuestionServiceImp implements QuestionService {
     private final QuestionRepository questionRepository;
     private final QuizRepository quizRepository;
     private final SecurityService securityService;
+    private final QuizService quizService;
+    private final QuizSubmissionService quizSubmissionService;
+    private final QuizSubmissionRepository quizSubmissionRepository;
+
 
     @Override
     public QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO) {
@@ -63,7 +73,7 @@ public class QuestionServiceImp implements QuestionService {
         }
 
         if (!quizRepository.existsById(quizId)) {
-            throw  new globalLogicEx("Quiz not found");
+            throw new globalLogicEx("Quiz not found");
         }
         return questionRepository.findByQuiz_Id(quizId).stream().map(this::mapToResponseDTO).collect(Collectors.toList());
     }
@@ -82,6 +92,18 @@ public class QuestionServiceImp implements QuestionService {
         if (quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new AccessDeniedException("Quiz is not published");
         }
+
+        //testtttt
+        QuizSubmission quizSubmission = new QuizSubmission();
+        quizSubmission.setQuiz(quiz);
+        quizSubmission.setStudent(securityService.getCurrentStudent());
+        quizSubmission.setStartDate(LocalDateTime.now());
+        quizSubmission.setEndDate(LocalDateTime.now().plusMinutes(quiz.getDurationMinutes()));
+        quizSubmission.setStatus(SubmissionStatus.IN_PROGRESS);
+        quizSubmissionRepository.save(quizSubmission);
+        quizSubmissionService.scheduleQuizClose(quizSubmission);
+        //teestttt
+
 
         return questionRepository.findByQuiz_Id(quizId).stream()
                 .map(this::mapToStudentResponseDTO)

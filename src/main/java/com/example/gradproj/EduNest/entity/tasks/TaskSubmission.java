@@ -56,7 +56,6 @@ public class TaskSubmission extends BaseEntity {
     private Integer pointsApplied;
 
 
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;

@@ -12,6 +12,8 @@ import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import java.time.LocalDateTime;
+
 public interface QuizService {
     @PreAuthorize("hasRole('MENTOR')")
     QuizResponseDTO createQuiz(QuizCreateDTO quizCreateDTO);

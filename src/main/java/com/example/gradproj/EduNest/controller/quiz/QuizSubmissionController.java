@@ -98,4 +98,28 @@ public class QuizSubmissionController {
 
     }
 
+
+    @Operation(
+            summary = "Check quiz submission status",
+            description = """
+        Check the current status of a student's quiz submission.
+        
+        Returns the submission status which can be:
+        - OPEN: Quiz is still active, student can continue
+        - CLOSED: Quiz time has expired, submission is locked and no further answers can be submitted
+        
+        Frontend should poll this endpoint every fixed interval (e.g., every 30 seconds)
+        to detect when the quiz has been automatically closed by the scheduler.
+        Once CLOSED is returned, the UI should immediately lock the quiz and prevent
+        any further answer submissions.
+        """
+    )
+    @GetMapping("/submissions/{submissionId}/status")
+    public ResponseEntity<SimpleResponse> checkSubmissionStatus(@PathVariable Long submissionId) {
+        String status = submissionService.checkSubmissionStatus(submissionId);
+        SimpleResponse simpleResponse = new SimpleResponse();
+        simpleResponse.addMessage("message", "Submission status retrieved successfully");
+        simpleResponse.addMessage("status", status);
+        return ResponseEntity.status(HttpStatus.OK).body(simpleResponse);
+    }
 }

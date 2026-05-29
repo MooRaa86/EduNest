@@ -13,6 +13,7 @@ import com.example.gradproj.EduNest.entity.quiz.StudentAnswer;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
@@ -23,6 +24,7 @@ import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,6 +32,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.PublicKey;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -214,6 +218,24 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                         .score(sub.getScore())
                         .build())
                 .toList();
+    }
+
+    @Override
+    @Scheduled(fixedRate = 60000)
+    public void scheduleQuizClose(QuizSubmission quizSubmission) {
+        LocalDateTime endDate = quizSubmission.getEndDate();
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(endDate)) {
+            quizSubmission.setStatus(SubmissionStatus.CLOSED);
+            quizSubmissionRepository.save(quizSubmission);
+            checkSubmissionStatus(quizSubmission.getId());
+        }
+    }
+
+    public String checkSubmissionStatus(Long submissionId) {
+        return quizSubmissionRepository.findById(submissionId)
+                .map(submission -> submission.getStatus().name())
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
     }
 
     @Override
