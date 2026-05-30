@@ -381,6 +381,32 @@ classDiagram
         +Integer points
         +ProjectStatus status
     }
+  class Enrollment {
+    +Double price
+    +Double platformProfit
+    +LocalDateTime joinedAt
+  }
+
+  class Badge {
+    +String title
+    +BadgeCategory category
+    +String description
+    +int points
+  }
+
+  class Lecture {
+    +String title
+    +String lectureUrl
+  }
+
+  class Session {
+    +String title
+    +LocalDateTime scheduledAt
+    +LocalDateTime actualStartTime
+    +LocalDateTime actualEndTime
+    +String meetingUrl
+    +SessionStatus status
+  }
     
     Mentor "1" --> "*" MentorShip : creates
     MentorShip "1" --> "*" Week : contains
@@ -391,6 +417,7 @@ classDiagram
     Week "1" --> "*" Session : has
     Student "1" --> "*" Enrollment : enrolls
     MentorShip "1" --> "*" Badge : offers
+    MentorShip "1" --> "*" Enrollment : has
 ```
 
 ## 4.3 Sequence Diagram: Registration & OTP
