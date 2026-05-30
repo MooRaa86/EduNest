@@ -67,7 +67,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     public QuizSubmissionResponseDTO submitQuizAnswers(
             QuizSubmissionDTO quizSubmissionDTO, Long quizId) {
 
-        String penaltyMessage = "";
+//        String penaltyMessage = "";
 
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isStudentEnrolledByQuizId(email, quizId)) {
@@ -113,7 +113,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                     LocalDateTime.now()
             );
             finalScore = Math.max(0, finalScore - minutesLate);
-            penaltyMessage = " (Late submission: -" + minutesLate + " points penalty)";
+//            penaltyMessage = " (Late submission: -" + minutesLate + " points penalty)";
         }
 
 
@@ -157,7 +157,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 student.getEmail(),
                 "Quiz Submitted",
                 "You scored " + finalScore + " in quiz " + quiz.getTitle() +
-                        " in mentorship " + mentorship.getTitle() + penaltyMessage,
+                        " in mentorship " + mentorship.getTitle() ,
                 NotificationType.QUIZ
         );
 
