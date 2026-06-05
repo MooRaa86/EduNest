@@ -339,6 +339,7 @@ public class ProjectServiceImpl implements ProjectService{
                 .studentId(s.getStudent().getId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
+                .uploadedFilePath(s.getUploadedFilePath())
                 .submittedAt(s.getSubmittedAt())
                 .isLate(s.getIsLate())
                 .status(s.getStatus())
