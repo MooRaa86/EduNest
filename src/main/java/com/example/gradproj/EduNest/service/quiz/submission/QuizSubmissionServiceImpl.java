@@ -281,7 +281,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .stream()
                 .map(sub -> {
                     String status;
-                    if (sub.getScore() == null) {
+                    if (sub.getScore() == null && sub.getStartDate()!=null) {
                         status = "Not Submitted";
                     } else if (sub.getScore() >= (fullMark / 2)) {
                         status = "Passed";
@@ -293,6 +293,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                             .id(sub.getId())
                             .studentId(sub.getStudent().getId())
                             .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
+                            .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                             .score(sub.getScore())
                             .status(status)
                             .build();
