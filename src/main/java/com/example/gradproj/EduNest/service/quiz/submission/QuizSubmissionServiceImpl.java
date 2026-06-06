@@ -85,10 +85,10 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Quiz is not available");
         }
 
-        if (quizSubmissionDTO.getAnswers() == null
-                || quizSubmissionDTO.getAnswers().isEmpty()) {
-            throw new globalLogicEx("Answers are required");
-        }
+//        if (quizSubmissionDTO.getAnswers() == null
+//                || quizSubmissionDTO.getAnswers().isEmpty()) {
+//            throw new globalLogicEx("Answers are required");
+//        }
 
         QuizSubmission quizSubmission = quizSubmissionRepository
                 .findByStudent_IdAndQuiz_Id(student.getId(), quizId)
@@ -208,17 +208,41 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .findByStudent_IdAndQuiz_Id(studentId, quizId)
                 .orElseThrow(() -> new globalLogicEx("Submission not found"));
 
-        return submission.getAnswers().stream()
-                .map(ans -> StudentQuizReviewDTO.builder()
-                        .questionId(ans.getQuestion().getId())
-                        .text(ans.getQuestion().getText())
-                        .optionA(ans.getQuestion().getOptionA())
-                        .optionB(ans.getQuestion().getOptionB())
-                        .optionC(ans.getQuestion().getOptionC())
-                        .optionD(ans.getQuestion().getOptionD())
-                        .correctAnswer(String.valueOf(ans.getQuestion().getCorrectAnswer()))
-                        .selectedAnswer(ans.getSelectedAnswer())
-                        .build())
+//        return submission.getAnswers().stream()
+//                .map(ans -> StudentQuizReviewDTO.builder()
+//                        .questionId(ans.getQuestion().getId())
+//                        .text(ans.getQuestion().getText())
+//                        .optionA(ans.getQuestion().getOptionA())
+//                        .optionB(ans.getQuestion().getOptionB())
+//                        .optionC(ans.getQuestion().getOptionC())
+//                        .optionD(ans.getQuestion().getOptionD())
+//                        .correctAnswer(String.valueOf(ans.getQuestion().getCorrectAnswer()))
+//                        .selectedAnswer(ans == null ? null : ans.getSelectedAnswer())
+//                        .build())
+//                .toList();
+        Quiz quiz = submission.getQuiz();
+
+        return quiz.getQuestions().stream()
+                .map(question -> {
+
+                    StudentAnswer answer = submission.getAnswers().stream()
+                            .filter(a -> a.getQuestion().getId().equals(question.getId()))
+                            .findFirst()
+                            .orElse(null);
+
+                    return StudentQuizReviewDTO.builder()
+                            .questionId(question.getId())
+                            .text(question.getText())
+                            .optionA(question.getOptionA())
+                            .optionB(question.getOptionB())
+                            .optionC(question.getOptionC())
+                            .optionD(question.getOptionD())
+                            .correctAnswer(String.valueOf(question.getCorrectAnswer()))
+                            .selectedAnswer(
+                                    answer == null ? null : answer.getSelectedAnswer()
+                            )
+                            .build();
+                })
                 .toList();
     }
 
