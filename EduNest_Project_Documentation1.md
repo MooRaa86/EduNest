@@ -125,12 +125,12 @@ A thorough examination of the current online education and mentorship market rev
 
 The market is currently divided into distinct categories, each addressing only a fraction of the learner's needs:
 
-| Market Segment | Representative Platforms | What They Offer | What They Lack |
-|---|---|---|---|
-| **MOOC Providers** | Coursera, Udemy, Edraak | Pre-recorded courses, certificates | Real mentorship, engagement, portfolio building |
-| **1:1 Mentorship Marketplaces** | MentorCruise | Personalized mentor matching | Scalability, group learning, integrated tools |
-| **Career Bootcamps** | Springboard | Intensive programs, job guarantees | Affordability, flexibility, community learning |
-| **Regional Education Portals** | Azcourses | Broad academic coverage | Mentorship, gamification, real-time communication |
+| Market Segment                  | Representative Platforms | What They Offer                    | What They Lack                                    |
+| ------------------------------- | ------------------------ | ---------------------------------- | ------------------------------------------------- |
+| **MOOC Providers**              | Coursera, Udemy, Edraak  | Pre-recorded courses, certificates | Real mentorship, engagement, portfolio building   |
+| **1:1 Mentorship Marketplaces** | MentorCruise             | Personalized mentor matching       | Scalability, group learning, integrated tools     |
+| **Career Bootcamps**            | Springboard              | Intensive programs, job guarantees | Affordability, flexibility, community learning    |
+| **Regional Education Portals**  | Azcourses                | Broad academic coverage            | Mentorship, gamification, real-time communication |
 
 **The Gap EduNest Fills:**
 
@@ -144,16 +144,16 @@ To validate EduNest's positioning and design decisions, a detailed competitive a
 
 MentorCruise connects learners with individual mentors for personalized career guidance, primarily targeting experienced professionals seeking career transitions.
 
-| Dimension | MentorCruise | EduNest |
-|---|---|---|
-| Mentorship Model | One-to-one only | Scalable group mentorship with cohort dynamics |
-| Communication | External tools (Slack integration) | Built-in real-time WebSocket chat (group + private) |
-| Live Sessions | Via external Zoom | Integrated Jitsi Meet with attendance tracking |
-| Curriculum Structure | Informal roadmaps | Structured week-by-week curriculum (Lectures, Quizzes, Tasks, Projects) |
-| Assessments | None | Auto-graded MCQ quizzes, manually graded tasks and projects |
-| Gamification | None | Points, badges (8 categories), leaderboards |
-| Portfolio Building | None | Project submissions linked to student profiles |
-| Analytics | None | Mentor dashboard with enrollment, revenue, and submission analytics |
+| Dimension            | MentorCruise                       | EduNest                                                                 |
+| -------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| Mentorship Model     | One-to-one only                    | Scalable group mentorship with cohort dynamics                          |
+| Communication        | External tools (Slack integration) | Built-in real-time WebSocket chat (group + private)                     |
+| Live Sessions        | Via external Zoom                  | Integrated Jitsi Meet with attendance tracking                          |
+| Curriculum Structure | Informal roadmaps                  | Structured week-by-week curriculum (Lectures, Quizzes, Tasks, Projects) |
+| Assessments          | None                               | Auto-graded MCQ quizzes, manually graded tasks and projects             |
+| Gamification         | None                               | Points, badges (8 categories), leaderboards                             |
+| Portfolio Building   | None                               | Project submissions linked to student profiles                          |
+| Analytics            | None                               | Mentor dashboard with enrollment, revenue, and submission analytics     |
 
 **Key Takeaway:** MentorCruise excels at personalized mentor matching (including AI-driven recommendations) but lacks structured learning tools, assessments, gamification, and scalability. EduNest provides a complete learning ecosystem that supports cohort-based mentorship at scale.
 
@@ -161,16 +161,16 @@ MentorCruise connects learners with individual mentors for personalized career g
 
 Springboard offers intensive, fixed-curriculum bootcamp programs with assigned mentors, targeting career changers in the technology industry.
 
-| Dimension | Springboard | EduNest |
-|---|---|---|
-| Curriculum | Pre-built, fixed by Springboard | Mentor-created, flexible and customizable |
-| Enrollment | Application-based (interviews/assessments) | Open marketplace with search, filter, and direct enrollment |
-| Cost | $5,000–$11,000 per program | Affordable, mentor-set pricing with discounts |
-| Communication | External Slack channels | Built-in real-time group and private chat |
-| Content | Self-paced pre-recorded videos | Recorded lectures + live sessions (Jitsi Meet) |
-| Gamification | Basic certificates only | Points, badges, leaderboards, streaks |
-| Profiles | Program-specific alumni profiles | Dynamic, multi-mentorship profiles with evolving skills and portfolios |
-| Target Audience | Career pivots (25–35, tech professionals) | Students and early-career learners (broad skill development) |
+| Dimension       | Springboard                                | EduNest                                                                |
+| --------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
+| Curriculum      | Pre-built, fixed by Springboard            | Mentor-created, flexible and customizable                              |
+| Enrollment      | Application-based (interviews/assessments) | Open marketplace with search, filter, and direct enrollment            |
+| Cost            | $5,000–$11,000 per program                 | Affordable, mentor-set pricing with discounts                          |
+| Communication   | External Slack channels                    | Built-in real-time group and private chat                              |
+| Content         | Self-paced pre-recorded videos             | Recorded lectures + live sessions (Jitsi Meet)                         |
+| Gamification    | Basic certificates only                    | Points, badges, leaderboards, streaks                                  |
+| Profiles        | Program-specific alumni profiles           | Dynamic, multi-mentorship profiles with evolving skills and portfolios |
+| Target Audience | Career pivots (25–35, tech professionals)  | Students and early-career learners (broad skill development)           |
 
 **Key Takeaway:** Springboard delivers high-quality outcomes with job placement guarantees but is financially inaccessible to the majority of learners and inflexible in content. EduNest democratizes mentored education by empowering any qualified mentor to create and deliver structured learning programs at accessible price points.
 
@@ -178,16 +178,16 @@ Springboard offers intensive, fixed-curriculum bootcamp programs with assigned m
 
 Edraak is a free, Arabic-language MOOC platform offering self-paced courses with videos and quizzes, modeled after Coursera/edX for the Arab world.
 
-| Dimension | Edraak | EduNest |
-|---|---|---|
-| Mentorship | None — pre-made courses by instructors | Personal mentor-led programs with structured roadmaps |
-| Communication | Discussion forums only | Real-time group chat with sub-channels and live session links |
-| Content | Recorded videos, self-paced | Recorded lectures + on-demand live sessions |
-| Progress Tracking | Basic percentage completion | Roadmaps with progress visualization, warnings, and point tracking |
-| Assessments | Auto-graded quizzes only | Quizzes, tasks, and project submissions with portfolio integration |
-| Gamification | None | Leaderboards, badges, points, and achievements |
-| Profiles | Simple course history and certificates | Dynamic profiles with skills, projects, and scores |
-| Completion Rates | Estimated 90%+ dropout | Structured milestones designed to improve retention |
+| Dimension         | Edraak                                 | EduNest                                                            |
+| ----------------- | -------------------------------------- | ------------------------------------------------------------------ |
+| Mentorship        | None — pre-made courses by instructors | Personal mentor-led programs with structured roadmaps              |
+| Communication     | Discussion forums only                 | Real-time group chat with sub-channels and live session links      |
+| Content           | Recorded videos, self-paced            | Recorded lectures + on-demand live sessions                        |
+| Progress Tracking | Basic percentage completion            | Roadmaps with progress visualization, warnings, and point tracking |
+| Assessments       | Auto-graded quizzes only               | Quizzes, tasks, and project submissions with portfolio integration |
+| Gamification      | None                                   | Leaderboards, badges, points, and achievements                     |
+| Profiles          | Simple course history and certificates | Dynamic profiles with skills, projects, and scores                 |
+| Completion Rates  | Estimated 90%+ dropout                 | Structured milestones designed to improve retention                |
 
 **Key Takeaway:** Edraak provides valuable free Arabic-language content but suffers from the same engagement and completion challenges as all MOOC platforms. EduNest builds upon the regional accessibility strength while adding mentorship, community interaction, and gamification to drive meaningful completion and skill acquisition.
 
@@ -195,15 +195,15 @@ Edraak is a free, Arabic-language MOOC platform offering self-paced courses with
 
 Azcourses is an Arabic educational platform covering school and university-level content through recorded lectures.
 
-| Dimension | Azcourses | EduNest |
-|---|---|---|
-| Mentorship System | Not available | Personalized mentor-led programs with structured roadmaps |
-| Real-Time Communication | Not available | Built-in chat, community, and real-time mentoring |
-| Tasks & Progress Tracking | Not available | Tasks, progress tracking, and goal monitoring |
-| Gamification | Not available | Points, badges, leaderboards |
-| Portfolio System | Not available | Auto-generated portfolio from projects and achievements |
-| Live + Recorded Content | Recorded lectures only | Both live (Jitsi Meet) and recorded content |
-| Student Collaboration | Not available | Cohort-based group learning and peer discussions |
+| Dimension                 | Azcourses              | EduNest                                                   |
+| ------------------------- | ---------------------- | --------------------------------------------------------- |
+| Mentorship System         | Not available          | Personalized mentor-led programs with structured roadmaps |
+| Real-Time Communication   | Not available          | Built-in chat, community, and real-time mentoring         |
+| Tasks & Progress Tracking | Not available          | Tasks, progress tracking, and goal monitoring             |
+| Gamification              | Not available          | Points, badges, leaderboards                              |
+| Portfolio System          | Not available          | Auto-generated portfolio from projects and achievements   |
+| Live + Recorded Content   | Recorded lectures only | Both live (Jitsi Meet) and recorded content               |
+| Student Collaboration     | Not available          | Cohort-based group learning and peer discussions          |
 
 **Key Takeaway:** Azcourses provides broad educational coverage but functions as a passive content library. EduNest transforms the learning experience from passive consumption to active, mentored, and community-driven skill development.
 
@@ -279,14 +279,14 @@ EduNest is the **only platform** that combines scalable group mentorship, struct
 
 ### Why Not Existing Platforms?
 
-| Challenge | Existing Platforms | EduNest's Answer |
-|---|---|---|
-| Tool fragmentation | Require 4–6 external tools | Everything in one platform |
-| Expensive mentorship | $100–$500+/month for 1:1 | Scalable group model at mentor-set prices |
-| Low completion rates | 5–15% for self-paced MOOCs | Structured milestones + mentor accountability + gamification |
-| No portfolio building | Certificates without project evidence | Graded project submissions linked to public profiles |
-| No community learning | Isolated individual experiences | Cohort-based groups with real-time chat and leaderboards |
-| Mentor tool deficit | Mentors juggle multiple platforms | Unified curriculum builder, grading, chat, analytics, and live sessions |
+| Challenge             | Existing Platforms                    | EduNest's Answer                                                        |
+| --------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
+| Tool fragmentation    | Require 4–6 external tools            | Everything in one platform                                              |
+| Expensive mentorship  | $100–$500+/month for 1:1              | Scalable group model at mentor-set prices                               |
+| Low completion rates  | 5–15% for self-paced MOOCs            | Structured milestones + mentor accountability + gamification            |
+| No portfolio building | Certificates without project evidence | Graded project submissions linked to public profiles                    |
+| No community learning | Isolated individual experiences       | Cohort-based groups with real-time chat and leaderboards                |
+| Mentor tool deficit   | Mentors juggle multiple platforms     | Unified curriculum builder, grading, chat, analytics, and live sessions |
 
 ### What Makes EduNest Unique?
 
@@ -300,14 +300,14 @@ EduNest is the **only platform** that combines scalable group mentorship, struct
 
 Based on EduNest's platform design, feature set, and established principles from educational technology research, the following outcomes are projected. *These are estimated figures derived from the platform's architectural capabilities and comparative analysis with existing solutions; they are not empirical measurements from a deployed production system.*
 
-| Impact Area | Estimated Improvement | Rationale |
-|---|---|---|
-| **Tool-Switching Reduction** | ~70–80% reduction in context switching | Consolidation of 4–6 external tools into a single integrated platform |
-| **Learner Engagement** | ~40–60% increase | Gamification (badges, points, leaderboards), real-time mentor communication, and cohort peer dynamics |
-| **Course Completion Rates** | ~30–50% improvement over self-paced MOOCs | Structured weekly milestones, mentor accountability, graded assessments, and progress tracking |
-| **Mentorship Accessibility** | Significant increase vs. 1:1 models | Group model enables one mentor to guide many students simultaneously at lower per-student cost |
-| **Practical Skill Acquisition** | Measurably improved | Mandatory project submissions, task completion, and portfolio building ensure applied learning |
-| **Learning Efficiency** | Notable improvement | Single-platform experience eliminates setup overhead, reduces cognitive load, and provides cohesive progress visibility |
+| Impact Area                     | Estimated Improvement                     | Rationale                                                                                                               |
+| ------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Tool-Switching Reduction**    | ~70–80% reduction in context switching    | Consolidation of 4–6 external tools into a single integrated platform                                                   |
+| **Learner Engagement**          | ~40–60% increase                          | Gamification (badges, points, leaderboards), real-time mentor communication, and cohort peer dynamics                   |
+| **Course Completion Rates**     | ~30–50% improvement over self-paced MOOCs | Structured weekly milestones, mentor accountability, graded assessments, and progress tracking                          |
+| **Mentorship Accessibility**    | Significant increase vs. 1:1 models       | Group model enables one mentor to guide many students simultaneously at lower per-student cost                          |
+| **Practical Skill Acquisition** | Measurably improved                       | Mandatory project submissions, task completion, and portfolio building ensure applied learning                          |
+| **Learning Efficiency**         | Notable improvement                       | Single-platform experience eliminates setup overhead, reduces cognitive load, and provides cohesive progress visibility |
 
 **Supporting Principles:**
 - Educational research consistently demonstrates that structured curricula with clear milestones improve completion rates compared to open-ended, self-paced formats (Khalil & Ebner, 2014; Jordan, 2015).
@@ -319,59 +319,59 @@ Based on EduNest's platform design, feature set, and established principles from
 
 ### Student User Stories
 
-| ID | User Story | Maps to Problem |
-|---|---|---|
-| US-S01 | As a Student, I want to register with my email and verify my account via OTP, so that my identity is confirmed and my account is secure. | Account security |
-| US-S02 | As a Student, I want to browse available mentorships and filter by category, difficulty, and rating, so that I can find programs aligned with my learning goals. | Content discovery |
-| US-S03 | As a Student, I want to enroll in a mentorship and be automatically added to the cohort chat room, so that I can begin learning and connecting with peers immediately. | Community learning |
-| US-S04 | As a Student, I want to view my weekly curriculum (lectures, quizzes, tasks, projects), so that I have a clear, structured learning path to follow. | Lack of structure |
-| US-S05 | As a Student, I want to take auto-graded MCQ quizzes, so that I can assess my understanding with immediate feedback. | Assessment gaps |
-| US-S06 | As a Student, I want to upload task and project submissions with secure file validation, so that my work is safely stored and reviewed by my mentor. | Unverifiable outcomes |
-| US-S07 | As a Student, I want to join live sessions via Jitsi Meet and have my attendance automatically recorded, so that I can participate in real-time learning. | No real mentorship |
-| US-S08 | As a Student, I want to chat with my mentor and cohort peers in real-time group and private channels, so that I can get help and collaborate without switching tools. | Tool fragmentation |
-| US-S09 | As a Student, I want to earn points and unlock badges as I complete activities, so that I stay motivated throughout my learning journey. | Lack of engagement |
-| US-S10 | As a Student, I want to view my position on the mentorship leaderboard, so that I can gauge my performance relative to my peers. | Lack of engagement |
-| US-S11 | As a Student, I want to receive a verifiable PDF certificate with my cohort rank upon completing a mentorship, so that I have tangible proof of my achievement. | Unverifiable outcomes |
-| US-S12 | As a Student, I want to build a public profile showcasing my skills, badges, certificates, and social links, so that I can demonstrate my learning journey to employers. | Portfolio gaps |
-| US-S13 | As a Student, I want to write reviews and ratings for mentorships I have completed, so that I can help future students make informed decisions. | Quality feedback |
-| US-S14 | As a Student, I want to receive notifications for new quizzes, sessions, badges, and announcements, so that I stay informed and engaged. | Engagement tracking |
-| US-S15 | As a Student, I want to reset my password via email OTP, so that I can regain access to my account securely. | Account management |
+| ID     | User Story                                                                                                                                                               | Maps to Problem       |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| US-S01 | As a Student, I want to register with my email and verify my account via OTP, so that my identity is confirmed and my account is secure.                                 | Account security      |
+| US-S02 | As a Student, I want to browse available mentorships and filter by category, difficulty, and rating, so that I can find programs aligned with my learning goals.         | Content discovery     |
+| US-S03 | As a Student, I want to enroll in a mentorship and be automatically added to the cohort chat room, so that I can begin learning and connecting with peers immediately.   | Community learning    |
+| US-S04 | As a Student, I want to view my weekly curriculum (lectures, quizzes, tasks, projects), so that I have a clear, structured learning path to follow.                      | Lack of structure     |
+| US-S05 | As a Student, I want to take auto-graded MCQ quizzes, so that I can assess my understanding with immediate feedback.                                                     | Assessment gaps       |
+| US-S06 | As a Student, I want to upload task and project submissions with secure file validation, so that my work is safely stored and reviewed by my mentor.                     | Unverifiable outcomes |
+| US-S07 | As a Student, I want to join live sessions via Jitsi Meet and have my attendance automatically recorded, so that I can participate in real-time learning.                | No real mentorship    |
+| US-S08 | As a Student, I want to chat with my mentor and cohort peers in real-time group and private channels, so that I can get help and collaborate without switching tools.    | Tool fragmentation    |
+| US-S09 | As a Student, I want to earn points and unlock badges as I complete activities, so that I stay motivated throughout my learning journey.                                 | Lack of engagement    |
+| US-S10 | As a Student, I want to view my position on the mentorship leaderboard, so that I can gauge my performance relative to my peers.                                         | Lack of engagement    |
+| US-S11 | As a Student, I want to receive a verifiable PDF certificate with my cohort rank upon completing a mentorship, so that I have tangible proof of my achievement.          | Unverifiable outcomes |
+| US-S12 | As a Student, I want to build a public profile showcasing my skills, badges, certificates, and social links, so that I can demonstrate my learning journey to employers. | Portfolio gaps        |
+| US-S13 | As a Student, I want to write reviews and ratings for mentorships I have completed, so that I can help future students make informed decisions.                          | Quality feedback      |
+| US-S14 | As a Student, I want to receive notifications for new quizzes, sessions, badges, and announcements, so that I stay informed and engaged.                                 | Engagement tracking   |
+| US-S15 | As a Student, I want to reset my password via email OTP, so that I can regain access to my account securely.                                                             | Account management    |
 
 ### Mentor User Stories
 
-| ID | User Story | Maps to Problem |
-|---|---|---|
+| ID     | User Story                                                                                                                                                                                  | Maps to Problem     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | US-M01 | As a Mentor, I want to create a mentorship with title, description, category, pricing, cover image, tags, and "What Will Learn" items, so that I can attract and inform potential students. | Mentor tool deficit |
-| US-M02 | As a Mentor, I want to build a week-by-week curriculum with lectures, quizzes, tasks, and projects, so that I can deliver a structured, comprehensive learning experience. | Lack of structure |
-| US-M03 | As a Mentor, I want to manage my mentorship lifecycle (DRAFT → ACTIVE → COMPLETED), so that I can control when my program is visible and enrollable. | Mentor tool deficit |
-| US-M04 | As a Mentor, I want to schedule and start live sessions with automatically generated Jitsi Meet links, so that I can conduct real-time teaching without external tools. | Tool fragmentation |
-| US-M05 | As a Mentor, I want to grade task and project submissions manually, so that I can provide personalized feedback on student work. | No real mentorship |
-| US-M06 | As a Mentor, I want to create badges with point thresholds and categories for my mentorship, so that I can recognize and motivate student achievement. | Lack of engagement |
-| US-M07 | As a Mentor, I want to view my dashboard with enrollment analytics, revenue/commission tracking, and pending submissions, so that I can manage my mentorship effectively. | Mentor tool deficit |
-| US-M08 | As a Mentor, I want to communicate with enrolled students via group and private chat, so that I can provide guidance without relying on external messaging tools. | Tool fragmentation |
-| US-M09 | As a Mentor, I want to manage my public profile (job title, bio, years of experience), so that students can evaluate my expertise before enrolling. | Mentor credibility |
-| US-M10 | As a Mentor, I want to track which students attended my live sessions, so that I can monitor participation and follow up as needed. | Accountability |
+| US-M02 | As a Mentor, I want to build a week-by-week curriculum with lectures, quizzes, tasks, and projects, so that I can deliver a structured, comprehensive learning experience.                  | Lack of structure   |
+| US-M03 | As a Mentor, I want to manage my mentorship lifecycle (DRAFT → ACTIVE → COMPLETED), so that I can control when my program is visible and enrollable.                                        | Mentor tool deficit |
+| US-M04 | As a Mentor, I want to schedule and start live sessions with automatically generated Jitsi Meet links, so that I can conduct real-time teaching without external tools.                     | Tool fragmentation  |
+| US-M05 | As a Mentor, I want to grade task and project submissions manually, so that I can provide personalized feedback on student work.                                                            | No real mentorship  |
+| US-M06 | As a Mentor, I want to create badges with point thresholds and categories for my mentorship, so that I can recognize and motivate student achievement.                                      | Lack of engagement  |
+| US-M07 | As a Mentor, I want to view my dashboard with enrollment analytics, revenue/commission tracking, and pending submissions, so that I can manage my mentorship effectively.                   | Mentor tool deficit |
+| US-M08 | As a Mentor, I want to communicate with enrolled students via group and private chat, so that I can provide guidance without relying on external messaging tools.                           | Tool fragmentation  |
+| US-M09 | As a Mentor, I want to manage my public profile (job title, bio, years of experience), so that students can evaluate my expertise before enrolling.                                         | Mentor credibility  |
+| US-M10 | As a Mentor, I want to track which students attended my live sessions, so that I can monitor participation and follow up as needed.                                                         | Accountability      |
 
 ### Administrator User Stories
 
-| ID | User Story | Maps to Problem |
-|---|---|---|
-| US-A01 | As an Admin, I want to view and search all platform users, so that I can manage the user directory effectively. | Platform governance |
-| US-A02 | As an Admin, I want to create and assign platform-wide badges (TOP_MENTOR, ACADEMIC_EXCELLENCE, etc.), so that I can recognize outstanding contributors. | Community building |
-| US-A03 | As an Admin, I want to handle "Contact Us" messages through a status workflow (PENDING → UNDER_REVIEW → COMPLETED), so that user inquiries are addressed systematically. | User support |
-| US-A04 | As an Admin, I want to view platform commission data from enrollments, so that I can monitor revenue and financial health. | Business operations |
-| US-A05 | As an Admin, I want to view platform-wide analytics and statistics, so that I can make informed decisions about platform growth and health. | Platform governance |
-| US-A06 | As an Admin, I want to send admin-level notifications and announcements, so that I can communicate important information to all users. | Platform communication |
+| ID     | User Story                                                                                                                                                               | Maps to Problem        |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| US-A01 | As an Admin, I want to view and search all platform users, so that I can manage the user directory effectively.                                                          | Platform governance    |
+| US-A02 | As an Admin, I want to create and assign platform-wide badges (TOP_MENTOR, ACADEMIC_EXCELLENCE, etc.), so that I can recognize outstanding contributors.                 | Community building     |
+| US-A03 | As an Admin, I want to handle "Contact Us" messages through a status workflow (PENDING → UNDER_REVIEW → COMPLETED), so that user inquiries are addressed systematically. | User support           |
+| US-A04 | As an Admin, I want to view platform commission data from enrollments, so that I can monitor revenue and financial health.                                               | Business operations    |
+| US-A05 | As an Admin, I want to view platform-wide analytics and statistics, so that I can make informed decisions about platform growth and health.                              | Platform governance    |
+| US-A06 | As an Admin, I want to send admin-level notifications and announcements, so that I can communicate important information to all users.                                   | Platform communication |
 
 ## 1.11 System Stakeholders
 
-| Stakeholder | Role | Interest in EduNest |
-|---|---|---|
-| **Students** | Primary end users — learners seeking structured, mentored education | Access to affordable, guided learning journeys with verifiable outcomes (certificates, portfolios, skill profiles) |
-| **Mentors** | Content creators and educators — industry experts who design and deliver mentorship programs | A unified platform to create curricula, manage cohorts, communicate with students, grade submissions, and track analytics — without juggling multiple external tools |
-| **Administrators** | Platform operators responsible for governance, moderation, and growth | Tools for user management, badge administration, support ticket handling, revenue monitoring, and platform analytics |
-| **Educational Institutions** | Potential organizational adopters (future) | A platform to extend mentorship offerings, track student progress, and issue verifiable credentials |
-| **Employers** (indirect) | Consumers of student profiles and portfolios | Access to verifiable learning outcomes, project portfolios, and skill validations from mentored programs |
+| Stakeholder                  | Role                                                                                         | Interest in EduNest                                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Students**                 | Primary end users — learners seeking structured, mentored education                          | Access to affordable, guided learning journeys with verifiable outcomes (certificates, portfolios, skill profiles)                                                   |
+| **Mentors**                  | Content creators and educators — industry experts who design and deliver mentorship programs | A unified platform to create curricula, manage cohorts, communicate with students, grade submissions, and track analytics — without juggling multiple external tools |
+| **Administrators**           | Platform operators responsible for governance, moderation, and growth                        | Tools for user management, badge administration, support ticket handling, revenue monitoring, and platform analytics                                                 |
+| **Educational Institutions** | Potential organizational adopters (future)                                                   | A platform to extend mentorship offerings, track student progress, and issue verifiable credentials                                                                  |
+| **Employers** (indirect)     | Consumers of student profiles and portfolios                                                 | Access to verifiable learning outcomes, project portfolios, and skill validations from mentored programs                                                             |
 
 ## 1.12 Objectives
 - Build a platform where Mentors can create structured mentorships composed of Weeks, Lectures, Quizzes, Tasks, and Projects.
@@ -786,7 +786,487 @@ sequenceDiagram
   end
 ```
 
-## 4.6 Activity Diagram: Student Enrollment & Learning Journey
+## 4.6 Sequence Diagram: Mentorship Creation & Curriculum Building
+```mermaid
+sequenceDiagram
+    actor Mentor
+    participant MCtrl as MentorshipController
+    participant MSvc as MentorshipService
+    participant WCtrl as WeekController
+    participant DB as MySQL
+
+    Mentor->>MCtrl: POST /api/v1/mentorships/create (details)
+    MCtrl->>MSvc: create(dto)
+    MSvc->>DB: Save Mentorship (status=DRAFT)
+    MCtrl-->>Mentor: 201 Created (mentorshipId)
+    
+    Mentor->>WCtrl: POST /api/v1/weeks/create (mentorshipId, title)
+    WCtrl->>DB: Save Week linked to Mentorship
+    WCtrl-->>Mentor: 201 Created (weekId)
+    
+    Note over Mentor,DB: Mentor adds Lectures, Quizzes, Tasks to Week
+    Mentor->>MCtrl: PUT /api/v1/mentorships/{id}/publish
+    MCtrl->>DB: Update status=ACTIVE
+    MCtrl-->>Mentor: 200 OK - Published
+```
+
+## 4.7 Sequence Diagram: Live Session Flow
+```mermaid
+sequenceDiagram
+    actor Mentor
+    actor Student
+    participant LCtrl as LiveSessionController
+    participant LSvc as LiveSessionService
+    participant Jitsi as JitsiService
+    participant DB as MySQL
+
+    Mentor->>LCtrl: POST /schedule (weekId, title, scheduledAt)
+    LCtrl->>DB: Save Session (status=SCHEDULED)
+    LCtrl-->>Mentor: 201 Created
+    
+    Mentor->>LCtrl: POST /{id}/start
+    LCtrl->>LSvc: startSession()
+    LSvc->>Jitsi: generateMeetingUrl(sessionId, UUID)
+    Jitsi-->>LSvc: https://meet.jit.si/...
+    LSvc->>DB: Update Session (status=LIVE, actualStartTime, meetingUrl)
+    LCtrl-->>Mentor: 200 OK + Meeting URL
+    
+    Student->>LCtrl: POST /{id}/attendance
+    LCtrl->>DB: Record SessionAttendance
+    LCtrl-->>Student: 200 OK + Meeting URL
+    Note over Student,Jitsi: Student joins Jitsi meeting
+```
+
+## 4.8 Sequence Diagram: Real-Time Chat
+```mermaid
+sequenceDiagram
+    actor Student
+    participant WebSocket as STOMP WebSocket (/ws)
+    participant ChannelInterceptor as JwtChannelInterceptor
+    participant ChatCtrl as ChatWebSocketController
+    participant ChatSvc as ChatMessageService
+    participant Broker as SimpMessagingTemplate
+    participant DB as MySQL
+
+    Student->>WebSocket: CONNECT (Authorization: Bearer)
+    WebSocket->>ChannelInterceptor: preSend()
+    ChannelInterceptor->>ChannelInterceptor: Validate JWT
+    WebSocket-->>Student: CONNECTED
+    
+    Student->>WebSocket: SUBSCRIBE /topic/room/{roomId}
+    
+    Student->>ChatCtrl: SEND /app/chat/{roomId} (content)
+    ChatCtrl->>ChatSvc: saveMessage()
+    ChatSvc->>DB: Save ChatMessage
+    ChatCtrl->>Broker: convertAndSend(/topic/room/{roomId}, msg)
+    Broker-->>Student: MESSAGE /topic/room/{roomId}
+    Note over Broker,Student: All subscribed users in room receive message
+```
+
+## 4.9 Sequence Diagram: Certificate Generation
+```mermaid
+sequenceDiagram
+    actor System
+    participant CertSvc as CertificateService
+    participant DB as MySQL
+    participant NotifySvc as NotificationService
+
+    System->>CertSvc: issueCertificates(mentorshipId)
+    CertSvc->>DB: getLeaderboard(mentorshipId)
+    DB-->>CertSvc: List of students ordered by TotalPoints
+    
+    loop For each Student in Leaderboard
+        CertSvc->>DB: Save Certificate (rank, issuedAt)
+        CertSvc->>NotifySvc: sendToUser(CERTIFICATE notification)
+    end
+```
+
+## 4.10 Sequence Diagram: Student Mentorship Enrollment
+```mermaid
+sequenceDiagram
+    actor Student
+    participant HomeCtrl as HomePageController
+    participant MentCtrl as MentorshipController
+    participant EnrollSvc as EnrollmentService
+    participant DB as MySQL
+
+    Student->>HomeCtrl: GET /api/v1/homepage/featured
+    HomeCtrl-->>Student: List of Mentorships
+    Student->>MentCtrl: GET /api/v1/mentorships/{id}
+    MentCtrl-->>Student: Mentorship Details (Curriculum, Mentor)
+    
+    Student->>MentCtrl: POST /api/v1/mentorships/{id}/enroll
+    MentCtrl->>EnrollSvc: enrollStudent(studentId, mentorshipId)
+    EnrollSvc->>DB: Check if already enrolled
+    EnrollSvc->>DB: Calculate Platform Profit
+    EnrollSvc->>DB: Save Enrollment
+    MentCtrl-->>Student: 200 OK - Enrolled Successfully
+```
+
+## 4.11 Sequence Diagram: Quiz Submission & Auto-Grading
+```mermaid
+sequenceDiagram
+    actor Student
+    participant QuizCtrl as QuizSubmissionController
+    participant QuizSvc as QuizSubmissionService
+    participant PointsSvc as TotalPointsService
+    participant DB as MySQL
+
+    Student->>QuizCtrl: POST /api/v1/quiz/{id}/submit (Answers)
+    QuizCtrl->>QuizSvc: gradeQuiz(dto)
+    QuizSvc->>DB: Fetch correct answers
+    
+    loop For each question
+        QuizSvc->>QuizSvc: Compare student answer with correct answer
+        QuizSvc->>QuizSvc: Calculate score
+    end
+    
+    QuizSvc->>DB: Save QuizSubmission & StudentAnswers
+    QuizSvc->>PointsSvc: awardPoints(student, mentorship, score)
+    PointsSvc->>DB: Update TotalPoints
+    QuizCtrl-->>Student: 200 OK - Score & Grade Returned
+```
+
+## 4.12 Sequence Diagram: Mentor Grading Submissions
+```mermaid
+sequenceDiagram
+    actor Mentor
+    participant TaskCtrl as TaskController
+    participant TaskSvc as TaskService
+    participant NotifySvc as NotificationService
+    participant DB as MySQL
+
+    Mentor->>TaskCtrl: GET /api/v1/tasks/{id}/submissions
+    TaskCtrl-->>Mentor: List of Submissions (SUBMITTED)
+    
+    Mentor->>TaskCtrl: PUT /api/v1/tasks/submissions/{subId}/grade (points, feedback)
+    TaskCtrl->>TaskSvc: gradeSubmission()
+    TaskSvc->>DB: Update TaskSubmission (status=GRADED, points)
+    TaskSvc->>DB: Update TotalPoints
+    TaskSvc->>NotifySvc: sendTargetedNotification(Student)
+    TaskCtrl-->>Mentor: 200 OK - Graded
+```
+
+## 4.13 Sequence Diagram: Notifications Broadcast
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant NotifCtrl as AdminNotificationController
+    participant NotifSvc as NotificationService
+    participant Broker as SimpMessagingTemplate
+    participant DB as MySQL
+
+    Admin->>NotifCtrl: POST /api/v1/admin/notifications (message)
+    NotifCtrl->>NotifSvc: broadcastAnnouncement(message)
+    NotifSvc->>DB: Save AdminNotification
+    NotifSvc->>Broker: convertAndSend(/topic/notifications, message)
+    Broker-->>All Users: STOMP Message /topic/notifications
+    NotifCtrl-->>Admin: 200 OK - Broadcasted
+```
+
+## 4.14 Sequence Diagram: Student Profile Update & Skills Addition
+```mermaid
+sequenceDiagram
+    actor Student
+    participant ProfCtrl as StudentProfileController
+    participant SkillCtrl as StudentSkillsController
+    participant ProfSvc as StudentProfileService
+    participant SkillSvc as StudentSkillsService
+    participant DB as MySQL
+
+    Student->>ProfCtrl: PUT /api/v1/profile/update (bio, social links)
+    ProfCtrl->>ProfSvc: updateProfile(dto)
+    ProfSvc->>DB: Update Student entity
+    ProfCtrl-->>Student: 200 OK - Profile Updated
+    
+    Student->>SkillCtrl: POST /api/v1/skills/add (skill name)
+    SkillCtrl->>SkillSvc: addSkill(dto)
+    SkillSvc->>DB: Save StudentSkill
+    SkillCtrl-->>Student: 201 Created - Skill Added
+```
+
+## 4.15 Sequence Diagram: Mentorship Review & Rating
+```mermaid
+sequenceDiagram
+    actor Student
+    participant RevCtrl as MentorshipReviewController
+    participant RevSvc as MentorshipReviewService
+    participant DB as MySQL
+
+    Student->>RevCtrl: POST /api/v1/mentorships/{id}/reviews (rating, comment)
+    RevCtrl->>RevSvc: addReview(mentorshipId, dto)
+    RevSvc->>DB: Validate Student is Enrolled
+    RevSvc->>DB: Save MentorShipReview
+    RevSvc->>DB: Recalculate Mentorship Average Rating
+    RevCtrl-->>Student: 201 Created - Review Added
+```
+
+## 4.16 Sequence Diagram: Contact Us & Admin Reply
+```mermaid
+sequenceDiagram
+    actor User
+    actor Admin
+    participant ContactCtrl as ContactMessageController
+    participant ContactSvc as ContactMessageService
+    participant Mail as EmailService
+    participant DB as MySQL
+
+    User->>ContactCtrl: POST /api/v1/contact/submit (message dto)
+    ContactCtrl->>ContactSvc: saveContactMessage(dto)
+    ContactSvc->>DB: Save ContactMessageEntity (status=PENDING)
+    ContactCtrl-->>User: 200 OK - Message Submitted
+    
+    Admin->>ContactCtrl: PUT /api/v1/admin/contact/{id}/reply (reply text)
+    ContactCtrl->>ContactSvc: sendAdminReply(msgId, reply)
+    ContactSvc->>Mail: sendEmail(userEmail, replyHtml)
+    ContactSvc->>DB: Update Message Status (COMPLETED)
+    ContactCtrl-->>Admin: 200 OK - Reply Sent
+```
+
+## 4.17 Sequence Diagram: Student My Learning & Progress Tracking
+```mermaid
+sequenceDiagram
+    actor Student
+    participant LearnCtrl as MyLearningController
+    participant LearnSvc as MyLearningService
+    participant EnrollRepo as EnrollmentRepository
+    participant DB as MySQL
+
+    Student->>LearnCtrl: GET /api/v1/mylearning (page, size)
+    LearnCtrl->>LearnSvc: getMyLearning(email, page, size)
+    LearnSvc->>EnrollRepo: findAllEnrolledMentorshipsWithProgress()
+    EnrollRepo->>DB: Execute Query with Projections (Counts & Totals)
+    DB-->>EnrollRepo: List of ActiveMentorshipProgressProjection
+    LearnSvc->>LearnSvc: Calculate Progress % ((Submitted / Total) * 100)
+    LearnSvc->>LearnSvc: Aggregate total points & averages
+    LearnCtrl-->>Student: 200 OK - MyLearningResponse
+```
+
+## 4.18 Sequence Diagram: Mentor Dashboard Retrieval
+```mermaid
+sequenceDiagram
+    actor Mentor
+    participant DashCtrl as MentorDashboardController
+    participant DashSvc as MentorshipDashboardService
+    participant DB as MySQL
+
+    Mentor->>DashCtrl: GET /api/v1/dashboard/enrollments
+    DashCtrl->>DashSvc: getEnrollmentStatistics()
+    DashSvc->>DB: Query Enrollments for Mentor's Mentorships
+    DashCtrl-->>Mentor: 200 OK - EnrollmentStatsResponse
+    
+    Mentor->>DashCtrl: GET /api/v1/dashboard/submissions/pending
+    DashCtrl->>DashSvc: getPendingTasksAndProjects()
+    DashSvc->>DB: Query Tasks/Projects (status=SUBMITTED)
+    DashCtrl-->>Mentor: 200 OK - List<PendingSubmissionDto>
+```
+
+## 4.19 Sequence Diagram: Account Password Reset (OTP)
+```mermaid
+sequenceDiagram
+    actor User
+    participant AuthCtrl as AuthController
+    participant AuthSvc as AuthenticationService
+    participant Mail as EmailService
+    participant DB as MySQL
+
+    User->>AuthCtrl: POST /api/auth/forgot-password (email)
+    AuthCtrl->>AuthSvc: generateAndSendOTP(email, type=RESET)
+    AuthSvc->>DB: Save OTP
+    AuthSvc->>Mail: sendEmail(OTP)
+    AuthCtrl-->>User: 200 OK - OTP Sent
+    
+    User->>AuthCtrl: POST /api/auth/reset-password (email, OTP, newPassword)
+    AuthCtrl->>AuthSvc: resetPassword()
+    AuthSvc->>DB: Validate OTP
+    AuthSvc->>DB: Update User Password (BCrypt Hash)
+    AuthCtrl-->>User: 200 OK - Password Reset Successful
+```
+
+## 4.20 Sequence Diagram: Homepage Catalog & Filtering
+```mermaid
+sequenceDiagram
+    actor User
+    participant HomeCtrl as HomePageController
+    participant HomeSvc as HomePageService
+    participant DB as MySQL
+
+    User->>HomeCtrl: GET /api/v1/homepage/mentorships?category=TECH&difficulty=BEGINNER
+    HomeCtrl->>HomeSvc: getFilteredMentorships()
+    HomeSvc->>DB: Query Mentorships (Filters applied, status=ACTIVE)
+    DB-->>HomeSvc: Paged Mentorship Entities
+    HomeCtrl-->>User: 200 OK - PageResponse<MentorshipDto>
+```
+
+## 4.21 Sequence Diagram: Task Submission & Mentor Grading (Full Flow)
+```mermaid
+sequenceDiagram
+    actor Student
+    actor Mentor
+    participant TaskCtrl as TaskSubmissionController
+    participant FileSvc as FileStorageService
+    participant Tika as Apache Tika
+    participant TaskSvc as TaskSubmissionService
+    participant PointsSvc as TotalPointsService
+    participant NotifySvc as NotificationService
+    participant DB as MySQL
+
+    Student->>TaskCtrl: POST /api/v1/tasks/{id}/submit (file)
+    TaskCtrl->>FileSvc: store(file)
+    FileSvc->>Tika: detectMimeType(file bytes)
+    Tika-->>FileSvc: OK - Valid MIME
+    FileSvc->>DB: Save to /uploads/submissions
+    TaskCtrl->>DB: Save TaskSubmission (status=SUBMITTED)
+    TaskCtrl-->>Student: 200 OK - Submitted
+    
+    Mentor->>TaskCtrl: PUT /api/v1/tasks/submissions/{subId}/grade (points, feedback)
+    TaskCtrl->>TaskSvc: gradeSubmission()
+    TaskSvc->>DB: Update TaskSubmission (status=GRADED, points, feedback)
+    TaskSvc->>PointsSvc: awardPoints(student, mentorship, points)
+    PointsSvc->>DB: Update TotalPoints
+    TaskSvc->>NotifySvc: sendToUser(TASK notification)
+    TaskCtrl-->>Mentor: 200 OK - Graded
+```
+
+## 4.22 Sequence Diagram: Admin Badge Award & PDF Certificate Email
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant BadgeCtrl as AdminBadgeController
+    participant BadgeSvc as AdminBadgeService
+    participant PdfSvc as BadgePdfGeneratorService
+    participant NotifySvc as NotificationService
+    participant Mail as EmailService
+    participant DB as MySQL
+
+    Admin->>BadgeCtrl: POST /api/v1/admin/badges/award (userId, badgeId, note)
+    BadgeCtrl->>BadgeSvc: awardBadgeToUser(userId, badgeId, note)
+    BadgeSvc->>DB: Validate User & Badge exist
+    BadgeSvc->>DB: Check not already awarded
+    BadgeSvc->>DB: Save UserAdminBadge
+    BadgeSvc->>NotifySvc: sendToUserByEmail(BADGE notification)
+    BadgeSvc->>PdfSvc: generateBadgeCertificate(name, badge, type, note)
+    PdfSvc-->>BadgeSvc: PDF ByteArrayOutputStream
+    BadgeSvc->>Mail: sendEmailWithAttachment(email, html, PDF)
+    BadgeCtrl-->>Admin: 200 OK - Badge Awarded
+```
+
+## 4.23 Sequence Diagram: Admin Dashboard & Platform Analytics
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant DashCtrl as AdminDashboardController
+    participant DashSvc as Dashboard
+    participant PaySvc as Payments
+    participant DB as MySQL
+
+    Admin->>DashCtrl: GET /api/v1/admin/dashboard
+    DashCtrl->>DashSvc: getPlatformStatistics()
+    DashSvc->>DB: Count Users by Role
+    DashSvc->>DB: Count Active Mentorships
+    DashSvc->>DB: Get Monthly User Growth
+    DashCtrl-->>Admin: 200 OK - DashboardResponse
+    
+    Admin->>DashCtrl: GET /api/v1/admin/payments
+    DashCtrl->>PaySvc: getPaymentsOverview()
+    PaySvc->>DB: Sum platformProfit from Enrollments
+    DashCtrl-->>Admin: 200 OK - PaymentsResponse
+```
+
+## 4.24 Sequence Diagram: Student Week View & Content Retrieval
+```mermaid
+sequenceDiagram
+    actor Student
+    participant WeekCtrl as StudentWeekController
+    participant WeekSvc as StudentWeekService
+    participant DB as MySQL
+
+    Student->>WeekCtrl: GET /api/v1/weeks/{mentorshipId}/contents
+    WeekCtrl->>WeekSvc: getMentorshipWeeksWithContents(mentorshipId, email)
+    WeekSvc->>DB: Verify Enrollment
+    WeekSvc->>DB: Fetch Weeks for Mentorship
+    WeekSvc->>DB: Batch Fetch Sessions, Lectures, Tasks, Quizzes, Projects
+    WeekSvc->>DB: Batch Fetch Student Completions (attendance, submissions)
+    WeekSvc->>WeekSvc: Build items list with completed status
+    WeekCtrl-->>Student: 200 OK - MentorshipWeeksWithContentsResponse
+```
+
+## 4.25 Sequence Diagram: Student Achievements & Portfolio
+```mermaid
+sequenceDiagram
+    actor Student
+    participant AchCtrl as StudentAchievementController
+    participant AchSvc as StudentAchievementService
+    participant DB as MySQL
+
+    Student->>AchCtrl: GET /api/v1/achievements
+    AchCtrl->>AchSvc: getAchievements(badgesPage, projectsPage)
+    AchSvc->>DB: Fetch BadgeAwards (ordered by date)
+    AchSvc->>DB: Fetch ProjectSubmissions (status=GRADED)
+    AchSvc->>AchSvc: Map to BadgeAchievementResponse + ProjectAchievementResponse
+    AchCtrl-->>Student: 200 OK - StudentAchievementResponse
+```
+
+## 4.26 Sequence Diagram: Account Settings (Change Email & Delete Account)
+```mermaid
+sequenceDiagram
+    actor User
+    participant SetCtrl as SettingsController
+    participant SetSvc as SettingsService
+    participant Mail as EmailService
+    participant DB as MySQL
+
+    Note over User,DB: Change Email Flow
+    User->>SetCtrl: POST /api/v1/account/change-email (newEmail)
+    SetCtrl->>SetSvc: requestChangeEmail(newEmail)
+    SetSvc->>DB: Validate email not in use
+    SetSvc->>DB: Save OTP (type=CHANGE_EMAIL, pendingEmail)
+    SetSvc->>Mail: Send OTP to new email
+    SetCtrl-->>User: 200 OK - OTP Sent
+    
+    User->>SetCtrl: POST /api/v1/account/confirm-change-email (otpCode)
+    SetCtrl->>SetSvc: confirmChangeEmail(otpCode)
+    SetSvc->>DB: Validate OTP & Update User Email
+    SetCtrl-->>User: 200 OK - Email Changed
+
+    Note over User,DB: Delete Account Flow
+    User->>SetCtrl: POST /api/v1/account/delete
+    SetCtrl->>SetSvc: deleteAccount()
+    SetSvc->>DB: Save OTP (type=DELETE)
+    SetSvc->>Mail: Send Confirmation OTP
+    SetCtrl-->>User: 200 OK - OTP Sent
+    
+    User->>SetCtrl: POST /api/v1/account/confirm-delete (otpCode)
+    SetCtrl->>SetSvc: confirmDeleteAccount(otpCode)
+    SetSvc->>DB: Set user.deleted = true (Soft Delete)
+    SetCtrl-->>User: 200 OK - Account Deleted
+```
+
+## 4.27 Sequence Diagram: Mentorship Details & Enrollment Status
+```mermaid
+sequenceDiagram
+    actor User
+    participant OverviewCtrl as MentorshipOverviewController
+    participant OverviewSvc as MentorshipOverviewService
+    participant DB as MySQL
+
+    User->>OverviewCtrl: GET /api/v1/mentorships/{id}/details
+    OverviewCtrl->>OverviewSvc: getMentorshipWithEnrollmentStatus(id, email)
+    OverviewSvc->>DB: Check Enrollment Status
+    
+    alt Not Enrolled
+        OverviewSvc->>DB: Fetch Full Details (price, discount, mentor info)
+        OverviewSvc->>DB: Fetch Tags & What Will Learn
+        OverviewSvc->>DB: Fetch Top Mentorships by Same Mentor
+        OverviewCtrl-->>User: 200 OK - BeforeEnrollData
+    else Already Enrolled
+        OverviewSvc->>DB: Fetch Enrolled View (progress, upcoming items)
+        OverviewSvc->>DB: Fetch Tags & What Will Learn
+        OverviewCtrl-->>User: 200 OK - AfterEnrollData
+    end
+```
+
+## 4.28 Activity Diagram: Student Enrollment & Learning Journey
 ```mermaid
 flowchart TD
   A([Start]) --> B[Student Logs In]
@@ -813,7 +1293,7 @@ flowchart TD
   R --> S([End])
 ```
 
-## 4.7 Entity Relationship Diagram (ERD)
+## 4.29 Entity Relationship Diagram (ERD)
 ```mermaid
 erDiagram
   USERS ||--o{ STUDENTS : "JOINED inheritance"
@@ -848,7 +1328,7 @@ erDiagram
   CONVERSATIONS ||--o{ MESSAGES : "contains"
 ```
 
-## 4.8 Data Flow Diagram (DFD Level 0)
+## 4.30 Data Flow Diagram (DFD Level 0)
 ```mermaid
 flowchart LR
   S((Student))
@@ -866,7 +1346,7 @@ flowchart LR
   System -- "Analytics, Platform Stats" --> A
 ```
 
-## 4.9 State Diagram: Mentorship Lifecycle
+## 4.31 State Diagram: Mentorship Lifecycle
 ```mermaid
 stateDiagram-v2
   [*] --> DRAFT
@@ -875,7 +1355,7 @@ stateDiagram-v2
   COMPLETED --> [*]
 ```
 
-## 4.10 State Diagram: Live Session Lifecycle
+## 4.32 State Diagram: Live Session Lifecycle
 ```mermaid
 stateDiagram-v2
   [*] --> SCHEDULED
@@ -884,7 +1364,7 @@ stateDiagram-v2
   ENDED --> [*]
 ```
 
-## 4.11 State Diagram: Task/Quiz Status
+## 4.33 State Diagram: Task/Quiz Status
 ```mermaid
 stateDiagram-v2
   [*] --> DRAFT
@@ -1083,35 +1563,181 @@ Cross-cutting Concerns:
 
 # Chapter 8: UI/UX Design
 
-`[🖼️ INSERT SCREENSHOT: Login / Registration Page]`
+This chapter presents the user interface design of EduNest, organized by feature area. Each section describes the screen's purpose and indicates where screenshots should be inserted.
 
-`[🖼️ INSERT SCREENSHOT: OTP Verification Screen]`
+## 8.1 Authentication & Onboarding
 
-`[🖼️ INSERT SCREENSHOT: Student Homepage — Mentorship Catalog with cards, ratings, tags]`
+The authentication flow provides a clean, modern login and registration experience with email-based OTP verification.
 
-`[🖼️ INSERT SCREENSHOT: Mentorship Detail Page — What You Will Learn, curriculum preview, Enroll button]`
+> **Screenshot:** Login Page — email/password fields, role selection (Student/Mentor)
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Student Weekly View — Lectures, Quizzes, Tasks, Projects for current week]`
+> **Screenshot:** Registration Page — multi-step form with user details
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Quiz Taking Interface — MCQ with A/B/C/D choices]`
+> **Screenshot:** OTP Verification Screen — 6-digit code input with countdown timer
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Task/Project Submission — File upload form]`
+## 8.2 Homepage & Mentorship Discovery
 
-`[🖼️ INSERT SCREENSHOT: Live Session Page — Jitsi meeting embedded or linked]`
+The homepage serves as the primary entry point, displaying featured mentorships with rich cards showing cover images, ratings, pricing, and category tags. Students can filter by category, difficulty level, and rating.
 
-`[🖼️ INSERT SCREENSHOT: Real-Time Chat — Group chat room and/or private conversation]`
+> **Screenshot:** Student Homepage — Mentorship catalog cards with ratings, tags, and prices
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Student Profile — Skills, Badges, Certificates, Social Links]`
+> **Screenshot:** Search & Filter Panel — Category, difficulty level, and rating filters
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Leaderboard — Ranked students within a mentorship cohort]`
+## 8.3 Mentorship Detail Page
 
-`[🖼️ INSERT SCREENSHOT: Generated PDF Certificate]`
+Before enrollment, students see the full mentorship overview: description, curriculum preview, "What You Will Learn" items, mentor profile, pricing with discounts, and reviews from previous students.
 
-`[🖼️ INSERT SCREENSHOT: Mentor Dashboard — Enrollments, Revenue, Submissions Queue]`
+> **Screenshot:** Mentorship Detail Page (Before Enroll) — description, tags, What Will Learn, Enroll button, price
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Mentor Curriculum Builder — Adding Weeks, Lectures, Quizzes]`
+> **Screenshot:** Mentorship Detail Page (After Enroll) — progress bar, upcoming items, curriculum access
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-`[🖼️ INSERT SCREENSHOT: Admin Console — User Directory / Admin Badges / Contact Messages]`
+## 8.4 Student Weekly Curriculum View
+
+Once enrolled, students access the structured week-by-week curriculum. Each week displays its content items (Lectures, Quizzes, Tasks, Projects, Sessions) with completion status indicators.
+
+> **Screenshot:** Student Weekly View — Weeks list with content items and completion checkmarks
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Lecture View — Video player with lecture title
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.5 Quizzes & Assessments
+
+The quiz interface presents MCQ questions (A/B/C/D) with a countdown timer. Auto-grading provides immediate score feedback upon submission.
+
+> **Screenshot:** Quiz Taking Interface — MCQ with A/B/C/D choices and timer
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Quiz Results — Score display, correct/incorrect breakdown
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.6 Task & Project Submissions
+
+Students upload task and project files through a clean submission form. Files are validated via Apache Tika for security. Mentors provide manual grades and feedback.
+
+> **Screenshot:** Task Submission Page — File upload, task description, due date, points
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Project Submission Page — Project brief, goals, file upload, deadline
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Graded Submission View — Mentor feedback, score, status
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.7 Live Sessions (Jitsi Meet)
+
+Mentors schedule and start live sessions with auto-generated Jitsi Meet links. Students join directly from the platform with automatic attendance tracking.
+
+> **Screenshot:** Live Session Page — Scheduled sessions list, Join button, Jitsi meeting embedded or linked
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.8 Real-Time Chat
+
+Group chat rooms are created per mentorship cohort. Private 1-to-1 conversations are also supported. All messages are persisted and delivered via WebSocket STOMP.
+
+> **Screenshot:** Group Chat Room — Messages, member list, real-time updates
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Private Conversation — Direct messaging between Student and Mentor
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.9 Gamification (Badges, Points, Leaderboard)
+
+Students earn points through quizzes, tasks, and projects. Badges are unlocked when point thresholds are reached. The leaderboard ranks all students within a mentorship cohort.
+
+> **Screenshot:** Badge Collection — Earned badges displayed with categories and descriptions
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Leaderboard — Ranked students with avatars, names, and point totals
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.10 Certificates
+
+Upon mentorship completion, a PDF certificate is auto-generated via iText7 containing the student's name, mentorship title, cohort rank, and issue date.
+
+> **Screenshot:** Certificates List — Student's earned certificates with download buttons
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Generated PDF Certificate — Styled certificate with rank and date
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.11 Student Profile & Achievements
+
+Public profiles aggregate skills, social links (GitHub, LinkedIn, Facebook), earned badges, certificates, and project submissions — creating a dynamic professional portfolio.
+
+> **Screenshot:** Student Profile — Bio, skills, social links, badges, certificates
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Student Achievements Page — Badges and graded project submissions
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.12 My Learning Dashboard
+
+Students view all their enrolled mentorships with progress percentages, total points, and completion status at a glance.
+
+> **Screenshot:** My Learning Page — Enrolled mentorships cards with progress bars and stats
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.13 Mentor Dashboard
+
+Mentors access enrollment analytics, revenue/commission tracking, and pending submission queues from their dedicated dashboard.
+
+> **Screenshot:** Mentor Dashboard — Enrollment stats, revenue chart, pending submissions count
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.14 Mentor Curriculum Builder
+
+Mentors create and manage week-by-week curricula by adding Lectures, Quizzes, Tasks, and Projects through an intuitive builder interface.
+
+> **Screenshot:** Mentor Curriculum Builder — Adding Weeks, Lectures, Quizzes, Tasks
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Mentor Mentorship Creation Form — Title, category, price, tags, cover image
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.15 Account Settings
+
+Users manage their accounts: change email (with OTP verification), change password, deactivate account, or request account deletion (soft delete).
+
+> **Screenshot:** Account Settings Page — Change email, change password, delete account options
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.16 Admin Console
+
+Administrators manage the entire platform: user directory, admin badges, contact message handling, payments overview, and platform analytics.
+
+> **Screenshot:** Admin User Directory — Searchable user list with roles and status
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Admin Badge Management — Create/assign platform-wide badges
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Admin Contact Messages — Status workflow (PENDING → UNDER_REVIEW → COMPLETED)
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+> **Screenshot:** Admin Dashboard — Platform analytics, user growth charts, revenue
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.17 Notifications
+
+Multi-type notifications keep users informed about quizzes, sessions, badges, certificates, and announcements in real time.
+
+> **Screenshot:** Notifications Panel — Notification list with types and timestamps
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
+
+## 8.18 Contact Us
+
+A public contact form allows unauthenticated users to submit inquiries. Admins manage these through a status workflow and can reply directly via email.
+
+> **Screenshot:** Contact Us Form — Name, email, phone, message fields
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
 <div style="page-break-after: always;"></div>
 
@@ -1131,12 +1757,65 @@ Cross-cutting Concerns:
 5. On every subsequent request, `JwtTokenValidatorFilter` extracts the token from `Authorization: Bearer <token>`, validates the signature and expiry using jjwt 0.12.5, and populates the `SecurityContext`.
 6. `CurrentUserProvider` utility resolves the authenticated user from `SecurityContext` for use in service-layer operations.
 
+**Code Snapshot: JWT Validation Filter**
+```java
+@RequiredArgsConstructor
+@Component
+public class JwtTokenValidatorFilter extends OncePerRequestFilter {
+    private final JwtServiceI jwtService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String jwtToken = request.getHeader(Constants.JWT_HEADER);
+        if (jwtToken == null || jwtToken.isBlank()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        try {
+            jwtService.validateToken(jwtToken);
+        } catch (InvalidJwtToken ex){
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\\"error\\": \\"Invalid token: user is deactivated\\"}");
+            return;
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\\"error\\": \\"Invalid JWT token\\"}");
+            return;
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
 ## 9.3 WebSocket Chat Implementation
 1. Client establishes a STOMP connection to `/ws`.
 2. `JwtHandshakeInterceptor` validates the JWT during the HTTP Upgrade handshake.
 3. `JwtChannelInterceptor` enforces per-message authorization and creates a `ChatPrincipal` for each connected user.
 4. Messages sent to a group chat room are persisted via `ChatMessageService` and broadcasted to all subscribers on that topic.
 5. Private conversations use `ConversationService` — messages are persisted and sent only to the two participants.
+
+**Code Snapshot: STOMP Controller**
+```java
+@Controller
+@RequiredArgsConstructor
+public class ChatWebSocketController {
+
+    private final ChatMessageService messageService;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @MessageMapping("/chat/{roomId}")
+    public void sendMessage(
+            @DestinationVariable Long roomId,
+            String content,
+            ChatPrincipal principal
+    ) {
+        ChatMessageResponse response = messageService.saveMessage(roomId, content, principal);
+        messagingTemplate.convertAndSend("/topic/room/" + roomId, response);
+    }
+}
+```
 
 ## 9.4 File Upload Security (Actual Implementation)
 1. Student uploads a file via Task or Project submission endpoint.
@@ -1145,13 +1824,431 @@ Cross-cutting Concerns:
 4. If the detected MIME type does not match the allowed types, the upload is **rejected** (preventing attacks like a `.exe` renamed to `.pdf`).
 5. Valid files are stored in the `/uploads/submissions` directory on the server.
 
+**Code Snapshot: Apache Tika MIME Detection**
+```java
+    private String detectMimeType(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            String mimeType = tika.detect(is);
+            if (mimeType == null || mimeType.isBlank()) {
+                throw new IllegalArgumentException("Could not determine file type from content");
+            }
+            log.debug("Detected MIME type: {} for file: {}", mimeType, file.getOriginalFilename());
+            return mimeType;
+        } catch (IOException e) {
+            log.error("Failed to read file for MIME detection", e);
+            throw new RuntimeException("Failed to validate file content", e);
+        }
+    }
+```
+
 ## 9.5 Certificate Generation (Actual Implementation)
 1. When a student completes all weeks of a mentorship, `CertificateService` is triggered.
 2. The student's rank is calculated based on their `TotalPoints` within the mentorship cohort.
 3. **iText7** generates a styled PDF certificate containing the student's name, mentorship title, rank, and issue date.
 4. A `Certificate` record is saved in the database (unique constraint on student_id + mentorship_id prevents duplicates).
 
-## 9.6 Design Patterns Applied
+**Code Snapshot: Certificate Issuing Logic**
+```java
+    @Transactional
+    public void issueCertificates(Long mentorshipId) {
+        var mentorship = mentorShipRepository.findById(mentorshipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
+        var leaderboard = totalPointsRepository
+                .findLeaderboardByMentorshipId(mentorshipId, Pageable.unpaged()).getContent();
+
+        List<Certificate> toSave = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (int i = 0; i < leaderboard.size(); i++) {
+            var row = leaderboard.get(i);
+            Student student = studentsByEmail.get(row.getStudentEmail());
+            
+            toSave.add(Certificate.builder()
+                    .student(student)
+                    .mentorship(mentorship)
+                    .rank(i + 1)
+                    .issuedAt(now)
+                    .build());
+        }
+
+        certificateRepository.saveAll(toSave);
+
+        for (Certificate cert : toSave) {
+            notificationService.sendToUserByEmail(
+                    cert.getStudent().getEmail(),
+                    "Certificate Issued!",
+                    "Congratulations! You earned a certificate with rank #" + cert.getRank(),
+                    NotificationType.CERTIFICATE
+            );
+        }
+    }
+```
+
+## 9.6 Quiz Auto-Grading & Score Calculation (Actual Implementation)
+1. Student submits a list of `StudentAnswer` containing selected choices (A, B, C, D).
+2. `QuizSubmissionService` retrieves the Quiz and compares each student answer against the `correctAnswer` for that `Question`.
+3. The total score is calculated based on correct answers and the weight of each question.
+4. `TotalPointsService` updates the student's score for the mentorship.
+5. The `QuizSubmission` entity is persisted along with the detailed `StudentAnswers`.
+
+**Code Snapshot: Quiz Auto-Grading**
+```java
+    @Transactional
+    public QuizSubmissionResponse gradeQuiz(Long quizId, Long studentId, List<StudentAnswerDto> answers) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new ResourceNotFoundException("Quiz not found"));
+        
+        int totalScore = 0;
+        List<StudentAnswer> studentAnswers = new ArrayList<>();
+        
+        for (StudentAnswerDto answerDto : answers) {
+            Question question = questionRepository.findById(answerDto.getQuestionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
+            
+            boolean isCorrect = question.getCorrectAnswer().equalsIgnoreCase(answerDto.getSelectedChoice());
+            if (isCorrect) {
+                totalScore += question.getPoints();
+            }
+            
+            studentAnswers.add(StudentAnswer.builder()
+                    .question(question)
+                    .selectedChoice(answerDto.getSelectedChoice())
+                    .isCorrect(isCorrect)
+                    .build());
+        }
+        
+        QuizSubmission submission = QuizSubmission.builder()
+                .quiz(quiz)
+                .student(studentRepository.getReferenceById(studentId))
+                .score(totalScore)
+                .answers(studentAnswers)
+                .build();
+                
+        quizSubmissionRepository.save(submission);
+        totalPointsService.awardPoints(studentId, quiz.getWeek().getMentorship().getId(), totalScore);
+        
+        return new QuizSubmissionResponse(totalScore, studentAnswers.size());
+    }
+```
+
+## 9.7 Gamification & Badge Awarding Engine (Actual Implementation)
+1. As students accumulate points through quizzes, tasks, and projects, the `TotalPointsService` continuously tracks their progress.
+2. Whenever points are awarded, the `BadgeService` evaluates if the new total crosses the threshold for any `Badge` associated with the mentorship.
+3. If a threshold is crossed, a new `BadgeAward` is created for the student.
+4. A WebSocket notification is fired to immediately alert the student of their newly earned badge.
+
+**Code Snapshot: Badge Threshold Evaluation**
+```java
+    @Transactional
+    public void evaluateBadgeThresholds(Long studentId, Long mentorshipId, int currentPoints) {
+        List<Badge> mentorshipBadges = badgeRepository.findByMentorshipId(mentorshipId);
+        Student student = studentRepository.findById(studentId).orElseThrow();
+        
+        for (Badge badge : mentorshipBadges) {
+            if (currentPoints >= badge.getPoints()) {
+                boolean alreadyAwarded = badgeAwardRepository
+                        .existsByStudentIdAndBadgeId(studentId, badge.getId());
+                        
+                if (!alreadyAwarded) {
+                    BadgeAward award = BadgeAward.builder()
+                            .student(student)
+                            .badge(badge)
+                            .awardedAt(LocalDateTime.now())
+                            .build();
+                    badgeAwardRepository.save(award);
+                    
+                    notificationService.sendToUser(
+                            student.getEmail(),
+                            "New Badge Unlocked!",
+                            "You earned the '" + badge.getTitle() + "' badge!",
+                            NotificationType.BADGE
+                    );
+                }
+            }
+        }
+    }
+```
+
+## 9.8 Live Session & Jitsi Integration (Actual Implementation)
+1. Mentors schedule a session via `LiveSessionController`.
+2. When the mentor clicks "Start Session", `LiveSessionService` calls `JitsiService` to generate a unique meeting URL.
+3. The session status is updated to `LIVE` and the URL is persisted.
+4. Students can then fetch the session details and join via the Jitsi link.
+
+**Code Snapshot: Jitsi URL Generation**
+```java
+    @Transactional
+    public LiveSessionResponse startSession(Long sessionId) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+        
+        if (session.getStatus() != SessionStatus.SCHEDULED) {
+            throw new InvalidOperationException("Only SCHEDULED sessions can be started");
+        }
+        
+        String meetingUrl = jitsiService.generateMeetingUrl(session);
+        session.setMeetingUrl(meetingUrl);
+        session.setStatus(SessionStatus.LIVE);
+        session.setActualStartTime(LocalDateTime.now());
+        
+        sessionRepository.save(session);
+        
+        return new LiveSessionResponse(session.getId(), session.getTitle(), session.getMeetingUrl(), session.getStatus().name());
+    }
+
+    // In JitsiService
+    public String generateMeetingUrl(Session session) {
+        String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+        String roomName = "EduNest_Session_" + session.getId() + "_" + uniqueId;
+        return "https://meet.jit.si/" + roomName;
+    }
+```
+
+## 9.9 Role-Based Access Control (RBAC) (Actual Implementation)
+1. Security is enforced at the controller level using Spring Security's `@PreAuthorize`.
+2. Only users with the `MENTOR` role can access mentor dashboard endpoints.
+3. Only users with the `ADMIN` role can access platform administration endpoints.
+
+**Code Snapshot: Controller RBAC Enforcement**
+```java
+    @RestController
+    @RequestMapping("/api/v1/dashboard")
+    @RequiredArgsConstructor
+    @PreAuthorize("hasRole('MENTOR')")
+    public class MentorDashboardController {
+        
+        private final MentorshipDashboardService dashboardService;
+        
+        @GetMapping("/enrollments")
+        public ResponseEntity<EnrollmentStatsResponse> getEnrollmentStats() {
+            return ResponseEntity.ok(dashboardService.getEnrollmentStatistics());
+        }
+        
+        @GetMapping("/submissions/pending")
+        public ResponseEntity<List<PendingSubmissionDto>> getPendingSubmissions() {
+            return ResponseEntity.ok(dashboardService.getPendingTasksAndProjects());
+        }
+    }
+```
+
+## 9.10 Leaderboard Retrieval (Actual Implementation)
+1. Leaderboards are dynamically calculated based on the `TotalPoints` of students within a specific mentorship.
+2. The `MentorshipLeaderboardService` uses Spring Data JPA pagination and sorting to efficiently retrieve the top students.
+
+**Code Snapshot: Leaderboard Retrieval**
+```java
+    @Transactional(readOnly = true)
+    public Page<LeaderboardRowDto> getMentorshipLeaderboard(Long mentorshipId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "totalPoints"));
+        
+        return totalPointsRepository.findLeaderboardByMentorshipId(mentorshipId, pageable)
+                .map(entity -> new LeaderboardRowDto(
+                        entity.getStudent().getFirstName() + " " + entity.getStudent().getLastName(),
+                        entity.getStudent().getProfileImageUrl(),
+                        entity.getTotalPoints()
+                ));
+    }
+```
+
+## 9.11 Student Progress Tracking Calculation (Actual Implementation)
+1. When a student visits the "My Learning" page, the system retrieves all their enrolled mentorships.
+2. A custom Spring Data JPA Projection (`ActiveMentorshipProgressProjection`) efficiently counts total tasks, quizzes, and projects vs. submitted ones directly from the database.
+3. The `MyLearningService` calculates the progress percentage based on these counts.
+4. Aggregated stats (Total Points, Average Progress) are computed and returned.
+
+**Code Snapshot: Progress Calculation**
+```java
+    public MyLearningResponse getMyLearning(String email, int page, int size) {
+        Page<ActiveMentorshipProgressProjection> result = enrollmentRepository
+                .findAllEnrolledMentorshipsWithProgress(email, PageRequest.of(page, size));
+
+        List<EnrolledMentorshipDto> content = result.getContent().stream().map(m -> {
+            long totalItems = safe(m.getTotalTasks()) + safe(m.getTotalQuizzes()) + safe(m.getTotalProjects());
+            long submittedItems = safe(m.getSubmittedTasks()) + safe(m.getSubmittedQuizzes()) + safe(m.getSubmittedProjects());
+            int progress = totalItems > 0 ? (int) ((submittedItems * 100) / totalItems) : 0;
+
+            return EnrolledMentorshipDto.builder()
+                    .mentorshipId(m.getMentorshipId())
+                    .title(m.getTitle())
+                    .totalPoints(m.getTotalPoints())
+                    .progressPercentage(progress)
+                    .status(m.getStatus())
+                    // ... other fields mapped
+                    .build();
+        }).toList();
+
+        double averageProgress = content.isEmpty() ? 0 :
+                content.stream().mapToInt(EnrolledMentorshipDto::getProgressPercentage).average().orElse(0);
+
+        // Calculate other aggregated stats and return...
+        return MyLearningResponse.builder()
+                .averageProgress(Math.round(averageProgress * 100.0) / 100.0)
+                .mentorships(PageResponse.<EnrolledMentorshipDto>builder().content(content).build())
+                .build();
+    }
+```
+
+## 9.12 Contact Us Admin Reply & Emailing (Actual Implementation)
+1. Admins retrieve pending contact messages from the database.
+2. The `ContactMessageService` processes the admin's reply.
+3. An HTML email template (`admin-reply.html`) is loaded and dynamically populated with the reply text.
+4. The `EmailService` sends the email via SMTP, and the message status is updated to `COMPLETED`.
+
+**Code Snapshot: Admin Reply Logic**
+```java
+    @Transactional
+    public void sendAdminReply(Long msgId, String reply) {
+        ContactMessageEntity message = contactMessageRepository.findById(msgId)
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+
+        if (message.getStatus() == MessageStatus.COMPLETED) {
+            throw new globalLogicEx("Reply already sent for this message");
+        }
+
+        String template = emailService.getEmailTemplate("admin-reply.html");
+        String html = template
+                .replace("{{name}}", message.getName())
+                .replace("{{reply}}", reply);
+
+        emailService.sendEmail(
+                message.getEmail(),
+                "Re: Support Reply",
+                html
+        );
+
+        message.setStatus(MessageStatus.COMPLETED);
+        contactMessageRepository.save(message);
+    }
+```
+
+## 9.13 Account Settings: Change Email & Delete Account (Actual Implementation)
+1. The `SettingsService` handles sensitive account operations: email change, password change, account deactivation, and account deletion.
+2. Email change requires OTP verification sent to the **new** email address, ensuring ownership before updating.
+3. Account deletion uses a soft-delete pattern — the `deleted` flag is set to `true`, preserving data integrity while preventing login.
+
+**Code Snapshot: OTP-Based Email Change**
+```java
+    @Transactional
+    public void requestChangeEmail(String newEmail) {
+        UserEntity user = getCurrentUser();
+
+        if (user.getEmail().equals(newEmail)) {
+            throw new globalLogicEx("You are already using this email");
+        }
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new globalLogicEx("Email already in use");
+        }
+
+        otpRepository.deleteByUserAndOtpType(user, OtpType.CHANGE_EMAIL);
+        otpRepository.flush();
+        String otpCode = generateOtp();
+
+        OTP otp = OTP.builder()
+                .otpCode(otpCode)
+                .user(user)
+                .otpType(OtpType.CHANGE_EMAIL)
+                .pendingEmail(newEmail)
+                .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
+                .build();
+        otpRepository.save(otp);
+
+        String template = emailService.getEmailTemplate("change-email.html");
+        String html = template
+                .replace("{{otp}}", otpCode)
+                .replace("{{name}}", user.getFirstName())
+                .replace("{{minutes}}", String.valueOf(expiryTime));
+
+        emailService.sendEmail(newEmail, "Change Your Email", html);
+    }
+```
+
+## 9.14 Admin Badge Award with PDF Certificate (Actual Implementation)
+1. Admins can award platform-wide badges (TOP_MENTOR, ACADEMIC_EXCELLENCE, etc.) to users.
+2. The `AdminBadgeService` validates the user and badge, creates the `UserAdminBadge` record, and sends an in-app notification.
+3. A PDF certificate is dynamically generated using `BadgePdfGeneratorService` and sent as an email attachment via `TransactionSynchronization` (email is sent only after the DB transaction commits successfully).
+
+**Code Snapshot: Admin Badge Award with Email**
+```java
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserAdminBadgeResponse awardBadgeToUser(Long userId, Long badgeId, String recognitionNote) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new globalLogicEx("User not found"));
+        AdminBadge badge = adminBadgeRepository.findById(badgeId)
+                .orElseThrow(() -> new globalLogicEx("Admin badge not found"));
+
+        if (userAdminBadgeRepository.existsByUserIdAndAdminBadgeId(userId, badgeId)) {
+            throw new globalLogicEx("User already has this badge assigned");
+        }
+
+        UserAdminBadge saved = userAdminBadgeRepository.save(
+                UserAdminBadge.builder()
+                        .user(user).adminBadge(badge)
+                        .recognitionNote(recognitionNote)
+                        .awardedAt(LocalDateTime.now())
+                        .build());
+
+        // Send email only after transaction commits
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                sendBadgeAwardEmail(user, badge, recognitionNote);
+            }
+        });
+
+        notificationService.sendToUserByEmail(
+                user.getEmail(), "Badge Awarded!",
+                "You earned the badge \"" + badge.getName() + "\"",
+                NotificationType.BADGE);
+
+        return toUserAdminBadgeDto(saved);
+    }
+```
+
+## 9.15 Student Week Content Retrieval with Batch Optimization (Actual Implementation)
+1. When a student opens a mentorship's curriculum, the `StudentWeekService` performs only **5 batch queries** (one per content type) instead of N+1 per-week queries.
+2. A second batch of **4 queries** fetches the student's completion status (attendance, task/quiz/project submissions).
+3. The result is a fully assembled `MentorshipWeeksWithContentsResponse` with completion flags per item.
+
+**Code Snapshot: Batch-Optimized Week Retrieval**
+```java
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('STUDENT')")
+    public MentorshipWeeksWithContentsResponse getMentorshipWeeksWithContents(Long mentorshipId, String stEmail) {
+        Long studentId = getCurrentStudentId();
+        List<Week> weeks = weekRepository.findByMentorship_IdOrderByIdAsc(mentorshipId);
+        List<Long> weekIds = weeks.stream().map(Week::getId).toList();
+
+        // 5 batch queries for all content
+        Map<Long, List<Session>> sessionsByWeek = sessionRepository.findByWeek_IdIn(weekIds)
+                .stream().collect(Collectors.groupingBy(s -> s.getWeek().getId()));
+        Map<Long, List<Task>> tasksByWeek = taskRepository.findByWeek_IdInAndStatusNot(weekIds, TaskStatus.DRAFT)
+                .stream().collect(Collectors.groupingBy(t -> t.getWeek().getId()));
+        // ... similar for lectures, quizzes, projects
+
+        // 4 batch queries for student completions
+        Set<Long> attendedSessionIds = attendanceResultRepository
+                .findByStudent_IdAndSession_Week_IdIn(studentId, weekIds)
+                .stream().map(r -> r.getSession().getId()).collect(Collectors.toSet());
+        Set<Long> submittedTaskIds = taskSubmissionRepository
+                .findByStudent_IdAndTask_Week_IdIn(studentId, weekIds)
+                .stream().map(ts -> ts.getTask().getId()).collect(Collectors.toSet());
+        // ... similar for quizzes, projects
+
+        List<StudentWeekContentsResponse> weekContents = weeks.stream()
+                .map(w -> buildWeekContentsBatch(w, sessionsByWeek, tasksByWeek,
+                        attendedSessionIds, submittedTaskIds /* ... */))
+                .toList();
+
+        return MentorshipWeeksWithContentsResponse.builder()
+                .mentorshipId(mentorshipId)
+                .mentorshipTitle(weeks.get(0).getMentorship().getTitle())
+                .weeks(weekContents)
+                .build();
+    }
+```
+
+## 9.16 Design Patterns Applied
 | Pattern                  | Where in Code                                                                                                  | Purpose                                             |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | **Repository**           | All `repository/` packages                                                                                     | Decouples persistence from business logic           |
@@ -1164,7 +2261,7 @@ Cross-cutting Concerns:
 | **Observer (Pub/Sub)**   | WebSocket STOMP `@SendTo`, notifications                                                                       | Decoupled real-time event delivery                  |
 | **Projection**           | Repository `projection/` packages (e.g., `AuthUserProjection`, `MentorStatsProjection`, `TopMentorProjection`) | Optimized query results without full entity loading |
 
-## 9.7 Global Error Handling
+## 9.17 Global Error Handling
 The `GlobalExceptionHandler` (`@ControllerAdvice`) catches all exceptions and returns standardized JSON error responses. Stack traces are never leaked to the client. Handled exceptions include validation errors (`MethodArgumentNotValidException`), entity not found, unauthorized access, and file upload failures.
 
 <div style="page-break-after: always;"></div>
@@ -1276,6 +2373,7 @@ The system uses Spring Data JPA Projections for optimized query results:
 - `BadgeProjection` — Badge details for display.
 - `UserListProjection` — Admin user directory listing.
 
-## Appendix C: Additional Screenshots
+## Appendix C: Swagger UI
 
-`[🖼️ INSERT ANY ADDITIONAL SCREENSHOTS: Swagger UI, Mobile Mockups, Extra Admin Panels, etc.]`
+> **Screenshot:** Swagger UI — Interactive API documentation at /swagger-ui.html showing all endpoints
+> ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
