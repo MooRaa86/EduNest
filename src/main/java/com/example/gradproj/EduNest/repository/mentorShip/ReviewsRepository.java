@@ -75,7 +75,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
         r.student.profileImageUrl,
         r.mentorShip.id,
         r.mentorShip.title,
-        r.createdAt
+        r.updatedAt
     )
     FROM MentorShipReviews r
     WHERE r.mentorShip.mentor.email = :email
