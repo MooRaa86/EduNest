@@ -110,9 +110,6 @@ public class StudentWeekService {
                 .stream().collect(Collectors.groupingBy((Project p) -> p.getWeek().getId()));
 
         // Batch fetch all completions (4 queries only)
-        Set<Long> attendedSessionIds = attendanceResultRepository
-                .findByStudent_IdAndSession_Week_IdIn(studentId, weekIds)
-                .stream().map(r -> r.getSession().getId()).collect(Collectors.toSet());
         Set<Long> submittedTaskIds = taskSubmissionRepository
                 .findByStudent_IdAndTask_Week_IdIn(studentId, weekIds)
                 .stream().map(ts -> ts.getTask().getId()).collect(Collectors.toSet());
@@ -125,7 +122,7 @@ public class StudentWeekService {
 
         List<StudentWeekContentsResponse> weekContents = weeks.stream()
                 .map(w -> buildWeekContentsBatch(w, sessionsByWeek, lecturesByWeek, tasksByWeek, quizzesByWeek, projectsByWeek,
-                        attendedSessionIds, submittedTaskIds, submittedQuizIds, submittedProjectIds))
+                        submittedTaskIds, submittedQuizIds, submittedProjectIds))
                 .toList();
 
         return MentorshipWeeksWithContentsResponse.builder()
@@ -154,7 +151,6 @@ public class StudentWeekService {
             Map<Long, List<Task>> tasksByWeek,
             Map<Long, List<Quiz>> quizzesByWeek,
             Map<Long, List<Project>> projectsByWeek,
-            Set<Long> attendedSessionIds,
             Set<Long> submittedTaskIds,
             Set<Long> submittedQuizIds,
             Set<Long> submittedProjectIds) {
@@ -165,7 +161,7 @@ public class StudentWeekService {
         sessionsByWeek.getOrDefault(weekId, List.of()).forEach(s ->
             items.add(StudentWeekContentItemDTO.builder()
                     .type("SESSION").id(s.getId()).title(s.getTitle()).createdAt(s.getCreatedAt())
-                    .completed(attendedSessionIds.contains(s.getId()))
+                    .completed(true)
                     .build()));
 
         lecturesByWeek.getOrDefault(weekId, List.of()).forEach(l ->

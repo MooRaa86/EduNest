@@ -17,6 +17,10 @@ public class ProjectStatisticsDTO {
     private int totalStudents;
     private int totalSubmissions;
     private int pendingReview;
+    private String brief;
+    private String attachmentUrl;
+    private String uploadedAttachmentPath;
+    private String goal;
     private LocalDateTime createdAt;
     private LocalDateTime deadLine;
     private int totalPoints;
