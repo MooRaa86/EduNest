@@ -106,6 +106,7 @@ Real-time visibility into enrollment statistics, platform commission/revenue tra
 
 ### Use Case Diagram
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ebf5fb', 'primaryTextColor': '#154360', 'primaryBorderColor': '#3498db', 'lineColor': '#3498db', 'textColor': '#3498db'}}}%%
 flowchart LR
   Student([Student])
   Mentor([Mentor])
@@ -161,6 +162,7 @@ flowchart LR
 
 ### Core Domain (Class Diagram)
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ebf5fb', 'primaryTextColor': '#154360', 'primaryBorderColor': '#3498db', 'lineColor': '#3498db', 'classText': '#154360', 'textColor': '#3498db'}}}%%
 classDiagram
   BaseEntity <|-- UserEntity
   BaseEntity <|-- Admin
