@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.exception.registerExceptions.*;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -196,6 +197,26 @@ public class GlobalExceptionHandler{
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredintials(BadCredentialsException ex) {
         return buildErrorResponse("error", ex.getMessage(), HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(UnrecognizedPropertyException.class)
+    public ResponseEntity<Map<String, Object>> handleUnknownField(
+            UnrecognizedPropertyException ex) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("error", "INVALID_FIELD");
+        response.put("message",
+                "Field '" + ex.getPropertyName() + "' is not allowed");
+
+        response.put("invalidField", ex.getPropertyName());
+
+        response.put(
+                "allowedFields",
+                ex.getKnownPropertyIds()
+        );
+
+        return ResponseEntity.badRequest().body(response);
     }
 
 
