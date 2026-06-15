@@ -21,11 +21,11 @@ public class mentorShipCreateDTO {
     private String subtitle;
 
     @NotBlank(message = "Description is required")
-    @Size(min = 3, max = 800, message = "Description must be between 3 and 500 characters")
+    @Size(min = 3, max = 2000, message = "Description must be between 3 and 2000 characters")
     private String description;
 
     @NotBlank(message = "Category is required")
-    @Size(min = 3, max = 50, message = "Category must be between 3 and 20 characters")
+    @Size(min = 3, max = 30, message = "Category must be between 3 and 30 characters")
     private String category; // enum بعدين
 
     private DifficultyLevel difficultyLevel;
@@ -42,7 +42,7 @@ public class mentorShipCreateDTO {
     @Size(max = 12, message = "Maximum 12 items allowed")
     private List<
             @NotBlank
-            @Size(min = 3, max = 100)
+            @Size(min = 2, max = 100)
                     String
             > whatWillLearn = new ArrayList<>();
 

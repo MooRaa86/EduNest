@@ -20,6 +20,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler{
@@ -120,49 +122,71 @@ public class GlobalExceptionHandler{
         return buildErrorResponse("error","entity not found maybe id is invalid bro :)", HttpStatus.NOT_FOUND);
     }
 
-        @ExceptionHandler(DataIntegrityViolationException.class)
-        public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
-                DataIntegrityViolationException ex
-        ) {
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex
+    ) {
 
-            Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
 
+        String message = ex.getMostSpecificCause().getMessage();
 
-            // Duplicate value
-            if (ex.getMostSpecificCause().getMessage().contains("Duplicate")) {
+        // Duplicate value
+        if (message.contains("Duplicate entry")) {
 
-                response.put("error", "This data already exists.");
+            Pattern pattern = Pattern.compile("for key '(.+?)'");
+            Matcher matcher = pattern.matcher(message);
 
-            }
-            // String too long
-            else if (ex.getMostSpecificCause().getMessage().contains("Data too long")) {
-
-                response.put("error", "One of the fields exceeds the allowed length.");
-
-            }
-            // Null value
-            else if (ex.getMostSpecificCause().getMessage().contains("cannot be null")) {
-
-                response.put("error", "Required data is missing.");
-
-            }
-            // Foreign key issue
-            else if (ex.getMostSpecificCause().getMessage().contains("foreign key")) {
-
-                response.put("error", "Invalid related data provided.");
-
-            }
-            // Generic fallback
-            else {
-
-                response.put("error", "Database constraint violation occurred.");
-
+            String field = "field";
+            if (matcher.find()) {
+                field = matcher.group(1);
             }
 
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(response);
+            response.put("error", field + " already exists.");
         }
+
+        // Data too long
+        else if (message.contains("Data too long")) {
+
+            Pattern pattern = Pattern.compile("column '(.+?)'");
+            Matcher matcher = pattern.matcher(message);
+
+            String field = "field";
+            if (matcher.find()) {
+                field = matcher.group(1);
+            }
+
+            response.put("error", field + " exceeds the allowed length.");
+        }
+
+        // Cannot be null
+        else if (message.contains("cannot be null")) {
+
+            Pattern pattern = Pattern.compile("column '(.+?)'");
+            Matcher matcher = pattern.matcher(message);
+
+            String field = "field";
+            if (matcher.find()) {
+                field = matcher.group(1);
+            }
+
+            response.put("error", field + " is required.");
+        }
+
+        // Foreign key
+        else if (message.contains("foreign key")) {
+
+            response.put("error", "Invalid related data provided.");
+        }
+
+        else {
+            response.put("error", "Database constraint violation occurred.");
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInvalidUserName(UsernameNotFoundException ex) {

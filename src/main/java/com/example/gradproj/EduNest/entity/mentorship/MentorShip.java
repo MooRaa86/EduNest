@@ -31,8 +31,10 @@ public class MentorShip extends BaseEntity {
     @Column(name = "subtitle")
     private String subtitle;
 
+    @Column(length = 2000)
     private String description;
 
+    @Column(length = 30)
     private String category; // backEnd,frontEnd
 
     private Double rating;

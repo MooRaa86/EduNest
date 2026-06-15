@@ -354,8 +354,8 @@ public class mentorShipServiceI implements mentorShipService{
             throw new globalLogicEx("File must be an image");
         }
 
-        if (image.getSize() > 2 * 1024 * 1024) {
-            throw new globalLogicEx("Image size must be less than 2MB");
+        if (image.getSize() > 5 * 1024 * 1024) {
+            throw new globalLogicEx("Image size must be less than 5MB");
         }
 
         imageService.deleteOldCoverImage(mentorship.getCoverImageUrl());
@@ -396,7 +396,7 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
-        //ToDo complete
+
         if(mentorShip.getStatus() == Status.DRAFT || mentorShip.getStatus() == Status.COMPLETED) {
             throw new globalLogicEx("This mentorship is not available to join");
         }
