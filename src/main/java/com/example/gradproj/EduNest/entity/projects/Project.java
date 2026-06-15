@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +29,7 @@ public class Project extends BaseEntity {
         private String title;
 
         @Lob
+        @Size(max = 10000,message = "Brief must be less than 10000 characters")
         @Column(name = "project_brief", nullable = false)
         private String brief;
 
