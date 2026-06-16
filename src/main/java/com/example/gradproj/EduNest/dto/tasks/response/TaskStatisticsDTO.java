@@ -17,6 +17,9 @@ public class TaskStatisticsDTO {
     private int totalStudents;
     private int totalSubmissions;
     private int pendingReview;
+    private String attachmentUrl;
+    private String uploadedAttachmentPath;
+    private String description;
     private LocalDateTime createdAt;
     private LocalDateTime deadLine;
     private int totalPoints;

@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,7 @@ public class Task extends BaseEntity {
     @Column(name = "task_title",nullable = false)
     private String title;
     @Lob
+    @Size(max = 10000,message = "Description must be less than 10000 characters")
     @Column(name = "task_description",nullable = false)
     private  String description;
 

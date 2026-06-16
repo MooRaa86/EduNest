@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.entity.chat;
 import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Entity
@@ -15,6 +16,7 @@ import lombok.*;
 public class ChatMessage extends BaseEntity {
 
     @Column(nullable = false)
+    @Size(max = 10000, message = "Content must be less than 10000 characters")
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
