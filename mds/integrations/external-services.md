@@ -48,3 +48,7 @@ Companion tables to [MDS.md](MDS.md). All usages verified by grep on `src/main/j
 ## 5. "Contact Us" subsystem note
 
 Though an internal feature, its support email goes through the same SMTP/templates ([../api/endpoints.md](../api/endpoints.md) Contact Us). The reply path resolves the original sender by email via `userRepository` — **registered users only**: `POST /api/v1/contact/message/{id}/notification` throws `UsernameNotFoundException` (404) for guest senders (NOTIF-02), while `reply` sends the email directly — both flows documented in [../notifications/MDS.md](../notifications/MDS.md).
+
+## 6. Decided platform change (2026-10-25) - planning note (NOT yet implemented)
+
+The Jitsi section above describes the current integration. Decision D-16 (2026-10-25): **Zoom replaces Jitsi** for live sessions. Planned: a Server-to-Server OAuth app for meeting creation, meeting id/passcode stored server-side, Zoom-native access control for participants; provisioning addendum [ADD-05] tracked in Jira EB-85 (blocks EB-66). Until the integration lands, Jitsi remains the operating truth (LS-01).

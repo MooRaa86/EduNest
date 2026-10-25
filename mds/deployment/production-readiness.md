@@ -59,3 +59,15 @@ State at end of the documentation phase. Every row links to its issue ID in [../
 3. **Data-model constraints + migrations** (H4, DB-01/02/04).
 4. **Notification/transaction projection cleanup** (NOTIF-03, DB-05, push-before-commit).
 5. **Ops hardening** (H1/H3/H6), then **ops-parity features** (P-block) driven by product decisions.
+
+## 6. Decided target environment (2026-10-25) — planning note (NOT yet implemented)
+
+Everything above describes **current reality** (verified against the code). The following is a **decided target**, recorded in the execution plan — do not confuse it with what runs today:
+
+- **Application:** containerized (current Dockerfile shape kept, hardened per plan P6-05).
+- **Database:** **Supabase (PostgreSQL)** — supersedes MySQL 8 (plan assumption A-4). Current code is still MySQL; migration tasks: [ADD-01] adopt PG driver/config, [ADD-02] schema/data conversion → then the Flyway baseline (plan P3-01) is captured **on Postgres**.
+- **File storage:** **Supabase Storage (S3)** with bucket security policies + server-side ownership enforcement — replaces the local-disk `uploads/` mount and closes FILE-01/FILE-07 mechanically (interval risk note in FILE-07 row remains until the integration lands).
+- **Live-video: Zoom replaces Jitsi** (D-16, 2026-10-25): meetings created via the Zoom API with Zoom-native access control (passcode / require-authentication) instead of public `meet.jit.si` URLs; provisioning addendum [ADD-05].
+- **Git uploads cleanup:** still required (FILE-06/DEP-06), independent of the new storage target.
+
+Evidence/traceability: `plan/DECISIONS-REQUIRED.md` (D-05/07/14/22/25 outcome lines), `plan/ROADMAP.md §8`, and the Jira execution log (project "Edunest Backend", tasks EB-1..EB-84).

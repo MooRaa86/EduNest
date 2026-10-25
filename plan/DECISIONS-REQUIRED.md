@@ -12,27 +12,27 @@
 | D-02 | DRAFT mentorship visibility | PO | Before P1-15 | P1-15 |
 | D-03 | Confirm confinement of unowned content | PO | Before P1-14 (formality) | P1-14 |
 | D-04 | Public-surface privacy (emails on reviews/leaderboards) | PO + FE liaison | Before P1-16 | P1-16 |
-| D-05 | Disposition of open push/mail endpoints | PO | Before P1-11 | P1-11 |
+| D-05 | Disposition of open push/mail endpoints | PO | ✅ Decided 2026-10-25 (delete) | P1-11 (re-scoped: delete) |
 | D-06 | Fate of generic `GET /files?filePath=` | Eng Lead + FE liaison | Before P1-20 | P1-20 |
-| D-07 | Upload exposure policy & FE link changes | PO + FE liaison | Before P1-21 | P1-21, P7-02 |
+| D-07 | Upload exposure policy & FE link changes | PO + FE liaison | ✅ Decided 2026-10-25 (Supabase Storage) | P1-21 (re-scoped), P7-02 |
 | D-08 | Late-submission & quiz close policy | PO | Before P4-04 | P4-04 |
 | D-09 | Points reconciliation & completion freeze rules | PO | Before P4-02 | P4-02 |
 | D-10 | `passPoints`/unlock: implement or retire | PO | Before P4-15 (may be deferred) | P4-15 (conditional) |
 | D-11 | Certificate PDF feature: implement or claim-update | PO | Before P5-05 (deferral allowed) | P5-05 content, optional feature |
 | D-12 | Admin notification broadcast model | PO + Eng Lead | Before P4-01 slice | P4-01 |
 | D-13 | Chat read receipts scope | PO (deferral allowed) | Before P4-07 | P4-07 (conditional) |
-| D-14 | Chat membership semantics | PO + Eng Lead | Before P1-12 | P1-12 (P0 — decide early) |
+| D-14 | Chat membership semantics | PO + Eng Lead | ✅ Decided 2026-10-25 (fix approved) | P1-12 (unblocked) |
 | D-15 | Live-session rules: attendance constants + auto-close | PO | Before P4-08 | P4-08 |
-| D-16 | Live-video platform (Jitsi public vs self-host JWT vs Agora) | PO + Infra | Before P4-17 (deferral allowed) | P4-17 (conditional) |
+| D-16 | Live-video platform (Jitsi public vs self-host JWT vs Agora) | PO + Infra | ✅ Decided 2026-10-25 (Zoom) | P4-17 (re-scoped: Zoom integration) |
 | D-17 | Fresh-deployment default commission rate | PO | Before P3-05 | P3-05 |
 | D-18 | Soft-deleted users' visibility on public reads | PO | Before P3-04 | P3-04 |
 | D-19 | Git history cleanup approval for committed uploads | Eng Lead + PO | Before P6-06 execution | P6-06 |
 | D-20 | API envelope/path standardization scope | Eng Lead + FE liaison | Before P4-16 (deferral expected) | P4-16 (conditional) |
 | D-21 | `features/roadmap/**` fate | PO | Before P5-05 | doc sub-item |
-| D-22 | Hosting & environments (staging/prod target, DNS/TLS) | PO + Infra + Eng Lead | Before P6-01 (P0 — earliest!) | P6-02+§all infra; P7-05+ |
+| D-22 | Hosting & environments (staging/prod target, DNS/TLS) | PO + Infra + Eng Lead | ✅ Decided 2026-10-25 (container + Supabase) | P6-02+ §all infra; P7-05+ (unblocked) |
 | D-23 | CORS allowed-origins values | PO + FE liaison | Before P1-23 | P1-23 |
 | D-24 | OSIV disable timing | Eng Lead | Before P3-06 (deferral OK) | P3-06, P4-11 |
-| D-25 | Upload storage: volume vs object storage | PO + Infra | Before P6-07 (deferral OK) | P6-07 (conditional) |
+| D-25 | Upload storage: volume vs object storage | PO + Infra | ✅ Decided 2026-10-25 (Supabase Storage S3) | P6-07 → superseded by [ADD-03] |
 | D-26 | Error-body disclosure level | Eng Lead + FE liaison | Before P1-05 | P1-05 |
 | D-07a | *(sub-decision inside D-07)* whether FE fetches public assets by URL or via authenticated endpoints | FE liaison | With D-07 | FE contract change |
 
@@ -67,6 +67,7 @@
 - **Options:** (a) admin-gate (keep tooling); (b) delete outright; (c) keep public (unacceptable).
 - **Impact:** (a) preserves ops tooling + closes phishing vector; (b) cleanest but loses messaging utility.
 - **Default:** (a). Decide-by: before P1-11.
+- **Outcome (decided 2026-10-25, user-approved):** **(b)-shaped — DELETE.** The endpoints are test leftovers. Execution: inventory all test-only APIs, confirm with FE/ops that none are load-bearing, then delete with removal evidence. `P1-11` re-scoped from "gate" to "delete" (Jira EB-18); a follow-up addendum task **[ADD-04]** (Jira EB-84) covers the broader test-endpoint inventory. No admin-gate.
 
 ### D-06 — Generic file endpoint fate
 - **Question:** Keep `GET /files?filePath=` guarded via `FileAccessService` allowlist, or retire it entirely (does FE depend on it)?
@@ -77,6 +78,7 @@
 - **Options:** (a) public: covers/profiles/chatroom images; private: submissions — served via ownership-checked `/files/**`; (b) everything authenticated (FE rework of asset loading); (c) status quo (public submissions — unacceptable).
 - **Impact:** (a) moderate FE change for submission links only; (b) large FE change.
 - **Default:** (a). Decide-by: before P1-21; FE confirmation documented on the task.
+- **Outcome (decided 2026-10-25, user-approved):** uploads move to **Supabase Storage (S3)** with bucket security policies + server-side ownership enforcement. The security intent of (a) is preserved: public assets (covers/avatars/chatroom images) via bucket-URL policy; submissions private (owner + mentor) via signed URLs or an authenticated proxy. **[ADD-03]** (Jira EB-83) implements the storage integration; `P1-21` (EB-28) re-scoped to submission-access policy enforcement + FE contract note. Local-disk serving code is retired.
 
 ### D-08 — Late submissions & quiz window
 - **Question:** Define late policy (LEARN-05): accept-with-flag? reject? penalty?; when do quizzes hard-close (LEARN-10)?
@@ -108,6 +110,7 @@
 - **Question:** Who may subscribe/post in `chat-room`: enrollment-proxy (any enrolled student) or explicit `chat_room_members` only?
 - **Impact:** defines the interceptor rule + repository membership query; affects every cohort user.
 - **Default:** membership = true members ∪ mentor-owner ∪ enrollment-proxy READ-only? — recommendation: **write: member or mentor-owner; read: member/mentor/enrolled (enrollment-proxy)**. Decide-by: before P1-12 (Phase 0 round).
+- **Outcome (decided 2026-10-25, user-approved):** **FIX approved** (status quo rejected). WebSocket security is committed: room authorization + dead-code removal in `P1-12` (Jira EB-19), with access-control hardening hooks added to the WS path. Access rules follow the plan default above unless the team revises during implementation.
 
 ### D-15 — Live-session rules
 - **Question:** Approve attendance math constants (verify ≥75%→pass, snapshot 5-min grid, +5 bonus, absence→0) and auto-close scheduler (LS-02/03)?
@@ -117,6 +120,7 @@
 - **Question:** Keep public `meet.jit.si` rooms (update docs), self-host Jitsi with JWT-gated rooms, or evaluate Agora SDK (dependency present but **unused** — planning-phase discovery, see [RISKS §6](RISKS-AND-DEPENDENCIES.md#6-planning-assumptions-register))?
 - **Impact:** self-host is infra XL; keep-public is doc-truth work.
 - **Default:** keep public + truthful docs this cycle. Decide-by: before P4-17.
+- **Outcome (decided 2026-10-25, user-approved):** **new option (d) — adopt Zoom** for live sessions/meetings. Meetings are created/owned through the Zoom API (recommended: Server-to-Server OAuth app); access control uses Zoom-native require-authentication/passcode instead of hand-distributed public `meet.jit.si` URLs — narrowing LS-01's open-room exposure at the source. `P4-17` re-scoped to **[P4-17] Zoom meeting integration** (Jira EB-66); addendum **[ADD-05]** (Jira EB-85) provisions the Zoom app/credentials/env. Attendance flows (LS-02..05) unchanged. The unused Agora dependency (A-8/R11) is confirmed removable in P1-26's dead-dep audit.
 
 ### D-17 — Default commission rate
 - **Question:** What value should a fresh deployment seed (MSH-05)? (Current: unset → enrollments fail until admin sets.)
@@ -143,6 +147,7 @@
 - **Question:** Target platform for staging+prod (single VM + nginx? PaaS w/ managed MySQL? K8s?), domains, TLS provisioning, and DB hosting responsibility (MSH/DEP evidence: no compose/infra exists).
 - **Impact:** decides P6-02..09 shape, backup tooling, monitoring stack, single-node constraints.
 - **Default:** smallest viable: single VM + Docker Compose + managed backups, revisit scale later. Decide-by: before P6-01 (blocks critical path!).
+- **Outcome (decided 2026-10-25, user-approved):** **(a)-superseded.** Target: application = container; database = **Supabase (PostgreSQL)**; file storage = **Supabase Storage (S3)** with bucket policies. Staging = same shape (separate Supabase project/keys). Consequences: assumption A-4 (MySQL 8 final) **superseded** — migration tasks **[ADD-01]** (adopt Postgres; Jira EB-81) and **[ADD-02]** (MySQL→Postgres schema/data migration; Jira EB-82) precede `P3-01`'s Flyway baseline, which must be captured on Postgres. Infra tasks P6-02/03/05 re-scoped accordingly (uploads volume no longer required; secrets split into Supabase-managed DB creds + container env for app secrets).
 
 ### D-23 — CORS origins
 - **Question:** Which origins whitelist in prod (SEL-11)?
@@ -155,6 +160,7 @@
 ### D-25 — Upload storage
 - **Question:** Docker volume now, object storage now, or abstract-then-migrate (FILE-07/DEP-03)?
 - **Default:** volume now + abstraction task post-launch. Decide-by: before P6-07.
+- **Outcome (decided 2026-10-25, user-approved):** **object storage now** — Supabase Storage (S3) is the chosen design and `P6-07`'s condition is resolved; the task is superseded by **[ADD-03]** (Jira EB-83), which includes retention/deletion policy and migration of any existing files. A Docker volume for uploads is no longer needed (scope removed from `P6-05`).
 
 ### D-26 — Error-body disclosure
 - **Question:** Confirm generic bodies for unexpected errors (SEL-14 fix) — FE impact on error UX?

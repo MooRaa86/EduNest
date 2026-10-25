@@ -31,19 +31,20 @@ These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM
 | R10 | **"Documentation claims shipped" regression**: README/books diverge again after fixes | P5-05, P7-08 | medium / low | DOC-01 task updates claims at release time; release-notes checklist requires claims reconciliation |
 | R11 | **Agora SDK (planning-phase discovery)**: unused dependency `io.agora:authentication:2.1.3` in `pom.xml`; unknown provenance/intent | P1-26, D-16 | low | Removal bundled into P1-26's dead-dep audit; D-16 records whether Agora was an abandoned alternative (verify with team before deleting if unsure) |
 | R12 | **Rate-limiter minimalism under attack load** (in-app fixed window vs infra-level) | P1-08/P5-03 | low–medium | Documented upgrade path (bucket4j/gateway) at P5-03; monitoring alert on throttle saturation (P8-01) |
+| R13 | **Postgres/Supabase migration risk** (added 2026-10-25): MySQL→Postgres dialect/type conversion (AUTO_INCREMENT→identity, case sensitivity, dialect SQL), Supabase pooler limits, and baseline drift if schema freeze (R3) is violated during migration | EB-81 → EB-82 → P3-01 chain | medium / high | Conversion dry-run on a staging copy first (EB-82 DoD); keep the MySQL dump as cutover fallback; `flyway validate` in CI; do not edit entities between freeze and baseline |
 
 ## 3. External dependency register
 
 | Dependency | Needed by | Owner role | Notes |
 |---|---|---|---|
 | Frontend team / repository contract channel | P0-03, D-04/05/07, P1-05/16/18/21, P7-02 | PO (liaison) | Not in this repo; assumes separate FE codebase — **assumption A-6** |
-| MySQL provisioning (staging, prod) | P6-02, P7-05 | DevOps + PO | Version pinned 8.0.x; credentials via secret store |
+| Supabase Postgres projects (staging + prod) + Supabase Storage buckets | EB-81 addendum, P6-02, P7-05 | PO + Infra | Replaces "MySQL provisioning" (superseded 2026-10-25); connection pooling (Supavisor), IPv4/IPv6 note, service keys via secret env |
 | SMTP deliverable sender account | P7-02, launch | DevOps | MAIL_* env; DKIM/SPF alignment owned outside app |
 | Container registry + CI runner availability | P2-07, P6-04 | DevOps | GitHub Actions assumed (repo is GitHub-hosted: `origin/.../github` paths observed) |
 | DNS + TLS certificates | P6-02, P7-05 | DevOps | D-22 decides ownership |
 | Backups tooling + offsite storage | P3-07, P6-02, P8-05 | DevOps | mysqldump + uploads rsync baseline accepted by default |
 | Decision D-22 (hosting) | all infra | PO + Infra | **Single hardest external blocker** |
-| Jitsi availability (public) / self-host provision | P4-17 conditional, P7-02 | DevOps (conditional) | D-16 |
+| Zoom account + Server-to-Server OAuth app (meeting creation / attendance read APIs) | P4-17 (Zoom re-scope), [ADD-05], P7-02 | PO + DevOps | D-16 outcome 2026-10-25: Zoom replaces Jitsi; credentials + API rate limits via env store |
 
 ## 4. Migration & rollback limitations (declared honestly)
 
@@ -65,10 +66,10 @@ These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM
 | A-1 | Team = small (≤ ~6 engineers across roles) | Workflow sized for it; ceremonies scale |
 | A-2 | GitHub as git host | `origin/HEAD → origin/main` observed |
 | A-3 | GitHub Actions available for CI | P2-07 verifies on first run |
-| A-4 | MySQL 8 backend is final | Stated by `spring.datasource.url` shape; no alternate datasource found |
+| A-4 | ~~MySQL 8 backend is final~~ **SUPERSEDED 2026-10-25:** target DB = **Supabase (PostgreSQL)** — see D-22 outcome; migration via [ADD-01]/[ADD-02] (Jira EB-81/EB-82) must precede the Flyway baseline (P3-01) | Decision record in DECISIONS-REQUIRED.md |
 | A-5 | The graduation books/README remain "root exceptions" (per repo conventions) | Prior documentation-phase decision; DOC-01 corrects claims at P5-05 |
 | A-6 | Frontend exists as a separate codebase/team | **Unverified** — P0-03's first step is establishing the FE contract channel; if the app is frontend-less today, D-07 and related tasks adjust scope (documented on those tasks) |
 | A-7 | No production users/traffic yet | Supported by absence of CI/infra; P7 gates real launch |
-| A-8 | `io.agora` dependency is an abandoned experiment | **Unverified** — confirm intent with team in P1-26 before removal (R11) |
+| A-8 | `io.agora` dependency is an abandoned experiment | 2026-10-25: **moot — D-16 chose Zoom**, so Agora was never a chosen path; removal confirmed for P1-26's dead-dep audit (no further team consultation required for the removal itself) |
 | A-9 | Spring Boot devtools excluded from fat jars by default | Documented property of `spring-boot-maven-plugin`; re-verify at P6-05 image inspection |
 | A-10 | ISSUES.md severity labels (audit) reflect *production* impact | Defended in audit; if team disagrees, disagreements resolve via priority mapping (§ EXECUTION-STRATEGY 2), not issue re-labeling |
