@@ -4,6 +4,14 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 
 **Disposition legend:** T = implementation task planned · V→T = verification task first, then implementation · D→T = decision-gated, proceeds on documented default · DEF = deferred by decision · RES = resolved during documentation phase.
 
+> **Decision bulletin (2026-10-25 — read before acting on any row):**
+> - **D-05 decided → DELETE:** dispositions for `SEL-10`, `NOTIF-01` (=SEL-10), `MAIL-01` become **delete, not gate** — executed via P1-11 (re-scoped, Jira EB-18) + addendum **[ADD-04]** (Jira EB-84).
+> - **D-07 + D-25 decided → Supabase Storage (S3):** rows touching `FILE-01` (P1-21, Jira EB-28), `FILE-07`/`DEP-03` (P6-05, P6-07) and **D-25** change mechanics: local-disk serving is replaced by Supabase Storage with bucket policies + ownership checks (addendum **[ADD-03]**, Jira EB-83). P6-07 is **superseded**.
+> - **D-22 decided → Supabase Postgres:** assumption **A-4 (MySQL 8) superseded**; addenda **[ADD-01]** (EB-81) and **[ADD-02]** (EB-82) precede `P3-01`; the Flyway baseline must be captured on Postgres. All DB-family rows keep their logical scope (constraints/transactions/soft-delete unchanged), only the migration medium changed.
+> - **D-14 decided → fix approved:** `WS-01` disposition unblocked; `P1-12` proceeds (Jira EB-19).
+> - **D-16 decided → Zoom replaces Jitsi:** `LS-01` disposition changes from "keep public + docs truth" to platform swap; `P4-17` re-scoped to Zoom integration (Jira EB-66) with addendum **[ADD-05]** (EB-85) provisioning the Zoom app. DOC-01 claims are corrected toward Zoom at P5-05 (EB-71).
+> Row-level `Status` cells below stay `Planned` until implementation + verification evidence exists (sync rule, TEAM-WORKFLOW §6).
+
 | Issue | Sev | Task(s) | Phase | Domain | Disposition | Status |
 |---|---|---|---|---|---|---|
 | **SEL-01** | Crit | P1-01 | 1 | auth | T + D-22 ordering note | Planned |

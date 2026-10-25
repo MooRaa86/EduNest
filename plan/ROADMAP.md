@@ -116,3 +116,19 @@ Measurable release & go/no-go criteria: [`phases/phase-07-staging-and-release/ac
 ## 7. Effort profile (T-shirt summary, no calendar claims)
 
 Phase 1 carries the largest volume (27 tasks: ~4L, ~10M, ~9S, ~4XS-equivalent) and must not be compressed below its review requirements. Phases 2–4 are heavy but parallelizable across streams A/B/C. Phases 6–8 are infrequent-activity phases: each task is small-to-medium but gates on external availability (D-22, credentials, DNS/TLS), not on developer hours.
+
+## 8. Decision status log
+
+### 2026-10-25 — first decision round (user-approved)
+
+| Decision | Outcome | Effect on the roadmap |
+|---|---|---|
+| D-05 | Delete test push/mail endpoints (not admin-gate) | P1-11 re-scoped to "delete"; addendum **[ADD-04]** created (test-endpoint inventory) |
+| D-07 | Uploads → **Supabase Storage (S3)**, bucket policies + ownership checks (security intent of (a) preserved) | P1-21 re-scoped; P6-07 superseded by **[ADD-03]** |
+| D-14 | WS fix **approved** (status quo rejected) | P1-12 unblocked; WS hardening hooks added |
+| D-22 | App = container · DB = **Supabase Postgres** · files = Supabase Storage S3 | Infra stream unblocked; A-4 superseded; **[ADD-01]**, **[ADD-02]** created |
+| D-25 | Object storage **now** (Supabase), not volume-first | P6-05 loses its uploads volume; P6-07 superseded |
+| D-16 | **Zoom replaces Jitsi** for live sessions/meetings | P4-17 re-scoped to Zoom integration; **[ADD-05]** provisions the Zoom app; docs-parity (DOC-01/P5-05) claims corrected toward Zoom; LS-01 exposure narrows via Zoom-native controls |
+
+**Critical-path amendment:** readiness phase 6 is no longer decision-gated, but a new fork precedes `P3-01`:
+**[ADD-01]** adopt Supabase Postgres → **[ADD-02]** MySQL→Postgres migration → **P3-01** (Flyway baseline must now be captured on Postgres). Risk **R13** added for this chain. Task-level execution is tracked in Jira project **EB** (EB-1..EB-84; addenda EB-81..EB-84).

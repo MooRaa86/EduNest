@@ -85,3 +85,12 @@ Zero tests. Recommended: lifecycle transitions matrix; attendance math (snapshot
 ## 9. Related Documentation
 
 [../integrations/MDS.md](../integrations/MDS.md) (external-settlement detail) · [../learning-content/my-learning-and-achievements.md](../learning-content/my-learning-and-achievements.md) (points) · [../ISSUES.md](../ISSUES.md)
+
+## 10. Decided platform change (2026-10-25) - planning note (NOT yet implemented)
+
+Sections 1-8 describe the **current** implementation (Jitsi, LS-01). The decided target:
+
+- **Zoom replaces Jitsi** for live sessions/meetings (decision D-16, recorded in `plan/DECISIONS-REQUIRED.md`).
+- Planned mechanics: meetings created via the Zoom API (Server-to-Server OAuth app recommended); the backend stores meeting id/passcode; participant access control leverages Zoom-native require-authentication/passcode instead of hand-distributed public `meet.jit.si` URLs - narrowing the LS-01 exposure at the source.
+- Task mapping: `P4-17` re-scoped to Zoom integration (Jira EB-66); provisioning addendum [ADD-05] (Jira EB-85); attendance math (2.4 / LS-02..05) unchanged.
+- Until [ADD-05]/P4-17 land, the Jitsi reality above remains the operating truth.

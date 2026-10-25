@@ -57,3 +57,12 @@ Additional prod-profile-only hardcoding: none for JWT (see §1).
 - DEP-05: JWT secret handling (above).
 - DEP-07: no compose/k8s manifest tracked; no `.env.example`.
 - SEL-01/SEL-02 cross-references; DB-01 (`ddl-auto`), DEP-04 (show-sql), API-05 (Jackson strictness delta).
+
+## 7. Decided target environment addendum (2026-10-25) — planning note (NOT yet implemented)
+
+Sections 1–6 describe the **current** configuration contract. The following is the **decided target** (recorded in `plan/DECISIONS-REQUIRED.md`, D-22/D-25 outcomes; not yet in code):
+
+- **Database:** Supabase (PostgreSQL). The `DATABASE_URL` contract stays env-driven, but the JDBC URL becomes `jdbc:postgresql://...` with Supavisor pooling; driver changes from `mysql-connector-j`. Staging and prod are separate Supabase projects (distinct credentials). Supersedes MySQL 8 (plan assumption A-4) — migration precedes the Flyway baseline.
+- **File storage:** Supabase Storage (S3). New expected secrets/env keys for bucket access (service key / public bucket base URL), replacing the `uploads/` local-path contract in §3.
+- **App secrets:** unchanged in nature (`JWT_SECRET` etc. as container env) but now must be split from DB credentials (which Supabase manages).
+- Until the addendum tasks ([ADD-01]/[ADD-02], storage [ADD-03]) land, everything in §1–§6 remains the operating truth.
