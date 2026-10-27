@@ -59,6 +59,7 @@ Notable consequences:
 
 ## 3. JWT filter mechanics
 
+- **Secret ownership (`config/security/JwtSecretProvider`, implemented 2026-10-28 — P1-01/SEL-01):** the signing key comes **env-only** (`JWT_SECRET`); the app **fails to boot** when it's missing/blank, <32 bytes, or equal to the retired hardcoded default (digest-matched). One key instance, one parser: `JwtService` delegates to the provider, `LoginServiceI.getJwtRole` delegates to `JwtService.extractAuthorities` — role claims survive secret rotation. No default value exists anywhere in the repo (grep-audited).
 - **Validator** (`filters/JwtTokenValidatorFilter`): runs in prod; skips only `/login-api`; sets `Authentication(username, null, authorities-from-claims)`; re-checks `enabled`/`deleted` from DB (except admin); writes its own 401 JSON body (`"Invalid JWT token"` or the deactivated message) — a **third JSON error shape** alongside `GlobalExceptionHandler` and the entry point.
 - **Generator** (`filters/JwtTokenGeneratorFilter`): registered, but `shouldNotFilter` exempts everything except `/test-login` — a path **no controller exposes**. Effectively unreachable; login happens in `service/auth/LoginServiceI` instead.
 

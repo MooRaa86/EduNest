@@ -11,7 +11,7 @@ Complete configuration surface (verified against `application.properties`, `appl
 | `DATABASE_PASSWORD` | `spring.datasource.password` | – |
 | `MAIL_HOST`, `MAIL_PORT` | `spring.mail.*` | SMTP |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | `spring.mail.*` | SMTP auth creds |
-| `JWT_SECRET` (optional today) | `JwtService.getSecretKey` (`env.getProperty("JWT_SECRET", default)`) | **Not declared in Dockerfile/properties** — if unset, signing uses the hardcoded fallback (`jxgEQe…`). If set to a non-default value, login role-parsing breaks (SEL-01 code bug) until fixed. Minimum 32 bytes (`hmacShaKeyFor` throws otherwise; no startup validation) |
+| `JWT_SECRET` (**now required**) | `config/security/JwtSecretProvider` (single owner; constructed at startup) | **Implemented 2026-10-28 (P1-01/SEL-01):** the hardcoded fallback was deleted. Boot **fails fast** with `IllegalStateException` if `JWT_SECRET` is missing/blank, shorter than 32 bytes (HS256/256-bit), or equal to the retired default (matched by SHA-256 digest). The key is built once and shared; `LoginServiceI.getJwtRole` now delegates to the shared parser (rotation-safe). Minimum 32 bytes enforced |
 | `SPRING_PROFILES_ACTIVE` | profile selection | Defaulted to `prod` in the Dockerfile; absence locally runs the **wide-open `!prod` chain** (SEL-02) |
 
 ## 2. Properties matrix (dev/default vs prod profile)

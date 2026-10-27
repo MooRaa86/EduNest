@@ -5,12 +5,10 @@ import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
 import com.example.gradproj.EduNest.repository.users.AdminRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.repository.users.projection.UserFullNameProjection;
-import com.example.gradproj.EduNest.utils.Constants;
+import com.example.gradproj.EduNest.config.security.JwtSecretProvider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -20,7 +18,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.stream.Collectors;
 
@@ -29,13 +26,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class JwtService implements JwtServiceI{
 
-    private static final String DEFAULT_SECRET = Constants.JWT_SECRET_DEFAULT_VALUE;
     private static final long EXPIRATION_TIME_MS = 7 * (24 * (1000 * 60 * 60));
 
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
 
-    private final Environment env;
+    private final JwtSecretProvider jwtSecretProvider;
 
     @Override
     public String generateToken() {
@@ -44,9 +40,6 @@ public class JwtService implements JwtServiceI{
 
         if (authentication == null) {
             throw new UsernameNotFoundException("No authentication found in SecurityContext");
-        }
-        if(null == env){
-            throw new RuntimeException("No env found in SecurityContext");
         }
 
         SecretKey secretKey = getSecretKey();
@@ -82,9 +75,6 @@ public class JwtService implements JwtServiceI{
 
     @Override
     public void validateToken(String token) {
-        if(env == null){
-            throw new RuntimeException("No env found in SecurityContext");
-        }
         SecretKey secretKey = getSecretKey();
         Claims claims = Jwts.parser().verifyWith(secretKey)
                 .build().parseSignedClaims(token).getPayload();
@@ -163,8 +153,7 @@ public class JwtService implements JwtServiceI{
 
     @Override
     public SecretKey getSecretKey() {
-        String secret = env.getProperty(Constants.JWT_SECRET_KEY, DEFAULT_SECRET);
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return jwtSecretProvider.getSecretKey();
     }
 
 }
