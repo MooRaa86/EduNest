@@ -14,7 +14,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 
 | Issue | Sev | Task(s) | Phase | Domain | Disposition | Status |
 |---|---|---|---|---|---|---|
-| **SEL-01** | Crit | P1-01 | 1 | auth | T + D-22 ordering note | **In Progress** (implemented 2026-10-28, branch pending PR review) |
+| **SEL-01** | Crit | P1-01 | 1 | auth | T + D-22 ordering note | **Verified** (merged to `main` 2026-10-28; tests 7/7; fail-fast boot live-proven) |
 | **SEL-02** | Crit | P1-02 | 1 | auth | T | Planned |
 | **SEL-03** | Crit | P1-08 → P5-03 | 1,5 | auth | T (two-stage) | Planned |
 | **SEL-04** | High | P1-07 | 1 | auth | T | Planned |

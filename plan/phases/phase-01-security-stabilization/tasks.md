@@ -22,7 +22,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 - [ ] Role claim parse test passes with two different secrets.
 **DoD:** per [TEAM-WORKFLOW §5](../../TEAM-WORKFLOW.md#5-definition-of-ready--definition-of-done).
 **Docs to update:** `mds/authentication-security/security-configuration.md`; `ISSUE-MAPPING.md` SEL-01 row.
-**Status:** Planned · **Evidence:** —
+**Status:** ~~Planned~~ **Verified (2026-10-28)** · **Evidence:** PR `feat/p1-01-jwt-secret-env-only` merged to main; `mvnw test` 7/7 (`JwtSecretProviderTest`, `JwtRoleRotationTest`); live boot: refused missing secret, refused short secret, green with valid secret; grep-audit clean.
 
 <a id="p1-02"></a>
 ### P1-02 — Fail-fast security profile (no silent permissive chain)
