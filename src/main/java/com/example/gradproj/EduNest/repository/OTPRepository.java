@@ -7,13 +7,12 @@ import com.example.gradproj.EduNest.enums.register.OtpType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface OTPRepository extends JpaRepository<OTP, Long> {
 
-    Optional<OTP> findByUser_EmailAndOtpCode(String email, String otpCode);
-
-    Optional<OTP> findByUser_Email(String email);
+    List<OTP> findAllByUser_EmailAndOtpType(String email, OtpType otpType);
 
     void deleteByExpiresAtBefore(LocalDateTime now);
 

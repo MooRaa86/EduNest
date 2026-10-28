@@ -1,6 +1,6 @@
 # Authentication & Account Flows
 
-All steps verified against source. Root: `src/main/java/com/example/gradproj/EduNest/`.
+Source root: `src/main/java/com/example/gradproj/EduNest/`. EB-13 changes below are implemented and locally tested on the task branch, awaiting review and verification; they are not a deployment claim. Other sections retain audit-era observations.
 
 ## 1. Registration + OTP verification
 
@@ -10,14 +10,14 @@ Entry points: `POST /api/v1/register/student`, `POST /api/v1/register/mentor` (`
    - `existsByEmail` → `EmailAlreadyExistsException` (409) — **leaks which emails are registered**.
    - Role copied from `roleRepository.findByName(STUDENT/MENTOR)`; BCrypt-encode password; entity saved with `enabled=false`, `deleted=false` (`entity/users/UserEntity` flags).
 2. OTP issuance — `processAndSendOtp` (line 51):
-   - Deletes any existing OTP row for the user (`otpRepository.findByUser_Email`) → **one active row per user**.
+   - Deletes existing `VERIFY` rows for the user only; other purposes remain intact.
    - Generates 6 digits via `SecureRandom` (`100000 + nextInt(900000)`) in `generateOTP` (line 46).
-   - Saves `entity/register/OTP` with `expiresAt = now + 2 minutes` (`expiryTime = 2`, line 43) and `otpType` default (`DEFAULT` — the verify flow does **not** set a specific type).
+   - Saves a `VERIFY` OTP with `expiresAt = now + 2 minutes` (`expiryTime = 2`).
    - Sends HTML email (`templates/emails/otp-template.html`, placeholders `{{OTP_CODE}}, {{USER_NAME}}, {{EXPIRY_MINUTES}}`) via `EmailService.sendEmail` (`@Async`; SMTP failure raises inside async task).
 3. Verification — `POST /api/v1/register/verify-user` → `RegisterServiceImpl.verifyUser` (line 160):
    - Already-enabled → `UserAlreadyVerifiedException` (400).
-   - Lookup `otpRepository.findByUser_EmailAndOtpCode(email, code)` — **no `otpType` filter** (any pending OTP for that email verifies).
-   - `expiresAt` before now → delete row + `OtpExpiredException` (410).
+   - Lookup is scoped to email and `VERIFY`; exactly one row must exist and its code must match. Ambiguous `NULL`/`DEFAULT` rows are not accepted.
+   - Missing or non-future `expiresAt` → `OtpExpiredException` (410); the scheduled cleanup handles expired rows.
    - Sets `enabled=true`, deletes the OTP row.
 4. Resend — `POST /api/v1/register/send-otp` → `generateAndSendOtp` (line 183): rejects already-enabled users; issue #2 rules otherwise. **No resend cap / rate limit.**
 5. Hourly purge of expired rows: `service/register/OtpCleanupService.removeExpiredOtps` (`@Scheduled(fixedRate=3600000)`).
@@ -53,11 +53,15 @@ Implications: role changes (e.g. seeding corrections) do **not** propagate until
 
 Files: `controller/auth/AuthController`, `RegisterServiceImpl.forgetPassword/verifyForgetPasswordOtp/resetPassword` (lines 197/210/229), templates `forget-password-otp-template.html`.
 
-1. `POST /forget-password` — user must exist and be `enabled`; issues OTP via shared `processAndSendOtp` (overwrites any pending verify/delete OTP row — single-row-per-user).
-2. `POST /forget-password/verify-otp` — validates code+expiry, **mutates the row to `otpType=RESET` and keeps it** (comment at line 224: deliberately not deleted).
-3. `POST /forget-password/reset` — looks up row **by email only**; requires `otpType == RESET` (else delete + error) and `createdAt < now − 1h` missed (line 241: window is `createdAt.plusHours(1)`); requires enabled user; BCrypt-encodes new password; deletes row.
+1. `POST /forget-password` — enabled user required; removes that user's `RESET_PENDING` and `RESET` rows and issues a new `RESET_PENDING` OTP. Other purposes are preserved.
+2. `POST /forget-password/verify-otp` — requires exactly one `RESET_PENDING` row for the email, matching code and future expiry; it changes that row to `RESET` after verification.
+3. `POST /forget-password/reset` — requires exactly one `RESET` row for the email; `RESET_PENDING` and ambiguous `NULL`/`DEFAULT` rows do not qualify. It checks `createdAt.plusHours(1)`, requires an enabled user, BCrypt-encodes the new password and deletes the row.
    - **No secret beyond knowing the email is needed at this step** (no token/code parameter requirement) — the `RESET` row's existence is the proof.
    - **`expiresAt` is not re-checked at this step** (only the 1-hour `createdAt` window).
+
+EB-13 does **not** resolve the caller-bound reset authorization exposure above: EB-14/P1-07 remains open. Registration verification, resend and reset methods use a per-user pessimistic lock; a local H2 lock test demonstrates serialization of that lock, not end-to-end race safety on MySQL or PostgreSQL. Duplicate same-purpose rows fail closed. Expired verification rows are rejected; they are not deleted in the throwing transaction and remain eligible for scheduled cleanup.
+
+**Deployment gate:** compatibility of the persisted `RESET_PENDING` enum value and the locking query with the actual target schema/database is unverified. Security and deployment owners must approve legacy `NULL`/`DEFAULT` reissue, handling existing `RESET` rows, and a mixed-version rollout/rollback procedure before deployment. Older application versions may fail to read the new enum value. No migration or production verification is claimed.
 
 ## 5. Account delete / deactivate / restore
 
@@ -81,7 +85,7 @@ Soft-delete flag lives on `UserEntity.deleted` (default false, lines 61–63). A
 
 ## 7. Data model (auth-relevant)
 
-`entity/register/OTP` — `otpCode` (plaintext), `expiresAt`, `otpType` (VERIFY/RESET/DEFAULT/DELETE/RESTORE/CHANGE_EMAIL), `pendingEmail`, FK `user_id`, FK `admin_id`, audit columns. One active row per user (delete-then-create). Hourly cleanup job.
+`entity/register/OTP` — `otpCode` (plaintext), `expiresAt`, `otpType` (VERIFY/RESET_PENDING/RESET/DEFAULT/DELETE/RESTORE/CHANGE_EMAIL), `pendingEmail`, FK `user_id`, FK `admin_id`, audit columns. Multiple purpose-specific rows can coexist; no database uniqueness constraint is asserted here. Hourly cleanup job.
 
 `entity/users/UserEntity` — `email` (unique), BCrypt `password`, `enabled` (verification/activation), `deleted` (soft delete), `role_id` FK, profile fields.
 `entity/users/Admin` — separate table; `email`, `password`, `role_id`, no enabled/deleted columns.
