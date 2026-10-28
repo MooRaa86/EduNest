@@ -1,0 +1,48 @@
+name: tests
+
+# EB-41 [P2-07 / DEP-01, TST-03] — the merge gate.
+# Tests are fully self-contained (EB-35 test profile / D-27) → no services, no secrets, no Docker.
+# Trigger decision (user, 2026-10-28): every PR to main + every push to main
+# (plan text said `develop`; user merges straight to `main` — recorded in the P2-07 row).
+# Command decision (user): `mvnw package` — full test suite + JAR packaging, catching packaging breakage too.
+
+on:
+  pull_request: # every PR targeting main
+    branches: [ main ]
+  push: # every merge/push to main
+    branches: [ main ]
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true # new push on the same PR cancels the superseded run
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build + test + package (JDK 21)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin) + Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # No-skip enforcement (P2-07 core requirement): skipping is forbidden even if
+      # someone adds -DskipTests locally; failures are never ignored.
+      - name: Build, test, package — skipping forbidden
+        run: ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
+
+      - name: Upload test reports (kept even when red)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore

@@ -109,11 +109,12 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Evidence:** ISSUES DEP-01/TST-03; [`mds/deployment/production-readiness.md`](../../../mds/deployment/production-readiness.md); repo state (empty workflows dir).
 **Expected outcome:** every PR to `develop`: `mvnw verify` (JDK 21; **no `-DskipTests` anywhere**), `critical` suite always runs (not `may-fail`), test report artifacts; required checks configured on the branch; red = merge impossible.
 **Approach:** single workflow, strict mode on surefire (`-Dmaven.test.failure.ignore=false`), explicit test-coverage *reporting* (advisory) not gating (until suites mature); cached wrapper; static scan job (P2-08) advisory initially.
-**FE / API impact:** none.  **Environment access:** GitHub Actions (rooms runner fine).
+**FE / API impact:** none.  **Environment access:** none for tests (EB-35 made the suite self-contained; D-27). GitHub Actions runner only.
 **Depends on:** P2-01.  **Blocks:** every P3+ merge gate; P6-04 (extends this workflow).
 **Tests:** the pipeline itself (run on the PR adding it).
 **Acceptance criteria:** green run link; red run evidence (deliberately failing branch test) documented; protection configured screenshot/check listing.
 **Docs:** deployment/MDS.md + testing/MDS.md; ISSUE-MAPPING DEP-01/TST-03.
+**Status:** 🔨 Implemented-await-verification (2026-10-28, branch `feat/p2-07-ci-workflow`) — `.github/workflows/tests.yml` landed with user decisions: `mvnw package` (full suite + JAR packaging), triggers on **every PR to `main` + every push to `main`** (user merges to `main`; the plan's `develop` reference is superseded by team convention), no-skip flags (`-DskipTests=false -Dmaven.test.failure.ignore=false`), JDK 21 Temurin + Maven cache, surefire artifacts uploaded on red runs, `concurrency` cancel. Remaining post-merge: manual branch protection on GitHub (user) + green/red run evidence.
 
 <a id="p2-08"></a>
 ### P2-08 — Static analysis + dependency scanning baseline
