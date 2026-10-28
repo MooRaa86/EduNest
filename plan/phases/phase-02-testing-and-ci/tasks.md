@@ -21,7 +21,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 - [x] `mvnw test` runs green with no local MySQL **and zero env vars** (proven 2026-10-28: 14/14, env stripped).
 - [x] Bases used by ≥2 suites written in this phase (`EduNestApplicationTests` extends the full-boot base; bases exported for P2-02+).
 **DoD:** workflow + README of test-suite plan updated.  **Docs:** `mds/testing/MDS.md` §2 note.
-**Status:** 🔨 Implemented-await-verification (branch `feat/p2-01-h2-test-profile`, 2026-10-28).
+**Status:** ✅ **Verified** (2026-10-28) — merged to `main` commit `2a74075`; final-suite proof: env vars stripped, `Tests run: 14, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS`. Fixture builders (P2-02) and prod-chain variant (EB-37) inherit these bases. Jira EB-35 = Done.
 
 <a id="p2-02"></a>
 ### P2-02 — Unit test foundation (pure logic)
