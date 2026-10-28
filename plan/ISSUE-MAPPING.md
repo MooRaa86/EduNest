@@ -111,7 +111,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **INT-01** | Low | P1-26 | 1 | integrations | T (+Agora/R11) | Planned |
 | **INT-02** | Med | P4-13 | 4 | integrations | T | Planned |
 | **INT-03** | Low | P1-26 | 1 | integrations | T | Planned |
-| **DEP-01** | High | P2-07 → P6-04 | 2,6 | deployment | T | **P2-07 Implemented-await-verification** (GitHub Actions workflow landed 2026-10-28; P6-04 extension still open) |
+| **DEP-01** | High | P2-07 → P6-04 | 2,6 | deployment | T | **P2-07 Verified** (workflow merged & green on main `0cd3464`; branch protection ON per Omar 2026-10-28; P6-04 extension of this workflow still open) |
 | **DEP-02** | High | P5-01, P5-02 | 5 | deployment | T | Planned |
 | **DEP-03** | High | P6-05 | 6 | deployment | T | Planned |
 | **DEP-04** | Med | P3-01 | 3 | database | = DB-01 part | Planned |
@@ -121,7 +121,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DEP-08** | Low | P6-02, P8-05 | 6,8 | deployment | T | Planned |
 | **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | Planned |
 | **TST-02** | Med | P2-01 | 2 | testing | T | **Verified** (merged to `main` 2026-10-28, commit `2a74075`; 14/14 green with zero env — `mvnw test` self-contained; Jira EB-35 = Done; decision D-27) |
-| **TST-03** | Med | P2-07 | 2 | testing | T | **Implemented-await-verification** (CI workflow `tests.yml` landed 2026-10-28; branch-protection step + green/red run evidence pending merge) |
+| **TST-03** | Med | P2-07 | 2 | testing | T | **Verified** (CI live: green run `0cd3464`, red-run evidence documented (exit 126/exec bit); branch protection ON 2026-10-28; no-skip enforced) |
 | **TST-04** | Low | P2-08, P8-07 | 2,8 | testing | T | Planned |
 | **DOC-01** | Med | P5-05 | 5 | deployment | T | Planned |
 | **DOC-02** | Low | P5-05 | 5 | deployment | T | Planned |

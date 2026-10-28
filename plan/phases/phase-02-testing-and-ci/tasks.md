@@ -114,7 +114,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** the pipeline itself (run on the PR adding it).
 **Acceptance criteria:** green run link; red run evidence (deliberately failing branch test) documented; protection configured screenshot/check listing.
 **Docs:** deployment/MDS.md + testing/MDS.md; ISSUE-MAPPING DEP-01/TST-03.
-**Status:** 🔨 Implemented-await-verification (2026-10-28, branch `feat/p2-07-ci-workflow`) — `.github/workflows/tests.yml` landed with user decisions: `mvnw package` (full suite + JAR packaging), triggers on **every PR to `main` + every push to `main`** (user merges to `main`; the plan's `develop` reference is superseded by team convention), no-skip flags (`-DskipTests=false -Dmaven.test.failure.ignore=false`), JDK 21 Temurin + Maven cache, surefire artifacts uploaded on red runs, `concurrency` cancel. Remaining post-merge: manual branch protection on GitHub (user) + green/red run evidence.
+**Status:** ✅ **Verified** (2026-10-28) — fix PR merged (`0cd3464`; exec-bit fix `793e696`); green run verified via API (push→main AND PR run both success); red-run evidence documented in Jira EB-41 (exit 126 → `mvnw` mode 100644→100755, setup-java v5); **branch protection ON** (Omar, same day): red workflow now physically blocks merge. Docs synced same-commit.
 
 <a id="p2-08"></a>
 ### P2-08 — Static analysis + dependency scanning baseline
