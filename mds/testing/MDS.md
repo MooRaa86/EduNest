@@ -4,6 +4,8 @@
 
 The project ships with **one smoke test**. There are no unit, integration, or end-to-end tests; no static analysis; no coverage tooling. This document records the as-is state and the stabilization-phase test plan baseline (execution is a next-phase activity; not started here).
 
+> **Implemented 2026-10-28 (P2-01/EB-35, decision D-27 — no Docker):** a `test` profile now exists (`src/test/resources/application-test.properties`), backed by **H2 in-memory in MySQL-compatibility mode** — `mvnw test` boots the whole app on any machine with zero env vars (no MySQL, no Docker, no secrets). Shared bases `IntegrationTestBase` (MockMvc) + `TransactionalIntegrationTestBase` (rollback) live in `com.example.gradproj.EduNest.testing`. The smoke test is now a 3-probe proof: full boot · HTTP public route · the single native query pattern (`ROW_NUMBER() OVER`, `TotalPointsRepository`) runs on H2. Fixture builders land with P2-02.
+
 ## 2. Current Implementation (complete inventory)
 
 | # | Test | File | What it covers |

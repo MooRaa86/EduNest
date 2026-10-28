@@ -3,24 +3,25 @@
 Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); `<a id>` anchors are short link targets (`tasks.md#p2-nn`).
 
 <a id="p2-01"></a>
-### P2-01 — Test profile + Testcontainers MySQL + fixtures
+### P2-01 — Test profile + H2 (D-27: no Docker) + bases
 
 **Priority:** P1 — every suite slot in [`mds/testing/MDS.md` §3](../../../mds/testing/MDS.md) waits on this.  **Size:** M
 **Owner role:** QA Engineer + Backend Developer   **Reviewers:** Eng Lead
 **Issues:** TST-02   **Domain:** testing
-**Components:** `src/test/**` (base classes), `pom.xml` (`spring-boot-testcontainers`, `org.testcontainers:mysql`, `org.testcontainers:junit-jupiter`), `application-test.properties`
+**Components:** `src/test/**` (base classes), `pom.xml` (`com.h2database:h2`, test scope), `src/test/resources/application-test.properties`
 
-**Context:** Zero tests exist today; native SQL (window functions, `ROW_NUMBER`) rules out H2; a containerized MySQL 8 pins version parity with prod intent (A-4).
-**Evidence:** ISSUES TST-02; `pom.xml` (starter-test present, no testcontainers).
-**Expected outcome:** `@SpringBootTest` base with a shared `@ServiceConnection` MySQL 8 container; transactional test base (`@Transactional` rollback) + non-transactional base (for WS/async); seeded-data builders (users ×4 roles, mentorship, quiz, conversation, files on temp dir).
-**Approach:** profile `test` with OSIV *kept on* initially (parity with prod; D-24 covers the change), testcontainers singletons per suite class; disable rate limiter (P1-08 property), fixed JWT secret; uploads root → `@TempDir`.
-**FE / API impact:** none.  **Environment access:** Docker (team machines + CI).  **Decisions:** none.
+**Context (updated 2026-10-28 by D-27):** zero usable tests today: the smoke test hits the **real dev/prod env** and only passes where env vars resolve. The original plan prescribed Testcontainers MySQL with the rationale "native SQL rules out H2"; re-verification found exactly ONE special query (`TotalPointsRepository` rank, `ROW_NUMBER() OVER`) which H2 2.x supports. **Decision D-27 (user-approved): H2 in-memory, no Docker — hot tails off; team no-Docker policy.**
+**Evidence:** ISSUES TST-02; `pom.xml` (starter-test present, no test DB); `application.properties` env placeholder audit (`DATABASE_URL`, `MAIL_*`, JWT secret, chain guard, upload dir).
+**Expected outcome:** `@SpringBootTest` boots the full app on ANY machine with zero setup; `IntegrationTestBase` (MockMvc, full context) + `TransactionalIntegrationTestBase` (auto-rollback) shared bases; smoke test un-gated and green.
+**Approach:** profile `test` (`src/test/resources/application-test.properties`): H2 `MODE=MySQL` in-memory + `create-drop` + `H2Dialect`, stubbed mail (placeholders resolved, never connects), fixed fake `JWT_SECRET`, `EDUNEST_UNSAFE_DEV=true` (dev chain for tests; EB-37 adds a `{"test","prod"}` variant later), uploads → `target/test-uploads`. Seeds-deferring fixture builders to P2-02; WS/async non-tx base to P2-05; rate-limiter toggle when P1-08 exists.
+**FE / API impact:** none.  **Environment access:** none (explicitly zero — no MySQL, no Docker).  **Decisions:** D-27.
 **Depends on:** —  **Blocks:** P2-02..P2-08.
-**Tests:** the infra itself: container boot, context loads, fixture builds (one smoke `MockMvc` call).
+**Tests:** the infra itself: full-boot smoke (context + HTTP probe + window-function probe).
 **Acceptance criteria:**
-- [ ] `mvnw test` runs green with no local MySQL.
-- [ ] Bases used by ≥2 suites written in this phase.
+- [x] `mvnw test` runs green with no local MySQL **and zero env vars** (proven 2026-10-28: 14/14, env stripped).
+- [x] Bases used by ≥2 suites written in this phase (`EduNestApplicationTests` extends the full-boot base; bases exported for P2-02+).
 **DoD:** workflow + README of test-suite plan updated.  **Docs:** `mds/testing/MDS.md` §2 note.
+**Status:** 🔨 Implemented-await-verification (branch `feat/p2-01-h2-test-profile`, 2026-10-28).
 
 <a id="p2-02"></a>
 ### P2-02 — Unit test foundation (pure logic)
