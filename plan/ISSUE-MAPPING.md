@@ -46,7 +46,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04) | Planned |
 | **MSH-04** | Med | P3-02 | 3 | database | T | Planned |
 | **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned |
-| **MSH-06** | Med | P1-22 | 1 | file-storage | T | Planned |
+| **MSH-06** | Med | P1-22 | 1 | file-storage | T | Planned — EB-4 cover header/extension/content issue confirmed locally; replacement failure window untested ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **MSH-07** | Low | P4-10 | 4 | learning | T (default: effective price) | Planned |
 | **MSH-08** | Low | P4-10, P4-11 | 4 | learning | T | Planned |
 | **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | Planned |
@@ -90,9 +90,9 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **NOTIF-05** | Low | P4-01 | 4 | notifications | T | Planned |
 | **MAIL-01** | High | P1-11 | 1 | notifications | D→T (D-05) | Planned |
 | **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | Planned |
-| **FILE-02** | High | P1-22 | 1 | file-storage | T | Planned |
-| **FILE-03** | Med | P0-06 → P1-22 | 0,1 | file-storage | V→T | Planned |
-| **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | Planned |
+| **FILE-02** | High | P1-22 | 1 | file-storage | T | Planned — EB-4 confirmed header/content mismatch accepted on four image surfaces ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
+| **FILE-03** | Med | P0-06 → P1-22 | 0,1 | file-storage | V→T | Planned — arbitrary extension confirmed; traversal inconclusive and untested ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
+| **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | Planned — EB-4 non-ZIP octet-stream accepted by file service; EB-5 endpoint verification pending ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **FILE-05** | Med | P3-03 | 3 | file-storage | T | Planned |
 | **FILE-06** | Med | P6-06 | 6 | deployment | D→T (D-19) | Planned |
 | **FILE-07** | Med | P6-05 (+P6-07 cond.) | 6 | deployment | T | Planned |
