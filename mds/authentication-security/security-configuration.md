@@ -2,7 +2,20 @@
 
 Verified against `src/main/java/com/example/gradproj/EduNest/config/security/**` and `filters/**`.
 
-## 1. Two SecurityFilterChain configurations
+> **Implemented 2026-10-28 (P1-02/SEL-02, §1 rewritten):** there is now **one** configuration, `ProjectSecurityConfig`, holding ONE chain bean with two explicit branches (branch selection: `prod` profile → stateless JWT chain; otherwise → permissive chain **only** when the env flag `EDUNEST_UNSAFE_DEV=true` is set explicitly; otherwise the app **refuses to boot**). The former `ProjectSecurityProdconfig` is deleted; `PasswordEncoder`/`AuthenticationManager`/CORS beans are single definitions again. Historical two-class table kept below for audit context.
+
+## 1. Security chain selection (current behavior)
+
+| Mode | Condition | Boot result | Chain |
+|---|---|---|---|
+| Production | `spring.profiles.active=prod` | ✅ boots | STATELESS JWT chain, authorization matrix, custom 401/403 JSON, httpBasic/formLogin disabled |
+| Misconfigured/unset | no `prod` AND no `EDUNEST_UNSAFE_DEV` | ❌ **`IllegalStateException` — refuses to start** | — |
+| Explicit dev | `EDUNEST_UNSAFE_DEV=true` (no prod) | ✅ boots **with loud WARN banner** | permissive chain: sessions, httpBasic + formLogin, CSRF off, `.anyRequest().permitAll()` |
+| prod + unsafe flag | both set | ✅ boots (flag ignored w/ WARN) | secure JWT chain |
+
+Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see [`../deployment/environment-configuration.md`](../deployment/environment-configuration.md) (P1-01, `JwtSecretProvider`).
+
+## 1b. Historical: two SecurityFilterChain configurations (superseded)
 
 | Aspect | `ProjectSecurityConfig` (`@Profile("!prod")`) | `ProjectSecurityProdconfig` (`@Profile("prod")`) |
 |---|---|---|
