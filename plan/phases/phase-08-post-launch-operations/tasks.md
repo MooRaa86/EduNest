@@ -77,7 +77,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Priority:** P1 — post-launch defect intake needs a fixed path; hotfix lane runs the *full* required checks (EXECUTION-STRATEGY §7).  **Size:** S
 **Owner role:** Eng Lead + QA   **Reviewers:** PO
 **Issues:** post-launch triage rows   **Domain:** process / testing
-**Components:** `ops/runbooks/triage-hotfix.md`: intake sources (error tracker P8-02, user reports, alerts), severity→SLA-free priority mapping (roles not hours), new-ISSUES-row creation step (canonical registry law), hotfix branch rules (from `main`, full CI, merge-back)
+**Components:** `ops/runbooks/triage-hotfix.md`: intake sources (error tracker P8-02, user reports, alerts), severity→SLA-free priority mapping (roles not hours), new-ISSUES-row creation step (canonical registry law), hotfix branch rules (from latest `origin/main`, PR to `main`, full CI and required reviews; no direct pushes)
 
 **Evidence:** TEAM-WORKFLOW + ISSUE-MAPPING rules; EXECUTION-STRATEGY §7.
 **Expected outcome:** documented workflow; first real triage exercise run (any defect → row → task) recorded.
