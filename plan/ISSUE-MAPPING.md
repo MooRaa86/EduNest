@@ -15,7 +15,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | Issue | Sev | Task(s) | Phase | Domain | Disposition | Status |
 |---|---|---|---|---|---|---|
 | **SEL-01** | Crit | P1-01 | 1 | auth | T + D-22 ordering note | **Verified** (merged to `main` 2026-10-28; tests 7/7; fail-fast boot live-proven) |
-| **SEL-02** | Crit | P1-02 | 1 | auth | T | **Implemented-await-verification** (single guided chain + boot guard landed 2026-10-28; boot matrix 4/4; PR pending review) |
+| **SEL-02** | Crit | P1-02 | 1 | auth | T | **Verified** (merged to `main` 2026-10-28, commit `af50e58`; boot matrix 4/4 — `SecurityProfileBootMatrixTest`; Jira EB-9 = Done) |
 | **SEL-03** | Crit | P1-08 → P5-03 | 1,5 | auth | T (two-stage) | Planned |
 | **SEL-04** | High | P1-07 | 1 | auth | T | Planned |
 | **SEL-05** | High | P1-06 | 1 | auth | T | Planned |

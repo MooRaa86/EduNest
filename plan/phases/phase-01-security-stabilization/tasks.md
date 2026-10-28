@@ -40,9 +40,10 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Depends on:** —   **Blocks:** P2-03 boot-matrix tests; P6-09 config matrix.
 **Tests / regressions:** boot matrix test: prod ✅ boots; none ❌ fails; `EDUNEST_UNSAFE_DEV=true` ✅ boots with WARN.
 **Acceptance criteria:**
-- [ ] Boot test proves all three states (evidence: test log).
-- [ ] `application-prod.properties` reviewed: no permitAll chain co-existence possible (single chain bean).
+- [x] Boot test proves all three states (evidence: test log).
+- [x] `application-prod.properties` reviewed: no permitAll chain co-existence possible (single chain bean).
 **Docs to update:** security-configuration.md; ISSUE-MAPPING SEL-02/ARCH-001 rows.
+**Status:** ✅ **Verified** (2026-10-28) — single `ProjectSecurityConfig` with one chain bean + two explicit branches; boot guard in the config constructor; `EDUNEST_UNSAFE_DEV=true` escape hatch with WARN banner (prod wins conflicts). `ProjectSecurityProdconfig` deleted; `PasswordEncoder`/`AuthenticationManager`/CORS beans de-duplicated. Boot matrix `SecurityProfileBootMatrixTest` 4/4 (covers prod ✅ / none ❌ refusal / unsafeDev ✅ banner / prod+flag ✅ — the fourth row is a bonus guard-rail). Full suite 12 tests: 11 pass, 1 env-gated skip (whole-context smoke needs the real env — that gap is EB-35's scope). Note: the validator lives in the config-class constructor rather than a separate `ApplicationRunner`/`EnvironmentPostProcessor` (earlier + simpler; a Spring `@Configuration` class constructor fails during context refresh before any request is served). Merged to `main` commit `af50e58`; Jira EB-9 = Done.
 
 <a id="p1-03"></a>
 ### P1-03 — JWT filter skips genuine public routes
