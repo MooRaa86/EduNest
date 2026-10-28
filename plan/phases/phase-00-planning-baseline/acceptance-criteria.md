@@ -14,7 +14,7 @@
 | P0-03 | CHAT-08 verdict recorded with payload captures | — | QA |
 | P0-04 | SEL-15 verdict recorded | — | Security Reviewer |
 | P0-05 | MSH-12 scan-abuse evidence recorded | — | Backend Dev |
-| P0-06 | Upload matrix complete (4 surfaces × ≥5 payloads) | — | Security Reviewer |
+| P0-06 | Upload matrix complete (4 surfaces × ≥5 payloads) | [Local evidence: 4 × 7 image cases; ZIP service contrast; traversal and endpoint ZIP cases pending](EB-4-UPLOAD-MATRIX.md) | Security Reviewer — pending |
 | P0-07 | Zip-spoof verdict recorded | — | Security Reviewer |
 | P0-08 | QZ-06 verdict recorded (two-mentor fixture) | — | Security Reviewer |
 | P0-09 | Fresh-DB rehearsal log incl. permissive-chain observation | — | DevOps |
