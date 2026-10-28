@@ -1,9 +1,16 @@
 package com.example.gradproj.EduNest.config.security;
 
 import com.example.gradproj.EduNest.config.auth.EduNestAuthenticationProvider;
+import com.example.gradproj.EduNest.exception.authHandling.EduNestAccessDeniedHandler;
+import com.example.gradproj.EduNest.exception.authHandling.EduNestAuthenticationEntryPoint;
+import com.example.gradproj.EduNest.filters.JwtTokenGeneratorFilter;
+import com.example.gradproj.EduNest.filters.JwtTokenValidatorFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -11,29 +18,200 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-
-@Profile("!prod")
+/**
+ * THE single security configuration (P1-02 / SEL-02).
+ *
+ * Boot contract (fail-fast, mirrors JwtSecretProvider's philosophy):
+ *  - "prod" active           -> PROD branch: stateless JWT chain, explicit route matrix.
+ *  - any other/no profile    -> REFUSES TO START unless EDUNEST_UNSAFE_DEV=true is set
+ *                               explicitly; the permissive dev branch is then built with a
+ *                               loud WARN banner. Booting insecurely by omission is
+ *                               impossible.
+ *
+ * Exactly one SecurityFilterChain / PasswordEncoder / AuthenticationManager / CORS
+ * source exists again — the previous two-class split silently chose behavior by
+ * profile presence and duplicated security beans (drift risk).
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class ProjectSecurityConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(ProjectSecurityConfig.class);
+
+    /** Explicit opt-in for the insecure local-dev chain. Never set in staging/prod. */
+    public static final String UNSAFE_DEV_ENV = "EDUNEST_UNSAFE_DEV";
+
+    private final Environment env;
+
+    private final JwtTokenGeneratorFilter jwtTokenGeneratorFilter;
+    private final JwtTokenValidatorFilter jwtTokenValidatorFilter;
+    private final EduNestAuthenticationEntryPoint customAuthEntryPoint;
+    private final EduNestAccessDeniedHandler customAccessDeniedHandler;
+
+    public ProjectSecurityConfig(
+            Environment env,
+            JwtTokenGeneratorFilter jwtTokenGeneratorFilter,
+            JwtTokenValidatorFilter jwtTokenValidatorFilter,
+            EduNestAuthenticationEntryPoint customAuthEntryPoint,
+            EduNestAccessDeniedHandler customAccessDeniedHandler
+    ) {
+        this.env = env;
+        this.jwtTokenGeneratorFilter = jwtTokenGeneratorFilter;
+        this.jwtTokenValidatorFilter = jwtTokenValidatorFilter;
+        this.customAuthEntryPoint = customAuthEntryPoint;
+        this.customAccessDeniedHandler = customAccessDeniedHandler;
+
+        boolean prod = isProd();
+        boolean unsafeDev = isUnsafeDevRequested();
+
+        if (prod && unsafeDev) {
+            log.warn("EDUNEST_UNSAFE_DEV=true is ignored while the 'prod' profile is active — the secure JWT chain is in force.");
+        }
+        if (!prod && !unsafeDev) {
+            throw new IllegalStateException(
+                    "Refusing to start: no security mode selected. Set SPRING_PROFILES_ACTIVE=prod for real environments, "
+                            + "or explicitly set EDUNEST_UNSAFE_DEV=true for local development (insecure permissive chain). "
+                            + "Silent insecure boots are not allowed (SEL-02)."
+            );
+        }
+        if (prod) {
+            log.info("Security: PROD profile active — stateless JWT chain with authorization matrix.");
+        } else {
+            log.warn(String.format(
+                    "%n%n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%n"
+                            + "!! EDUNEST IS RUNNING IN INSECURE DEV MODE (EDUNEST_UNSAFE_DEV)   !!%n"
+                            + "!! - every endpoint is public, CSRF off, sessions + basic auth on !!%n"
+                            + "!! NEVER run this mode in staging/production.                     !!%n"
+                            + "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%n"
+            ));
+        }
+    }
+
+    private boolean isProd() {
+        return Arrays.asList(env.getActiveProfiles()).contains("prod");
+    }
+
+    private boolean isUnsafeDevRequested() {
+        String flag = env.getProperty(UNSAFE_DEV_ENV);
+        return flag != null && "true".equalsIgnoreCase(flag.trim());
+    }
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http)throws Exception{
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return isProd() ? prodChain(http) : devChain(http);
+    }
+
+    /**
+     * PROD branch — behavior identical to the former ProjectSecurityProdconfig.
+     * Stateless JWT; explicit authorization matrix; custom 401/403 JSON handlers.
+     */
+    private SecurityFilterChain prodChain(HttpSecurity http) throws Exception {
+        http
+                .sessionManagement(smc
+                        -> smc.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(corsConfig
+                        -> corsConfig.configurationSource(new CorsConfigurationSource() {
+                    @Override
+                    public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+                        CorsConfiguration config = new CorsConfiguration();
+                        config.setAllowedOriginPatterns(Arrays.asList("*"));
+                        config.setAllowedMethods(Collections.singletonList("*"));
+                        config.setAllowCredentials(true);
+                        config.setAllowedHeaders(Collections.singletonList("*"));
+                        config.setExposedHeaders(Arrays.asList("Authorization"));
+                        config.setMaxAge(3600L);
+                        return config;
+                    }
+                }))
+                .csrf(csrf -> csrf.disable())
+                .addFilterAfter(jwtTokenGeneratorFilter, BasicAuthenticationFilter.class)
+                .addFilterBefore(jwtTokenValidatorFilter, BasicAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth
+                        // ========== Public APIs ==========
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/api/auth/**",
+                                "/api/v1/register/**",
+                                "/login-api",
+                                "/forget-password/**",
+                                "/api/v1/admin/register",
+                                "/ws/**",
+                                "/uploads/mentorship-cover-images/**",
+                                "/uploads/profile-images/**",
+                                "/uploads/student-profile/**",
+                                "/uploads/mentor-profile/**",
+                                "/uploads/mentor/**",
+                                "/uploads/student/**",
+                                "/uploads/chatroom/**",
+                                "/uploads/**",
+
+                                //ToDo public uploads until front make the security on it
+
+                                "/api/v1/contact/save-message",
+                                "/api/v1/student/mentorships/*/overview",
+                                "/api/v1/student/mentorships/*/reviews",
+                                "/api/v1/mentorship/explore",
+                                "/api/v1/mentorship/categories",
+                                "/api/v1/profile/mentor/**",
+                                "/uploads/**"
+                        ).permitAll()
+                        // ========== ADMIN Only ==========
+                        .requestMatchers(
+                                "/api/v1/admin/**",
+                                "/admin/**",
+                                "/api/admin/**",
+                                "/api/users/*/badges",
+                                "/api/v1/contact/all-messages",
+                                "/api/v1/contact/message/**",
+                                "/api/v1/contact/messages/**"
+                        ).hasRole("ADMIN")
+                        // ========== Authenticated Users (Both MENTOR & STUDENT) ==========
+                        .requestMatchers(
+                                "/settings/**",
+                                "/api/v1/notifications/**",
+                                "/student/profile/**",
+                                "/api/v1/file/**"
+                        ).authenticated()
+
+                        // ========== Any remaining requests require authentication ==========
+                        .anyRequest().authenticated()
+                );
+        http.exceptionHandling(ex -> ex
+                .authenticationEntryPoint(customAuthEntryPoint)
+                .accessDeniedHandler(customAccessDeniedHandler)
+        );
+        http.httpBasic(AbstractHttpConfigurer::disable);
+        http.formLogin(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
+
+    /**
+     * DEV branch (EDUNEST_UNSAFE_DEV=true only) — behavior identical to the former
+     * ProjectSecurityConfig: permissive chain for local development.
+     */
+    private SecurityFilterChain devChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                .csrf(csrf->csrf.disable())
-                .authorizeHttpRequests(auth->auth
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -58,11 +236,11 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-
+    /** Dev-mode CORS source (consulted by the dev branch via `cors(Customizer.withDefaults())`). */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -83,11 +261,10 @@ public class ProjectSecurityConfig {
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder
-    ){
+    ) {
         AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder);
         ProviderManager providerManager = new ProviderManager(authProvider);
-        providerManager.setEraseCredentialsAfterAuthentication(false);
+        providerManager.setEraseCredentialsAfterAuthentication(false); // SEL-12 consumes this state (see P1-04)
         return providerManager;
     }
-
 }
