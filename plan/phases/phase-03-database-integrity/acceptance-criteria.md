@@ -3,7 +3,7 @@
 ## 1. Entry verification
 
 - [ ] Phase 1 content guards merged (R3 freeze respected).
-- [ ] CI green on `develop`.
+- [ ] CI green on `main`.
 - [ ] D-17/D-18 decided or PO-confirmed defaults.
 
 ## 2. Per-task acceptance

@@ -37,7 +37,7 @@ A test infrastructure that *proves* the Phase 1 fixes (and every later change): 
 ## 6. Exit criteria
 
 1. `./mvnw.cmd verify` green locally; same in CI with DB via Testcontainers (no developer MySQL needed).
-2. CI required checks configured on `develop` (+ `main` protection as part of P6-04 handoff).
+2. CI required checks configured on protected `main`.
 3. Every Phase-1 acceptance-corresponding test exists and passes — this is the *proof artifact* for Phase 1's sign-off.
 4. Full details: [`acceptance-criteria.md`](acceptance-criteria.md).
 
@@ -48,4 +48,4 @@ A test infrastructure that *proves* the Phase 1 fixes (and every later change): 
 
 ## 8. Definition of done (phase level)
 
-P2-07 producing green runs on `develop`; P2-03 matrix green; suites listed in [`mds/testing/MDS.md` §3](../../../mds/testing/MDS.md) exist (coverage notes recorded honestly, no invented percentages).
+P2-07 producing green runs on `main`; P2-03 matrix green; suites listed in [`mds/testing/MDS.md` §3](../../../mds/testing/MDS.md) exist (coverage notes recorded honestly, no invented percentages).

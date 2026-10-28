@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|
 | 00 | [Planning baseline & decisions](phases/phase-00-planning-baseline/MDS.md) | Verify suspected findings; unblock decisions; fix working agreements | 9 | This plan accepted | Decision register round 1 + verified/rejected suspections recorded |
 | 01 | [Security stabilization](phases/phase-01-security-stabilization/MDS.md) | Close every Critical/High exploit path; harden auth, authorization, uploads, chat | 27 (10×P0) | Phase 0 defaults accepted | All P0 security tasks verified by tests |
-| 02 | [Testing & CI](phases/phase-02-testing-and-ci/MDS.md) | Testcontainers suite + CI that cannot skip tests; regression net over Phase 1 fixes | 8 | Phase 1 fixes landing | Green CI pipeline gating `develop`/`main` |
+| 02 | [Testing & CI](phases/phase-02-testing-and-ci/MDS.md) | Testcontainers suite + CI that cannot skip tests; regression net over Phase 1 fixes | 8 | Phase 1 fixes landing | Green CI pipeline gating `main` |
 | 03 | [Database integrity](phases/phase-03-database-integrity/MDS.md) | Flyway baseline; uniqueness constraints; transactional correctness | 7 | Phase 2 CI green | Versioned migrations replace `ddl-auto=update` in prod |
 | 04 | [Business logic & notifications](phases/phase-04-business-logic-and-notifications/MDS.md) | Points/certificates consistency, notification timing, stats correctness, perf debt | 17 | Phase 0 product decisions (D-08..D-15) | Business rules implemented per decisions with tests |
 | 05 | [Production readiness (in-app)](phases/phase-05-production-readiness/MDS.md) | Health checks, logging, secrets wiring, rate limits, docs parity | 5 | Phase 4 core merged | App is operable & observable in prod profile |

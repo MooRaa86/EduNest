@@ -61,7 +61,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Components:** extend `.github/workflows/` (`build.yml`: compile+test+scan+image; `deploy-staging.yml`: on tag/manual), registry (per D-22; GHCR acceptable), tag scheme `git describe`/short-SHA
 
 **Evidence:** ISSUES DEP-01; P2-07 workflow foundation; D-22 matrix.
-**Expected outcome:** PR → checks; merge `develop` → image push with SHA tag; deploy-staging job runs migrations then new image (image-name/tag recorded in staging metadata file); prod deploy = same workflow invoked manually with approval gate (GitHub Environment protection) — *executed* at P7-06.
+**Expected outcome:** PR to `main` → checks; merge to `main` → image push with SHA tag; deploy-staging job runs migrations then new image (image-name/tag recorded in staging metadata file); prod deploy = same workflow invoked manually with approval gate (GitHub Environment protection) — *executed* at P7-06.
 **Approach:** reuse P2-07 workflow (extend, don't fork); artifact traceability via tag ↔ commit ↔ run links; failure path: deploy job aborts on any required-check red; migration step ordering documented (runbook consumes).
 **Rollback consideration:** redeploy = previous tag re-run (tags immutable); documented at P6-09 runbook.
 **Depends on:** P2-07, P3-01 (migrations), P6-02 (target host).  **Blocks:** P7-01/06.

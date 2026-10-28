@@ -39,7 +39,7 @@
 
 ## 3. Phase-level checks
 
-- [ ] P2-03 authorization regression suite runs green on `develop` (or, if suite lands after some tasks, each culprit's tests already green at merge).
+- [ ] P2-03 authorization regression suite runs green on `main` (or, if suite lands after some tasks, each culprit's tests already green at merge).
 - [ ] G-register closure: G1–G15 all confirmed closed (mapping note per row in `ISSUE-MAPPING.md`).
 - [ ] `mds/` docs updated: `security-configuration.md`, `authorization-rules.md`, `error-responses.md`, `endpoints.md`, `file-storage/MDS.md`, `websocket/*` reflect new behavior (links on tasks).
 - [ ] No P0 security issue remains open (`ISSUE-MAPPING.md` P0 rows verified or Deferred-by-decision w/ D-01 only as *additive* hardening — the exploitable core closed).
