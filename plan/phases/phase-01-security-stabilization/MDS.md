@@ -68,4 +68,4 @@ Full matrix in [`acceptance-criteria.md`](acceptance-criteria.md), but the headl
 
 ## 8. Definition of done (phase-level)
 
-All task rows `Verified` (or explicitly Deferred/Blocked with carry-over); P2-03 authorization suite green on `develop`; sign-off table complete in acceptance file.
+All task rows `Verified` (or explicitly Deferred/Blocked with carry-over); P2-03 authorization suite green on `main`; sign-off table complete in acceptance file.

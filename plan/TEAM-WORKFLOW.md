@@ -1,6 +1,6 @@
 # Team Workflow — How the Plan Gets Executed
 
-Lightweight Agile flow for a small team, aligned with the **observed repository conventions** (`main` ← `develop` ← per-contributor branches, current habit: bare name branches like `omar`/`hazem`). Nothing here assumes Jira or any specific tool exists — §9 maps this model onto Jira *if* the team adopts it.
+Lightweight Agile flow for a small team using the approved main-only workflow. Nothing here assumes Jira or any specific tool exists — §9 maps this model onto Jira *if* the team adopts it.
 
 ## 1. Cadence and ceremonies (no capacity or dates invented)
 
@@ -38,11 +38,12 @@ Board columns = the six solid states. `Blocked` and `Deferred by decision` are s
 
 ## 3. Branching and PR model
 
-- `main` — protected once CI exists (P2-07); merges only via release merges from `develop` (tags: `release-YYYYMMDD-slug` at P7-06; no calendar dates fabricated — the tag name uses the *release day*, which is a fact, not a commitment).
-- `develop` — integration branch; all feature PRs target it. CI required status checks gate it after P2-07.
+- `main` — the protected integration and release branch. Direct pushes are prohibited; task changes enter through PRs targeting `main`, after required CI checks and reviewer approvals. Release tags are created only according to the [P7-06 release runbook](phases/phase-07-staging-and-release/tasks.md#p7-06).
+- `develop` is obsolete and is not an active integration branch.
+- Fetch the latest `origin/main` and create every task branch from it. One task = one branch = one PR targeting `main`.
 - **Task branches:** replace the current name-branch habit with `feat/P1-12-ws-room-authz`, `fix/P1-09-admin-hash-leak`, `chore/P1-26-dead-deps`, `docs/P7-08-release-notes`, `ops/P6-05-docker-hardening`, `test/P2-03-authz-suite`, `decision/*` not needed. One task = one branch = one PR.
-- Rebase on `develop` before requesting review; keep PRs single-purpose (giant mixed PRs are the main risk to review quality here).
-- Hotfix lane defined in [P8-06](phases/phase-08-post-launch-operations/tasks.md#p8-06): branches `hotfix/...` cut from `main`, must pass the *full* required checks, merge back to `main` + `develop`.
+- Rebase on the latest `origin/main` before requesting review; keep PRs single-purpose (giant mixed PRs are the main risk to review quality here).
+- Hotfix lane defined in [P8-06](phases/phase-08-post-launch-operations/tasks.md#p8-06): branches `hotfix/...` start from the latest `origin/main`, target `main` via PR, and must pass the *full* required checks and reviews.
 
 **PR requirements:**
 1. Title starts with the task ID (`P1-12: …`).

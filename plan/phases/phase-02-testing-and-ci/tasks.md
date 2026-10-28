@@ -104,10 +104,10 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Priority:** P0 — `.github/` is empty (verified); without CI the merge gate is a promise, not a check (DEP-01, TST-03).  **Size:** M
 **Owner role:** DevOps Engineer + Backend Developer   **Reviewers:** Eng Lead
 **Issues:** DEP-01, TST-03   **Domain:** testing / deployment
-**Components:** `.github/workflows/tests.yml` (build+test+scan matrix), branch protection for `develop` (required checks), artifact naming; JDK 21 runner
+**Components:** `.github/workflows/tests.yml` (build+test+scan matrix), branch protection for `main` (required checks), artifact naming; JDK 21 runner
 
 **Evidence:** ISSUES DEP-01/TST-03; [`mds/deployment/production-readiness.md`](../../../mds/deployment/production-readiness.md); repo state (empty workflows dir).
-**Expected outcome:** every PR to `develop`: `mvnw verify` (JDK 21; **no `-DskipTests` anywhere**), `critical` suite always runs (not `may-fail`), test report artifacts; required checks configured on the branch; red = merge impossible.
+**Expected outcome:** every PR to `main`: `mvnw package` (JDK 21; **no skipped tests**), `critical` suite always runs (not `may-fail`), test report artifacts; required checks configured on the branch; red = merge impossible. The original plan targeted `develop`; the verified implementation and approved workflow target `main`.
 **Approach:** single workflow, strict mode on surefire (`-Dmaven.test.failure.ignore=false`), explicit test-coverage *reporting* (advisory) not gating (until suites mature); cached wrapper; static scan job (P2-08) advisory initially.
 **FE / API impact:** none.  **Environment access:** none for tests (EB-35 made the suite self-contained; D-27). GitHub Actions runner only.
 **Depends on:** P2-01.  **Blocks:** every P3+ merge gate; P6-04 (extends this workflow).

@@ -44,7 +44,7 @@ How the plan converts the audit into safe, reviewable, deferrable engineering wo
 4. **OSIV:** stays ON until the fetch-join program (P4-11) completes and D-24 approves disabling; no "quick" `spring.jpa.open-in-view=false` flips (will fail read paths — [`mds/database/transactions-consistency.md`](../mds/database/transactions-consistency.md)).
 5. **WebSocket:** authorization added *inside* `JwtChannelInterceptor`/services; the dead handshake interceptor stays dead unless D-14 produces a ticket-flow requirement (SEL-13 note).
 6. **Files:** `uploads/` remains CWD-relative disk storage until P6-05/P6-07; the object-storage abstraction is additive, not a rewrite of `FileStorageService`.
-7. **Java version/workflow:** keep `main` → `develop` → task branches (observed convention: [`TEAM-WORKFLOW.md` §3](TEAM-WORKFLOW.md#3-branching-and-pr-model)); wrapper `mvnw.cmd` builds stay.
+7. **Java version/workflow:** branch from the latest `origin/main` and target protected `main` via PR; direct pushes are prohibited ([`TEAM-WORKFLOW.md` §3](TEAM-WORKFLOW.md#3-branching-and-pr-model)). Wrapper `mvnw.cmd` builds stay.
 
 ## 5. Estimation method
 
