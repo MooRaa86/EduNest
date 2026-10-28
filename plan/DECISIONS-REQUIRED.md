@@ -165,3 +165,8 @@
 ### D-26 — Error-body disclosure
 - **Question:** Confirm generic bodies for unexpected errors (SEL-14 fix) — FE impact on error UX?
 - **Default:** generic 500 body + keep field-validation detail map. Decide-by: before P1-05.
+
+### D-27 — Test DB engine (no-Docker policy)
+- **Question:** Testcontainers MySQL or H2 for the test profile (P2-01)?
+- **Default (plan original):** Testcontainers MySQL ("native SQL rules out H2" — rationale written before verification).
+- **Outcome (decided 2026-10-28, user-approved):** **H2 in-memory only; Docker is NOT allowed** (team no-Docker policy per Omar). The blocking rationale was re-verified and found overstated: exactly **one** special query exists (`TotalPointsRepository` rank list, `ROW_NUMBER() OVER`), and H2 2.x supports it — proven by the EB-35 smoke probe. Mitigations already in place: H2 `MODE=MySQL` compatibility, the window-function smoke test, and the rank query gets real-data fixtures in P2-02; if some future corner case fights H2, fallback = rewrite that single query in portable JPQL (never reintroduce Docker). CI note: EB-41 needs no special runner because tests are fully self-contained.

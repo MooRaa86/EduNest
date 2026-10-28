@@ -120,7 +120,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DEP-07** | Med | P6-01, P6-03 | 6 | deployment | T | Planned |
 | **DEP-08** | Low | P6-02, P8-05 | 6,8 | deployment | T | Planned |
 | **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | Planned |
-| **TST-02** | Med | P2-01 | 2 | testing | T | Planned |
+| **TST-02** | Med | P2-01 | 2 | testing | T | **Implemented-await-verification** (test profile + H2 landed 2026-10-28, D-27 no-Docker; 14/14 green with zero env; PR pending review) |
 | **TST-03** | Med | P2-07 | 2 | testing | T | Planned |
 | **TST-04** | Low | P2-08, P8-07 | 2,8 | testing | T | Planned |
 | **DOC-01** | Med | P5-05 | 5 | deployment | T | Planned |
