@@ -18,7 +18,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-02** | Crit | P1-02 | 1 | auth | T | **Verified** (merged to `main` 2026-10-28, commit `af50e58`; boot matrix 4/4 — `SecurityProfileBootMatrixTest`; Jira EB-9 = Done) |
 | **SEL-03** | Crit | P1-08 → P5-03 | 1,5 | auth | T (two-stage) | Planned |
 | **SEL-04** | High | P1-07 | 1 | auth | T | Planned |
-| **SEL-05** | High | P1-06 | 1 | auth | T | Planned |
+| **SEL-05** | High | P1-06 | 1 | auth | T | **Implemented-await-verification** (EB-13, local task-branch changes; Security Review, CI/merge and target-schema verification pending; see phase acceptance evidence) |
 | **SEL-06** | High | P1-27 (cond.) | 1 | auth | D→T (D-01) | Planned |
 | **SEL-07** | Med | P1-25 | 1 | auth | T | Planned |
 | **SEL-08** | High | P1-09 | 1 | auth | T (+API-04) | Planned |

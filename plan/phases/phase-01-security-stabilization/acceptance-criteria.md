@@ -14,7 +14,7 @@
 | P1-03 | Stale-token header no longer breaks public endpoints; secured endpoints still 401 | IT probe results | Backend Dev |
 | P1-04 | Login returns header (body retained only while FE depends on it); ProviderManager erases credentials | contract test + code evidence | Backend Dev |
 | P1-05 | Unexpected exceptions → 500 generic; 403 handler exists; three 401 shapes unified | error-contract IT set | Backend Dev |
-| P1-06 | OTP verify scoped by type; cross-flow interference impossible (fixture test) | IT results | Security Reviewer |
+| P1-06 | OTP verify scoped by type; cross-flow interference impossible (fixture test) | Local H2 results below; verification pending | Security Reviewer — pending |
 | P1-07 | Reset: expired rows rejected; row consumed on success | IT results | Backend Dev |
 | P1-08 | Thresholds lock out (403/429-style response); enumeration-neutral login errors | rate-limit IT + constants doc | Security Reviewer |
 | P1-09 | `GET /api/v1/admin` has no password fields; register echoes nothing sensitive; `@PreAuthorize` restored | response captures + annotation | Security Reviewer |
@@ -39,7 +39,9 @@
 
 ## 3. Phase-level checks
 
-- [ ] P2-03 authorization regression suite runs green on `develop` (or, if suite lands after some tasks, each culprit's tests already green at merge).
+**P1-06 / EB-13 local evidence (2026-10-28; implemented-await-verification):** Before the fix, `OtpTypeIsolationIntegrationTest` ran 9 tests with 4 failures (wrong-purpose registration/reset accepted and unrelated OTPs deleted by resends) and 1 error (untyped lookup returned multiple rows). After the fix and security-focused review, `mvnw.cmd "-Dtest=OtpTypeIsolationIntegrationTest" test` passed 24/24; `mvnw.cmd -B package "-DskipTests=false" "-Dmaven.test.failure.ignore=false"` passed 38/38, zero skipped. Test source: `src/test/java/com/example/gradproj/EduNest/testing/OtpTypeIsolationIntegrationTest.java`; local Surefire output is under `target/surefire-reports` and is not a durable CI artifact. The H2 test checks the account lock, not target-database concurrency behavior. Security Review, CI, merge and verification remain pending; Jira is not marked Done. EB-14's caller-bound reset authorization remains unresolved. `RESET_PENDING` target schema compatibility and security/deployment approval for legacy OTP reissue and mixed-version rollout/rollback are required before deployment.
+
+- [ ] P2-03 authorization regression suite runs green on `main` (or, if suite lands after some tasks, each culprit's tests already green at merge).
 - [ ] G-register closure: G1–G15 all confirmed closed (mapping note per row in `ISSUE-MAPPING.md`).
 - [ ] `mds/` docs updated: `security-configuration.md`, `authorization-rules.md`, `error-responses.md`, `endpoints.md`, `file-storage/MDS.md`, `websocket/*` reflect new behavior (links on tasks).
 - [ ] No P0 security issue remains open (`ISSUE-MAPPING.md` P0 rows verified or Deferred-by-decision w/ D-01 only as *additive* hardening — the exploitable core closed).

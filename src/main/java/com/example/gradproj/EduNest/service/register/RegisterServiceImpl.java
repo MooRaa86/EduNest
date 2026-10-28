@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
 import static com.example.gradproj.EduNest.utils.SystemUtils.*;
 
@@ -48,17 +49,18 @@ public class RegisterServiceImpl implements RegistrationService {
         return String.valueOf(100000 + random.nextInt(900000));
     }
 
-    private void processAndSendOtp(UserEntity user,String template) {
-
-        otpRepository.findByUser_Email(user.getEmail()).ifPresent(existingOtp -> {
-            otpRepository.delete(existingOtp);
-            otpRepository.flush();
-        });
+    private void processAndSendOtp(UserEntity user, String template, OtpType type) {
+        otpRepository.deleteByUserAndOtpType(user, type);
+        if (type == OtpType.RESET_PENDING) {
+            otpRepository.deleteByUserAndOtpType(user, OtpType.RESET);
+        }
+        otpRepository.flush();
 
         String otpCode = generateOTP();
         OTP otp = OTP.builder()
                 .otpCode(otpCode)
                 .user(user)
+                .otpType(type)
                 .expiresAt(LocalDateTime.now().plusMinutes(expiryTime))
                 .build();
         otpRepository.save(otp);
@@ -104,7 +106,7 @@ public class RegisterServiceImpl implements RegistrationService {
         studentRepository.save(student);
 
         String template = "otp-template.html";
-        processAndSendOtp(student, template);
+        processAndSendOtp(student, template, OtpType.VERIFY);
 
     }
 
@@ -153,22 +155,27 @@ public class RegisterServiceImpl implements RegistrationService {
         mentorRepository.save(mentor);
 
         String template = "otp-template.html";
-        processAndSendOtp(mentor, template);
+        processAndSendOtp(mentor, template, OtpType.VERIFY);
 
     }
 
     @Override
+    @Transactional
     public void verifyUser(String email, String otpCode) {
+
+        userRepository.lockIdByEmail(email).orElseThrow(() ->
+                new InvalidOtpException("This Email doesn't exist or Has no activated OTP request new one."));
 
         if(userRepository.existsByEmailAndEnabledTrue(email)) {
             throw new UserAlreadyVerifiedException("Email already verified");
         } // دي مسئوله ان اشوف اليوزر متفعل اصلا ولا لا
 
-        OTP otpEntity = otpRepository.findByUser_EmailAndOtpCode(email, otpCode) // دي بتهندل لو اليوزر متبعتلوش otp او ال otp بتاعه خلص
-                .orElseThrow(() -> new InvalidOtpException("This Email doesn't exist or Has no activated OTP request new one."));
+        OTP otpEntity = findSingleOtp(email, OtpType.VERIFY, "This Email doesn't exist or Has no activated OTP request new one.");
+        if (otpCode == null || !otpCode.equals(otpEntity.getOtpCode())) {
+            throw new InvalidOtpException("This Email doesn't exist or Has no activated OTP request new one.");
+        }
 
-        if (otpEntity.getExpiresAt().isBefore(LocalDateTime.now())) {
-            otpRepository.delete(otpEntity);
+        if (otpEntity.getExpiresAt() == null || !otpEntity.getExpiresAt().isAfter(LocalDateTime.now())) {
             throw new OtpExpiredException("OTP Expired, please request a new one.");
         } // هنا بنشوف لو ال otp expired بنحذفه
 
@@ -183,6 +190,8 @@ public class RegisterServiceImpl implements RegistrationService {
     @Transactional
     public void generateAndSendOtp(String email) {
 
+        userRepository.lockIdByEmail(email).orElseThrow(() -> new UserNotFoundException("User not found"));
+
         if(userRepository.existsByEmailAndEnabledTrue(email)) {
             throw new UserAlreadyVerifiedException("Email already verified no need to send otp");
         }
@@ -190,11 +199,13 @@ public class RegisterServiceImpl implements RegistrationService {
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         String template = "otp-template.html";
-        processAndSendOtp(user,template);
+        processAndSendOtp(user, template, OtpType.VERIFY);
     }
 
     @Override
+    @Transactional
     public void forgetPassword(String email) {
+        userRepository.lockIdByEmail(email).orElseThrow(() -> new UserNotFoundException("Email not found"));
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("Email not found"));
 
@@ -203,19 +214,21 @@ public class RegisterServiceImpl implements RegistrationService {
         }
 
         String template = "forget-password-otp-template.html";
-        processAndSendOtp(user, template);
+        processAndSendOtp(user, template, OtpType.RESET_PENDING);
     }
 
     @Override
     @Transactional
     public void verifyForgetPasswordOtp(String email, String otpCode) {
 
-        OTP otpEntity = otpRepository
-                .findByUser_EmailAndOtpCode(email, otpCode)
-                .orElseThrow(() -> new InvalidOtpException("Invalid OTP"));
+        userRepository.lockIdByEmail(email).orElseThrow(() -> new InvalidOtpException("Invalid OTP"));
 
-        if (otpEntity.getExpiresAt().isBefore(LocalDateTime.now())) {
-            otpRepository.delete(otpEntity);
+        OTP otpEntity = findSingleOtp(email, OtpType.RESET_PENDING, "Invalid OTP");
+        if (otpCode == null || !otpCode.equals(otpEntity.getOtpCode())) {
+            throw new InvalidOtpException("Invalid OTP");
+        }
+
+        if (otpEntity.getExpiresAt() == null || !otpEntity.getExpiresAt().isAfter(LocalDateTime.now())) {
             throw new OtpExpiredException("Expired OTP, please request a new one.");
         }
 
@@ -229,14 +242,13 @@ public class RegisterServiceImpl implements RegistrationService {
     @Transactional
     public void resetPassword(String email, String newPassword) {
 
-        OTP otp = otpRepository.findByUser_Email(email)
-                .orElseThrow(() ->
-                        new globalLogicEx("OTP verification required"));
+        userRepository.lockIdByEmail(email).orElseThrow(() -> new globalLogicEx("OTP verification required"));
 
-        if (!OtpType.RESET.equals(otp.getOtpType())) {
-            otpRepository.delete(otp);
-            throw new globalLogicEx("Invalid OTP, please request a new one.");
+        List<OTP> verifiedResets = otpRepository.findAllByUser_EmailAndOtpType(email, OtpType.RESET);
+        if (verifiedResets.size() != 1) {
+            throw new globalLogicEx("OTP verification required");
         }
+        OTP otp = verifiedResets.get(0);
 
         if(otp.getCreatedAt().plusHours(1).isBefore(LocalDateTime.now())) {
             otpRepository.delete(otp);
@@ -253,6 +265,14 @@ public class RegisterServiceImpl implements RegistrationService {
         userRepository.save(user);
         otpRepository.delete(otp);
 
+    }
+
+    private OTP findSingleOtp(String email, OtpType type, String errorMessage) {
+        List<OTP> matching = otpRepository.findAllByUser_EmailAndOtpType(email, type);
+        if (matching.size() != 1) {
+            throw new InvalidOtpException(errorMessage);
+        }
+        return matching.get(0);
     }
 
     @Override
