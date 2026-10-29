@@ -55,7 +55,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
 | **LEARN-01** | Crit | P1-18 | 1 | learning | T | Planned |
 | **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
-| **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | Planned |
+| **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | Planned — EB-27 remains To Do; the temporary generic-endpoint denial in [PR #23](https://github.com/MooRaa86/EduNest/pull/23) is unmerged and does not satisfy the guard-first contract; frontend migration remains unverified. |
 | **LEARN-04** | Med | P4-05 | 4 | learning | T | Planned |
 | **LEARN-05** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
 | **LEARN-06** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
@@ -89,10 +89,10 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **NOTIF-04** | Med | P4-01 | 4 | notifications | D→T (D-12) | Planned |
 | **NOTIF-05** | Low | P4-01 | 4 | notifications | T | Planned |
 | **MAIL-01** | High | P1-11 | 1 | notifications | D→T (D-05) | Planned |
-| **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | Planned |
+| **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | **In Progress** — EB-28 [PR #23](https://github.com/MooRaa86/EduNest/pull/23) is open, ready for review and unmerged; [JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40952121319) passed 177 tests. Security/Lead review and frontend coordination remain; EB-27 and Supabase Storage EB-83 are separate outstanding work. |
 | **FILE-02** | High | P1-22 | 1 | file-storage | T | Planned — EB-4 confirmed header/content mismatch accepted on four image surfaces ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **FILE-03** | Med | P0-06 → P1-22 | 0,1 | file-storage | V→T | Planned — arbitrary extension confirmed; traversal inconclusive and untested ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
-| **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | **In Progress** — **CONFIRMED endpoint-level (EB-5, isolated run 2026-10-29)**: non-ZIP bytes detected by Tika as `application/octet-stream`, named `*.zip`, accepted (HTTP 200), stored, and served back on all four real upload endpoints (`PATCH /api/v1/task/{id}`, `PATCH /api/v1/project/{id}`, `POST /api/v1/task-submission/{taskId}`, `POST /api/v1/project/{projectId}/submissions`), retrievable via generic `/files` and authorized FileAccessService endpoints; root cause = `.zip` allowlist entry `application/octet-stream` ([evidence](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md); service-level baseline: [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)). Hardening owned by EB-29. |
+| **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | **In Progress** — **CONFIRMED endpoint-level (EB-5, isolated run 2026-10-29)**: non-ZIP bytes detected by Tika as `application/octet-stream`, named `*.zip`, accepted (HTTP 200), stored, and served back on all four real upload endpoints (`PATCH /api/v1/task/{id}`, `PATCH /api/v1/project/{id}`, `POST /api/v1/task-submission/{taskId}`, `POST /api/v1/project/{projectId}/submissions`), retrievable via generic `/files` and authorized FileAccessService endpoints; root cause = `.zip` allowlist entry `application/octet-stream` ([evidence](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md); service-level baseline: [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)). Verification merged via [PR #22](https://github.com/MooRaa86/EduNest/pull/22); EB-5 remains In Progress per its handoff pending Security Reviewer acceptance and EB-29 hardening re-verification. Hardening owned by EB-29. |
 | **FILE-05** | Med | P3-03 | 3 | file-storage | T | Planned |
 | **FILE-06** | Med | P6-06 | 6 | deployment | D→T (D-19) | Planned |
 | **FILE-07** | Med | P6-05 (+P6-07 cond.) | 6 | deployment | T | Planned |
