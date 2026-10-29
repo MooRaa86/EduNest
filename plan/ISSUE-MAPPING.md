@@ -55,7 +55,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
 | **LEARN-01** | Crit | P1-18 | 1 | learning | T | Planned |
 | **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
-| **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | Planned — EB-27 remains To Do; the temporary generic-endpoint denial in [PR #23](https://github.com/MooRaa86/EduNest/pull/23) is unmerged and does not satisfy the guard-first contract; frontend migration remains unverified. |
+| **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | Planned — EB-27 remains To Do; the temporary generic-endpoint denial merged in [PR #23](https://github.com/MooRaa86/EduNest/pull/23) does not satisfy the guard-first contract; frontend migration remains unverified. |
 | **LEARN-04** | Med | P4-05 | 4 | learning | T | Planned |
 | **LEARN-05** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
 | **LEARN-06** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
@@ -89,7 +89,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **NOTIF-04** | Med | P4-01 | 4 | notifications | D→T (D-12) | Planned |
 | **NOTIF-05** | Low | P4-01 | 4 | notifications | T | Planned |
 | **MAIL-01** | High | P1-11 | 1 | notifications | D→T (D-05) | Planned |
-| **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | **In Progress** — EB-28 working-tree changes restrict static serving and disable generic path downloads; review and verification pending. EB-27 remains open. |
+| **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | **In Progress** — EB-28 local-disk restrictions merged via [PR #23](https://github.com/MooRaa86/EduNest/pull/23), `171c6a1`; [JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40956840871) passed 177 tests. One owner approval is recorded; distinct Security review, frontend and deployment acceptance are not evidenced. EB-27 and Supabase Storage EB-83 remain open; Lead/Security must clarify the D-07 acceptance boundary. |
 | **FILE-02** | High | P1-22 | 1 | file-storage | T | Planned — EB-4 confirmed header/content mismatch accepted on four image surfaces ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **FILE-03** | Med | P0-06 → P1-22 | 0,1 | file-storage | V→T | Planned — arbitrary extension confirmed; traversal inconclusive and untested ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | **In Progress** — **CONFIRMED endpoint-level (EB-5, isolated run 2026-10-29)**: non-ZIP bytes detected by Tika as `application/octet-stream`, named `*.zip`, accepted (HTTP 200), stored, and served back on all four real upload endpoints (`PATCH /api/v1/task/{id}`, `PATCH /api/v1/project/{id}`, `POST /api/v1/task-submission/{taskId}`, `POST /api/v1/project/{projectId}/submissions`), retrievable via generic `/files` and authorized FileAccessService endpoints; root cause = `.zip` allowlist entry `application/octet-stream` ([evidence](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md); service-level baseline: [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)). Verification merged via [PR #22](https://github.com/MooRaa86/EduNest/pull/22); EB-5 remains In Progress per its handoff pending Security Reviewer acceptance and EB-29 hardening re-verification. Hardening owned by EB-29. |
@@ -134,7 +134,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **TD-06** | Low | P5-05 | 5 | tech-debt | D→T (D-21) | Planned |
 | **TD-07** | Med | P1-10 | 1 | ws | = G12 | Planned |
 | **TD-08** | Low | P1-12 | 1 | ws | = G13 (D-14) | Planned |
-| **TD-09** | Low | P1-21 | 1 | file-storage | = G14 | **In Progress** — EB-28 uses actual folder names in the public allowlist; review and verification pending. |
+| **TD-09** | Low | P1-21 | 1 | file-storage | = G14 | **In Progress** — actual folder names in the public allowlist merged in [PR #23](https://github.com/MooRaa86/EduNest/pull/23); EB-28 acceptance remains open pending the reviews and coordination described for FILE-01. |
 
 **Roll-up wrappers (not separate work):** `ARCH-001..007` resolve to their canonical rows (SEL-02, WS-01, SEL-01, DEP-02+broker, TD-01/02, DOC-01, TD-06 — see [`mds/ISSUES.md`](../mds/ISSUES.md) §18 cross-cutting rollups). `G1..G15` are the authorization-gap register; each row's canonical mapping lives in [`mds/ISSUES.md`](../mds/ISSUES.md) §1 — the plan implements canonical IDs (G-matrix rows are the same work: e.g., G4/G5→P1-14, G6→P1-14, G7→P1-16, G8→P1-15, G9→P1-20, G10→P1-11, G11→P1-19, G12→P1-10, G13→P1-12, G14→P1-21, G15→P1-19).
 
