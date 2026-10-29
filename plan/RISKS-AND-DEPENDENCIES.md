@@ -43,7 +43,7 @@ These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM
 | Container registry + CI runner availability | P2-07, P6-04 | DevOps | GitHub Actions assumed (repo is GitHub-hosted: `origin/.../github` paths observed) |
 | DNS + TLS certificates | P6-02, P7-05 | DevOps | D-22 decides ownership |
 | Backups tooling + offsite storage | P3-07, P6-02, P8-05 | DevOps | mysqldump + uploads rsync baseline accepted by default |
-| Decision D-22 (hosting) | all infra | PO + Infra | **Single hardest external blocker** |
+| Decision D-22 (hosting) | all infra | PO + Infra | Decided 2026-10-25 (container + Supabase); provisioning and environment access still need confirmation |
 | Zoom account + Server-to-Server OAuth app (meeting creation / attendance read APIs) | P4-17 (Zoom re-scope), [ADD-05], P7-02 | PO + DevOps | D-16 outcome 2026-10-25: Zoom replaces Jitsi; credentials + API rate limits via env store |
 
 **Dependency reconciliation (2026-10-29):** EB-81 requires provisioned Supabase staging and production projects; provisioning and access are not verified in this repository. EB-82 depends on EB-81 and the Phase 1 entity freeze; EB-43 additionally waits on EB-82 and a green CI/frozen baseline. EB-83 depends on the Supabase project and EB-81 key environment and must retain EB-29 validation. PO/Infra should confirm provisioning and access; the team should complete the dependency chain before migration/baseline work. These are delivery blockers, not evidence of an existing deployment.
