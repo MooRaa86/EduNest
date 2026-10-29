@@ -10,8 +10,8 @@ public interface RegistrationService {
     void generateAndSendOtp(String email);
     String generateOTP();
     void forgetPassword(String email);
-    void verifyForgetPasswordOtp(String email, String otpCode);
-    void resetPassword(String email, String newPassword);
+    String verifyForgetPasswordOtp(String email, String otpCode);
+    void resetPassword(String email, String resetToken, String newPassword);
     void restoreAccount(String email);
     void confirmRestoreAccount(String email, String otpCode);
 }

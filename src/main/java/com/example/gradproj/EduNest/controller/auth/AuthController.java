@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -63,13 +64,14 @@ public class AuthController {
     public ResponseEntity<SimpleResponse> verifyForgetPasswordOtp(
             @Valid @RequestBody VerifyForgetPasswordOtpDto dto) {
 
-        registerService.verifyForgetPasswordOtp(
+        String resetToken = registerService.verifyForgetPasswordOtp(
                 dto.getEmail(),
                 dto.getOtp()
         );
         SimpleResponse resp = new SimpleResponse();
-        resp.addMessage("message","OTP verified successfully. You can reset your password within the next 1 hours.");
-        return ResponseEntity.status(HttpStatus.OK).body(resp);
+        resp.addMessage("message", "OTP verified successfully.");
+        resp.addMessage("resetToken", resetToken);
+        return ResponseEntity.status(HttpStatus.OK).cacheControl(CacheControl.noStore()).body(resp);
     }
 
     @PostMapping("/forget-password/reset")
@@ -79,6 +81,7 @@ public class AuthController {
 
         registerService.resetPassword(
                 dto.getEmail(),
+                dto.getResetToken(),
                 dto.getNewPassword()
         );
         SimpleResponse resp = new SimpleResponse();

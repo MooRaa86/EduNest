@@ -17,7 +17,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-01** | Crit | P1-01 | 1 | auth | T + D-22 ordering note | **Verified** (merged to `main` 2026-10-28; tests 7/7; fail-fast boot live-proven) |
 | **SEL-02** | Crit | P1-02 | 1 | auth | T | **Verified** (merged to `main` 2026-10-28, commit `af50e58`; boot matrix 4/4 — `SecurityProfileBootMatrixTest`; Jira EB-9 = Done) |
 | **SEL-03** | Crit | P1-08 → P5-03 | 1,5 | auth | T (two-stage) | Planned |
-| **SEL-04** | High | P1-07 | 1 | auth | T | Planned |
+| **SEL-04** | High | P1-07 | 1 | auth | T | **In Progress** — EB-14 branch implements one-time reset credentials; merge, five-minute TTL approval, frontend coordination and target-database validation remain pending. |
 | **SEL-05** | High | P1-06 | 1 | auth | T | **Verified** (merged to `main` via PR #19, `d3a14a2`, 2026-10-28; 376-line `OtpTypeIsolationIntegrationTest` green in CI; Jira EB-13 = Done) |
 | **SEL-06** | High | P1-27 (cond.) | 1 | auth | D→T (D-01) | Planned |
 | **SEL-07** | Med | P1-25 | 1 | auth | T | Planned |
