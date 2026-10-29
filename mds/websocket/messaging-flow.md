@@ -4,7 +4,7 @@ Verified message paths, persistence shapes, and the notification-push pipeline's
 
 ## 1. Group room chat flow (`SEND /app/chat/{roomId}`)
 
-1. **Client** sends `content` to `/app/chat/{roomId}`. Handler: `controller/chat/ChatWebSocketController#sendMessage(@DestinationVariable Long roomId, String content, ChatPrincipal principal)` — content bound as **raw String** (no `@Payload`/DTO; JSON objects would be stored as literal JSON text — SUSPECTED, needs frontend confirmation).
+1. **Client** sends an **JSON object** `{"content": "message text"}` to `/app/chat/{roomId}`. Handler: `controller/chat/ChatWebSocketController#sendMessage(@DestinationVariable Long roomId, @Payload ChatMessageRequest request, ChatPrincipal principal)` — bound via the DTO contract (P0-03 / EB-1, 2026-10-29). A raw string body or a string literal is **rejected by the payload converter** (nothing persists; the sender receives the error on `/queue/errors` via `WebSocketExceptionHandler`); a blank/missing `content` never persists (guard in `ChatMessageService#saveMessage`, `globalLogicEx`). The DTO (`dto/chat/ChatMessageRequest`) is the extension point for future reply/attachment fields. *(History: pre-2026-10-29 the handler bound a raw `String` and persisted every frame body VERBATIM — an object payload landed in the DB as literal JSON text; evidence + behavior matrix in `plan/phases/phase-00-planning-baseline/tasks.md#p0-03`.)*
 2. **Persistence** — `service/chat/ChatMessageService#saveMessage` (lines 37–71):
    - Checks `roomRepo.existsById(roomId)` only. On miss: pushes `"/queue/errors"` to sender's user queue and returns `null` (**no exception** → silent failure contract).
    - Loads `UserEntity` by `principal.email()`; saves `ChatMessage{content, chatRoom, sender, senderEmail, senderName}` — email+name denormalized per row (stale display names if changed later).
@@ -53,4 +53,4 @@ Consequences: a student enrolled in the mentorship but who never joined room X c
 1. Post-fix integration: room membership enforced on subscribe + send (out-of-room id must be rejected and must not persist).
 2. Conversation ownership: user B reading user A's conversation id → 403.
 3. Duplicate-conversation race: two parallel first-messages produce one conversation (post unique-constraint fix).
-4. Contract: `String content` vs JSON payload on `/app/chat/{roomId}`.
+4. ~~Contract: `String content` vs JSON payload on `/app/chat/{roomId}`.~~ **DONE (V-01, 2026-10-29)** — DTO contract shipped with validity probes: `src/test/java/com/example/gradproj/EduNest/websocket/probe/V01PayloadBindingProbeTest.java` (raw strings / string literals / blank contents rejected; object payload persists pure text).

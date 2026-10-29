@@ -40,7 +40,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CHAT-05** | Med | P3-02 | 3 | database | T | Planned |
 | **CHAT-06** | Low | P4-06 | 4 | ws | T | Planned |
 | **CHAT-07** | Med | P4-07 (cond.) | 4 | ws | D→T (D-13) | Planned |
-| **CHAT-08** | Low | P0-03 → (P4-06 if confirmed) | 0,4 | ws | V→T (cond.) | Planned |
+| **CHAT-08** | Low | P0-03 → P4-06 | 0,4 | ws | V→T (cond.) → FIXED | RESOLVED by EB-1 (2026-10-29, same-PR): mechanism confirmed by V-01 probe, then `@Payload ChatMessageRequest` DTO + blank guard shipped; objects now bind to pure text, raw strings rejected ([tasks#p0-03](phases/phase-00-planning-baseline/tasks.md#p0-03)) — P4-06 keeps CHAT-01/06 only |
 | **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | Planned |
 | **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
 | **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04) | Planned |
