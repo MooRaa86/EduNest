@@ -15,6 +15,9 @@ public class ResetPasswordRequestDto {
             message = "Invalid email format.")
     private String email;
 
+    @NotBlank(message = "Reset token is required")
+    private String resetToken;
+
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters long")
     private String newPassword;

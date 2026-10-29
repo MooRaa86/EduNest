@@ -16,6 +16,7 @@ import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.account.SettingsService;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import com.example.gradproj.EduNest.service.register.RegisterServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.MediaType;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
@@ -63,9 +65,21 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
     @Autowired private UserRepository users;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private DataSource dataSource;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private PasswordEncoder passwordEncoder;
     @MockBean private EmailService emailService;
 
     private Student student;
+
+    @Test
+    void otpColumnAccommodatesVersionedSha256Digest() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             var columns = connection.getMetaData().getColumns(null, null, "otp", "otp_code")) {
+            assertTrue(columns.next(), "Hibernate-generated OTP.otp_code must exist");
+            assertTrue(columns.getInt("COLUMN_SIZE") >= 67,
+                    "OTP.otp_code must hold the v1: prefix and SHA-256 hex digest");
+        }
+    }
 
     @BeforeEach
     void setUp() {
@@ -195,7 +209,7 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
     @Test
     void resetRequestAloneCannotChangePassword() {
         registration.forgetPassword(EMAIL);
-        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "new-password"));
+        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "invalid-token", "new-password"));
         assertEquals("test-password", students.findById(student.getId()).orElseThrow().getPassword());
         assertEquals(1, otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET_PENDING).size());
     }
@@ -203,7 +217,7 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
     @Test
     void pendingResetCannotAuthorizeFinalResetEvenWithMatchingCode() {
         OTP pending = seed(OtpType.RESET_PENDING, CODE);
-        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "new-password"));
+        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "invalid-token", "new-password"));
         assertEquals("test-password", student.getPassword());
         assertEquals(OtpType.RESET_PENDING, otps.findById(pending.getId()).orElseThrow().getOtpType());
     }
@@ -217,7 +231,7 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
         assertTrue(otps.findById(verified.getId()).isEmpty());
         assertTrue(otps.findById(pending.getId()).isEmpty());
         assertTrue(otps.findById(unrelated.getId()).isPresent());
-        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "new-password"));
+        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "invalid-token", "new-password"));
         assertEquals("test-password", student.getPassword());
     }
 
@@ -227,6 +241,133 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
         registration.verifyForgetPasswordOtp(EMAIL, CODE);
         assertEquals(OtpType.RESET, otps.findById(pending.getId()).orElseThrow().getOtpType());
         assertThrows(InvalidOtpException.class, () -> registration.verifyForgetPasswordOtp(EMAIL, CODE));
+    }
+
+    @Test
+    void completeHttpResetRequiresTokenAndConsumesIt() throws Exception {
+        mockMvc.perform(post("/forget-password").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + EMAIL + "\"}"))
+                .andExpect(status().isOk());
+        OTP pending = otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET_PENDING).get(0);
+        String response = mockMvc.perform(post("/forget-password/verify-otp").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + EMAIL + "\",\"otp\":\"" + pending.getOtpCode() + "\"}"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse().getContentAsString();
+        String token = objectMapper.readTree(response).path("apiResponse").path("resetToken").asText();
+        assertEquals(43, token.length());
+        OTP verified = otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).get(0);
+        assertTrue(verified.getOtpCode().matches("v1:[0-9a-f]{64}"));
+        assertNotEquals(token, verified.getOtpCode());
+        assertTrue(verified.getExpiresAt().isAfter(LocalDateTime.now().plusMinutes(4)));
+
+        String body = objectMapper.writeValueAsString(java.util.Map.of("email", EMAIL, "resetToken", token,
+                "newPassword", "NewPassword123!"));
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + EMAIL + "\",\"newPassword\":\"NewPassword123!\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_VALIDATION"));
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+        assertTrue(passwordEncoder.matches("NewPassword123!", students.findById(student.getId()).orElseThrow().getPassword()));
+        assertTrue(otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).isEmpty());
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_BUSINESS_RULE"));
+    }
+
+    @Test
+    void wrongUserMalformedAndLegacyCredentialsFailClosed() throws Exception {
+        seed(OtpType.RESET_PENDING, CODE);
+        String token = registration.verifyForgetPasswordOtp(EMAIL, CODE);
+        Student other = students.saveAndFlush(Student.builder().firstName("Other").lastName("Student")
+                .email("reset-other@example.org").password("other-password").role(student.getRole())
+                .educationalLevel(EducationalLevel.FRESH).enabled(true).deleted(false).build());
+        otps.saveAndFlush(OTP.builder().user(other).otpType(OtpType.RESET_PENDING).otpCode(OTHER_CODE)
+                .expiresAt(LocalDateTime.now().plusMinutes(5)).build());
+        registration.verifyForgetPasswordOtp(other.getEmail(), OTHER_CODE);
+        String wrongUser = objectMapper.writeValueAsString(java.util.Map.of("email", other.getEmail(),
+                "resetToken", token, "newPassword", "NewPassword123!"));
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON).content(wrongUser))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_BUSINESS_RULE"));
+        String malformed = objectMapper.writeValueAsString(java.util.Map.of("email", EMAIL,
+                "resetToken", "not-a-token", "newPassword", "NewPassword123!"));
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON).content(malformed))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_BUSINESS_RULE"));
+        assertEquals("test-password", students.findById(student.getId()).orElseThrow().getPassword());
+        assertEquals("other-password", students.findById(other.getId()).orElseThrow().getPassword());
+    }
+
+    @Test
+    void legacyResetRowCannotAcceptAnyWellFormedToken() throws Exception {
+        seed(OtpType.RESET, CODE);
+        String wellFormed = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[32]);
+        String body = objectMapper.writeValueAsString(java.util.Map.of("email", EMAIL, "resetToken", wellFormed,
+                "newPassword", "NewPassword123!"));
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_BUSINESS_RULE"));
+        assertEquals("test-password", students.findById(student.getId()).orElseThrow().getPassword());
+    }
+
+    @Test
+    void expiredTokenCannotResetPassword() throws Exception {
+        seed(OtpType.RESET_PENDING, CODE);
+        String token = registration.verifyForgetPasswordOtp(EMAIL, CODE);
+        OTP verified = otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).get(0);
+        verified.setExpiresAt(LocalDateTime.now().minusSeconds(1));
+        otps.saveAndFlush(verified);
+        String body = objectMapper.writeValueAsString(java.util.Map.of("email", EMAIL, "resetToken", token,
+                "newPassword", "NewPassword123!"));
+        mockMvc.perform(post("/forget-password/reset").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isGone()).andExpect(jsonPath("$.errorCode").value("ERR_OTP_EXPIRED"));
+        assertEquals("test-password", students.findById(student.getId()).orElseThrow().getPassword());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void concurrentResetConsumesCredentialAtMostOnce() throws Exception {
+        seed(OtpType.RESET_PENDING, CODE);
+        String token = registration.verifyForgetPasswordOtp(EMAIL, CODE);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            java.util.concurrent.Callable<Boolean> attempt = () -> {
+                start.await();
+                try {
+                    registration.resetPassword(EMAIL, token, "NewPassword123!");
+                    return true;
+                } catch (globalLogicEx e) {
+                    return false;
+                }
+            };
+            Future<Boolean> first = executor.submit(attempt);
+            Future<Boolean> second = executor.submit(attempt);
+            start.countDown();
+            assertNotEquals(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+            assertTrue(passwordEncoder.matches("NewPassword123!", students.findById(student.getId()).orElseThrow().getPassword()));
+            assertTrue(otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).isEmpty());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+            students.deleteById(student.getId());
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void outerTransactionRollbackRestoresPasswordAndCredential() {
+        seed(OtpType.RESET_PENDING, CODE);
+        String token = registration.verifyForgetPasswordOtp(EMAIL, CODE);
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                registration.resetPassword(EMAIL, token, "NewPassword123!");
+                entityManager.flush();
+                status.setRollbackOnly();
+            });
+            assertEquals("test-password", students.findById(student.getId()).orElseThrow().getPassword());
+            assertEquals(1, otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).size());
+            registration.resetPassword(EMAIL, token, "NewPassword123!");
+            assertTrue(passwordEncoder.matches("NewPassword123!", students.findById(student.getId()).orElseThrow().getPassword()));
+        } finally {
+            students.deleteById(student.getId());
+        }
     }
 
     @Test
@@ -351,7 +492,7 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
     void duplicateVerifiedResetsCannotAuthorizeFinalReset() {
         seed(OtpType.RESET, CODE);
         seed(OtpType.RESET, OTHER_CODE);
-        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "new-password"));
+        assertThrows(globalLogicEx.class, () -> registration.resetPassword(EMAIL, "invalid-token", "new-password"));
         assertEquals("test-password", student.getPassword());
     }
 

@@ -41,6 +41,7 @@ public class RegisterServiceImpl implements RegistrationService {
     private final OTPRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final ResetTokenService resetTokenService;
     private final int expiryTime = 2;
 
     @Override
@@ -219,7 +220,7 @@ public class RegisterServiceImpl implements RegistrationService {
 
     @Override
     @Transactional
-    public void verifyForgetPasswordOtp(String email, String otpCode) {
+    public String verifyForgetPasswordOtp(String email, String otpCode) {
 
         userRepository.lockIdByEmail(email).orElseThrow(() -> new InvalidOtpException("Invalid OTP"));
 
@@ -232,15 +233,17 @@ public class RegisterServiceImpl implements RegistrationService {
             throw new OtpExpiredException("Expired OTP, please request a new one.");
         }
 
+        String token = resetTokenService.generate();
+        otpEntity.setOtpCode(resetTokenService.digest(token));
+        otpEntity.setExpiresAt(LocalDateTime.now().plus(resetTokenService.lifetime()));
         otpEntity.setOtpType(OtpType.RESET);
         otpRepository.save(otpEntity);
-        //  متحذفش OTP هنا
-        // بس اتأكد إنه صح
+        return token;
     }
 
     @Override
     @Transactional
-    public void resetPassword(String email, String newPassword) {
+    public void resetPassword(String email, String resetToken, String newPassword) {
 
         userRepository.lockIdByEmail(email).orElseThrow(() -> new globalLogicEx("OTP verification required"));
 
@@ -250,9 +253,11 @@ public class RegisterServiceImpl implements RegistrationService {
         }
         OTP otp = verifiedResets.get(0);
 
-        if(otp.getCreatedAt().plusHours(1).isBefore(LocalDateTime.now())) {
-            otpRepository.delete(otp);
-            throw new OtpExpiredException("Expired OTP, This process failed you have to request a new verify otp");
+        if (!resetTokenService.matches(resetToken, otp.getOtpCode())) {
+            throw new globalLogicEx("Invalid or expired reset credential");
+        }
+        if (otp.getExpiresAt() == null || !otp.getExpiresAt().isAfter(LocalDateTime.now())) {
+            throw new OtpExpiredException("Reset credential has expired. Please request a new one.");
         }
 
         UserEntity user = otp.getUser();

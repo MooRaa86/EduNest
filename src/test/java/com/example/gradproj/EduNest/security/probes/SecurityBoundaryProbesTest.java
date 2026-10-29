@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.register.OTP;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.repository.OTPRepository;
 import com.example.gradproj.EduNest.testing.ProdChainIntegrationTestBase;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ class SecurityBoundaryProbesTest extends ProdChainIntegrationTestBase {
 
 	@Autowired private AuthFixture auth;
 	@Autowired private OTPRepository otps;
+	@Autowired private ObjectMapper objectMapper;
 
 	private static final String ADMIN_EMAIL = "probe-boundary-admin@example.org";
 	private static final String VICTIM_EMAIL = "probe-boundary-victim@example.org";
@@ -66,14 +68,11 @@ class SecurityBoundaryProbesTest extends ProdChainIntegrationTestBase {
 	}
 
 	/**
-	 * P1-07 — reset-flow reachability with a fresh RESET OTP.
-	 * EXPECT TODAY: seeded RESET OTP + POST /forget-password/reset → 2xx (flow works).
-	 * The strict single-use semantics themselves are EB-14's delivery; that task
-	 * will reuse this probe and add the reuse-assert when it lands.
+	 * P1-07 — legacy verified rows never authorize an email-only reset.
 	 */
 	@Test
-	@DisplayName("P1-07/todayPin: reset endpoint accepts a fresh RESET OTP → 2xx")
-	void p07_resetFlowReachableWithFreshOtp() throws Exception {
+	@DisplayName("P1-07: email-only reset is rejected even with a legacy RESET row")
+	void p07_emailOnlyResetRejected() throws Exception {
 		var student = auth.student(VICTIM_EMAIL);
 		otps.saveAndFlush(OTP.builder().user(student)
 				.otpType(OtpType.RESET).otpCode("424242")
@@ -82,6 +81,26 @@ class SecurityBoundaryProbesTest extends ProdChainIntegrationTestBase {
 		mockMvc.perform(post("/forget-password/reset")
 						.contentType("application/json")
 						.content("{\"email\":\"" + VICTIM_EMAIL + "\",\"newPassword\":\"NewProbePass123!\"}"))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("P1-07: verified token resets once through the production security chain")
+	void p07_verifiedTokenResetsOnce() throws Exception {
+		String email = "probe-reset-token@example.org";
+		var student = auth.student(email);
+		otps.saveAndFlush(OTP.builder().user(student).otpType(OtpType.RESET_PENDING).otpCode("424242")
+				.expiresAt(LocalDateTime.now().plusMinutes(2)).build());
+		var verification = mockMvc.perform(post("/forget-password/verify-otp").contentType("application/json")
+				.content("{\"email\":\"" + email + "\",\"otp\":\"424242\"}"))
+				.andExpect(status().isOk()).andReturn().getResponse();
+		assertThat(verification.getHeader("Cache-Control")).isEqualTo("no-store");
+		String token = objectMapper.readTree(verification.getContentAsString()).path("apiResponse").path("resetToken").asText();
+		String request = objectMapper.writeValueAsString(java.util.Map.of("email", email, "resetToken", token,
+				"newPassword", "NewProbePass123!"));
+		mockMvc.perform(post("/forget-password/reset").contentType("application/json").content(request))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/forget-password/reset").contentType("application/json").content(request))
+				.andExpect(status().isBadRequest());
 	}
 }

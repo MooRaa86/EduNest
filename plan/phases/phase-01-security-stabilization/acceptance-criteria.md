@@ -15,7 +15,7 @@
 | P1-04 | Login returns header (body retained only while FE depends on it); ProviderManager erases credentials | contract test + code evidence | Backend Dev |
 | P1-05 | Unexpected exceptions → 500 generic; 403 handler exists; three 401 shapes unified | error-contract IT set | Backend Dev |
 | P1-06 | OTP verify scoped by type; cross-flow interference impossible (fixture test) | Local H2 results below; verification pending | Security Reviewer — pending |
-| P1-07 | Reset: expired rows rejected; row consumed on success | IT results | Backend Dev |
+| P1-07 | Reset: expired rows rejected; row consumed on success | EB-14 branch: H2/Windows focused 41/41 and full suite 185/185, no skips; merge and target-DB verification pending | Backend Dev — pending |
 | P1-08 | Thresholds lock out (403/429-style response); enumeration-neutral login errors | rate-limit IT + constants doc | Security Reviewer |
 | P1-09 | `GET /api/v1/admin` has no password fields; register echoes nothing sensitive; `@PreAuthorize` restored | response captures + annotation | Security Reviewer |
 | P1-10 | Missing-role/ownership annotations present; createRoom validates mentorship ownership | role-matrix IT | Security Reviewer |

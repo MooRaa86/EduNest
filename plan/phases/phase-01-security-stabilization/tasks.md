@@ -131,6 +131,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Tests:** IT: expired → reject; reused → reject; fresh → success + row gone.
 **Docs:** authentication-flow.md; ISSUE-MAPPING SEL-04.
 
+**EB-14 implementation in review:** OTP verification issues a one-time token; the final reset requires its versioned digest, unexpired `RESET` purpose and same-user lock, then consumes it atomically. `app.auth.reset-token-ttl` defaults to `PT5M` as a **candidate requiring Team Lead approval before merge**. Windows/Java 23 targeting 21: focused `OtpTypeIsolationIntegrationTest,SecurityBoundaryProbesTest,ErrorShapeProbeTest` **41/41**, full `mvnw.cmd -B test "-DskipTests=false" "-Dmaven.test.failure.ignore=false"` **185/185**, zero failures/errors/skips; H2 metadata verified `otp_code` holds at least 67 characters. Frontend contract changes, actual database column capacity and target-database concurrency verification, and old/new-instance rollout remain outstanding. EB-15 retains throttling. No deployment or Jira Done status is claimed.
+
 <a id="p1-08"></a>
 ### P1-08 — Auth throttling + lockout + enumeration fix
 

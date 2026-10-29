@@ -8,8 +8,8 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 |---|---|
 | 🔓 POST `/login-api` | Login → JWT (body + `Authorization` header), role (no `@Valid` — SEL-07) |
 | 🔓 POST `/forget-password` | Send reset OTP (`ForgetPasswordRequestDto`) |
-| 🔓 POST `/forget-password/verify-otp` | Verify OTP → row becomes type `RESET` |
-| 🔓 POST `/forget-password/reset` | Set new password (`ResetPasswordRequestDto`) |
+| 🔓 POST `/forget-password/verify-otp` | Verify OTP and return a one-time reset token in `apiResponse.resetToken` (`Cache-Control: no-store`) |
+| 🔓 POST `/forget-password/reset` | Set new password with email, `resetToken` and `newPassword` (`ResetPasswordRequestDto`) |
 | 🔓 POST `/api/v1/register/student` · `/mentor` | Register + verify OTP (`StudentRequestDto` / `MentorRequestDto`) |
 | 🔓 POST `/api/v1/register/verify-user` | 6-digit OTP verify → `enabled=true` (dto not `@Valid`) |
 | 🔓 POST `/api/v1/register/send-otp` | Resend verification OTP (bare `email` request param) |
