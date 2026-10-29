@@ -51,10 +51,12 @@ public class AuthFixture {
 	private final MentorShipRepository mentorships;
 	private final EnrollmentRepository enrollments;
 	private final JwtSecretProvider jwtSecretProvider;
+	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
 	public AuthFixture(RoleRepository roles, StudentRepository students, MentorRepository mentors,
 			AdminRepository admins, MentorShipRepository mentorships, EnrollmentRepository enrollments,
-			JwtSecretProvider jwtSecretProvider) {
+			JwtSecretProvider jwtSecretProvider,
+			org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
 		this.roles = roles;
 		this.students = students;
 		this.mentors = mentors;
@@ -62,6 +64,7 @@ public class AuthFixture {
 		this.mentorships = mentorships;
 		this.enrollments = enrollments;
 		this.jwtSecretProvider = jwtSecretProvider;
+		this.passwordEncoder = passwordEncoder;
 	}
 
 	/* ---------- seeding ---------- */
@@ -74,7 +77,8 @@ public class AuthFixture {
 	public Student student(String email) {
 		Student s = students.findByEmail(email).orElseGet(() -> Student.builder()
 				.firstName("Probe").lastName("Student" + System.nanoTime())
-				.email(email).password("probe-password").educationalLevel(EducationalLevel.FRESH)
+				.email(email).password(passwordEncoder.encode("probe-password"))
+				.educationalLevel(EducationalLevel.FRESH)
 				.role(role(STUDENT)).enabled(true).deleted(false).build());
 		return students.saveAndFlush(s);
 	}
@@ -83,7 +87,8 @@ public class AuthFixture {
 	public Mentor mentor(String email) {
 		Mentor m = mentors.findByEmail(email).orElseGet(() -> Mentor.builder()
 				.firstName("Probe").lastName("Mentor" + System.nanoTime())
-				.email(email).password("probe-password").jobTitle("Probe")
+				.email(email).password(passwordEncoder.encode("probe-password"))
+				.jobTitle("Probe")
 				.bio("probe").yearsOfExperience(1.0).role(role(MENTOR))
 				.enabled(true).deleted(false).build());
 		return mentors.saveAndFlush(m);
@@ -93,7 +98,8 @@ public class AuthFixture {
 	public Admin admin(String email) {
 		return admins.findByEmail(email).orElseGet(() -> admins.saveAndFlush(Admin.builder()
 				.firstName("Probe").lastName("Admin" + System.nanoTime())
-				.email(email).password("probe-password").role(role(ADMIN)).build()));
+				.email(email).password(passwordEncoder.encode("probe-password"))
+				.role(role(ADMIN)).build()));
 	}
 
 	@Transactional(propagation = Propagation.REQUIRED)

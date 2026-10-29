@@ -4,12 +4,15 @@ import com.example.gradproj.EduNest.config.auth.EduNestAuthenticationProvider;
 import com.example.gradproj.EduNest.config.file.UploadPolicy;
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAccessDeniedHandler;
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAuthenticationEntryPoint;
+import com.example.gradproj.EduNest.filters.AuthRateLimitFilter;
 import com.example.gradproj.EduNest.filters.JwtTokenGeneratorFilter;
 import com.example.gradproj.EduNest.filters.JwtTokenValidatorFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -64,19 +67,22 @@ public class ProjectSecurityConfig {
     private final JwtTokenValidatorFilter jwtTokenValidatorFilter;
     private final EduNestAuthenticationEntryPoint customAuthEntryPoint;
     private final EduNestAccessDeniedHandler customAccessDeniedHandler;
+    private final AuthRateLimitFilter authRateLimitFilter;
 
     public ProjectSecurityConfig(
             Environment env,
             JwtTokenGeneratorFilter jwtTokenGeneratorFilter,
             JwtTokenValidatorFilter jwtTokenValidatorFilter,
             EduNestAuthenticationEntryPoint customAuthEntryPoint,
-            EduNestAccessDeniedHandler customAccessDeniedHandler
+            EduNestAccessDeniedHandler customAccessDeniedHandler,
+            AuthRateLimitFilter authRateLimitFilter
     ) {
         this.env = env;
         this.jwtTokenGeneratorFilter = jwtTokenGeneratorFilter;
         this.jwtTokenValidatorFilter = jwtTokenValidatorFilter;
         this.customAuthEntryPoint = customAuthEntryPoint;
         this.customAccessDeniedHandler = customAccessDeniedHandler;
+        this.authRateLimitFilter = authRateLimitFilter;
 
         boolean prod = isProd();
         boolean unsafeDev = isUnsafeDevRequested();
@@ -141,6 +147,7 @@ public class ProjectSecurityConfig {
                     }
                 }))
                 .csrf(csrf -> csrf.disable())
+                .addFilterAfter(authRateLimitFilter, HeaderWriterFilter.class)
                 .addFilterAfter(jwtTokenGeneratorFilter, BasicAuthenticationFilter.class)
                 .addFilterBefore(jwtTokenValidatorFilter, BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
@@ -246,6 +253,23 @@ public class ProjectSecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * EB-15: the rate-limit filter is ONLY a security-chain member (registered
+     * via addFilterAfter(HeaderWriterFilter) — an always-registered built-in
+     * slot near the top of the chain; a custom filter class cannot anchor
+     * addFilterBefore/After because it has no global order slot). This
+     * registration bean turns OFF Spring Boot's automatic plain-servlet
+     * registration of the @Component filter — otherwise every gated request
+     * could be counted twice. The round-trip guard (COUNTED_ATTR) is defense
+     * in depth for any scripting environment that bypasses this.
+     */
+    @Bean
+    public FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(AuthRateLimitFilter filter) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     /** Dev-mode CORS source (consulted by the dev branch via `cors(Customizer.withDefaults())`). */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -266,9 +290,11 @@ public class ProjectSecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            com.example.gradproj.EduNest.service.auth.LoginLockoutService lockoutService
     ) {
-        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(userDetailsService, passwordEncoder);
+        AuthenticationProvider authProvider = new EduNestAuthenticationProvider(
+                userDetailsService, passwordEncoder, lockoutService);
         ProviderManager providerManager = new ProviderManager(authProvider);
         providerManager.setEraseCredentialsAfterAuthentication(false); // SEL-12 consumes this state (see P1-04)
         return providerManager;

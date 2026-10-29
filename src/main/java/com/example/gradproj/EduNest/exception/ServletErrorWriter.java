@@ -21,6 +21,22 @@ public final class ServletErrorWriter {
                              ApiErrorCode code,
                              String message,
                              String path) throws IOException {
+        write(response, status, code, message, path, null);
+    }
+
+    /**
+     * EB-15: throttling/lockout rejections carry Retry-After (seconds) — it
+     * MUST be flushed before the body, hence the dedicated overload.
+     */
+    public static void write(HttpServletResponse response,
+                             int status,
+                             ApiErrorCode code,
+                             String message,
+                             String path,
+                             java.util.Map<String, String> extraHeaders) throws IOException {
+        if (extraHeaders != null) {
+            extraHeaders.forEach(response::setHeader);
+        }
         ApiError body = ApiError.of(status, statusReason(status), code, message, path);
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
