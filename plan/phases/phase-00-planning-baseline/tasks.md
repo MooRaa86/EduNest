@@ -166,7 +166,7 @@ Probed with `src/test/java/com/example/gradproj/EduNest/websocket/probe/V01Paylo
 **Approach:** single-purpose test cases; reuse matrix harness.
 **Acceptance criteria:** evidence + mapping annotation.  **Depends on:** P0-06 harness.
 
-**Reconciliation (2026-10-29):** Evidence and mapping annotation merged via [PR #22](https://github.com/MooRaa86/EduNest/pull/22), `626bb889461ea0b447c758720025811da39668eb`; [JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40872915701) passed. [The verdict](EB-5-ZIP-VERDICT.md) confirms the spoof in isolated runs, with production-authorization limitations. Jira EB-5 remains **In Progress**: its handoff requires Security Reviewer acceptance and EB-29 hardening re-verification before closure. FILE-04 is not fixed by this verification.
+**Reconciliation (2026-10-29):** Evidence and mapping annotation merged via [PR #22](https://github.com/MooRaa86/EduNest/pull/22), `626bb889461ea0b447c758720025811da39668eb`; [JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40872915701) passed. [The verdict](EB-5-ZIP-VERDICT.md) confirms the spoof in isolated runs, with production-authorization limitations. Jira EB-5 is **Done** for its evidence-only scope; the earlier handoff's EB-29 closure gate was superseded by the delivery clarification. FILE-04 is not fixed by this verification: hardening and its re-verification remain open in EB-29.
 
 ---
 
