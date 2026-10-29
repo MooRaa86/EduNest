@@ -16,12 +16,14 @@ import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.account.SettingsService;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import com.example.gradproj.EduNest.service.register.RegisterServiceImpl;
+import com.example.gradproj.EduNest.service.register.ResetTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,6 +40,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -47,6 +50,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -58,7 +64,7 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
 
     @Autowired private RegisterServiceImpl registration;
     @Autowired private SettingsService settings;
-    @Autowired private OTPRepository otps;
+    @SpyBean private OTPRepository otps;
     @Autowired private StudentRepository students;
     @Autowired private RoleRepository roles;
     @Autowired private EntityManager entityManager;
@@ -70,6 +76,21 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
     @MockBean private EmailService emailService;
 
     private Student student;
+
+    @Test
+    void resetTokenServiceRejectsInvalidLifetimesAndCredentialForms() {
+        assertThrows(IllegalArgumentException.class, () -> new ResetTokenService(Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> new ResetTokenService(Duration.ofSeconds(-1)));
+        ResetTokenService service = new ResetTokenService(Duration.ofSeconds(7));
+        assertEquals(Duration.ofSeconds(7), service.lifetime());
+        String first = service.generate();
+        String second = service.generate();
+        assertNotEquals(first, second);
+        assertTrue(service.matches(first, service.digest(first)));
+        assertFalse(service.matches(second, service.digest(first)));
+        assertFalse(service.matches(first, "123456"));
+        assertFalse(service.matches(first + "=", service.digest(first)));
+    }
 
     @Test
     void otpColumnAccommodatesVersionedSha256Digest() throws Exception {
@@ -249,16 +270,19 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
                 .content("{\"email\":\"" + EMAIL + "\"}"))
                 .andExpect(status().isOk());
         OTP pending = otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET_PENDING).get(0);
+        LocalDateTime beforeVerification = LocalDateTime.now();
         String response = mockMvc.perform(post("/forget-password/verify-otp").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + EMAIL + "\",\"otp\":\"" + pending.getOtpCode() + "\"}"))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andReturn().getResponse().getContentAsString();
+        LocalDateTime afterVerification = LocalDateTime.now();
         String token = objectMapper.readTree(response).path("apiResponse").path("resetToken").asText();
         assertEquals(43, token.length());
         OTP verified = otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).get(0);
         assertTrue(verified.getOtpCode().matches("v1:[0-9a-f]{64}"));
         assertNotEquals(token, verified.getOtpCode());
-        assertTrue(verified.getExpiresAt().isAfter(LocalDateTime.now().plusMinutes(4)));
+        assertFalse(verified.getExpiresAt().isBefore(beforeVerification.plusMinutes(5)));
+        assertFalse(verified.getExpiresAt().isAfter(afterVerification.plusMinutes(5)));
 
         String body = objectMapper.writeValueAsString(java.util.Map.of("email", EMAIL, "resetToken", token,
                 "newPassword", "NewPassword123!"));
@@ -366,6 +390,27 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
             registration.resetPassword(EMAIL, token, "NewPassword123!");
             assertTrue(passwordEncoder.matches("NewPassword123!", students.findById(student.getId()).orElseThrow().getPassword()));
         } finally {
+            students.deleteById(student.getId());
+        }
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void consumptionFailureRollsBackPasswordAndKeepsCredentialUsable() {
+        seed(OtpType.RESET_PENDING, CODE);
+        String token = registration.verifyForgetPasswordOtp(EMAIL, CODE);
+        try {
+            doThrow(new IllegalStateException("simulated token deletion failure")).when(otps).delete(any(OTP.class));
+            assertThrows(IllegalStateException.class,
+                    () -> registration.resetPassword(EMAIL, token, "NewPassword123!"));
+            assertEquals("test-password", students.findById(student.getId()).orElseThrow().getPassword());
+            assertEquals(1, otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).size());
+            reset(otps);
+            registration.resetPassword(EMAIL, token, "NewPassword123!");
+            assertTrue(passwordEncoder.matches("NewPassword123!", students.findById(student.getId()).orElseThrow().getPassword()));
+            assertTrue(otps.findAllByUser_EmailAndOtpType(EMAIL, OtpType.RESET).isEmpty());
+        } finally {
+            reset(otps);
             students.deleteById(student.getId());
         }
     }
