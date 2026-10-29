@@ -93,6 +93,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** WS IT: injected repo failure → ERROR frame; edit broadcast hits correct room only.
 **Docs:** messaging-flow.md; ISSUE-MAPPING rows.
 
+> **P0-03 resolved AHEAD of P4-06 (2026-10-29):** CHAT-08's server mechanism was confirmed by the V-01 probe (raw `String content` bound all frame bodies verbatim — object JSON persisted as literal text), and the contract fix shipped immediately in the same PR (Omar's decision): `@Payload ChatMessageRequest` DTO + blank-content guard. Probe post-fix: object payloads deserialize to PURE text; raw strings and blank contents rejected with nothing persisted. **P4-06 scope shrinks to CHAT-01/06 only** (error-frame path + broadcast-room derivation). FE contract change REQUIRED: room-chat sends must be `{"content": "..."}` JSON objects.
+
 <a id="p4-07"></a>
 ### P4-07 — Chat receipts/unread (conditional)
 
