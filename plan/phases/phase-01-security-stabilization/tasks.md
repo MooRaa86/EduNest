@@ -150,6 +150,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Tests:** IT: threshold trips; window resets; enumeration probe shows identical bodies.
 **Docs:** security-configuration.md + error-responses.md; ISSUE-MAPPING SEL-03.
 
+> **P1-08 implemented (EB-15, 2026-10-30, merge `4529aeb`, PR #31, CI green, 86/86):** approved Omar spec — **8 requests/1 min** uniform on the six gated buckets (LOGIN `/login-api`, OTP_ISSUE, OTP_VERIFY, RESTORE_CONFIRM, REGISTER, ADMIN_REGISTER) instead of the draft differentiated table (per-bucket overrides remain property-tunable); **5 consecutive failed logins → 5-min account lock** (`LoginLockoutService`; provider records, resets on success); **10-min TTL** opportunistic sweep; **dynamic `Retry-After`** (window remainder ≤60 for `ERR_RATE_LIMITED`, lock remainder starting 300 for `ERR_ACCOUNT_LOCKED`). Enumeration: unknown-email/wrong-password/unverified/deleted all → one canonical `401 ERR_INVALID_CREDENTIALS` "Invalid email or password." (byte-identical, probe-pinned R4); no-role misconfig reclassified `IllegalStateException` → sanitized generic 500. Mechanic notes: body replay wrapper (`CachedBodyHttpRequestWrapper`) so the filter's email read never empties the controller's stream; filter registered in the prod chain via `addFilterAfter(HeaderWriterFilter)` (custom classes can't anchor addFilterBefore/After) + disabled `FilterRegistrationBean` + `COUNTED_ATTR` guard = no double counting; `app.rate-limit.enabled=false` in the test profile, `RateLimitProbesTest` R1–R6 opt back in at tight limits (3/2s, lockout 3→3s). FE ticket EF-3 (unassigned, High) carries countdown/Retry-After rules.
+
 <a id="p1-09"></a>
 ### P1-09 — Admin credential exposure + guarded bootstrap
 

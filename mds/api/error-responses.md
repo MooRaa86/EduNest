@@ -39,6 +39,9 @@ five producers, no drift (E6 pins this).
 | Anonymous request to protected route | 401 | `ERR_UNAUTHENTICATED` | `Authentication required. Please log in.` |
 | Bad/deactivated-token JWT (filter + advice) | 401 | `ERR_INVALID_TOKEN` | `Invalid token: user is deactivated or deleted, please login again` / `Invalid JWT token, please login again` |
 | Login bad password | 401 | `ERR_INVALID_CREDENTIALS` | `Invalid email or password.` |
+| Login unknown email / unverified / deleted | 401 | `ERR_INVALID_CREDENTIALS` | `Invalid email or password.` (EB-15: all four fold here — byte-identical bodies, no enumeration) |
+| Account lockout (5 consecutive failed logins) | **429** | `ERR_ACCOUNT_LOCKED` | `Account temporarily locked after repeated failed logins. Please try again in a few minutes.` (+ `Retry-After: <lock seconds remaining>`, starts at 300) |
+| Rate limit exceeded (public credential routes) | **429** | `ERR_RATE_LIMITED` | `Too many attempts. Please wait a moment and try again.` (+ `Retry-After: <window seconds remaining>`, ≤ 60) |
 | Business rule (`globalLogicEx`) | 400 | `ERR_BUSINESS_RULE` | throw-site text (audited, user-facing) |
 | Bean validation (`MethodArgumentNotValid`) | 400 | `ERR_VALIDATION` (+ `fields` map) | `Please check the submitted fields.` |
 | Malformed JSON / type conversion | 400 | `ERR_MALFORMED_BODY` | `Malformed JSON request or invalid data type.` (enum hints under `fields`) |
@@ -51,7 +54,9 @@ five producers, no drift (E6 pins this).
 | `RoleNotFound` (server misconfig) | 500 | `ERR_INTERNAL_SYSTEM` | generic sanitized (role name never sent) |
 
 Login enumeration neutrality (identical bodies for unknown-user vs bad-password)
-is **EB-15's** scope (`SEL-03`) — this PR only fixed the shape + fixed texts.
+is **delivered by EB-15** (SEL-03, 2026-10-30, merge 4529aeb) — byte-identical
+401s probe-pinned in `RateLimitProbesTest` R4. The 429 rows above carry the
+`Retry-After` header (dynamic remaining seconds; FE contract in EF-3).
 
 ## 3. Producers (all one shape)
 
