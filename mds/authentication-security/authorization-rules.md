@@ -50,12 +50,12 @@ The team's own `legacy-audits/IDOR_Audit_Report.md` tracked protection roll-out;
 | G6 | **Task/project detail + mentorship filters** | `TaskController#getById`, `TaskServiceImpl#getTaskById`; `ProjectController#getById`; `/filter/{msid}` variants | any authenticated user |
 | G7 | **Mentorship leaderboard** | `MentorshipLeaderboardService` L26–28 — enrollment guard commented out | any authenticated user (student emails+points) |
 | G8 | **Mentorship DRAFT access** | `getMentorShipById`/`getMentorShips` no status filter; public overview query `findMentorshipDetailsById` has only `WHERE m.id = :id` (`MentorShipRepository` L244–248) | any user incl. anonymous for the overview path |
-| G9 | **Generic file endpoint** `GET /files?filePath=...` | `FileController#serveFile` L114–136 — no `FileAccessService` call | any authenticated user (dev: anonymous); traversal properly blocked, ownership not checked |
+| G9 | **Generic file endpoint** `GET /files?filePath=...` | `FileController#serveFile` now denies all requests; typed endpoints perform ownership checks | disabled pending ownership-aware replacement and review |
 | G10 | **Notifications: user-to-user send** | `POST /api/v1/notifications/send` — class guard `isAuthenticated()` only; `NotificationService.sendToUserByEmail` has no admin gate | any authenticated user can push arbitrary notification content to any email's `/queue/notifications` |
 | G11 | **Badge award reads** | `BadgeAwardController` GETs unannotated; `BadgeAwardService#getAwardsByStudent` L108–112 no ownership check | any authenticated user |
 | G12 | **Room creation ownership gap** | `ChatRoomService.createRoom` L43–79 — MENTOR gate but no mentorship-ownership check | any mentor can create rooms in any mentorship |
 | G13 | **Room "membership" = mentorship-enrollment proxy** | `AuthorizationRepository.isUserMemberOfChatRoom` L82–93 — enrolled students can read rooms they never joined; the room-join (`joinRoom`) uses a different student-only query | inconsistent membership semantics |
-| G14 | **Profile image folder mismatch** | `ImageStorageService.saveImage` writes `uploads/student|mentor|admin` while URL rules list `student-profile|mentor-profile|profile-images` — coverage only via the catch-all `/uploads/**` (public) | — (serving related, see §4) |
+| G14 | **Profile image folder mismatch** — the previous rules listed names different from actual folders | Proposed EB-28 policy uses actual public folder names; admin is non-public | pending review; see §4 |
 | G15 | **Question re-parenting** | `QuestionServiceImp#updateQuestion` — target quiz ownership not validated before `question.setQuiz(…)` | mentor can move their question into another mentor's quiz |
 
 Correctly-enforced (verified, for balance): grading ownership (task/project/quiz), week/lecture/task/project mentor ownership, submission enrollment gates (task/project/quiz submit paths), notification mark-read/delete ownership, file downloads through the 4 typed `/files/**` endpoints (`FileAccessService`), certificate issuance mentor ownership, live-session audience checks (`joinSession` enrolled/mentor), admin-badge award flow.
@@ -65,7 +65,7 @@ Correctly-enforced (verified, for balance): grading ownership (task/project/quiz
 - `/api/v1/student/mentorships/{id}/reviews` is permitAll and returns reviewer **emails** + profile images (`MentorshipReviewProjection.studentEmail`).
 - Public mentor profile (`/api/v1/profile/mentor/**`) exposes mentor email as identifier.
 - Swagger enabled anonymously in prod (`/swagger-ui/**`).
-- `/uploads/**` public: cover images, profile photos, chatroom images, **and `submissions/` (student homework)** — instructive comment in code: `ProjectSecurityProdconfig` L88 ToDo.
+- `/uploads/**` — proposed EB-28 policy permits only `mentorship-cover-images`, `student`, `mentor`, and `chatroom`; other folders are denied by the chain and lack explicit MVC handlers. The generic `/files?filePath=` endpoint is disabled as a temporary cross-scope safeguard, subject to Eng Lead and FE approval; EB-27's guard-first replacement remains open. FE coordination is required for submission and attachment links, generic downloads, and admin avatars. Review and verification remain pending.
 
 ## 5. Open questions
 

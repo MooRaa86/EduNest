@@ -30,9 +30,9 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 | Auth manager | `ProviderManager(EduNestAuthenticationProvider)`, `eraseCredentialsAfterAuthentication=false` | same |
 | Method security | `@EnableMethodSecurity` | `@EnableMethodSecurity` |
 
-**Operational consequence:** Spring Boot's active-profile default is *no* `prod` → a plain `mvn spring-boot:run` or IDE run uses the wide-open chain. The Docker image sets `SPRING_PROFILES_ACTIVE=prod` (`Dockerfile` line 13).
+**Operational consequence:** without the `prod` profile the application refuses to start unless `EDUNEST_UNSAFE_DEV=true` is explicitly set. That opt-in enables the permissive dev chain, except for the upload policy. The Docker image sets `SPRING_PROFILES_ACTIVE=prod` (`Dockerfile` line 13).
 
-## 2. Prod URL rule map (`ProjectSecurityProdconfig.filterChain`)
+## 2. Prod URL rule map (`ProjectSecurityConfig.prodChain`)
 
 ### permitAll (lines 69–97)
 ```
@@ -40,11 +40,8 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 /api/auth/**, /api/v1/register/**, /login-api, /forget-password/**
 /api/v1/admin/register
 /ws/**
-/uploads/mentorship-cover-images/**, /uploads/profile-images/**,
-/uploads/student-profile/**, /uploads/mentor-profile/**,
-/uploads/mentor/**, /uploads/student/**, /uploads/chatroom/**,
-/uploads/**                     ← catch-all, duplicated; code comment L88:
-                                  "//ToDo public uploads until front make the security on it"
+/uploads/mentorship-cover-images/**, /uploads/student/**,
+/uploads/mentor/**, /uploads/chatroom/**
 /api/v1/contact/save-message
 /api/v1/student/mentorships/*/overview, /api/v1/student/mentorships/*/reviews
 /api/v1/mentorship/explore, /api/v1/mentorship/categories
@@ -65,9 +62,12 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 ### anyRequest().authenticated()
 Everything else — protected from anonymous, but **not role-restricted** (role checks only via `@PreAuthorize` or service checks; see [authorization-rules.md](authorization-rules.md)).
 
+### denyAll
+After the public upload patterns, `/uploads/**` denies private, admin and unknown categories to all callers. MVC maps only the public folders. The generic `GET /files?filePath=` handler returns 403 for authenticated requests with the required parameter; anonymous requests are rejected by the production chain. The endpoint is disabled pending an ownership-aware replacement.
+
 Notable consequences:
 - Swagger UI + OpenAPI docs are public **in prod**.
-- `/uploads/**` fully public (all folders; including `submissions/` — student work).
+- Only four explicit upload image folders are public; submissions and attachments require typed ownership-checked routes.
 - `/lectures/**`, `/api/v1/task/**`, `/api/v1/project/**`, `/api/v1/quiz/**` etc. are `authenticated()` — anonymity blocked, but any logged-in user passes.
 
 ## 3. JWT filter mechanics
