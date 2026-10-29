@@ -18,7 +18,7 @@ STOMP messaging over `JwtChannelInterceptor` (token auth at CONNECT), group room
 
 1. Room authorization with membership semantics — **WS-01/TD-08(G13), D-14 decision**, tasks [P1-12](../../phases/phase-01-security-stabilization/tasks.md#p1-12): membership rule (write = member or mentor-owner; read = additionally enrollment-proxy per default), membership query added, dead interceptor code deleted (WS-02).
 2. Conversation IDOR trio — **CHAT-02/03/04**, [P1-13](../../phases/phase-01-security-stabilization/tasks.md#p1-13): participant-only history, sender-only edit, server-derived event recipient; `recipientEmail` field tolerated-but-ignored (contract-preserving).
-3. Reliability: save-failure error frame, correct-room broadcasts, payload binding — **CHAT-01/06/08**, [P4-06](../../phases/phase-04-business-logic-and-notifications/tasks.md#p4-06); V-01 ([P0-03](../../phases/phase-00-planning-baseline/tasks.md#p0-03)) fixes the String-binding question with FE first.
+3. Reliability: save-failure error frame, correct-room broadcasts — **CHAT-01/06**, [P4-06](../../phases/phase-04-business-logic-and-notifications/tasks.md#p4-06). Payload binding (CHAT-08) resolved AHEAD of P4-06 by [P0-03](../../phases/phase-00-planning-baseline/tasks.md#p0-03) (EB-1, 2026-10-29): DTO contract `{"content": "..."}` shipped; raw strings rejected.
 4. Read receipts / unread counts — **CHAT-07/D-13**, conditional [P4-07](../../phases/phase-04-business-logic-and-notifications/tasks.md#p4-07) (default deferral documented).
 
 ## 4. Technical constraints & anti-goals
