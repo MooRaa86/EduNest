@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.exception.authHandling;
 
+import com.example.gradproj.EduNest.exception.ApiErrorCode;
+import com.example.gradproj.EduNest.exception.ServletErrorWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,25 +11,21 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 
+/**
+ * P1-05 / EB-12 — unified 401 envelope. The Spring framework message is
+ * NOT echoed; a clean, stable text is sent instead (the FE renders it
+ * directly). Same shape/code as every other producer (ServletErrorWriter).
+ */
 @Component
 public class EduNestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
-        LocalDateTime currentTimeStamp = LocalDateTime.now();
-        String message = (authException != null && authException.getMessage() != null) ? authException.getMessage()
-                : "Unauthorized";
-        String path = request.getRequestURI();
-        response.setHeader("EduNest-error-reason", "Authentication failed");
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType("application/json;charset=UTF-8");
-        // Construct the JSON response
-        String jsonResponse =
-                String.format("{\"timestamp\": \"%s\", \"status\": %d, \"error\": \"%s\", \"message\": \"%s\", \"path\": \"%s\"}",
-                        currentTimeStamp, HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                        message, path);
-        response.getWriter().write(jsonResponse);
+        ServletErrorWriter.write(response,
+                HttpStatus.UNAUTHORIZED.value(),
+                ApiErrorCode.ERR_UNAUTHENTICATED,
+                "Authentication required. Please log in.",
+                request.getRequestURI());
     }
 }
