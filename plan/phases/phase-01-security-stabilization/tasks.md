@@ -339,7 +339,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Tests:** probes: public-category stays; submission category w/o ownership → 404; traversal → 404.
 **Docs:** file-storage MDS + endpoints.md; ISSUE-MAPPING LEARN-03/G9 (FILE-01 remainder → P1-21).
 
-**Reconciliation (2026-10-29):** Jira EB-27 remains **To Do**. [PR #23](https://github.com/MooRaa86/EduNest/pull/23) temporarily denies the generic route on its unmerged branch; this safeguard does not implement the D-06 guard-first contract. Frontend migration and eventual retirement remain unverified.
+**Reconciliation (2026-10-29):** Jira EB-27 remains **To Do**. [PR #23](https://github.com/MooRaa86/EduNest/pull/23) merged the temporary generic-route denial as `171c6a1`; this safeguard does not implement the D-06 guard-first contract. Frontend migration and eventual retirement remain unverified.
 
 <a id="p1-21"></a>
 ### P1-21 — Upload exposure policy (public/private split)
@@ -358,7 +358,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Tests:** IT: anonymous submission fetch → 401/403 at both layers; anonymous cover fetch → 200; owned submission via typed route → 200.
 **Docs:** file-storage/MDS.md + `authorization-rules.md`; ISSUE-MAPPING FILE-01/TD-09/G14.
 
-**Reconciliation (2026-10-29):** Jira EB-28 remains **In Progress**; [PR #23](https://github.com/MooRaa86/EduNest/pull/23) is open and ready for review, not merged or deployed. Head `92c1818758712ca08c46927bd8116014bc3e8fa6` passed [Linux/JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40952121319) with 177 tests, zero failures/errors/skips. Security and Lead reviews, frontend migration/coordination, admin-image contract, and filesystem/staging assessment remain outstanding. Draft-aware attachment checks exist on the PR branch; [PR #24](https://github.com/MooRaa86/EduNest/pull/24) separately merged caller-scoped nullable task `submissionId` (`641bb6516a29a7bea93615d604752b1df5d9c51b`), with [CI green](https://github.com/MooRaa86/EduNest/actions/runs/40890628874). Supabase Storage implementation is EB-83 and has not been delivered by PR #23.
+**Reconciliation (2026-10-29):** Jira EB-28 remains **In Progress**. [PR #23](https://github.com/MooRaa86/EduNest/pull/23) merged to main as `171c6a1083488cf9a947ed5b21b3f2d79c56752c`, including draft-aware attachment checks. Final head `e716f9dfbe06c12f0907f9fa0954ab820dbb659b` passed [Linux/JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40956840871): 177 tests, zero failures/errors/skips. One GitHub owner approval is recorded; a distinct Security Reviewer approval and frontend liaison agreement are not evidenced. Frontend migration, admin-image contract, and filesystem/staging assessment remain outstanding; Lead/Security must clarify the D-07 acceptance boundary with EB-83. [PR #24](https://github.com/MooRaa86/EduNest/pull/24) separately merged caller-scoped nullable task `submissionId` (`641bb6516a29a7bea93615d604752b1df5d9c51b`), with [CI green](https://github.com/MooRaa86/EduNest/actions/runs/40890628874). Supabase Storage is separate EB-83 work; no deployment is claimed.
 
 <a id="p1-22"></a>
 ### P1-22 — Upload validation hardening (content-type by bytes)
