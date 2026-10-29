@@ -11,7 +11,7 @@ JWT issuance/validation, security filter chains, public/protected route policy, 
 - [ ] No secret/credential value introduced (constant, config file, log statement).
 - [ ] Chain change enumerates both mechanisms (`SecurityFilterChain` **and** `WebConfig` resource handler) when routes add/remove public surfaces.
 - [ ] New/changed endpoints have method security *and* chain rule aligned (annotation alone ≠ sufficient today).
-- [ ] Error responses use the unified shape ([P1-05](../../phases/phase-01-security-stabilization/tasks.md#p1-05)).
+- [x] Error responses use the unified shape ([P1-05](../../phases/phase-01-security-stabilization/tasks.md#p1-05) — EB-12 landed 2026-10-29: `ApiError` envelope + `ERR_*` codes across all five producers, zero-leak probes E1–E6).
 - [ ] `mvnw test` includes the modified surface in the P2-03 matrix.
 
 ## 2. Implementation requirements (per canonical issue)
