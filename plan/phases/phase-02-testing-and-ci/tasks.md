@@ -52,9 +52,11 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Approach:** `MockMvc` for HTTP probes; WebSocket probes deferred to P2-05; parameterized probe tables; helper `expect(status).json(…)` shape asserts shared with P2-06.
 **Depends on:** P2-01; Phase-1 fixes define the expectations.  **Blocks:** Phase-1 sign-off evidence; P2-07 gating value.
 **Acceptance criteria:**
-- [ ] ≥1 critical test per G1–G15 row + SEL/CHAT/LEARN security set (matrix table in file).
-- [ ] Error-shape contract set green.
-- [ ] "Red-run" note recorded (suite run against the pre-fix baseline failed in expected places).
+- [x] ≥1 critical test per G1–G15 row + SEL/CHAT/LEARN security set (matrix table in file). (Delivered 2026-10-29: 10 probe classes / 33 critical tests, `security/probes/matrix.md` registry. G1 deferred to P2-05 per user decision; G3b/G15 register corrections adjudicated in the registry.)
+- [x] Error-shape contract set green. (E1–E4 pin TODAY's four dialects per Option A; D-26 field-map asserted as permanent.)
+- [x] "Red-run" note recorded (suite run against the pre-fix baseline failed in expected places). (Doctrine A/A/A, user-approved: suite runs GREEN against *today's* baseline and encodes today's behavior; matrix.md "Red-run note" records the bring-up failures — raw-JWT header, unseeded token-holders, `@SuperBuilder` NULL-defaults — and every adjudication. Expectations flip with EB-17..28.)
+
+**Delivered (2026-10-29):** EB-37 = Done. PR #21 (test-only, zero production code), merge commit `0326b8b`, CI run 40803673045 green, full suite 72/72. Backlog discovery card: EB-86 (`@Builder.Default` NULL-on-builder-insert sweep).
 **Docs:** testing/MDS.md §3 matrix completion.
 
 <a id="p2-04"></a>

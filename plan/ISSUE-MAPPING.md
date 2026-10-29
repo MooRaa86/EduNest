@@ -27,7 +27,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-11** | Med | P1-23 | 1 | auth | D→T (D-23) | Planned |
 | **SEL-12** | Med | P1-04 | 1 | auth | T (+D-01 note) | Planned |
 | **SEL-13** | Med | — | — | auth | DEF (latent design) | Deferred |
-| **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) | Planned |
+| **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) | **In Progress** (E1–E4 shapes *pinned as of today* by `ErrorShapeProbeTest`, PR #21 / `0326b8b`; assertions normalize when P1-05/EB-12 lands) |
 | **SEL-15** | Med | P0-04 → P1-24 | 0,1 | auth | V→T | Planned |
 | **SEL-16** | Med | P1-03 | 1 | auth | T | Planned |
 | **WS-01** | Crit | P1-12 | 1 | ws | D→T (D-14) | Planned |
@@ -119,7 +119,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DEP-06** | Med | P6-06 | 6 | deployment | = FILE-06 (D-19) | Planned |
 | **DEP-07** | Med | P6-01, P6-03 | 6 | deployment | T | Planned |
 | **DEP-08** | Low | P6-02, P8-05 | 6,8 | deployment | T | Planned |
-| **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | Planned |
+| **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | **In Progress** (payload 2 = P2-03 delivered: PR #21, `0326b8b`, CI green, 72/72, Jira EB-37 = Done, 2026-10-29; P2-02 next per sprint order) |
 | **TST-02** | Med | P2-01 | 2 | testing | T | **Verified** (merged to `main` 2026-10-28, commit `2a74075`; 14/14 green with zero env — `mvnw test` self-contained; Jira EB-35 = Done; decision D-27) |
 | **TST-03** | Med | P2-07 | 2 | testing | T | **Verified** (CI live: green run `0cd3464`, red-run evidence documented (exit 126/exec bit); branch protection ON 2026-10-28; no-skip enforced) |
 | **TST-04** | Low | P2-08, P8-07 | 2,8 | testing | T | Planned |
