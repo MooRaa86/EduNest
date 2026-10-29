@@ -20,6 +20,7 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
         SELECT t.id AS id,
                m.email AS mentorEmail,
                ms.id AS mentorshipId,
+               t.status AS status,
                t.uploadedAttachmentPath AS filePath
         FROM Task t
         JOIN t.week w

@@ -20,6 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +39,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -86,6 +89,10 @@ abstract class TypedDownloadSecurityCases {
     }
 
     private Case seed(Kind kind, String path) {
+        return seed(kind, path, "PUBLISHED");
+    }
+
+    private Case seed(Kind kind, String path, String publicationStatus) {
         var ms = auth.mentorship(MENTOR, Status.ACTIVE).mentorship();
         auth.enroll(ms.getId(), OWNER);
         auth.enroll(ms.getId(), ENROLLED);
@@ -93,7 +100,7 @@ abstract class TypedDownloadSecurityCases {
         if (kind == Kind.TASK_SUBMISSION || kind == Kind.TASK_ATTACHMENT) {
             Task task = tasks.saveAndFlush(Task.builder().week(week).title("fixture task")
                     .description("fixture").points(10).passPoints(5).estimatedMinutes(30)
-                    .dueAt(LocalDateTime.now().plusDays(1)).status(TaskStatus.PUBLISHED)
+                    .dueAt(LocalDateTime.now().plusDays(1)).status(TaskStatus.valueOf(publicationStatus))
                     .uploadedAttachmentPath(path).build());
             if (kind == Kind.TASK_ATTACHMENT) return new Case("/files/tasks/" + task.getId() + "/attachment", path);
             TaskSubmission sub = taskSubmissions.saveAndFlush(TaskSubmission.builder().task(task)
@@ -102,7 +109,7 @@ abstract class TypedDownloadSecurityCases {
         }
         Project project = projects.saveAndFlush(Project.builder().week(week).title("fixture project")
                 .brief("fixture").goal("fixture").points(10).startAt(LocalDateTime.now())
-                .endAt(LocalDateTime.now().plusDays(1)).status(ProjectStatus.PUBLISHED)
+                .endAt(LocalDateTime.now().plusDays(1)).status(ProjectStatus.valueOf(publicationStatus))
                 .uploadedAttachmentPath(path).build());
         if (kind == Kind.PROJECT_ATTACHMENT) return new Case("/files/projects/" + project.getId() + "/attachment", path);
         ProjectSubmission sub = projectSubmissions.saveAndFlush(ProjectSubmission.builder().project(project)
@@ -111,6 +118,10 @@ abstract class TypedDownloadSecurityCases {
     }
 
     private Case stored(Kind kind) {
+        return stored(kind, "PUBLISHED");
+    }
+
+    private Case stored(Kind kind, String publicationStatus) {
         String folder = switch (kind) {
             case TASK_SUBMISSION, PROJECT_SUBMISSION -> "submissions";
             case TASK_ATTACHMENT -> "task-attachment";
@@ -119,10 +130,44 @@ abstract class TypedDownloadSecurityCases {
         String path = storage.saveFile(folder, "fixture", 1L, 2L,
                 new MockMultipartFile("file", "fixture.txt", "text/plain", BYTES));
         created.add(Path.of(path));
-        return seed(kind, path);
+        return seed(kind, path, publicationStatus);
     }
 
     private String token(String email, String role) { return auth.authToken(email, role); }
+
+    private static Stream<Arguments> attachmentStatusCases() {
+        return Stream.of(
+                Arguments.of(Kind.TASK_ATTACHMENT, TaskStatus.DRAFT.name(), false),
+                Arguments.of(Kind.TASK_ATTACHMENT, TaskStatus.PUBLISHED.name(), true),
+                Arguments.of(Kind.TASK_ATTACHMENT, TaskStatus.CLOSED.name(), true),
+                Arguments.of(Kind.PROJECT_ATTACHMENT, ProjectStatus.DRAFT.name(), false),
+                Arguments.of(Kind.PROJECT_ATTACHMENT, ProjectStatus.PUBLISHED.name(), true),
+                Arguments.of(Kind.PROJECT_ATTACHMENT, ProjectStatus.CLOSED.name(), true));
+    }
+
+    @ParameterizedTest @MethodSource("attachmentStatusCases")
+    void attachmentStatusControlsEnrolledStudentAccess(Kind kind, String publicationStatus, boolean visible) throws Exception {
+        Case item = stored(kind, publicationStatus);
+        mvc.perform(get(item.url()).header("Authorization", token(MENTOR, AuthFixture.MENTOR)))
+                .andExpect(status().isOk()).andExpect(content().bytes(BYTES));
+
+        var enrolled = mvc.perform(get(item.url()).header("Authorization", token(ENROLLED, AuthFixture.STUDENT)))
+                .andReturn().getResponse();
+        if (visible) {
+            assertThat(enrolled.getStatus()).isEqualTo(200);
+            assertThat(enrolled.getContentAsByteArray()).isEqualTo(BYTES);
+        } else {
+            assertThat(enrolled.getStatus()).isIn(403, 409);
+            assertThat(enrolled.getContentAsString()).contains("Not authorized");
+            assertThat(enrolled.getContentAsByteArray()).isNotEqualTo(BYTES);
+        }
+
+        var stranger = mvc.perform(get(item.url()).header("Authorization", token(STRANGER, AuthFixture.STUDENT)))
+                .andReturn().getResponse();
+        assertThat(stranger.getStatus()).isIn(403, 409);
+        assertThat(stranger.getContentAsString()).contains("Not authorized");
+        assertThat(stranger.getContentAsByteArray()).isNotEqualTo(BYTES);
+    }
 
     @ParameterizedTest @EnumSource(Kind.class)
     void actualStoredFileAuthorizationAndBytes(Kind kind) throws Exception {

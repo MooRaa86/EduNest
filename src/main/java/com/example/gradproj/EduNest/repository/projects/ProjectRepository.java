@@ -21,6 +21,7 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
         SELECT p.id AS id,
                m.email AS mentorEmail,
                ms.id AS mentorshipId,
+               p.status AS status,
                p.uploadedAttachmentPath AS filePath
         FROM Project p
         JOIN p.week w

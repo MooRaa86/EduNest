@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.service.fileSotageService;
 
+import com.example.gradproj.EduNest.enums.project.ProjectStatus;
+import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectAuthProjection;
@@ -45,8 +47,11 @@ public class FileAccessService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
 
         String currentUserEmail = currentUserProvider.getEmail();
+        // StudentWeekService exposes PUBLISHED and CLOSED, but not DRAFT.
+        boolean studentVisible = projection.getStatus() == TaskStatus.PUBLISHED
+                || projection.getStatus() == TaskStatus.CLOSED;
         if (!projection.getMentorEmail().equals(currentUserEmail)
-                && !taskRepository.isStudentEnrolled(projection.getMentorshipId(), currentUserEmail)) {
+                && !(studentVisible && taskRepository.isStudentEnrolled(projection.getMentorshipId(), currentUserEmail))) {
             throw new AccessDeniedException("Not authorized to view this task attachment");
         }
         return projection.getFilePath();
@@ -57,8 +62,10 @@ public class FileAccessService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
         String currentUserEmail = currentUserProvider.getEmail();
+        boolean studentVisible = projection.getStatus() == ProjectStatus.PUBLISHED
+                || projection.getStatus() == ProjectStatus.CLOSED;
         if (!projection.getMentorEmail().equals(currentUserEmail)
-                && !projectRepository.isStudentEnrolled(projection.getMentorshipId(), currentUserEmail)) {
+                && !(studentVisible && projectRepository.isStudentEnrolled(projection.getMentorshipId(), currentUserEmail))) {
             throw new AccessDeniedException("Not authorized to view this project attachment");
         }
         return projection.getFilePath();
