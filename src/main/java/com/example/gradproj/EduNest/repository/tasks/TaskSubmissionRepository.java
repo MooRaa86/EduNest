@@ -43,6 +43,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
             t.attachmentUrl                         AS attachmentUrl,
             t.uploadedAttachmentPath                AS uploadedAttachmentPath,
             t.estimatedMinutes                      AS estimatedMinutes,
+            ts.id                                   AS submissionId,
             ts.fileUrl                              AS fileUrl,
             ts.finalScore                           AS finalScore,
             t.points                                AS totalPoints,

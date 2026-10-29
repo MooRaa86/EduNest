@@ -23,6 +23,7 @@ public class TaskWithSubmissionForStudentResponse {
     private String uploadedAttachmentPath;
     private Integer estimatedMinutes;
 
+    private Long submissionId;
     private String submissionUrl;
     private String uploadedSubmissionPath;
     private Integer score;
