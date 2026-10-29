@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.config.auth;
 
 import com.example.gradproj.EduNest.entity.users.Admin;
+import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.users.AdminRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
@@ -31,7 +32,11 @@ public class EduNestUserDetailsService implements UserDetailsService {
 
         if (user != null) {
             if (user.getRoleName() == null) {
-                throw new globalLogicEx("User has no role assigned!");
+                // EB-15: a server-data misconfiguration, NOT a credential fact.
+                // Escapes as a runtime exception -> ProviderManager passes it
+                // through -> EB-12 catch-all -> sanitized generic 500 (message
+                // logged with refId, never sent to the client).
+                throw new IllegalStateException("Auth data inconsistency: account has no role assigned");
             }
             if (Boolean.FALSE.equals(user.getEnabled())) {
                 throw new globalLogicEx("This account is not verified, request a new otp...");
@@ -49,7 +54,8 @@ public class EduNestUserDetailsService implements UserDetailsService {
 
         if (admin != null) {
             if (admin.getRole() == null) {
-                throw new globalLogicEx("Admin has no role assigned!");
+                // EB-15: same misconfiguration discipline as above — generic 500
+                throw new IllegalStateException("Auth data inconsistency: admin has no role assigned");
             }
             String roleName = "ROLE_" + admin.getRole().getName();
             List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));

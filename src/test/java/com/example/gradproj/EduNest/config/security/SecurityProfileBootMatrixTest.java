@@ -35,7 +35,22 @@ class SecurityProfileBootMatrixTest {
                 .withBean(EduNestAuthenticationEntryPoint.class, () -> Mockito.mock(EduNestAuthenticationEntryPoint.class))
                 .withBean(EduNestAccessDeniedHandler.class, () -> Mockito.mock(EduNestAccessDeniedHandler.class))
                 .withBean(org.springframework.security.core.userdetails.UserDetailsService.class,
-                        () -> Mockito.mock(org.springframework.security.core.userdetails.UserDetailsService.class));
+                        () -> Mockito.mock(org.springframework.security.core.userdetails.UserDetailsService.class))
+                // EB-15: ProjectSecurityConfig now takes the throttling filter,
+                // which needs (properties, lockout service, Jackson mapper).
+                .withBean(com.example.gradproj.EduNest.config.security.RateLimitProperties.class,
+                        com.example.gradproj.EduNest.config.security.RateLimitProperties::new)
+                .withBean(com.example.gradproj.EduNest.service.auth.LoginLockoutService.class,
+                        () -> new com.example.gradproj.EduNest.service.auth.LoginLockoutService(
+                                new com.example.gradproj.EduNest.config.security.RateLimitProperties()))
+                .withBean(com.fasterxml.jackson.databind.ObjectMapper.class,
+                        com.fasterxml.jackson.databind.ObjectMapper::new)
+                .withBean(com.example.gradproj.EduNest.filters.AuthRateLimitFilter.class,
+                        () -> new com.example.gradproj.EduNest.filters.AuthRateLimitFilter(
+                                new com.example.gradproj.EduNest.config.security.RateLimitProperties(),
+                                new com.example.gradproj.EduNest.service.auth.LoginLockoutService(
+                                        new com.example.gradproj.EduNest.config.security.RateLimitProperties()),
+                                new com.fasterxml.jackson.databind.ObjectMapper()));
         if (props.length > 0) {
             r = r.withPropertyValues(props);
         }
