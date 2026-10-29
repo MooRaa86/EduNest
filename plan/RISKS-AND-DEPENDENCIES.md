@@ -7,8 +7,8 @@
 | ~~STOMP `String content` binding ambiguity~~ | CHAT-08 | ✅ RESOLVED by EB-1 (2026-10-29): DTO contract shipped — FE must send `{"content": "..."}` objects; raw strings rejected, nothing persists | P0-03 (closed) |
 | Contact-reply HTML injection | SEL-15 | ⚠️ needs runtime POC | P0-04 |
 | `LIKE '%kw%'` wildcard abuse | MSH-12 | ⚠️ needs runtime/load POC | P0-05 |
-| Cover-image filename extension trust | FILE-03 | ⚠️ needs runtime upload matrix | P0-06 |
-| Zip MIME allowlist looseness (`octet-stream`) | FILE-04 | ⚠️ needs runtime upload matrix | P0-06/P0-07 |
+| Cover-image filename extension trust | FILE-03 | EB-4 confirmed arbitrary extension; traversal remained inconclusive ([matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) | P0-06; hardening P1-22 |
+| Zip MIME allowlist looseness (`octet-stream`) | FILE-04 | Confirmed on four upload surfaces in isolated EB-5 runs; see [verdict and limitations](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md) | P0-06/P0-07; hardening P1-22 |
 | Question re-parenting ownership | QZ-06 | ⚠️ needs cross-mentor POC | P0-08 |
 | Fresh-DB commission + first-admin boot behavior | MSH-05 | ⚠️ needs clean-DB rehearsal | P0-09 |
 | WS transport/backend-header contract with FE | WS-01 (CHAT-08's payload half RESOLVED by EB-1: DTO contract shipped; raw JWT header quirk remains) | unknown FE client | Payload half closed; header half tracked in EB-12 |
@@ -43,8 +43,10 @@ These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM
 | Container registry + CI runner availability | P2-07, P6-04 | DevOps | GitHub Actions assumed (repo is GitHub-hosted: `origin/.../github` paths observed) |
 | DNS + TLS certificates | P6-02, P7-05 | DevOps | D-22 decides ownership |
 | Backups tooling + offsite storage | P3-07, P6-02, P8-05 | DevOps | mysqldump + uploads rsync baseline accepted by default |
-| Decision D-22 (hosting) | all infra | PO + Infra | **Single hardest external blocker** |
+| Decision D-22 (hosting) | all infra | PO + Infra | Decided 2026-10-25 (container + Supabase); provisioning and environment access still need confirmation |
 | Zoom account + Server-to-Server OAuth app (meeting creation / attendance read APIs) | P4-17 (Zoom re-scope), [ADD-05], P7-02 | PO + DevOps | D-16 outcome 2026-10-25: Zoom replaces Jitsi; credentials + API rate limits via env store |
+
+**Dependency reconciliation (2026-10-29):** EB-81 requires provisioned Supabase staging and production projects; provisioning and access are not verified in this repository. EB-82 depends on EB-81 and the Phase 1 entity freeze; EB-43 additionally waits on EB-82 and a green CI/frozen baseline. EB-83 depends on the Supabase project and EB-81 key environment and must retain EB-29 validation. PO/Infra should confirm provisioning and access; the team should complete the dependency chain before migration/baseline work. These are delivery blockers, not evidence of an existing deployment.
 
 ## 4. Migration & rollback limitations (declared honestly)
 
