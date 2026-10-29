@@ -14,6 +14,7 @@ public interface TaskWithSubmissionProjection {
     String getUploadedAttachmentPath();
     Integer getEstimatedMinutes();
 
+    Long getSubmissionId();
     String getFileUrl();
     Integer getFinalScore();
     Integer getTotalPoints();

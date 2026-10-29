@@ -40,6 +40,10 @@ public class ChatMessageService {
             ChatPrincipal principal
     ) {
 
+        if (content == null || content.isBlank()) {
+            throw new globalLogicEx("Message content must not be blank");
+        }
+
         if (!roomRepo.existsById(roomId)) {
 
             messagingTemplate.convertAndSendToUser(

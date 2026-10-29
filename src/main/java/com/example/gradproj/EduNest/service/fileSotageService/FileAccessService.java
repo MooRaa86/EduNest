@@ -12,11 +12,10 @@ import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjecti
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +31,7 @@ public class FileAccessService {
 
     public String authorizeTaskSubmission(Long submissionId) {
         TaskSubmissionAuthProjection projection = taskSubmissionRepository.findAuthProjectionById(submissionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Submission not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Submission not found"));
 
         String currentUserEmail = currentUserProvider.getEmail();
         if (!projection.getStudentEmail().equals(currentUserEmail) 
@@ -44,7 +43,7 @@ public class FileAccessService {
 
     public String authorizeTask(Long taskId) {
         TaskAuthProjection projection = taskRepository.findAuthProjectionById(taskId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Task not found"));
 
         String currentUserEmail = currentUserProvider.getEmail();
         // StudentWeekService exposes PUBLISHED and CLOSED, but not DRAFT.
@@ -59,7 +58,7 @@ public class FileAccessService {
 
     public String authorizeProject(Long projectId) {
         ProjectAuthProjection projection = projectRepository.findAuthProjectionById(projectId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Project not found"));
 
         String currentUserEmail = currentUserProvider.getEmail();
         boolean studentVisible = projection.getStatus() == ProjectStatus.PUBLISHED
@@ -73,7 +72,7 @@ public class FileAccessService {
 
     public String authorizeProjectSubmission(Long submissionId) {
         ProjectSubmissionAuthProjection projection = projectSubmissionRepository.findAuthProjectionById(submissionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project submission not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Project submission not found"));
 
         String currentUserEmail = currentUserProvider.getEmail();
         if (!projection.getStudentEmail().equals(currentUserEmail)

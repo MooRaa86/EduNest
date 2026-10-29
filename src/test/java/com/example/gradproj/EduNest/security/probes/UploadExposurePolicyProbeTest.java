@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.security.probes;
 
+import com.jayway.jsonpath.JsonPath;
+
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
@@ -178,8 +180,11 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 		String name = "unprefixed-" + UNIQUE_SUFFIX + ".zip";
 		fixture("submissions", name);
 		var mvc = webAppContextSetup(webContext).build();
-		assertThat(mvc.perform(get("/submissions/" + name)).andReturn().getResponse().getStatus())
-				.isBetween(400, 499);
+		var response = mvc.perform(get("/submissions/" + name)).andReturn().getResponse();
+		assertThat(response.getStatus()).isEqualTo(404);
+		assertThat((String) JsonPath.read(response.getContentAsString(), "$.errorCode")).isEqualTo("ERR_RESOURCE_NOT_FOUND");
+		assertThat(response.getContentAsString())
+				.doesNotContain("eb28 fixture " + name);
 	}
 
 	@Test
@@ -193,7 +198,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 			fixture(folder, name);
 			int status = mvcWithoutSecurityFilters.perform(get("/uploads/" + folder + "/" + name))
 					.andReturn().getResponse().getStatus();
-			assertThat(status).as("MVC must not serve %s", folder).isBetween(400, 499);
+			assertThat(status).as("MVC must not serve %s", folder).isEqualTo(404);
 		}
 	}
 
@@ -323,18 +328,17 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 		String filePath = fixture("submissions", "typed-stranger-" + UNIQUE_SUFFIX + ".zip");
 		long id = seedSubmissionChain(STUDENT, MENTOR, filePath);
 
-		// Ownership check denies the stranger. TODAY the AccessDeniedException raised
-		// inside the MVC layer falls into GlobalExceptionHandler's catch-all → 409
-		// (not the chain's 403) — that error-shape defect is SEL-14/E1, tracked to
-		// EB-12; EB-28 only pins that the stranger is DENIED and never served bytes.
+		// Ownership check denies the stranger with the unified sanitized envelope.
 		MvcResult result = mockMvc.perform(get("/files/task-submissions/" + id)
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andReturn();
 		assertThat(result.getResponse().getStatus())
-				.as("stranger must be denied (403 chain dialect / 409 today's catch-all), got %s",
+				.as("stranger must be denied, got %s",
 						result.getResponse().getStatus())
-				.isIn(403, 409);
-		assertThat(result.getResponse().getContentAsString()).contains("Not authorized to view this submission");
+				.isEqualTo(403);
+		assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode")).isEqualTo("ERR_FORBIDDEN");
+		assertThat(result.getResponse().getContentAsString())
+				.doesNotContain("eb28 fixture typed-stranger-");
 	}
 
 	@Test

@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.util.FileResponseBuilder;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
@@ -157,15 +158,15 @@ abstract class TypedDownloadSecurityCases {
             assertThat(enrolled.getStatus()).isEqualTo(200);
             assertThat(enrolled.getContentAsByteArray()).isEqualTo(BYTES);
         } else {
-            assertThat(enrolled.getStatus()).isIn(403, 409);
-            assertThat(enrolled.getContentAsString()).contains("Not authorized");
+            assertThat(enrolled.getStatus()).isEqualTo(403);
+            assertThat((String) JsonPath.read(enrolled.getContentAsString(), "$.errorCode")).isEqualTo("ERR_FORBIDDEN");
             assertThat(enrolled.getContentAsByteArray()).isNotEqualTo(BYTES);
         }
 
         var stranger = mvc.perform(get(item.url()).header("Authorization", token(STRANGER, AuthFixture.STUDENT)))
                 .andReturn().getResponse();
-        assertThat(stranger.getStatus()).isIn(403, 409);
-        assertThat(stranger.getContentAsString()).contains("Not authorized");
+        assertThat(stranger.getStatus()).isEqualTo(403);
+        assertThat((String) JsonPath.read(stranger.getContentAsString(), "$.errorCode")).isEqualTo("ERR_FORBIDDEN");
         assertThat(stranger.getContentAsByteArray()).isNotEqualTo(BYTES);
     }
 
@@ -183,13 +184,17 @@ abstract class TypedDownloadSecurityCases {
             assertThat(enrolled.getStatus()).isEqualTo(200);
             assertThat(enrolled.getContentAsByteArray()).isEqualTo(BYTES);
         } else {
-            assertThat(enrolled.getStatus()).isIn(403, 409);
-            assertThat(enrolled.getContentAsString()).contains("Not authorized");
+            assertThat(enrolled.getStatus()).isEqualTo(403);
+            assertThat((String) JsonPath.read(enrolled.getContentAsString(), "$.errorCode")).isEqualTo("ERR_FORBIDDEN");
+            assertThat(enrolled.getContentAsString())
+                    .doesNotContain(new String(BYTES, StandardCharsets.UTF_8));
         }
         var stranger = mvc.perform(get(item.url()).header("Authorization", token(STRANGER, AuthFixture.STUDENT)))
                 .andReturn().getResponse();
-        assertThat(stranger.getStatus()).isIn(403, 409);
-        assertThat(stranger.getContentAsString()).contains("Not authorized");
+        assertThat(stranger.getStatus()).isEqualTo(403);
+        assertThat((String) JsonPath.read(stranger.getContentAsString(), "$.errorCode")).isEqualTo("ERR_FORBIDDEN");
+        assertThat(stranger.getContentAsString())
+                .doesNotContain(new String(BYTES, StandardCharsets.UTF_8));
         mvc.perform(get(item.url())).andExpect(status().isUnauthorized());
     }
 
@@ -206,7 +211,8 @@ abstract class TypedDownloadSecurityCases {
         };
         var response = mvc.perform(get(missing).header("Authorization", token(OWNER, AuthFixture.STUDENT)))
                 .andReturn().getResponse();
-        assertThat(response.getStatus()).isBetween(400, 499);
+        assertThat(response.getStatus()).isEqualTo(404);
+        assertThat((String) JsonPath.read(response.getContentAsString(), "$.errorCode")).isEqualTo("ERR_RESOURCE_NOT_FOUND");
         assertThat(response.getContentAsString()).doesNotContain("synthetic typed download content");
     }
 
@@ -216,8 +222,10 @@ abstract class TypedDownloadSecurityCases {
         try (MockedStatic<FileResponseBuilder> responseBuilder = mockStatic(FileResponseBuilder.class)) {
             var response = mvc.perform(get(item.url()).header("Authorization", token(STRANGER, AuthFixture.STUDENT)))
                     .andReturn().getResponse();
-            assertThat(response.getStatus()).isIn(403, 409);
-            assertThat(response.getContentAsString()).contains("Not authorized");
+            assertThat(response.getStatus()).isEqualTo(403);
+            assertThat((String) JsonPath.read(response.getContentAsString(), "$.errorCode")).isEqualTo("ERR_FORBIDDEN");
+            assertThat(response.getContentAsString())
+                    .doesNotContain(new String(BYTES, StandardCharsets.UTF_8));
             responseBuilder.verify(() -> FileResponseBuilder.buildResponse(any(Path.class), anyBoolean()), never());
         }
     }

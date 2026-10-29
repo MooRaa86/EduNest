@@ -70,9 +70,28 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Depends on:** P0-01 (FE channel).  **Blocks:** P4-06 scope clarity.
 **Tests:** n/a (observation task).  Deliverable: evidence note appended to the P4-06 task + ISSUE-MAPPING status.
 **Acceptance criteria:**
-- [ ] PayloadBinding note recorded with request/response captures.
-- [ ] ISSUE-MAPPING row for CHAT-08 annotated.
+- [x] PayloadBinding note recorded with request/response captures.
+- [x] ISSUE-MAPPING row for CHAT-08 annotated.
 **DoD:** per workflow + evidence link above.
+
+**Evidence note (V-01, 2026-10-29) — CHAT-08 ⚠️ → mechanism CONFIRMED → FIXED in the same PR (Omar's decision):**
+
+Probed with `src/test/java/com/example/gradproj/EduNest/websocket/probe/V01PayloadBindingProbeTest.java` (`@Tag("critical")`, prod-chain H2 run — drives the real inbound STOMP chain: `JwtChannelInterceptor` → conversion → `@MessageMapping("/chat/{roomId}")` → `ChatMessageService.saveMessage` → persistence).
+
+**Before the fix (audit observation):** `String content` bound the STOMP body as an opaque string — plain text, JSON string literals, and even an object JSON `{"content":"..."}` were all persisted **verbatim** (quotes and JSON included). CHAT-08's suspected mechanism was CONFIRMED server-side; severity stayed Low (display fidelity — no injection vector at the binding layer).
+
+**Decision (2026-10-29): do NOT wait for P4-06** — the contract fix shipped immediately in this PR: `@Payload ChatMessageRequest` (DTO: `content` field, `@NotBlank`) replaces the raw `String`; `ChatMessageService.saveMessage` rejects blank/missing content (`globalLogicEx` → sender's `/queue/errors`).
+
+**After the fix (observed, same probe):**
+
+| `SEND /app/chat/{roomId}` body | Result |
+|---|---|
+| `hello...` (plain text) | **rejected** — nothing persists |
+| `"hello..."` (JSON string literal) | **rejected** — nothing persists |
+| `{"content":"pure text from FE object"}` | **deserialized → PURE text persisted** |
+| `{"content":"   "}` (blank) | **rejected** — service guard, nothing persists |
+
+**FE impact (mandatory contract change):** room-chat SEND bodies must now be JSON objects `{"content": "..."}` (see `dto/chat/ChatMessageRequest`). Raw-string sends no longer persist anything. The API stays open for reply/attachment fields without re-breaking the contract.
 
 ---
 

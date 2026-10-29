@@ -27,7 +27,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-11** | Med | P1-23 | 1 | auth | D→T (D-23) | Planned |
 | **SEL-12** | Med | P1-04 | 1 | auth | T (+D-01 note) | Planned |
 | **SEL-13** | Med | — | — | auth | DEF (latent design) | Deferred |
-| **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) | **In Progress** (E1–E4 shapes *pinned as of today* by `ErrorShapeProbeTest`, PR #21 / `0326b8b`; assertions normalize when P1-05/EB-12 lands) |
+| **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) → **FIXED** | EB-12 (2026-10-29): unified `ApiError` envelope + `ApiErrorCode` catalog across all five producers; catch-all leak fixed (409+message → 500 sanitized + refId); explicit 403 for method-security `AccessDeniedException`; three 401 dialects → one writer; zero-leak probes E1–E6 in `ErrorShapeProbeTest` (flipped same-PR); D-26 fields map kept (nested under envelope) |
 | **SEL-15** | Med | P0-04 → P1-24 | 0,1 | auth | V→T | Planned |
 | **SEL-16** | Med | P1-03 | 1 | auth | T | Planned |
 | **WS-01** | Crit | P1-12 | 1 | ws | D→T (D-14) | Planned |
@@ -40,7 +40,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CHAT-05** | Med | P3-02 | 3 | database | T | Planned |
 | **CHAT-06** | Low | P4-06 | 4 | ws | T | Planned |
 | **CHAT-07** | Med | P4-07 (cond.) | 4 | ws | D→T (D-13) | Planned |
-| **CHAT-08** | Low | P0-03 → (P4-06 if confirmed) | 0,4 | ws | V→T (cond.) | Planned |
+| **CHAT-08** | Low | P0-03 → P4-06 | 0,4 | ws | V→T (cond.) → FIXED | RESOLVED by EB-1 (2026-10-29, same-PR): mechanism confirmed by V-01 probe, then `@Payload ChatMessageRequest` DTO + blank guard shipped; objects now bind to pure text, raw strings rejected ([tasks#p0-03](phases/phase-00-planning-baseline/tasks.md#p0-03)) — P4-06 keeps CHAT-01/06 only |
 | **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | Planned |
 | **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
 | **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04) | Planned |
@@ -92,7 +92,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | **In Progress** — EB-28 working-tree changes restrict static serving and disable generic path downloads; review and verification pending. EB-27 remains open. |
 | **FILE-02** | High | P1-22 | 1 | file-storage | T | Planned — EB-4 confirmed header/content mismatch accepted on four image surfaces ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **FILE-03** | Med | P0-06 → P1-22 | 0,1 | file-storage | V→T | Planned — arbitrary extension confirmed; traversal inconclusive and untested ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
-| **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | Planned — EB-4 non-ZIP octet-stream accepted by file service; EB-5 endpoint verification pending ([evidence](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
+| **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | **In Progress** — **CONFIRMED endpoint-level (EB-5, isolated run 2026-10-29)**: non-ZIP bytes detected by Tika as `application/octet-stream`, named `*.zip`, accepted (HTTP 200), stored, and served back on all four real upload endpoints (`PATCH /api/v1/task/{id}`, `PATCH /api/v1/project/{id}`, `POST /api/v1/task-submission/{taskId}`, `POST /api/v1/project/{projectId}/submissions`), retrievable via generic `/files` and authorized FileAccessService endpoints; root cause = `.zip` allowlist entry `application/octet-stream` ([evidence](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md); service-level baseline: [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)). Hardening owned by EB-29. |
 | **FILE-05** | Med | P3-03 | 3 | file-storage | T | Planned |
 | **FILE-06** | Med | P6-06 | 6 | deployment | D→T (D-19) | Planned |
 | **FILE-07** | Med | P6-05 (+P6-07 cond.) | 6 | deployment | T | Planned |
@@ -119,7 +119,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DEP-06** | Med | P6-06 | 6 | deployment | = FILE-06 (D-19) | Planned |
 | **DEP-07** | Med | P6-01, P6-03 | 6 | deployment | T | Planned |
 | **DEP-08** | Low | P6-02, P8-05 | 6,8 | deployment | T | Planned |
-| **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | **In Progress** (payload 2 = P2-03 delivered: PR #21, `0326b8b`, CI green, 72/72, Jira EB-37 = Done, 2026-10-29; P2-02 next per sprint order) |
+| **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | **In Progress** (payload 2 = P2-03 delivered: PR #21, `0326b8b`, CI green, 72/72, Jira EB-37 = Done, 2026-10-29; payload 3 = error-contract IT set **delivered by EB-12** 2026-10-29: probes E1–E6, 80/80; P2-02 (EB-36) next per sprint order — Rahma's card) |
 | **TST-02** | Med | P2-01 | 2 | testing | T | **Verified** (merged to `main` 2026-10-28, commit `2a74075`; 14/14 green with zero env — `mvnw test` self-contained; Jira EB-35 = Done; decision D-27) |
 | **TST-03** | Med | P2-07 | 2 | testing | T | **Verified** (CI live: green run `0cd3464`, red-run evidence documented (exit 126/exec bit); branch protection ON 2026-10-28; no-skip enforced) |
 | **TST-04** | Low | P2-08, P8-07 | 2,8 | testing | T | Planned |

@@ -4,14 +4,14 @@
 
 | Finding | Issue | Evidence status | Verification task |
 |---|---|---|---|
-| STOMP `String content` binding ambiguity | CHAT-08 | ⚠️ needs FE payload confirm | P0-03 |
+| ~~STOMP `String content` binding ambiguity~~ | CHAT-08 | ✅ RESOLVED by EB-1 (2026-10-29): DTO contract shipped — FE must send `{"content": "..."}` objects; raw strings rejected, nothing persists | P0-03 (closed) |
 | Contact-reply HTML injection | SEL-15 | ⚠️ needs runtime POC | P0-04 |
 | `LIKE '%kw%'` wildcard abuse | MSH-12 | ⚠️ needs runtime/load POC | P0-05 |
 | Cover-image filename extension trust | FILE-03 | ⚠️ needs runtime upload matrix | P0-06 |
 | Zip MIME allowlist looseness (`octet-stream`) | FILE-04 | ⚠️ needs runtime upload matrix | P0-06/P0-07 |
 | Question re-parenting ownership | QZ-06 | ⚠️ needs cross-mentor POC | P0-08 |
 | Fresh-DB commission + first-admin boot behavior | MSH-05 | ⚠️ needs clean-DB rehearsal | P0-09 |
-| WS transport/backend-header contract with FE | WS-01/CHAT-08 (support) | unknown FE client | P0-03 |
+| WS transport/backend-header contract with FE | WS-01 (CHAT-08's payload half RESOLVED by EB-1: DTO contract shipped; raw JWT header quirk remains) | unknown FE client | Payload half closed; header half tracked in EB-12 |
 
 These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM-WORKFLOW §6`](TEAM-WORKFLOW.md#6-sync-rules-with-the-audit-registry)).
 
