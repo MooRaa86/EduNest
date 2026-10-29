@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.config.security;
 
 import com.example.gradproj.EduNest.config.auth.EduNestAuthenticationProvider;
+import com.example.gradproj.EduNest.config.file.UploadPolicy;
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAccessDeniedHandler;
 import com.example.gradproj.EduNest.exception.authHandling.EduNestAuthenticationEntryPoint;
 import com.example.gradproj.EduNest.filters.JwtTokenGeneratorFilter;
@@ -118,8 +119,8 @@ public class ProjectSecurityConfig {
     }
 
     /**
-     * PROD branch — behavior identical to the former ProjectSecurityProdconfig.
-     * Stateless JWT; explicit authorization matrix; custom 401/403 JSON handlers.
+     * PROD branch — stateless JWT, explicit authorization matrix and custom
+     * 401/403 JSON handlers, including the current upload exposure policy.
      */
     private SecurityFilterChain prodChain(HttpSecurity http) throws Exception {
         http
@@ -154,25 +155,28 @@ public class ProjectSecurityConfig {
                                 "/forget-password/**",
                                 "/api/v1/admin/register",
                                 "/ws/**",
-                                "/uploads/mentorship-cover-images/**",
-                                "/uploads/profile-images/**",
-                                "/uploads/student-profile/**",
-                                "/uploads/mentor-profile/**",
-                                "/uploads/mentor/**",
-                                "/uploads/student/**",
-                                "/uploads/chatroom/**",
-                                "/uploads/**",
-
-                                //ToDo public uploads until front make the security on it
 
                                 "/api/v1/contact/save-message",
                                 "/api/v1/student/mentorships/*/overview",
                                 "/api/v1/student/mentorships/*/reviews",
                                 "/api/v1/mentorship/explore",
                                 "/api/v1/mentorship/categories",
-                                "/api/v1/profile/mentor/**",
-                                "/uploads/**"
+                                "/api/v1/profile/mentor/**"
                         ).permitAll()
+                        // ==== Upload exposure policy (P1-21 / EB-28, FILE-01,
+                        // TD-09/G14, D-07) — ONLY the anonymous-public categories
+                        // leave the chain. The former wrong-name entries
+                        // (profile-images, student-profile, mentor-profile) and the
+                        // duplicated public upload catch-alls are gone; private
+                        // categories are denyAll'd below and reachable ONLY through
+                        // ownership-checked /files/** typed endpoints. ====
+                        .requestMatchers(UploadPolicy.PUBLIC_UPLOAD_PATTERNS.toArray(new String[0])).permitAll()
+                        // EVERYTHING ELSE under /uploads/** is non-public (fail-closed):
+                        // submissions/task-attachment/project-attachment, admin, unknown
+                        // categories, future additions — never served via /uploads/**,
+                        // not even for an authenticated user. /files/** typed endpoints stay
+                        // ownership-checked via anyRequest().authenticated() + FileAccessService.
+                        .requestMatchers("/uploads/**").denyAll()
                         // ========== ADMIN Only ==========
                         .requestMatchers(
                                 "/api/v1/admin/**",
@@ -204,14 +208,16 @@ public class ProjectSecurityConfig {
     }
 
     /**
-     * DEV branch (EDUNEST_UNSAFE_DEV=true only) — behavior identical to the former
-     * ProjectSecurityConfig: permissive chain for local development.
+     * DEV branch (EDUNEST_UNSAFE_DEV=true only) — permissive for local development,
+     * except for the explicit upload policy below.
      */
     private SecurityFilterChain devChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(UploadPolicy.PUBLIC_UPLOAD_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers("/uploads/**").denyAll()
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

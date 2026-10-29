@@ -20,6 +20,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -196,6 +197,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiError> handleEntityNotFound(HttpServletRequest req, EntityNotFoundException ex) {
+        return build(req, HttpStatus.NOT_FOUND, ApiErrorCode.ERR_RESOURCE_NOT_FOUND,
+                "The requested item was not found.");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleMissingStaticResource(HttpServletRequest req, NoResourceFoundException ex) {
         return build(req, HttpStatus.NOT_FOUND, ApiErrorCode.ERR_RESOURCE_NOT_FOUND,
                 "The requested item was not found.");
     }

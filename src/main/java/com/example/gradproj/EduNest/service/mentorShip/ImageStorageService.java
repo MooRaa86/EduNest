@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,12 +16,15 @@ import java.util.UUID;
 @Service
 public class ImageStorageService {
 
-    private static final String UPLOAD_DIR = "uploads/mentorship-cover-images";
-    private static final String BASE_UPLOAD_DIR = "uploads";
+    private final Path baseUploadDir;
+
+    public ImageStorageService(@Value("${app.upload.base-dir:uploads}") String baseUploadDir) {
+        this.baseUploadDir = Paths.get(baseUploadDir);
+    }
 
     public String saveCoverImage(Long mentorshipId, MultipartFile file) {
         try {
-            Path uploadPath = Paths.get(UPLOAD_DIR);
+            Path uploadPath = baseUploadDir.resolve("mentorship-cover-images");
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -59,7 +63,7 @@ public class ImageStorageService {
                         Paths.get(oldImageUrl).getFileName().toString();
 
                 Path oldFilePath =
-                        Paths.get(UPLOAD_DIR).resolve(fileName);
+                        baseUploadDir.resolve("mentorship-cover-images").resolve(fileName);
 
                 Files.deleteIfExists(oldFilePath);
             }
@@ -72,7 +76,7 @@ public class ImageStorageService {
     public String saveImage(String folderName, Long id, MultipartFile file) {
         try {
 
-            Path uploadPath = Paths.get(BASE_UPLOAD_DIR, folderName);
+            Path uploadPath = baseUploadDir.resolve(folderName);
 
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
@@ -111,7 +115,7 @@ public class ImageStorageService {
                     StandardCopyOption.REPLACE_EXISTING
             );
 
-            return "/" + BASE_UPLOAD_DIR + "/" + folderName + "/" + fileName;
+            return "/uploads/" + folderName + "/" + fileName;
 
         } catch (IOException e) {
             throw new globalLogicEx("Failed to store image");
@@ -127,7 +131,7 @@ public class ImageStorageService {
                         Paths.get(imageUrl).getFileName().toString();
 
                 Path filePath =
-                        Paths.get(BASE_UPLOAD_DIR, folderName)
+                        baseUploadDir.resolve(folderName)
                                 .resolve(fileName);
 
                 Files.deleteIfExists(filePath);

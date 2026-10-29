@@ -7,7 +7,7 @@ Two storage services coexist with different rigor levels:
 1. **`FileStorageService`** (secure path) — Tika content sniffing, extension allow/deny lists, sanitized naming, atomic writes, traversal guards. Used for submissions/attachments.
 2. **`ImageStorageService`** (lenient path) — content-type-header-trusting image saves for avatars/cover images/chatroom images.
 
-Public access via static serving of the entire `uploads/` tree (both profiles) plus typed authenticated download endpoints — with one generic endpoint that bypasses ownership.
+The proposed **upload exposure policy ([P1-21]/EB-28, D-07)** serves only four anonymous-public folders statically. The legacy arbitrary-path endpoint is disabled pending an ownership-aware replacement; private categories use typed, ownership-checked `/files/**` endpoints.
 
 ## 2. Current Implementation
 
@@ -31,17 +31,29 @@ Consumers (verified literals):
 
 ### 2.2 `service/mentorShip/ImageStorageService`
 - `saveCoverImage` (mentorship covers) → `uploads/mentorship-cover-images/{id}-EduNest-{uuid}{ext}`; validates only that the original filename contains a dot. Caller (`uploadCoverImage`) checks `MultipartFile.getContentType().startsWith("image/")` — **client-controlled header**; size ≤5MB; **no Tika/magic bytes, no extension whitelist, extension taken raw from filename** (traversal-suspect sub-path; NOTE flagged).
-- `saveImage/deleteImage` — same lenient pattern for `student`, `mentor`, `admin`, `chatroom` folders (delete swallows IOException).
+- `saveImage/deleteImage` — same lenient pattern for `student`, `mentor`, `admin`, `chatroom` folders (`deleteImage` wraps IOException; cover deletion logs it). Image writes, deletes and MVC reads use `${app.upload.base-dir:uploads}`. If a deployment previously set a non-default root, existing images remain in the former `uploads/` root and need an explicit migration; URLs remain `/uploads/...`.
 - Old cover deleted **before** the new file is committed (failure window → broken `coverImageUrl`).
 
-### 2.3 Serving & access
-- `config/WebConfig`: `registry.addResourceHandler("/uploads/**").addResourceLocations("file:uploads/")` (all per-folder variants commented out).
-- `application-prod.properties` additionally adds `file:uploads/` to `spring.web.resources.static-locations`.
-- Security: **`/uploads/**` is permitAll in BOTH profiles** — including `uploads/submissions/*` student work; the code carries `//ToDo public uploads until front make the security on it` (`ProjectSecurityProdconfig` L88). Actual folder names used by code (`student`, `mentor`, `submissions`, `chatroom`) don't all match the individually-listed rule names (`student-profile`, `mentor-profile`, `profile-images`) — only the catch-all covers reality.
+### 2.3 Serving & access — upload exposure policy ([P1-21]/EB-28)
+
+**Single policy source: `config/file/UploadPolicy`.** Both serving layers are generated from it; folder names are the REAL on-disk names written by `ImageStorageService`/`FileStorageService` (resolves TD-09/G14 without renames).
+
+| Category | Folders | Chain (`ProjectSecurityConfig#prodChain`) | Resource handlers (`config/WebConfig`) |
+|---|---|---|---|
+| anonymous-public | `mentorship-cover-images`, `student`, `mentor`, `chatroom` | `/uploads/{folder}/**` → permitAll (explicit, from `UploadPolicy.PUBLIC_UPLOAD_PATTERNS`) | one handler per folder → `file:{app.upload.base-dir}/{folder}/` |
+| private (ownership-checked only) | `submissions`, `task-attachment`, `project-attachment` | `/uploads/**` → **denyAll** (first-match: public patterns win first) | **no handler** → never served directly |
+| admin | `admin` | `/uploads/**` denyAll (non-public default) | **no handler** |
+| unknown / future | anything else | `/uploads/**` denyAll (fail-closed) | **no handler** |
+
+Private/unknown paths are never reachable via `/uploads/**` — **not even for authenticated users** (denyAll, not `anyRequest().authenticated()`) — and exist only through the typed `/files/**` routes below. If a folder is added on disk it stays denied until `UploadPolicy` is deliberately extended (fail-closed); under Supabase (D-25/[ADD-03], EB-83) the same sets map onto bucket policies.
+
+Also removed as part of the policy: the prod `file:uploads/` entry in `spring.web.resources.static-locations` (it mapped the uploads tree onto the default `/**` resource handler — an unprefixed leak, e.g. `GET /submissions/…` for any authenticated user); public serving is now *only* via the `WebConfig` allowlist. The dev chain (`EDUNEST_UNSAFE_DEV=true`) remains deliberately permissive and is not a deployable configuration.
+
 - **`/files/**`** (`controller/file/FileController`) — typed endpoints route through `service/fileSotageService/FileAccessService` with ownership verification:
   - `GET /files/task-submissions/{id}` / `/files/project-submissions/{id}` — owner student or the mentor of the mentorship mold.
   - `GET /files/tasks/{id}/attachment`, `/files/projects/{id}/attachment` — mentor or enrolled student.
-  - **`GET /files?filePath=…&download=` (`serveFile`, L114–136) performs no ownership check** — any authenticated user (prod) can download any uploads path by name; traversal itself is properly blocked (null-byte, normalization, `startsWith` base, directory refusal).
+  - **`GET /files?filePath=…&download=`** returns 403 from the handler for authenticated requests with the required parameter: it cannot associate arbitrary paths with owners. Anonymous requests are rejected by the production chain. This is a compatibility break; coordinate migration to typed endpoints and EB-27.
+- Regression pins: `security/probes/UploadExposurePolicyProbeTest` covers anonymous/authenticated private denials, public allowlist and returned bytes, independent MVC checks, admin/unknown fail-closed, traversal/encoded variants, configured image root, and task-submission typed-route authorization; `UploadsServingProbeTest` pins the G14 explicit rule.
 - Response headers via `util/FileResponseBuilder`: `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`, inline vs attachment disposition, MIME by `Files.probeContentType` (octet-stream fallback).
 
 ## 3. Data Flow (submission example)
@@ -60,7 +72,7 @@ sequenceDiagram
 
 ## 4. Known Issues (IDs in ../ISSUES.md)
 
-- **FILE-01 (Critical):** `/uploads/**` public incl. submissions + generic `/files?filePath=` no-ownership download.
+- **FILE-01 (Critical):** proposed EB-28 changes restrict static serving and disable the generic arbitrary-path download; verification and review remain pending. EB-27 remains relevant for any ownership-aware replacement.
 - **FILE-02 (High):** `ImageStorageService` trusts client Content-Type; no magic-byte checks (covers/avatars/chatroom).
 - **FILE-03 (Medium):** filename-extension path construction in `saveCoverImage` (un-sanitized extension substring — traversal-suspect).
 - **FILE-04 (Medium):** zip allowlist aligns with `application/octet-stream` (weakened spoofing defense).
@@ -70,8 +82,9 @@ sequenceDiagram
 
 ## 5. Open Questions
 
-- Intended policy for submissions/attachments once the frontend adds access control: keep static public serving for *public* folders only and route artifacts through `/files/**` typed endpoints? (Recommend; current config makes everything public meanwhile.)
-- Is blob-store (S3/GCS) planned? Current design couples storage to local disk + container FS.
+- D-07 policy is implemented in the EB-28 working tree and pending review: static public serving for four folders; private content uses typed endpoints. FE must coordinate submission, attachment, legacy download and admin-image migrations.
+- EB-28 temporarily disables the legacy generic endpoint as a security dependency; this breaks public-category callers and departs from D-06's guard-first default. Eng Lead and FE liaison approval is required; EB-27 remains open for a compatible ownership-aware solution.
+- Is blob-store (S3/GCS) planned? — **decided (D-25/[ADD-03], EB-83): Supabase Storage**; until it lands the local-disk exposure policy above is the transitional contract (`UploadPolicy` sets map onto bucket policies).
 
 ## 6. Related Documentation
 

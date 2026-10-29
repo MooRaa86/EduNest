@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -27,33 +28,36 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 	private static final String STRANGER = "probe-fnb-stranger@example.org";
 
 	/**
-	 * G9 — generic file endpoint serves any file under base-dir WITHOUT ownership check.
-	 * Audit: FileController#serveFile — traversal blocked, ownership NOT checked.
-	 * EXPECT TODAY: 200 + file bytes for a foreigner.
-	 * FLIPS WITH: [P1-20] generic file endpoint guard (EB-27) → expect 403 then.
-	 * Companion guard-rail: traversal STAYS blocked (400) — regression net for the fix.
+	 * G9 — the legacy arbitrary-path endpoint is disabled until an ownership-aware
+	 * replacement is available. Both ordinary paths and traversal attempts fail.
 	 */
 	@Test
-	@DisplayName("G9/todayOpen: stranger fetches an arbitrary stored file via ?filePath= → 200")
+	@DisplayName("G9: arbitrary-path downloads are forbidden")
 	void g9_strangerFetchesArbitraryFile() throws Exception {
 		auth.student(STRANGER); // token-holder must exist in DB (validator checks users table)
 		Path dir = Path.of(baseDir, "probe-fnb");
 		Files.createDirectories(dir);
-		Path file = dir.resolve("g9-probe.txt");
+		Path file = Files.createTempFile(dir, "g9-probe-", ".txt");
 		Files.write(file, "g9 secret bytes".getBytes(StandardCharsets.UTF_8));
 		try {
 			mockMvc.perform(get("/files")
-							.param("filePath", "probe-fnb/g9-probe.txt")
+							.param("filePath", "probe-fnb/" + file.getFileName())
 							.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
-					.andExpect(status().isOk());
+					.andExpect(status().isForbidden());
 
 			// traversal must STAY blocked (this part is FIXED behavior, keep forever)
 			mockMvc.perform(get("/files")
 							.param("filePath", "../../application.properties")
 							.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
-					.andExpect(status().isBadRequest());
+					.andExpect(status().isForbidden());
 		} finally {
-			Files.deleteIfExists(file);
+			try {
+				Files.deleteIfExists(file);
+			} catch (IOException e) {
+				// Windows may temporarily lock even a closed synthetic fixture.
+				System.err.println("Could not delete disposable G9 fixture; retrying at JVM exit: " + e);
+				file.toFile().deleteOnExit();
+			}
 		}
 	}
 

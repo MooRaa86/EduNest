@@ -116,23 +116,9 @@ public class FileController {
             @RequestParam String filePath,
             @RequestParam(defaultValue = "false") boolean download
     ) {
-
-        if (filePath == null || filePath.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // normalize
-        String cleanPath = filePath.replace("\\", "/");
-
-        // remove leading slashes
-        cleanPath = cleanPath.replaceFirst("^[\\\\/]+", "");
-
-        // remove /uploads prefix if exists
-        if (cleanPath.startsWith("uploads/")) {
-            cleanPath = cleanPath.substring("uploads/".length());
-        }
-
-        return resolveAndServeFile(cleanPath, download);
+        // An arbitrary path cannot be associated reliably with an owner. Use a
+        // typed endpoint, which authorizes the corresponding database entity.
+        return ResponseEntity.status(403).build();
     }
 
     private ResponseEntity<Resource> resolveAndServeFile(String filePath, boolean download) {
@@ -146,13 +132,18 @@ public class FileController {
                 return badRequest();
             }
 
-            String cleanPath = filePath.replace("\\", "/").replaceFirst("^[\\\\/]+", "");
-
-            if (cleanPath.startsWith(baseDir + "/")) {
-                cleanPath = cleanPath.substring(baseDir.length() + 1);
+            Path storedPath = Path.of(filePath.replace("\\", "/"));
+            Path configuredRoot = Path.of(baseDir.replace("\\", "/")).normalize();
+            Path targetPath;
+            if (storedPath.isAbsolute()) {
+                targetPath = storedPath.normalize();
+            } else {
+                Path normalizedStoredPath = storedPath.normalize();
+                if (!configuredRoot.isAbsolute() && normalizedStoredPath.startsWith(configuredRoot)) {
+                    normalizedStoredPath = configuredRoot.relativize(normalizedStoredPath);
+                }
+                targetPath = resolvedBaseDir.resolve(normalizedStoredPath).normalize();
             }
-
-            Path targetPath = resolvedBaseDir.resolve(cleanPath).normalize();
 
             log.debug("Original DB path: {}", filePath);
             log.debug("Resolved target path: {}", targetPath);
@@ -172,7 +163,14 @@ public class FileController {
                 return ResponseEntity.notFound().build();
             }
 
-            return FileResponseBuilder.buildResponse(targetPath, download);
+            Path realRoot = resolvedBaseDir.toRealPath();
+            Path realTarget = targetPath.toRealPath();
+            if (!realTarget.startsWith(realRoot)) {
+                log.warn("File resolves outside upload directory: {}", targetPath);
+                return badRequest();
+            }
+
+            return FileResponseBuilder.buildResponse(realTarget, download);
 
         } catch (Exception e) {
             log.error("Error serving file: {}", filePath, e);
