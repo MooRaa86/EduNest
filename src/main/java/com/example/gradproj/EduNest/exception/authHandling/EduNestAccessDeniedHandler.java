@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.exception.authHandling;
 
+import com.example.gradproj.EduNest.exception.ApiErrorCode;
+import com.example.gradproj.EduNest.exception.ServletErrorWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,24 +11,22 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 
+/**
+ * P1-05 / EB-12 — unified 403 envelope. The underlying exception message is
+ * NOT echoed; a clean, stable text is sent instead (the FE renders it
+ * directly). Same shape/code as the advice-level AccessDeniedException
+ * handler (ServletErrorWriter).
+ */
 @Component
 public class EduNestAccessDeniedHandler implements AccessDeniedHandler {
+
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        LocalDateTime currentTimeStamp = LocalDateTime.now();
-        String message = (accessDeniedException != null && accessDeniedException.getMessage() != null) ?
-                accessDeniedException.getMessage() : "Authorization failed";
-        String path = request.getRequestURI();
-        response.setHeader("EduNest-denied-reason", "Authorization failed");
-        response.setStatus(HttpStatus.FORBIDDEN.value());
-        response.setContentType("application/json;charset=UTF-8");
-        // Construct the JSON response
-        String jsonResponse =
-                String.format("{\"timestamp\": \"%s\", \"status\": %d, \"error\": \"%s\", \"message\": \"%s\", \"path\": \"%s\"}",
-                        currentTimeStamp, HttpStatus.FORBIDDEN.value(), HttpStatus.FORBIDDEN.getReasonPhrase(),
-                        message, path);
-        response.getWriter().write(jsonResponse);
+        ServletErrorWriter.write(response,
+                HttpStatus.FORBIDDEN.value(),
+                ApiErrorCode.ERR_FORBIDDEN,
+                "You do not have permission to access this resource.",
+                request.getRequestURI());
     }
 }

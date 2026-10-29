@@ -1,53 +1,77 @@
 # Error Responses & Status Contract
 
-The full error surface as implemented (`exception/GlobalExceptionHandler`, `@RestControllerAdvice`, verified by reading the whole file), plus the three *other* places that produce error JSON.
+**EB-12 / P1-05 (2026-10-29):** ONE envelope everywhere — every client-facing
+error from every producer (REST advice, security entry point, access-denied
+handler, JWT filter) is the exact same shape. `errorCode` is the machine
+contract (FE branches on it); `message` is guaranteed clean and FE-renderable.
+Probes: `security/probes/ErrorShapeProbeTest.java` (E1–E6, zero-leak asserted).
 
-## 1. `GlobalExceptionHandler` handler table
+## 1. The envelope
 
-Body shape: `ErrorResponse` — a map of `key → message` (via `addError(key,message)`); some handlers return ad-hoc `Map<String,Object>` shapes instead.
+```json
+{
+  "timestamp": "2026-10-29T19:30:00",
+  "status": 403,
+  "error": "Forbidden",
+  "errorCode": "ERR_FORBIDDEN",
+  "message": "You do not have permission to access this resource.",
+  "path": "/api/v1/contact/all-messages",
+  "refId": "b3a1f00c"
+}
+```
 
-| Trigger exception | HTTP | Body |
-|---|---|---|
-| `EmailAlreadyExistsException` | **409** | `{"Email Error": "<msg>"}` |
-| `InvalidOtpException` | **400** | `{"OTP Error": "<msg>"}` |
-| `OtpExpiredException` | **410** | `{"OTP Expiration": "<msg>"}` |
-| `UserAlreadyVerifiedException` | **400** | `{"Verification Error": "<msg>"}` |
-| `UserNotFoundException` (register pkg) | **404** | `{"User Search": "<msg>"}` |
-| `RoleNotFoundException` | **500** | `{"System Error": "<msg>"}` |
-| `MethodArgumentNotValidException` | **400** | `{<field>: <defaultMessage>, ...}` (one entry per field error + global errors under object name) |
-| `HttpMessageNotReadableException` | **400** | enum target: `{"<field>": "Invalid value 'X'. Accepted values are: [...]"}` (empty → "Value cannot be empty..."); otherwise `{"error": "Malformed JSON request or invalid data type"}` |
-| `globalLogicEx` (generic business error) | **400** | `{"error": "<msg>"}` |
-| `InvalidJwtToken` | **401** | `{"error": "<msg>"}` |
-| `EntityNotFoundException` | **404** | `{"error": "entity not found maybe id is invalid bro :)"}` (fixed humorous message) |
-| `DataIntegrityViolationException` | **400** | parsed from the MySQL message: Duplicate entry → `{"<key name> already exists."}`; Data too long → `{"<column> exceeds the allowed length."}`; cannot be null → `{"<column> is required."}`; foreign key → `{"error": "Invalid related data provided."}`; fallback `{"error": "Database constraint violation occurred."}` |
-| `UsernameNotFoundException` | **404** | `{"error": "<msg>"}` — echoes emails (user enumeration: SEL-03) |
-| `BadCredentialsException` | **401** | `{"error": "Invalid password!"}` — distinct from not-found (enumeration) |
-| `UnrecognizedPropertyException` | **400** | `{"error":"INVALID_FIELD","message":"Field 'x' is not allowed","invalidField":"x","allowedFields":[...]}` — only possible in **prod** (`fail-on-unknown-properties=true` is set in the prod profile only) |
-| **catch-all `Exception`** | **409** | `{"error": exception.getMessage()}` — *every* other error (including 500-class crashes) becomes 409 with a raw internal message (**SEL-14**) |
+- `errorCode` — stable machine code (see `exception/ApiErrorCode`); never changes wording.
+- `message` — clean human text; renders directly in the UI; contains **no** stack traces, SQL, class names, or framework echoes.
+- `refId` — present ONLY on sanitized 500s; correlates with the backend log line (`Unhandled exception [refId=…]`).
+- `fields` — present on `ERR_VALIDATION` (D-26 permanent contract) and `ERR_UNKNOWN_FIELD`/enum hints: a `key → message` map.
 
-Notes:
-- `AccessDeniedException` (method security) — not listed explicitly → falls to the catch-all as **409** unless the security layer catches it first (prod has the `EduNestAccessDeniedHandler`, which handles *filter-chain* denials, not method-security throws inside controllers; in practice most `AccessDeniedException`s from `@PreAuthorize`/services reach the catch-all → 409 instead of 403 in many paths). Flagged in [../authentication-security/authorization-rules.md](../authentication-security/authorization-rules.md).
-- Because the handler is broad, **any unexpected exception** returns HTTP 409 "Conflict" — misleading for clients and monitoring (SEL-14; recommended fix: map to 500 + omit raw message).
+Produced by exactly one serializer (`exception/ServletErrorWriter`) for the
+servlet layer and one envelope class (`exception/ApiError`) for the advice —
+five producers, no drift (E6 pins this).
 
-## 2. Security-layer JSON shapes (prod)
+## 2. Status + errorCode catalog (REST)
 
-| Producer | HTTP | Body | Headers |
+| Failure | HTTP | errorCode | message (clean) |
 |---|---|---|---|
-| `EduNestAuthenticationEntryPoint` (anonymous blocked) | 401 | `{timestamp, status, error, message, path}` | `EduNest-error-reason: Authentication failed` |
-| `EduNestAccessDeniedHandler` (URL-rule denial) | 403 | 403 JSON | `EduNest-denied-reason: Authorization failed` |
-| `JwtTokenValidatorFilter` (bad/stale token, DB re-check fail) | 401 | its own JSON (`"Invalid JWT token"` or the deactivation message) | – |
+| Unhandled exception (catch-all) | **500** (was 409+leak) | `ERR_INTERNAL_SYSTEM` | `An unexpected system error occurred. Please try again.` (+ refId) |
+| `@PreAuthorize`/service `AccessDeniedException` | **403** (was 409) | `ERR_FORBIDDEN` | `You do not have permission to access this resource.` |
+| Filter-chain denial (URL rules) | 403 | `ERR_FORBIDDEN` | same as above |
+| Anonymous request to protected route | 401 | `ERR_UNAUTHENTICATED` | `Authentication required. Please log in.` |
+| Bad/deactivated-token JWT (filter + advice) | 401 | `ERR_INVALID_TOKEN` | `Invalid token: user is deactivated or deleted, please login again` / `Invalid JWT token, please login again` |
+| Login bad password | 401 | `ERR_INVALID_CREDENTIALS` | `Invalid email or password.` |
+| Business rule (`globalLogicEx`) | 400 | `ERR_BUSINESS_RULE` | throw-site text (audited, user-facing) |
+| Bean validation (`MethodArgumentNotValid`) | 400 | `ERR_VALIDATION` (+ `fields` map) | `Please check the submitted fields.` |
+| Malformed JSON / type conversion | 400 | `ERR_MALFORMED_BODY` | `Malformed JSON request or invalid data type.` (enum hints under `fields`) |
+| Unknown JSON field (prod) | 400 | `ERR_UNKNOWN_FIELD` | `Field 'x' is not allowed.` (+ `fields`: invalidField, allowedFields) |
+| `EmailAlreadyExists` | 409 | `ERR_EMAIL_IN_USE` | throw-site / `Email is already registered.` |
+| `InvalidOtp` / `OtpExpired` / `UserAlreadyVerified` | 400 / 410 / 400 | `ERR_INVALID_OTP` / `ERR_OTP_EXPIRED` / `ERR_ALREADY_VERIFIED` | friendly, fixed fallbacks |
+| `UserNotFound` / `UsernameNotFound` | 404 | `ERR_USER_NOT_FOUND` | fixed `User not found.` (email echo retired; enumeration wording unifies with EB-15) |
+| `EntityNotFound` | 404 | `ERR_RESOURCE_NOT_FOUND` | `The requested item was not found.` (bro joke retired) |
+| `DataIntegrityViolation` | 400 | `ERR_CONSTRAINT_VIOLATION` | category text only (`This value is already in use.`, `One of the submitted values is too long.`, `Some required information is missing.`, `Invalid related data provided.`) — **raw MySQL index/column identifiers stripped** |
+| `RoleNotFound` (server misconfig) | 500 | `ERR_INTERNAL_SYSTEM` | generic sanitized (role name never sent) |
 
-⇒ **Three distinct 401/403 JSON shapes** can reach clients depending on which layer fired (advice vs entry point vs inline filter write) — document for the frontend or unify in stabilization.
+Login enumeration neutrality (identical bodies for unknown-user vs bad-password)
+is **EB-15's** scope (`SEL-03`) — this PR only fixed the shape + fixed texts.
 
-## 3. WebSocket errors
+## 3. Producers (all one shape)
 
-- `exception/WebSocketExceptionHandler` — `@MessageExceptionHandler(Exception.class)` → `@SendToUser("/queue/errors")` with the **raw** `ex.getMessage()` as a plain string.
-- `ChatMessageService.saveMessage` failure path pushes `/user/{email}/queue/errors` strings itself (room-not-found) and returns `null` to the controller (silent-contract failure mode).
+| Producer | HTTP | errorCode |
+|---|---|---|
+| `GlobalExceptionHandler` (`@RestControllerAdvice`) | per catalog | per catalog |
+| `EduNestAuthenticationEntryPoint` | 401 | `ERR_UNAUTHENTICATED` |
+| `EduNestAccessDeniedHandler` | 403 | `ERR_FORBIDDEN` (old `EduNest-denied-reason` header removed) |
+| `JwtTokenValidatorFilter` (inline writes) | 401 | `ERR_INVALID_TOKEN` |
 
-## 4. Contract recommendations (stabilization)
+## 4. WebSocket
 
-1. Repoint the catch-all to **500** + generic body (log details server-side), keep 409 only for true conflicts.
-2. Add explicit handlers for `AccessDeniedException` → 403 and `Forbidden`/`AuthorizationDeniedException`.
-3. Unify the 401/403 body shape across entry point/denied handler/filter/advice.
-4. Productize the "entity not found bro" message; keep field-level validation map (it's good).
-5. Assert `fail-on-unknown-properties` consistency or make the dev behavior explicit in the API docs (silent ignore hides client typos during development).
+- `/user/queue/errors` frames remain plain strings (documented WS contract):
+  `globalLogicEx` → authored business text; anything unexpected → the same
+  generic sanitized sentence as REST 500. No refId over WS (log line carries it).
+- Room-not-found push from `ChatMessageService` unchanged (tracked in
+  ISSUE-MAPPING chat rows / P4-06).
+
+## 5. Anti-leak policy (enforced by probes E1/E3 + assertNoInternalLeak)
+
+Blocked from bodies forever: exception class names, `java.*`/`org.*` internals,
+Hibernate/SQL text, stack markers, framework echo messages (`Full authentication
+is required…`). Details go to logs with refId correlation.

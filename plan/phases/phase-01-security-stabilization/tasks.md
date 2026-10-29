@@ -97,6 +97,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Tests:** error-contract IT set: generic exception→500 shape; 403 shape; three 401 paths same bytes (modulo values).
 **Docs:** `error-responses.md` rewrite; endpoints.md notes; ISSUE-MAPPING SEL-14.
 
+> **P1-05 implemented (EB-12, 2026-10-29):** all five producers emit the one `ApiError` envelope (`{timestamp,status,error,errorCode,message,path,+refId on 500,+fields}`); `ApiErrorCode` catalog added. Catch-all leak FIXED: unhandled → 500 `ERR_INTERNAL_SYSTEM` with sanitized generic message + log-correlation refId (raw `e.getMessage()` never sent). Explicit `AccessDeniedException` advice handler → 403 `ERR_FORBIDDEN` (method-security denials no longer fall through as 409). Entry point/denied handler/JWT filter unified via `ServletErrorWriter` (three-401-dialect problem retired; `EduNest-denied-reason` header removed). Data-layer: MySQL index/column identifiers stripped → category text. `UserNotFound`/`UsernameNotFound` → fixed text (email echo retired); enumeration wording unification stays with EB-15/SEL-03. D-26: fields map SURVIVES nested inside the envelope for `ERR_VALIDATION`. WebSocket leak fixed: unexpected exceptions → generic text on `/queue/errors` (business `globalLogicEx` messages pass through). Probes E1–E6 (incl. no-leak assertions + three-producer shape pin) — 80/80 green on landing PR. FE ticket EF-2 created (unassigned — Shahd to pick when she reaches it).
+
 <a id="p1-06"></a>
 ### P1-06 — OTP type isolation & verification scoping
 
