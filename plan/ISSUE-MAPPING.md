@@ -25,7 +25,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-09** | Med | P1-10 | 1 | auth | T | Planned |
 | **SEL-10** | High | P1-11 | 1 | auth | D→T (D-05) | Planned |
 | **SEL-11** | Med | P1-23 | 1 | auth | D→T (D-23) | Planned |
-| **SEL-12** | Med | P1-04 | 1 | auth | T (+D-01 note) | Planned |
+| **SEL-12** | Med | P1-04 | 1 | auth | T (+D-01 note) | EB-11 implementation in review: JWT always in Authorization header; body gated by compatibility property (default true pending FE migration); ProviderManager erases credentials. Merge, CI and FE/security review remain pending. |
 | **SEL-13** | Med | — | — | auth | DEF (latent design) | Deferred |
 | **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) → **FIXED** | EB-12 (2026-10-29): unified `ApiError` envelope + `ApiErrorCode` catalog across all five producers; catch-all leak fixed (409+message → 500 sanitized + refId); explicit 403 for method-security `AccessDeniedException`; three 401 dialects → one writer; zero-leak probes E1–E6 in `ErrorShapeProbeTest` (flipped same-PR); D-26 fields map kept (nested under envelope) |
 | **SEL-15** | Med | P0-04 → P1-24 | 0,1 | auth | V→T | Planned |

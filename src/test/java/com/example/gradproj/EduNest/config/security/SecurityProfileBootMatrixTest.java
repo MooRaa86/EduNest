@@ -103,4 +103,25 @@ class SecurityProfileBootMatrixTest {
             assertThat(ctx).hasSingleBean(SecurityFilterChain.class);
         });
     }
+
+    @Test
+    void authenticationManagerErasesCredentialsInBothModes() {
+        for (String mode : new String[]{"spring.profiles.active=prod", "EDUNEST_UNSAFE_DEV=true"}) {
+            runner(mode).run(ctx -> {
+                assertThat(ctx).hasNotFailed();
+                var users = ctx.getBean(org.springframework.security.core.userdetails.UserDetailsService.class);
+                var encoder = ctx.getBean(org.springframework.security.crypto.password.PasswordEncoder.class);
+                var user = org.springframework.security.core.userdetails.User.withUsername("probe@example.org")
+                        .password(encoder.encode("password")).roles("STUDENT").build();
+                Mockito.when(users.loadUserByUsername("probe@example.org")).thenReturn(user);
+                var manager = ctx.getBean(org.springframework.security.authentication.AuthenticationManager.class);
+                var result = manager.authenticate(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "probe@example.org", "password"));
+                assertThat(result.isAuthenticated()).isTrue();
+                assertThat(result.getCredentials()).isNull();
+                assertThat(result.getName()).isEqualTo("probe@example.org");
+                assertThat(result.getAuthorities()).extracting("authority").contains("ROLE_STUDENT");
+            });
+        }
+    }
 }

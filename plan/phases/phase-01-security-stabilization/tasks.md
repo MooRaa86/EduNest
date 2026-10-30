@@ -80,6 +80,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Tests:** contract test: header present; body contains token only when property enabled; unit assert on ProviderManager config.
 **Docs:** endpoints.md (login response), security-configuration.md; ISSUE-MAPPING SEL-12.
 
+**EB-11 implementation in review:** `app.auth.return-token-in-body` defaults to true for frontend compatibility (`APP_AUTH_RETURN_TOKEN_IN_BODY`); false omits the body token while preserving the existing raw `Authorization` header. The shared `ProviderManager` erases returned credentials. Property-state login integration probes and the prod/unsafe-dev manager tests cover the contract. Frontend migration, reviewer sign-off, CI and merge remain pending; do not flip the default without coordination.
+
 <a id="p1-05"></a>
 ### P1-05 — Error contract: catch-all→500, explicit 403, unified bodies
 

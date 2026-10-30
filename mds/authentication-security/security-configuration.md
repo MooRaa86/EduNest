@@ -27,7 +27,7 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 | Rule behavior | explicit matchers `permitAll()` **and `.anyRequest().permitAll()`** (line 53) | public/admin/authenticated matchers + `.anyRequest().authenticated()` (line 117) |
 | CORS | `*` origins/methods/headers, `allowCredentials=false` | `*` origin patterns, `*` methods/headers, **`allowCredentials=true`**, exposes `Authorization`, maxAge 3600 |
 | Exception handling | none custom | `EduNestAuthenticationEntryPoint` (401 JSON + header `EduNest-error-reason`) and `EduNestAccessDeniedHandler` (403 JSON + header `EduNest-denied-reason`) |
-| Auth manager | `ProviderManager(EduNestAuthenticationProvider)`, `eraseCredentialsAfterAuthentication=false` | same |
+| Auth manager | `ProviderManager(EduNestAuthenticationProvider)`, `eraseCredentialsAfterAuthentication=true` | same |
 | Method security | `@EnableMethodSecurity` | `@EnableMethodSecurity` |
 
 **Operational consequence:** without the `prod` profile the application refuses to start unless `EDUNEST_UNSAFE_DEV=true` is explicitly set. That opt-in enables the permissive dev chain, except for the upload policy. The Docker image sets `SPRING_PROFILES_ACTIVE=prod` (`Dockerfile` line 13).

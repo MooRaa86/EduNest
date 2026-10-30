@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,9 @@ public class AuthController {
     private final LoginService loginService;
     private final RegistrationService registerService;
 
+    @Value("${app.auth.return-token-in-body:true}")
+    private boolean returnTokenInBody;
+
     @PostMapping("/login-api")
     @Operation(summary = "login with email and password")
     public ResponseEntity<SimpleResponse> login(
@@ -39,7 +43,9 @@ public class AuthController {
 
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("status","Login successful");
-        resp.addMessage("jwt",jwt);
+        if (returnTokenInBody) {
+            resp.addMessage("jwt",jwt);
+        }
         resp.addMessage("Role",role);
 
         return ResponseEntity
