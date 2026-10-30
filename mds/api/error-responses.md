@@ -52,6 +52,7 @@ five producers, no drift (E6 pins this).
 | `EntityNotFound` | 404 | `ERR_RESOURCE_NOT_FOUND` | `The requested item was not found.` (bro joke retired) |
 | `DataIntegrityViolation` | 400 | `ERR_CONSTRAINT_VIOLATION` | category text only (`This value is already in use.`, `One of the submitted values is too long.`, `Some required information is missing.`, `Invalid related data provided.`) — **raw MySQL index/column identifiers stripped** |
 | `RoleNotFound` (server misconfig) | 500 | `ERR_INTERNAL_SYSTEM` | generic sanitized (role name never sent) |
+| Upload validation rejected (EB-29 [P1-22]) | 400 | `ERR_BUSINESS_RULE` | thrown-site text: unknown/corrupt/truncated image, unsupported format, size over limit, declared MIME cross-check failure, content/extension mismatch (attachments/submissions, was sanitized 500), MIME-blocked type, non-ZIP-named-`.zip` |
 
 Login enumeration neutrality (identical bodies for unknown-user vs bad-password)
 is **delivered by EB-15** (SEL-03, 2026-10-30, merge 4529aeb) — byte-identical
