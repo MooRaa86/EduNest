@@ -119,7 +119,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DEP-06** | Med | P6-06 | 6 | deployment | = FILE-06 (D-19) | Planned |
 | **DEP-07** | Med | P6-01, P6-03 | 6 | deployment | T | Planned |
 | **DEP-08** | Low | P6-02, P8-05 | 6,8 | deployment | T | Planned |
-| **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | **In Progress** (payload 1 = P2-02 delivered — Implemented-await-verification: 5 suites / 42 tests, full suite 56/56 green locally 2026-10-30, PR #34 review pending; payload 2 = P2-03 delivered: PR #21, `0326b8b`, CI green, 72/72, Jira EB-37 = Done, 2026-10-29; payload 3 = error-contract IT set **delivered by EB-12** 2026-10-29: probes E1–E6, 80/80; P2-04/05 remain) |
+| **TST-01** | High | P2-02/03/04/05 | 2 | testing | T | **In Progress** (payload 1 = P2-02 **Verified**: PR #34 merged to `main` 2026-10-30 — merge commit `16868a8`; 5 suites / 42 tests, CI green, full suite 235/235; payload 2 = P2-03 delivered: PR #21, `0326b8b`, CI green, 72/72, Jira EB-37 = Done, 2026-10-29; payload 3 = error-contract IT set **delivered by EB-12** 2026-10-29: probes E1–E6, 80/80; P2-04/05 remain) |
 | **TST-02** | Med | P2-01 | 2 | testing | T | **Verified** (merged to `main` 2026-10-28, commit `2a74075`; 14/14 green with zero env — `mvnw test` self-contained; Jira EB-35 = Done; decision D-27) |
 | **TST-03** | Med | P2-07 | 2 | testing | T | **Verified** (CI live: green run `0cd3464`, red-run evidence documented (exit 126/exec bit); branch protection ON 2026-10-28; no-skip enforced) |
 | **TST-04** | Low | P2-08, P8-07 | 2,8 | testing | T | Planned |
