@@ -66,6 +66,16 @@ class AuthRequestValidationTest extends ProdChainIntegrationTestBase {
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_VALIDATION"))
                     .andExpect(jsonPath("$.fields").isMap());
         }
+        mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"bad\",\"otp\":\"123456\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_VALIDATION"))
+                .andExpect(jsonPath("$.fields.email").exists()).andExpect(jsonPath("$.fields.otp").doesNotExist());
+        String otpError = mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"valid@example.org\",\"otp\":\"12a456\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_VALIDATION"))
+                .andExpect(jsonPath("$.fields.otp").exists()).andExpect(jsonPath("$.fields.email").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(otpError).doesNotContain("12a456");
         verifyNoInteractions(registration);
         mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"valid@example.org\",\"otp\":\"123456\"}"))

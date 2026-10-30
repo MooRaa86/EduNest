@@ -109,7 +109,6 @@ Approved spec (Omar): **8 requests / 1 minute** per bucket (uniform), **5 consec
 | Validator | Applied to | Behavior |
 |---|---|---|
 | `annotation/FieldsValueMatch` + `FieldsValueMatchValidator` | `dto/register/RegisterRequestDto` (`password` vs `confirmPassword`) | BeanWrapper comparison, error at `fieldMatch` |
-| `validation/PasswordMatches` + `PasswordMatchesValidator` (class-level) | `dto/auth/RegisterRequest` (legacy, otherwise unused) | plain equals |
 | None | `ChangePasswordRequest`, reset DTO | manual equals in `SettingsService.changePassword` / DTO constraints |
 
-Password length min 8 on register/reset DTOs; **no complexity rules** anywhere.
+The unused `PasswordMatches` validator and legacy `dto/auth/RegisterRequest` were removed in EB-32. Password length min 8 on register/reset DTOs; **no complexity rules** anywhere.
