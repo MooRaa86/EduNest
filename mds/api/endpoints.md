@@ -6,16 +6,18 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 
 | Endpoint | Purpose |
 |---|---|
-| 🔓 POST `/login-api` | Login → raw JWT in `Authorization` response header; `apiResponse.status` and `apiResponse.Role` remain. `apiResponse.jwt` is included only when `app.auth.return-token-in-body=true` (transitional default; env `APP_AUTH_RETURN_TOKEN_IN_BODY`). Set false after frontend consumers migrate to the header. No `@Valid` — SEL-07. |
+| 🔓 POST `/login-api` | Login → raw JWT in `Authorization` response header; `apiResponse.status` and `apiResponse.Role` remain. `apiResponse.jwt` is included only when `app.auth.return-token-in-body=true` (transitional default; env `APP_AUTH_RETURN_TOKEN_IN_BODY`). Set false after frontend consumers migrate to the header. Required nonblank email/password and email format are validated; login imposes no new password-length rule. |
 | 🔓 POST `/forget-password` | Send reset OTP (`ForgetPasswordRequestDto`) |
 | 🔓 POST `/forget-password/verify-otp` | Verify OTP and return a one-time reset token in `apiResponse.resetToken` (`Cache-Control: no-store`) |
 | 🔓 POST `/forget-password/reset` | Set new password with email, `resetToken` and `newPassword` (`ResetPasswordRequestDto`) |
 | 🔓 POST `/api/v1/register/student` · `/mentor` | Register + verify OTP (`StudentRequestDto` / `MentorRequestDto`) |
-| 🔓 POST `/api/v1/register/verify-user` | 6-digit OTP verify → `enabled=true` (dto not `@Valid`) |
-| 🔓 POST `/api/v1/register/send-otp` | Resend verification OTP (bare `email` request param) |
+| 🔓 POST `/api/v1/register/verify-user` | Validate required email and six-digit numeric `otp`, then verify → `enabled=true`. |
+| 🔓 POST `/api/v1/register/send-otp` | Resend verification OTP using required nonblank, valid `email` request parameter. |
 | 🔓 POST `/api/v1/register/restore` · `/confirm-restore` | Restore deleted account via OTP |
 | 🔓 POST `/api/v1/admin/register` | First-admin bootstrap (`RegisterAdminRequest`) — echoes password |
 | 🔓 POST `/send` | Platform free-form mail (`MailRequest{email,name,message}`) — `PlatformMailController`; **effective path is bare `/send`** due to `@RestController("/mail")` bean-name quirk (no path mapping) — public in prod (MAIL-01) |
+
+Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATION` with a `fields` map; malformed JSON retains `ERR_MALFORMED_BODY`. Frontend coordination has been requested on EB-32; approval is not implied.
 
 ## 2. Account settings (authenticated)
 

@@ -20,7 +20,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-04** | High | P1-07 | 1 | auth | T | **Verified** (merged to `main` via PR #30, `52452a0`, 2026-10-29, Team Lead-approved; Linux/JDK 21 CI 187/187 — [run 40966140701](https://github.com/MooRaa86/EduNest/actions/runs/40966140701); one-time reset credential, digest-only storage, atomic consumption under user lock; Jira EB-14 = Done). Pre-deployment follow-ups remain: frontend adoption of `resetToken`, target-database `otp.otp_code` capacity/lock verification, mixed-version rollout coordination (see authentication-flow.md). |
 | **SEL-05** | High | P1-06 | 1 | auth | T | **Verified** (merged to `main` via PR #19, `d3a14a2`, 2026-10-28; 376-line `OtpTypeIsolationIntegrationTest` green in CI; Jira EB-13 = Done) |
 | **SEL-06** | High | P1-27 (cond.) | 1 | auth | D→T (D-01) | Planned |
-| **SEL-07** | Med | P1-25 | 1 | auth | T | Planned |
+| **SEL-07** | Med | P1-25 | 1 | auth | T | EB-32 implementation in progress: login and verification DTO validation; resend email parameter validation; legacy password-match path retired. Verification, review and merge pending. |
 | **SEL-08** | High | P1-09 | 1 | auth | T (+API-04) | Planned |
 | **SEL-09** | Med | P1-10 | 1 | auth | T | Planned |
 | **SEL-10** | High | P1-11 | 1 | auth | D→T (D-05) | Planned |
