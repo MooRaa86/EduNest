@@ -10,7 +10,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -73,16 +72,40 @@ public class UploadContentValidator {
             FORMAT_PNG, Set.of("image/png", "image/apng"),
             FORMAT_WEBP, Set.of("image/webp"));
 
-    private static final List<String> JPEG_SIGNED_WEBP_SUBTYPES =
-            List.of("VP8 ", "VP8X", "VP8L");
+    /** Per-spec WebP chunk types this validator accepts; everything else is rejected. */
+    private static final Set<String> WEBP_CHUNK_FOUR_CCS = Set.of(
+            "VP8 ", "VP8L", "VP8X", "ALPH", "ANIM", "ANMF",
+            "ICCP", "EXIF", "XMP ", "ICMT", "IART", "ICOP", "INAM");
+
+    /** Conservative extended canvas dimension limit, stored minus one. */
+    private static final long MAX_WEBP_DIMENSION_MINUS_ONE = 16383L - 1;
+
+    /** Sanity floor for a VP8 keyframe payload (frame tag + sync code + dims). */
+    private static final long MIN_VP8_CHUNK_SIZE = 10L;
+
+    /** Sanity floor for a VP8L payload: 0x2F signature + version + 14+14+1 bits of dims. */
+    private static final long MIN_VP8L_CHUNK_SIZE = 8L;
+
+    /**
+     * Per-entry decompressed ceiling for ZIP integrity validation: generous
+     * above any real attachment for this product (stored zips are capped at
+     * 10 MB), while keeping plausible ZIP-bomb inflation cheap.
+     */
+    private static final long MAX_ZIP_ENTRY_UNCOMPRESSED_BYTES = 64L * 1024 * 1024;
+
+    /** Aggregate decompressed ceiling across all entries of one archive. */
+    private static final long MAX_DECOMPRESSED_TOTAL_BYTES = 256L * 1024 * 1024;
+
+    /** Entry-count ceiling for one archive. */
+    private static final long MAX_ZIP_ENTRY_COUNT = 10_000L;
 
     /** JPEG header structure is walked until the entropy (SOS) segment; conformant encoders emit it well inside 1 MiB. */
     private static final int JPEG_HEADER_SCAN_LIMIT = 1024 * 1024;
 
     /**
-     * Proves the submitted bytes are a structurally sound, decodable image of
-     * one of the allowed formats and returns the canonical extension to store
-     * ("jpg" | "png"). "webp" is identified structurally (no JDK decoder);
+     * Checks submitted bytes and returns the canonical extension. JPEG and PNG
+     * must decode; WebP is checked structurally without a decoder, so corrupt
+     * image data can still pass these checks.
      * throws {@code globalLogicEx} (400 ERR_BUSINESS_RULE) for empty,
      * oversized, unknown, unsupported, corrupt, truncated or otherwise
      * ambiguous uploads.
@@ -122,22 +145,66 @@ public class UploadContentValidator {
     }
 
     /**
-     * Structurally confirms an already-accepted ZIP payload by re-opening the
-     * written temp file and parsing its central directory. A file that merely
-     * starts with {@code PK} magic but lacks a complete central directory —
-     * truncated, corrupt, or arbitrary bytes named {@code .zip} — is rejected
-     * as {@code globalLogicEx}.
+     * Structural + content integrity confirmation of an already-accepted ZIP
+     * payload by re-opening the written temp file and:
+     * <ol>
+     *   <li>parsing its central directory (a file that merely starts with
+     *       {@code PK} magic but lacks a complete central directory —
+     *       truncated, corrupt, or arbitrary bytes named {@code .zip} — is
+     *       rejected);</li>
+     *   <li>streaming every entry under bounded caps and explicitly checking
+     *       its CRC32 and declared size — this also
+     *       rejects archives whose central directory advertises entries whose
+     *       actual bytes are corrupted (mismatched CRC/deflate stream), which
+     *       a central-directory-only check would accept.</li>
+     * </ol>
+     * Decompression is bounded: entries beyond
+     * {@value #MAX_ZIP_ENTRY_UNCOMPRESSED_BYTES} uncompressed each, more than
+     * {@value #MAX_DECOMPRESSED_TOTAL_BYTES} decompressed in aggregate or
+     * more than {@value #MAX_ZIP_ENTRY_COUNT} entries are rejected without
+     * ever inflating beyond the caps, so even plausible ZIP bombs stay cheap.
      */
     public void verifyZipIntegrity(Path candidate) {
-        try (ZipFile ignored = new ZipFile(candidate.toFile())) {
-            // constructor order: the central directory is parsed on open
+        long totalInflated = 0;
+        int entryCount = 0;
+        try (ZipFile zip = new ZipFile(candidate.toFile())) {
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                java.util.zip.ZipEntry entry = entries.nextElement();
+                if (++entryCount > MAX_ZIP_ENTRY_COUNT) {
+                    throw new globalLogicEx("ZIP archive contains too many entries.");
+                }
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                long declaredSize = entry.getSize();
+                if (declaredSize > MAX_ZIP_ENTRY_UNCOMPRESSED_BYTES) {
+                    throw new globalLogicEx("ZIP archive entry exceeds the allowed size.");
+                }
+                long inflated = 0;
+                CRC32 crc = new CRC32();
+                try (java.io.InputStream in = zip.getInputStream(entry)) {
+                    byte[] buffer = new byte[8192];
+                    int n;
+                    while ((n = in.read(buffer)) != -1) {
+                        inflated += n;
+                        totalInflated += n;
+                        if (inflated > MAX_ZIP_ENTRY_UNCOMPRESSED_BYTES || totalInflated > MAX_DECOMPRESSED_TOTAL_BYTES) {
+                            throw new globalLogicEx("ZIP archive exceeds the allowed decompressed size.");
+                        }
+                        crc.update(buffer, 0, n);
+                    }
+                }
+                if (inflated != declaredSize || crc.getValue() != entry.getCrc()) {
+                    throw new globalLogicEx("File content is not a valid ZIP archive.");
+                }
+            }
+        } catch (globalLogicEx verdict) {
+            throw verdict;
         } catch (ZipException e) {
             throw new globalLogicEx("File content is not a valid ZIP archive.");
         } catch (IOException e) {
-            if (e.getCause() instanceof ZipException) {
-                throw new globalLogicEx("File content is not a valid ZIP archive.");
-            }
-            throw new RuntimeException("Failed to validate file content", e);
+            throw new globalLogicEx("File content is not a valid ZIP archive.");
         }
     }
 
@@ -238,9 +305,26 @@ public class UploadContentValidator {
     }
 
     /**
-     * WebP: RIFF container carrying a WEBP form with an actual VP8/VP8L/VP8X
-     * bitstream subtype, and the declared RIFF size must not exceed the
-     * submitted bytes (catches truncation).
+     * WebP (RFC 9649) — structural validation with no JDK decoder available:
+     * <ol>
+     *   <li>RIFF container header plus an <em>exact</em> file-size declaration
+     *       (truncated bodies and appended garbage fail);</li>
+     *   <li>a complete chunk walk with a whitelist of the container's own and
+     *       metadata chunk types (unknown chunk payloads are rejected — uploads
+     *       have no need for them and they cannot be meaningfully validated);</li>
+     *   <li>a mandatory, header-sane image bitstream chunk somewhere in the
+     *       container: VP8 keyframe (frame-type bit + 0x9D 0x01 0x2A sync code)
+     *       or VP8L (0x2F signature + zero version bits);</li>
+     *   <li>VP8X canvas dimensions (stored minus-one, 24-bit LE each) within a
+     *       conservative 16383-pixel limit.</li>
+     * </ol>
+     * Limitation (deliberate): the VP8/VP8L <em>entropy stream</em> is not
+     * fully decoded — that would require an unapproved decoder dependency.
+     * Files presented as zero-filled VP8X-only containers, VP8/VP8L-incompatible
+     * bitstream headers, truncated containers or oversized canvases are
+     * rejected here; a structurally containerized but internally corrupt
+     * entropy stream may still be persisted and fail at render time. Animated WebP (ANMF) has no
+     * pixel-safety meaning for avatar/cover surfaces and is rejected too.
      */
     private boolean isStructurallyValidWebp(byte[] d) {
         if (d.length < 16) return false;
@@ -248,10 +332,53 @@ public class UploadContentValidator {
                 || d[8] != 'W' || d[9] != 'E' || d[10] != 'B' || d[11] != 'P') {
             return false;
         }
-        String subtype = new String(d, 12, 4, StandardCharsets.US_ASCII);
-        if (!JPEG_SIGNED_WEBP_SUBTYPES.contains(subtype)) return false;
         long declaredRiffSize = unsignedLittleEndian(d, 4);
-        return declaredRiffSize + 8 <= d.length;
+        if (declaredRiffSize + 8 != d.length) {
+            return false; // truncated or carries data past the declared size
+        }
+        int offset = 12;
+        boolean hasImageBitstream = false;
+        while (offset + 8 <= d.length) {
+            String fourCc = new String(d, offset, 4, StandardCharsets.US_ASCII);
+            long chunkSize = unsignedLittleEndian(d, offset + 4);
+            if (!WEBP_CHUNK_FOUR_CCS.contains(fourCc) || offset + 8L + chunkSize + (chunkSize & 1) > d.length
+                    || "ANIM".equals(fourCc) || "ANMF".equals(fourCc)) {
+                return false;
+            }
+            if ("VP8 ".equals(fourCc)) {
+                if (chunkSize < 10 || !isPlausibleVp8Keyframe(d, offset + 8)) {
+                    return false;
+                }
+                hasImageBitstream = true;
+            } else if ("VP8L".equals(fourCc)) {
+                if (chunkSize < 8
+                        || (d[offset + 8] & 0xFF) != 0x2F
+                        || (d[offset + 12] & 0xE0) != 0) {
+                    return false;
+                }
+                hasImageBitstream = true;
+            } else if ("VP8X".equals(fourCc)) {
+                if (chunkSize != 10) return false;
+                long canvasW = unsignedLittleEndian24(d, offset + 12); // stored value = width-1
+                long canvasH = unsignedLittleEndian24(d, offset + 15); // stored value = height-1
+                if (canvasW > MAX_WEBP_DIMENSION_MINUS_ONE
+                        || canvasH > MAX_WEBP_DIMENSION_MINUS_ONE) {
+                    return false;
+                }
+            }
+            offset += 8 + (int) chunkSize + ((int) chunkSize & 1);
+        }
+        // A pure VP8X container carries only flags/canvas metadata in RFC 9649
+        // — no image bitstream, undecodable by any conformant renderer.
+        return hasImageBitstream && offset == d.length;
+    }
+
+    /** VP8 keyframe plausibility: frame-type bit 0 and the 0x9D 0x01 0x2A sync code. */
+    private boolean isPlausibleVp8Keyframe(byte[] d, int payloadStart) {
+        return (d[payloadStart] & 0x01) == 0
+                && (d[payloadStart + 3] & 0xFF) == 0x9D
+                && (d[payloadStart + 4] & 0xFF) == 0x01
+                && (d[payloadStart + 5] & 0xFF) == 0x2A;
     }
 
     private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -265,6 +392,12 @@ public class UploadContentValidator {
     private long unsignedLittleEndian(byte[] d, int offset) {
         long v = 0;
         for (int i = 3; i >= 0; i--) v = (v << 8) | (d[offset + i] & 0xFFL);
+        return v;
+    }
+
+    private long unsignedLittleEndian24(byte[] d, int offset) {
+        long v = 0;
+        for (int i = 2; i >= 0; i--) v = (v << 8) | (d[offset + i] & 0xFFL);
         return v;
     }
 }
