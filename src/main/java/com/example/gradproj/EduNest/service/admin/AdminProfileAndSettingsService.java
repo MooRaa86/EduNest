@@ -73,8 +73,11 @@ public class AdminProfileAndSettingsService {
         Admin admin = getCurrentadmin();
 
         if (image != null && !image.isEmpty()) {
-            imageStorageService.deleteImage(admin_IMAGE_FOLDER, admin.getProfilePicture());
+            String oldImageUrl = admin.getProfilePicture();
             String newImageUrl = imageStorageService.saveImage(admin_IMAGE_FOLDER, admin.getId(), image);
+            if (oldImageUrl != null && !oldImageUrl.isBlank()) {
+                imageStorageService.deleteImage(admin_IMAGE_FOLDER, oldImageUrl);
+            }
             admin.setProfilePicture(newImageUrl);
             adminRepository.save(admin);
             return newImageUrl;

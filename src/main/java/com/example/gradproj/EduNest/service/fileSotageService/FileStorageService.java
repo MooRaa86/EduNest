@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.fileSotageService;
 
 import lombok.extern.slf4j.Slf4j;
+import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -61,8 +62,7 @@ public class FileStorageService {
 
             "zip", Set.of(
                     "application/zip",
-                    "application/x-zip-compressed",
-                    "application/octet-stream"
+                    "application/x-zip-compressed"
             )
     );
 
@@ -88,6 +88,11 @@ public class FileStorageService {
 
     private Path resolvedBaseDir;
     private final Tika tika = new Tika();
+    private final UploadContentValidator contentValidator;
+
+    public FileStorageService(UploadContentValidator contentValidator) {
+        this.contentValidator = contentValidator;
+    }
 
     @PostConstruct
     public void init() {
@@ -121,7 +126,7 @@ public class FileStorageService {
             throw new SecurityException("Invalid file path detected");
         }
 
-        saveFileAtomically(file, filePath);
+        saveFileAtomically(file, filePath, extension);
 
         return Paths.get(baseDir)
                 .resolve(subFolder)
@@ -242,21 +247,16 @@ public class FileStorageService {
                     detectedMimeType
             );
 
-            throw new SecurityException(
-                    String.format(
-                            "File content does not match extension. Expected %s for .%s, got %s",
-                            allowedMimes,
-                            extension,
-                            detectedMimeType
-                    )
-            );
+            // P1-22: mislabeled uploads answer 400 through the EB-12 envelope,
+            // not the sanitized catch-all 500.
+            throw new globalLogicEx("File content does not match its file extension.");
         }
     }
 
     private void validateNotBlockedType(String extension, String mimeType) {
         if (BLOCKED_MIME_TYPES.contains(mimeType)) {
             log.warn("Blocked dangerous MIME type detected: {} (extension: {})", mimeType, extension);
-            throw new SecurityException("File type blocked for security reasons");
+            throw new globalLogicEx("File type is not allowed for upload.");
         }
     }
 
@@ -283,7 +283,7 @@ public class FileStorageService {
                 type, id, secondaryId, UUID.randomUUID(), extension);
     }
 
-    private void saveFileAtomically(MultipartFile file, Path targetPath) {
+    private void saveFileAtomically(MultipartFile file, Path targetPath, String extension) {
         if (Files.exists(targetPath)) {
             throw new IllegalStateException("File already exists (UUID collision)");
         }
@@ -296,6 +296,19 @@ public class FileStorageService {
             if (Files.size(tempPath) != file.getSize()) {
                 Files.deleteIfExists(tempPath);
                 throw new IOException("File size mismatch after write");
+            }
+
+            // EB-29 [P1-22]: a stored .zip must be a structurally complete ZIP
+            // archive (central directory parses) — bytes that merely carry the
+            // PK magic, or arbitrary content named .zip, are rejected before
+            // the target file is ever created.
+            if ("zip".equals(extension)) {
+                try {
+                    contentValidator.verifyZipIntegrity(tempPath);
+                } catch (RuntimeException rejection) {
+                    Files.deleteIfExists(tempPath);
+                    throw rejection;
+                }
             }
 
             Files.move(tempPath, targetPath);

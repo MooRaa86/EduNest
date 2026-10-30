@@ -184,7 +184,8 @@ class UploadMatrixHarness extends IntegrationTestBase {
                 assertTrue(stored.startsWith(Path.of("").toRealPath()), "attachment escaped sandbox");
                 MvcResult get = mockMvc.perform(get("/files").param("filePath", path)).andReturn();
                 System.out.printf("EB4ZIP|%s|%s|%s|%s|%s|%s|ACCEPTED|%s|%s|%d|%s|%s|%s|%s%n", destination[0], payload.name(), payload.filename(), payload.mime(), payload.actual(), detected, path, hash(Files.readAllBytes(stored)), get.getResponse().getStatus(), get.getResponse().getContentType(), get.getResponse().getHeader("Content-Disposition"), get.getResponse().getHeader("X-Content-Type-Options"), get.getResponse().getHeader("Content-Security-Policy"));
-            } catch (IllegalArgumentException | SecurityException e) {
+            } catch (IllegalArgumentException | SecurityException
+                    | com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx e) {
                 System.out.printf("EB4ZIP|%s|%s|%s|%s|%s|%s|REJECTED|%s|-|-|-|-|-|-%n", destination[0], payload.name(), payload.filename(), payload.mime(), payload.actual(), detected, e.getClass().getSimpleName());
             }
           }

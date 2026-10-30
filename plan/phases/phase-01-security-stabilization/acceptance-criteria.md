@@ -30,7 +30,7 @@
 | P1-19 | Foreign-quiz re-parent rejected; award listings scoped | cross-mentor IT | Security Reviewer |
 | P1-20 | `GET /files?filePath=` ownership-checked; traversal still blocked | probes | Backend Dev |
 | P1-21 | Anonymous fetch of `submissions/**` denied; public asset folders intact; FE note recorded | integration matrix | Security Reviewer |
-| P1-22 | Magic-byte detection on image surfaces; P0-06 matrix re-run shows hardened outcomes | re-run evidence | Security Reviewer |
+| P1-22 | Magic-byte detection on image surfaces (JDK decode-backed); per-surface allowlists; zip central-directory parse; rejected uploads leave no file/`.tmp`/metadata remnants | `UploadValidationHardeningProbeTest` (28 probes) + full suite 221 green on PR branch ([PR #33](https://github.com/MooRaa86/EduNest/pull/33), merge + CI pending) | Security Reviewer |
 | P1-23 | Unlisted origin denied (preflight, credentialed) | probe | Backend Dev |
 | P1-24 | Injection payload renders escaped in email (or P0-04 refuted → task unneeded) | email capture | Backend Dev |
 | P1-25 | Malformed login/verify/resend payloads → 400 field-aware | contract tests | Backend Dev |

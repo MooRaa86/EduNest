@@ -358,10 +358,12 @@ public class mentorShipServiceI implements mentorShipService{
             throw new globalLogicEx("Image size must be less than 5MB");
         }
 
-        imageService.deleteOldCoverImage(mentorship.getCoverImageUrl());
+        String oldImageUrl = mentorship.getCoverImageUrl();
 
         String imageUrl =
                 imageService.saveCoverImage(mentorshipId, image);
+
+        imageService.deleteOldCoverImage(oldImageUrl);
 
         mentorship.setCoverImageUrl(imageUrl);
 

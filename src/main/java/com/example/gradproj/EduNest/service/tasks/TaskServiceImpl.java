@@ -131,10 +131,10 @@ public class TaskServiceImpl implements TaskService {
         if (file != null && !file.isEmpty()) {
             Long mentorshipId = task.getWeek().getMentorship().getId();
             String oldPath = task.getUploadedAttachmentPath();
+            task.setUploadedAttachmentPath(StorageService.saveFile("task-attachment","task", mentorshipId, mentorshipId, file));
             if (oldPath != null && !oldPath.isBlank()) {
                 StorageService.deleteFile(oldPath);
             }
-            task.setUploadedAttachmentPath(StorageService.saveFile("task-attachment","task", mentorshipId, mentorshipId, file));
         }
         if (task.getPassPoints() > task.getPoints()) {
             throw new globalLogicEx("Pass points must be less than or equal to points.");
