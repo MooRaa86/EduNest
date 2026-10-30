@@ -296,7 +296,7 @@ public class ProjectSecurityConfig {
         AuthenticationProvider authProvider = new EduNestAuthenticationProvider(
                 userDetailsService, passwordEncoder, lockoutService);
         ProviderManager providerManager = new ProviderManager(authProvider);
-        providerManager.setEraseCredentialsAfterAuthentication(false); // SEL-12 consumes this state (see P1-04)
+        providerManager.setEraseCredentialsAfterAuthentication(true);
         return providerManager;
     }
 }

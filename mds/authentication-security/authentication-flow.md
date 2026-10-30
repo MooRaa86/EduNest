@@ -24,7 +24,7 @@ Entry points: `POST /api/v1/register/student`, `POST /api/v1/register/mentor` (`
 
 ## 2. Login (prod profile)
 
-Controller: `POST /login-api` (`controller/auth/AuthController` lines 34–47, response also exposes JWT in body).
+Controller: `POST /login-api` returns the raw JWT in the `Authorization` response header. The `apiResponse.jwt` body field is controlled by `app.auth.return-token-in-body` (`APP_AUTH_RETURN_TOKEN_IN_BODY`); it defaults to `true` for existing frontend consumers and can be set to `false` after migration. Frontend confirmation of migration remains outstanding.
 
 1. `LoginServiceI.loginProcess` (line 27) builds `UsernamePasswordAuthenticationToken(email, password)`.
 2. `EduNestAuthenticationProvider.authenticate` (`config/auth/`) → `EduNestUserDetailsService.loadUserByUsername`:

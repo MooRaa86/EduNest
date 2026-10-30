@@ -6,7 +6,7 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 
 | Endpoint | Purpose |
 |---|---|
-| 🔓 POST `/login-api` | Login → JWT (body + `Authorization` header), role (no `@Valid` — SEL-07) |
+| 🔓 POST `/login-api` | Login → raw JWT in `Authorization` response header; `apiResponse.status` and `apiResponse.Role` remain. `apiResponse.jwt` is included only when `app.auth.return-token-in-body=true` (transitional default; env `APP_AUTH_RETURN_TOKEN_IN_BODY`). Set false after frontend consumers migrate to the header. No `@Valid` — SEL-07. |
 | 🔓 POST `/forget-password` | Send reset OTP (`ForgetPasswordRequestDto`) |
 | 🔓 POST `/forget-password/verify-otp` | Verify OTP and return a one-time reset token in `apiResponse.resetToken` (`Cache-Control: no-store`) |
 | 🔓 POST `/forget-password/reset` | Set new password with email, `resetToken` and `newPassword` (`ResetPasswordRequestDto`) |
