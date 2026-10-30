@@ -2,6 +2,9 @@ package com.example.gradproj.EduNest.security.probes;
 
 import com.jayway.jsonpath.JsonPath;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
@@ -158,10 +161,14 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 
 	@Test
 	void configuredRootIsSharedByImageWritesAndPublicReads() throws Exception {
-		byte[] bytes = "synthetic image bytes".getBytes(StandardCharsets.UTF_8);
-		MockMultipartFile image = new MockMultipartFile("image", "photo.jpg", "image/jpeg", bytes);
-		String cover = images.saveCoverImage(901L, image);
-		String student = images.saveImage("student", 902L, image);
+		// EB-29: bytes must be a genuinely detected image — P1-22 hardening validates content
+		BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+		ByteArrayOutputStream jpegOut = new ByteArrayOutputStream();
+		assertThat(ImageIO.write(image, "jpg", jpegOut)).isTrue();
+		byte[] bytes = jpegOut.toByteArray();
+		MockMultipartFile upload = new MockMultipartFile("image", "photo.jpg", "image/jpeg", bytes);
+		String cover = images.saveCoverImage(901L, upload);
+		String student = images.saveImage("student", 902L, upload);
 		for (String url : List.of(cover, student)) {
 			Path saved = Path.of(baseDir).resolve(url.substring("/uploads/".length()));
 			writtenFiles.add(saved);

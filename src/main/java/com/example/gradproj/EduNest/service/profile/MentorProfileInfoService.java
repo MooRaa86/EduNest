@@ -112,8 +112,11 @@ public class MentorProfileInfoService {
                 .orElseThrow(() -> new UsernameNotFoundException("Mentor not found"));
 
         if (image != null && !image.isEmpty()) {
-            imageStorageService.deleteImage(MENTOR_IMAGE_FOLDER,mentor.getProfileImageUrl());
-            String newImageUrl = imageStorageService.saveImage(MENTOR_IMAGE_FOLDER,mentor.getId(), image);
+            String oldImageUrl = mentor.getProfileImageUrl();
+            String newImageUrl = imageStorageService.saveImage(MENTOR_IMAGE_FOLDER, mentor.getId(), image);
+            if (oldImageUrl != null && !oldImageUrl.isBlank()) {
+                imageStorageService.deleteImage(MENTOR_IMAGE_FOLDER, oldImageUrl);
+            }
             mentor.setProfileImageUrl(newImageUrl);
             mentorRepository.save(mentor);
             return newImageUrl;

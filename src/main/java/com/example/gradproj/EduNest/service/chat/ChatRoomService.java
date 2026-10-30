@@ -117,8 +117,11 @@ public class ChatRoomService {
         }
 
         if (image != null && !image.isEmpty()) {
-            imageStorageService.deleteImage("chatroom", room.getImageUrl());
+            String oldImageUrl = room.getImageUrl();
             String newImageUrl = imageStorageService.saveImage("chatroom", room.getId(), image);
+            if (oldImageUrl != null && !oldImageUrl.isBlank()) {
+                imageStorageService.deleteImage("chatroom", oldImageUrl);
+            }
             room.setImageUrl(newImageUrl);
             roomRepo.save(room);
             return newImageUrl;

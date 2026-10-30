@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.service.fileSotageService.UploadContentValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,49 +11,38 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Set;
 import java.util.UUID;
 
 
+/**
+ * Image saves for covers, avatars and chat-room images.
+ *
+ * EB-29 [P1-22] hardened: the actual content is proven by the shared
+ * {@link UploadContentValidator} (magic bytes + structural checks, per-surface
+ * allowlists, size limits) before any byte is written; the stored filename
+ * extension is derived from the detected format instead of the client filename
+ * (FILE-02/FILE-03/MSH-06). Legitimate uploads keep their URL contract:
+ * {@code /uploads/{folder}/{id}-EduNest-{uuid}.{ext}}.
+ */
 @Service
 public class ImageStorageService {
 
-    private final Path baseUploadDir;
+    /** Applies to covers and avatar surfaces; callers historically enforced 5MB. */
+    public static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
 
-    public ImageStorageService(@Value("${app.upload.base-dir:uploads}") String baseUploadDir) {
+    private final Path baseUploadDir;
+    private final UploadContentValidator contentValidator;
+
+    public ImageStorageService(@Value("${app.upload.base-dir:uploads}") String baseUploadDir,
+                               UploadContentValidator contentValidator) {
         this.baseUploadDir = Paths.get(baseUploadDir);
+        this.contentValidator = contentValidator;
     }
 
     public String saveCoverImage(Long mentorshipId, MultipartFile file) {
-        try {
-            Path uploadPath = baseUploadDir.resolve("mentorship-cover-images");
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            String originalName = file.getOriginalFilename();
-            if (originalName == null || !originalName.contains(".")) {
-                throw new RuntimeException("Invalid image file");
-            }
-
-            String extension =
-                    originalName.substring(originalName.lastIndexOf("."));
-
-            String fileName =
-                    mentorshipId + "-EduNest-" + UUID.randomUUID() + extension;
-
-            Path filePath = uploadPath.resolve(fileName);
-
-            Files.copy(
-                    file.getInputStream(),
-                    filePath,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
-
-            return "/uploads/mentorship-cover-images/" + fileName;
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to store cover image", e);
-        }
+        String folderName = "mentorship-cover-images";
+        return store(folderName, mentorshipId, file, UploadContentValidator.IMAGE_FORMATS);
     }
 
     public void deleteOldCoverImage(String oldImageUrl) {
@@ -74,38 +64,25 @@ public class ImageStorageService {
 
     /////////////////////////////////////////////
     public String saveImage(String folderName, Long id, MultipartFile file) {
-        try {
+        Set<String> allowedFormats = "chatroom".equals(folderName)
+                ? UploadContentValidator.CHAT_IMAGE_FORMATS
+                : UploadContentValidator.IMAGE_FORMATS;
+        return store(folderName, id, file, allowedFormats);
+    }
 
+    private String store(String folderName, Long id, MultipartFile file, Set<String> allowedFormats) {
+        String detectedExtension = contentValidator.validateImageUpload(
+                file, allowedFormats, MAX_IMAGE_BYTES);
+
+        try {
             Path uploadPath = baseUploadDir.resolve(folderName);
 
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
 
-            String contentType = file.getContentType();
-
-            if (contentType == null ||
-                    !(contentType.equals("image/png")
-                            || contentType.equals("image/jpeg")
-                            || contentType.equals("image/jpg"))) {
-
-                throw new globalLogicEx("Only PNG and JPG images are allowed");
-            }
-
-            String originalName = file.getOriginalFilename();
-            if (originalName == null || !originalName.contains(".")) {
-                throw new globalLogicEx("Invalid image file");
-            }
-
-            if (file.getSize() > 5 * 1024 * 1024) {
-                throw new globalLogicEx("Image size must be less than 5MB");
-            }
-
-            String extension =
-                    originalName.substring(originalName.lastIndexOf("."));
-
             String fileName =
-                    id + "-EduNest-" + UUID.randomUUID() + extension;
+                    id + "-EduNest-" + UUID.randomUUID() + "." + detectedExtension;
 
             Path filePath = uploadPath.resolve(fileName);
 

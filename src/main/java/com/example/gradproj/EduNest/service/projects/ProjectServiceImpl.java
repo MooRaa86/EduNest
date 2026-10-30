@@ -166,11 +166,11 @@ public class ProjectServiceImpl implements ProjectService{
             Long mentorId = getCurrentMentorId();
             Long mentorshipId = project.getWeek().getMentorship().getId();
             String oldPath = project.getUploadedAttachmentPath();
+            String uploadedPath = fileStorageService.saveFile("project-attachment", "project", mentorshipId, mentorId, file);
+            project.setUploadedAttachmentPath(uploadedPath);
             if (oldPath != null && !oldPath.isBlank()) {
                 fileStorageService.deleteFile(oldPath);
             }
-            String uploadedPath = fileStorageService.saveFile("project-attachment", "project", mentorshipId, mentorId, file);
-            project.setUploadedAttachmentPath(uploadedPath);
         }
 
         if (oldStatus != ProjectStatus.PUBLISHED && project.getStatus() == ProjectStatus.PUBLISHED) {
