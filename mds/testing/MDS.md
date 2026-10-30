@@ -6,14 +6,27 @@ The project ships with **one smoke test**. There are no unit, integration, or en
 
 > **Implemented 2026-10-28 (P2-01/EB-35, decision D-27 — no Docker):** a `test` profile now exists (`src/test/resources/application-test.properties`), backed by **H2 in-memory in MySQL-compatibility mode** — `mvnw test` boots the whole app on any machine with zero env vars (no MySQL, no Docker, no secrets). Shared bases `IntegrationTestBase` (MockMvc) + `TransactionalIntegrationTestBase` (rollback) live in `com.example.gradproj.EduNest.testing`. The smoke test is now a 3-probe proof: full boot · HTTP public route · the single native query pattern (`ROW_NUMBER() OVER`, `TotalPointsRepository`) runs on H2. Fixture builders land with P2-02.
 
+> **Implemented 2026-10-30 (P2-02/EB-36):** five pure-unit suites (12 quiz-grading + 12 commission + 5 points-delta + 10 attendance + 3 certificate-rank = **42 tests**) now execute the flagged business math through the real production code paths — no Spring context, no DB, mocked collaborators only, and **zero production-code changes** (the pre-existing private seams `calculateScore`, `getSessionAttendance`, `calculateAttendancePoints` are reached via reflection, so the no-refactor constraint holds). Every documented-wrong branch is asserted **as it behaves today**, naming the issue ID in the test (LEARN-04/05/07/09, GAME-03/05, LS-02, certificate rank `i+1`); Phase-04 repair tasks are expected to edit these tests rather than the tests being "fixed" silently. Full suite after this milestone: `Tests run: 56, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS` (was 14 pre-P2-02).
+
 ## 2. Current Implementation (complete inventory)
 
 | # | Test | File | What it covers |
 |---|---|---|---|
-| 1 | Context-load smoke test | `src/test/java/com/example/gradproj/EduNest/EduNestApplicationTests.java` (`contextLoads()`) | Spring context starts (requires DB + mail env config to succeed) |
+| 1 | Context-load smoke test (3-probe) | `src/test/java/com/example/gradproj/EduNest/EduNestApplicationTests.java` | Full app boot on the `test` profile (H2, zero env vars) · public HTTP route · the single native-query pattern (`ROW_NUMBER() OVER`, `TotalPointsRepository`) on H2 |
+| 2 | JWT secret fail-fast provider (P1-01/SEL-01) | `src/test/java/com/example/gradproj/EduNest/config/security/JwtSecretProviderTest.java` | Refuses boot on missing / <32-byte / retired-default secret; env-only rule |
+| 3 | Rotation-safe JWT role parsing (P1-01/SEL-01) | `src/test/java/com/example/gradproj/EduNest/service/jwt/JwtRoleRotationTest.java` | Role-string rotation semantics in the login chain |
+| 4 | Security profile boot matrix (P1-02/SEL-02) | `src/test/java/com/example/gradproj/EduNest/config/security/SecurityProfileBootMatrixTest.java` | Boot matrix 4/4 (profiles × `EDUNEST_UNSAFE_DEV` gate) |
+| 5 | Quiz grading math (P2-02 suite 1) | `src/test/java/com/example/gradproj/EduNest/service/quiz/submission/QuizSubmissionGradingMathTest.java` | `calculateScore` per-question math, late penalty `-1 pt/min`, `(int)` truncated delta (LEARN-09) — 12 tests |
+| 6 | Commission money math (P2-02 suite 2) | `src/test/java/com/example/gradproj/EduNest/service/mentorShip/MentorCommissionCalcTest.java` | Latest-rate lookup, 0..100 validation, platform cut / mentor payout split — 12 tests |
+| 7 | Points delta accounting (P2-02 suite 3) | `src/test/java/com/example/gradproj/EduNest/service/points/TotalPointsApplyDeltaTest.java` | `applyDelta`: zero early return, create-on-miss, add/reduce, 0-clamp floor (GAME-05 accepted model) — 5 tests |
+| 8 | Attendance math (P2-02 suite 4) | `src/test/java/com/example/gradproj/EduNest/service/livesession/LiveSessionAttendanceMathTest.java` | 5-min snapshot grid %, `>= 75%` threshold, >100% possible, snapshotless students absent from report (LS-02), Present +5 / Absent 0 hand-off — 10 tests |
+| 9 | Certificate rank assignment (P2-02 suite 5) | `src/test/java/com/example/gradproj/EduNest/service/certificate/CertificateRankAssignmentTest.java` | Leaderboard-order ranks `i+1` (no tie-aware renumber), ghost student skipped without rank shift, empty-board noop — 3 tests |
 
-- Build test execution: Maven Surefire discovers the single test; **the Dockerfile builds with `-DskipTests`** — tests are skipped in CI-ish flows (Docker build is the only "CI" today).
-- No test doubles/profiles exist: no H2/testcontainers config (`application-test` profile absent); the smoke test hits the **real dev/prod env** — it only passes where env vars resolve.
+*Rows 2–4 are the Phase-1 security suites (`8f4555c`, `af50e58`) that predate this inventory's last update — listed here so the table is actually complete.*
+
+- Build test execution: `.\mvnw.cmd test` runs all nine classes — **56 tests, 0 failures, BUILD SUCCESS** with zero env vars (test-profile H2, per the P2-01 note above). **The Dockerfile still builds with `-DskipTests`** (TST-03; the P2-07 CI workflow runs the full suite on PRs and `main`).
+- The five P2-02 suites are **pure unit tests**: no Spring context, no DB — mocked collaborators, reflection only into the pre-existing private seams (`calculateScore`, `getSessionAttendance`, `calculateAttendancePoints`), so no production code was refactored.
+- Known-wrong branches are asserted **as they behave today** with the issue ID cited in each test (LEARN-04/05/07/09, GAME-03/05, LS-02, the rank quirk); Phase-4 repair tasks are expected to edit the test in the same PR as the fix (TEAM-WORKFLOW §6 contract).
 - No frontend tests exist in this repo (API backend only).
 
 ## 3. Requirements the suite must eventually cover (from this documentation's risk register)
@@ -46,8 +59,8 @@ Top priorities (highest leverage first — each maps to a documented defect):
 ## 5. Commands (as-built)
 
 ```bash
-.\mvnw.cmd test          # runs the single smoke test (needs DB/mail env)
-.\mvnw.cmd clean package -DskipTests   # current "deployment build"
+.\mvnw.cmd test          # 56 tests, zero env vars (test-profile H2, P2-01)
+.\mvnw.cmd clean package -DskipTests   # current "deployment build" (CI runs the full suite per P2-07)
 ```
 
 Environment note (local Windows): the Maven wrapper runs on JDK 24 while the app/intelliJ run config uses JDK 21 (`pom` targets 21). Unify on 21 for reproducible builds (see [../deployment/environment-configuration.md](../deployment/environment-configuration.md)).
