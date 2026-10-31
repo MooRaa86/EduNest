@@ -51,7 +51,7 @@ com.example.gradproj.EduNest
 ├── exception/                  GlobalExceptionHandler + domain exceptions + ErrorResponse envelope
 ├── enums/                      enum types per domain (lifecycle states, roles, OTP types, …)
 ├── auditing/                   JpaAuditingConfig + AuditorAwareImpl (auditor = current email)
-├── validation/, annotation/    Bean Validation custom constraints (PasswordMatches, FieldsValueMatch)
+├── annotation/                 Bean Validation custom constraint (FieldsValueMatch)
 ├── security/                   CurrentUserProvider (@RequestScope context accessor)
 ├── utils/, util/               Constants, SystemUtils, FileResponseBuilder (two utility packages)
 └── features/roadmap/           EMPTY skeleton packages — unimplemented feature, zero code

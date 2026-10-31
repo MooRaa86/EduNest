@@ -36,7 +36,7 @@ public class AuthController {
     @PostMapping("/login-api")
     @Operation(summary = "login with email and password")
     public ResponseEntity<SimpleResponse> login(
-            @RequestBody LoginRequestDto DTO
+            @Valid @RequestBody LoginRequestDto DTO
             ){
         String jwt = loginService.loginProcess(DTO);
         String role = loginService.getJwtRole(jwt);

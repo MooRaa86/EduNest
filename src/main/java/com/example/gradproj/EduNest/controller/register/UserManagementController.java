@@ -6,11 +6,15 @@ import com.example.gradproj.EduNest.dto.account.request.RestoreAccountRequest;
 import com.example.gradproj.EduNest.dto.register.MentorRequestDto;
 import com.example.gradproj.EduNest.dto.register.StudentRequestDto;
 import com.example.gradproj.EduNest.dto.register.VerifyAccountDto;
+import com.example.gradproj.EduNest.exception.ApiError;
+import com.example.gradproj.EduNest.exception.ApiErrorCode;
 import com.example.gradproj.EduNest.service.register.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +22,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/register")
@@ -50,7 +59,7 @@ public class UserManagementController {
 
     @PostMapping("/verify-user")
     @Operation(summary = "verify email with the otp")
-    public ResponseEntity<SimpleResponse> verifyAccount(@RequestBody VerifyAccountDto dto) {
+    public ResponseEntity<SimpleResponse> verifyAccount(@Valid @RequestBody VerifyAccountDto dto) {
         registerationService.verifyUser(dto.getEmail(), dto.getOtp());
         SimpleResponse response = new SimpleResponse();
         response.addMessage("verification", "Account verified successfully. Email: " + dto.getEmail());
@@ -59,11 +68,24 @@ public class UserManagementController {
 
     @PostMapping("/send-otp")
     @Operation(summary = "send new otp to the registered email")
-    public ResponseEntity<SimpleResponse> sendOtpToEmail(@Valid @Email String email) {
+    public ResponseEntity<SimpleResponse> sendOtpToEmail(
+            @RequestParam(name = "email", required = false)
+            @NotBlank(message = "Email is required") @Email(message = "Invalid email format.") String email) {
         registerationService.generateAndSendOtp(email);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status", "OTP sent successfully. Email: " + email);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiError> handleParameterValidation(HandlerMethodValidationException ex, HttpServletRequest request) {
+        if (!"sendOtpToEmail".equals(ex.getMethod().getName()) || ex.isForReturnValue()) {
+            throw ex;
+        }
+        ApiError error = ApiError.of(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), ApiErrorCode.ERR_VALIDATION,
+                "Please check the submitted fields.", request.getRequestURI());
+        error.setFields(Map.of("email", "Email is required and must be valid."));
+        return ResponseEntity.badRequest().body(error);
     }
 
     @Operation(

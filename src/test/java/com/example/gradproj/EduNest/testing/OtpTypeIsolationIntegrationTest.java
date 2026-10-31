@@ -129,6 +129,22 @@ class OtpTypeIsolationIntegrationTest extends TransactionalIntegrationTestBase {
     }
 
     @Test
+    void verifyUserHttpPreservesWrongAndCorrectOtpBehavior() throws Exception {
+        student.setEnabled(false);
+        students.saveAndFlush(student);
+        OTP existing = seed(OtpType.VERIFY, CODE);
+        mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + EMAIL + "\",\"otp\":\"654321\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_INVALID_OTP"));
+        assertTrue(otps.findById(existing.getId()).isPresent());
+        mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + EMAIL + "\",\"otp\":\"123456\"}"))
+                .andExpect(status().isOk());
+        assertTrue(students.findByEmail(EMAIL).orElseThrow().isEnabled());
+        assertFalse(otps.findById(existing.getId()).isPresent());
+    }
+
+    @Test
     void resetVerificationRejectsDeleteOtp() {
         OTP deletion = seed(OtpType.DELETE, CODE);
         assertThrows(InvalidOtpException.class, () -> registration.verifyForgetPasswordOtp(EMAIL, CODE));

@@ -44,6 +44,7 @@ five producers, no drift (E6 pins this).
 | Rate limit exceeded (public credential routes) | **429** | `ERR_RATE_LIMITED` | `Too many attempts. Please wait a moment and try again.` (+ `Retry-After: <window seconds remaining>`, ≤ 60) |
 | Business rule (`globalLogicEx`) | 400 | `ERR_BUSINESS_RULE` | throw-site text (audited, user-facing) |
 | Bean validation (`MethodArgumentNotValid`) | 400 | `ERR_VALIDATION` (+ `fields` map) | `Please check the submitted fields.` |
+| Login / verify DTO or resend `email` parameter validation (EB-32) | 400 | `ERR_VALIDATION` (+ `fields.email`, `fields.password` or `fields.otp` as applicable) | `Please check the submitted fields.` |
 | Malformed JSON / type conversion | 400 | `ERR_MALFORMED_BODY` | `Malformed JSON request or invalid data type.` (enum hints under `fields`) |
 | Unknown JSON field (prod) | 400 | `ERR_UNKNOWN_FIELD` | `Field 'x' is not allowed.` (+ `fields`: invalidField, allowedFields) |
 | `EmailAlreadyExists` | 409 | `ERR_EMAIL_IN_USE` | throw-site / `Email is already registered.` |
@@ -58,6 +59,8 @@ Login enumeration neutrality (identical bodies for unknown-user vs bad-password)
 is **delivered by EB-15** (SEL-03, 2026-10-30, merge 4529aeb) — byte-identical
 401s probe-pinned in `RateLimitProbesTest` R4. The 429 rows above carry the
 `Retry-After` header (dynamic remaining seconds; FE contract in EF-3).
+
+Login requires nonblank credentials and a valid email format, but does not enforce registration password length. Resend retains the `email` request parameter. Validly shaped incorrect credentials retain the existing 401 contract; malformed JSON remains `ERR_MALFORMED_BODY`. No submitted password or OTP is included in validation errors.
 
 ## 3. Producers (all one shape)
 

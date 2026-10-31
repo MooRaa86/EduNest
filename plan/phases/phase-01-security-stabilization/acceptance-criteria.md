@@ -33,7 +33,7 @@
 | P1-22 | Magic-byte detection on image surfaces (JDK decode-backed); per-surface allowlists; zip central-directory parse; rejected uploads leave no file/`.tmp`/metadata remnants | `UploadValidationHardeningProbeTest` (28 probes) + full suite 221 green on PR branch ([PR #33](https://github.com/MooRaa86/EduNest/pull/33), merge + CI pending) | Security Reviewer |
 | P1-23 | Unlisted origin denied (preflight, credentialed) | probe | Backend Dev |
 | P1-24 | Injection payload renders escaped in email (or P0-04 refuted → task unneeded) | email capture | Backend Dev |
-| P1-25 | Malformed login/verify/resend payloads → 400 field-aware | contract tests | Backend Dev |
+| P1-25 | Malformed login/verify/resend payloads → 400 field-aware | EB-32: `AuthRequestValidationTest` and OTP/rate-limit/login regression suites; CI, review and merge pending | Backend Dev — verification pending |
 | P1-26 | JavaFX+Agora removed; unused code paths deleted; build green | diff + build log | Eng Lead |
 | P1-27 (cond.) | Refresh/invalidation implemented per D-01 or formally carried with decision record | IT + decision link | Eng Lead |
 

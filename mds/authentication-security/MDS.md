@@ -71,7 +71,7 @@ Supporting documents:
 
 ## 6. Security & Validation
 
-- **Passwords:** BCrypt; min length 8 on register/reset DTOs; **no complexity rules**; `PasswordMatches`/`FieldsValueMatch` validators exist (used on register DTO; manual compares elsewhere).
+- **Passwords:** BCrypt; min length 8 on register/reset DTOs; **no complexity rules**; `FieldsValueMatch` validates registration confirmation (manual compares elsewhere). The unused legacy `PasswordMatches` path was removed in EB-32.
 - **OTP:** 6 digits (`SecureRandom`, `100000..999999`), 2-minute expiry, one active row per user (previous row deleted on issue), plaintext storage, **no attempt counter**, no resend cap, **`otpType` not filtered on account verification** (`RegisterServiceImpl.verifyUser` looks up by email+code only).
 - **JWT in URL/WebSocket:** the (dead) handshake interceptor reads a query-param token; channel CONNECT requires an `Authorization` native header — see [../websocket/MDS.md](../websocket/MDS.md).
 - **Error-message asymmetries:** login user-not-found vs wrong-password vs disabled reveal account status (enumeration vector, 404/401/400) — `config/auth/EduNestUserDetailsService:59`, handler mapping table in [../api/error-responses.md](../api/error-responses.md).
