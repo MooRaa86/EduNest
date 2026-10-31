@@ -116,9 +116,7 @@ public class FileController {
             @RequestParam String filePath,
             @RequestParam(defaultValue = "false") boolean download
     ) {
-        // An arbitrary path cannot be associated reliably with an owner. Use a
-        // typed endpoint, which authorizes the corresponding database entity.
-        return ResponseEntity.status(403).build();
+        return resolveAndServeFile(fileAccessService.authorizeGeneric(filePath), download);
     }
 
     private ResponseEntity<Resource> resolveAndServeFile(String filePath, boolean download) {

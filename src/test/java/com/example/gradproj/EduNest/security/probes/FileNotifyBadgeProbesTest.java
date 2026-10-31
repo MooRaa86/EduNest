@@ -28,8 +28,7 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 	private static final String STRANGER = "probe-fnb-stranger@example.org";
 
 	/**
-	 * G9 — the legacy arbitrary-path endpoint is disabled until an ownership-aware
-	 * replacement is available. Both ordinary paths and traversal attempts fail.
+	 * G9 — unknown paths and traversal are rejected by the generic guard.
 	 */
 	@Test
 	@DisplayName("G9: arbitrary-path downloads are forbidden")
@@ -43,13 +42,13 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 			mockMvc.perform(get("/files")
 							.param("filePath", "probe-fnb/" + file.getFileName())
 							.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
-					.andExpect(status().isForbidden());
+					.andExpect(status().isNotFound());
 
 			// traversal must STAY blocked (this part is FIXED behavior, keep forever)
 			mockMvc.perform(get("/files")
 							.param("filePath", "../../application.properties")
 							.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
-					.andExpect(status().isForbidden());
+					.andExpect(status().isNotFound());
 		} finally {
 			try {
 				Files.deleteIfExists(file);
