@@ -89,7 +89,9 @@ public class MentorshipLeaderboardService {
                 .build();
     }
 
+    /** D-04 amendment (Ruler B): enrollment-gated row = name, email, image URL, rank, points. */
     private LeaderboardEntry toEntry(StudentInLeaderboardDto row) {
-        return new LeaderboardEntry(row.getStudentFullName(), row.getTotalPoints());
+        return new LeaderboardEntry(row.getStudentFullName(), row.getStudentEmail(),
+                row.getStudentProfileImageUrl(), row.getRank(), row.getTotalPoints());
     }
 }

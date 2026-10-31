@@ -55,7 +55,7 @@ Supporting documents:
 
 Full inventory in [../api/endpoints.md](../api/endpoints.md). Base paths:
 - `/api/v1/mentorship` — mentor CRUD + lifecycle (`POST /update-status/{id}`), join/rate (student), explore/categories (public), counts for mentor, cover image endpoints.
-- `/api/v1/student/mentorships` — overview (public), reviews (public; reviewer name only), leaderboard (enrolled student, owning mentor or ADMIN; student rows contain name and points only), top mentorships by mentor. EB-23 implementation is pending review.
+- `/api/v1/student/mentorships` — overview (public), reviews (public; reviewer name only), leaderboard (enrolled student, owning mentor or ADMIN; rows carry `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` per the D-04 amendment (Ruler B) — the enrollment gate makes the row contract safe; `studentLevel`/badges stay excluded), top mentorships by mentor. EB-23 implementation is pending review.
 - `/api/v1/week`, `/lectures` — curriculum CRUD (mentor) and reads.
 - Validation: `mentorShipCreateDTO`/`UpdateDTO` (+ 0–100 discount); review ≤500 chars.
 

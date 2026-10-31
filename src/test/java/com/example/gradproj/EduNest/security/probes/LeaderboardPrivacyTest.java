@@ -74,7 +74,7 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
         mockMvc.perform(get(route(-1L)).header("Authorization", token(FIRST, AuthFixture.STUDENT))).andExpect(status().isForbidden());
     }
 
-    @Test void serializedEntriesContainOnlyNameAndPointsWithOrderingAndPagination() throws Exception {
+    @Test void serializedEntriesFollowAmendedD04ContractWithOrderingAndPagination() throws Exception {
         String body = mockMvc.perform(get(route(mentorshipId)).param("size", "1").param("page", "0")
                 .header("Authorization", token(SECOND, AuthFixture.STUDENT))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode board = json.readTree(body).path("apiResponse").path("leaderboard");
@@ -86,18 +86,28 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
         assertThat(board.path("userRank").asLong()).isEqualTo(2);
         assertThat(entries.size()).isEqualTo(2); // existing contract includes the off-page current student
         assertThat(entries.get(0).path("studentFullName").asText()).isEqualTo(firstName);
+        assertThat(entries.get(0).path("studentEmail").asText()).isEqualTo(FIRST);
+        assertThat(entries.get(0).path("studentProfileImageUrl").asText()).isEqualTo("https://example.org/private-image");
+        assertThat(entries.get(0).path("rank").asLong()).isEqualTo(1);
         assertThat(entries.get(0).path("totalPoints").asInt()).isEqualTo(100);
         assertThat(entries.get(1).path("studentFullName").asText()).isEqualTo(secondName);
+        assertThat(entries.get(1).path("studentEmail").asText()).isEqualTo(SECOND);
+        assertThat(entries.get(1).path("rank").asLong()).isEqualTo(2);
         assertThat(entries.get(1).path("totalPoints").asInt()).isEqualTo(20);
         for (JsonNode entry : entries) assertEntryFields(entry);
-        assertEntryFields(board.path("currentUser"));
-        assertThat(body).doesNotContain(FIRST, SECOND, "private-image", "studentEmail", "phone", "studentLevel", "lastBadge", "studentProfileImageUrl");
+        JsonNode currentUser = board.path("currentUser");
+        assertEntryFields(currentUser);
+        assertThat(currentUser.path("studentEmail").asText()).isEqualTo(SECOND);
+        assertThat(currentUser.path("rank").asLong()).isEqualTo(2);
+        // D-04 amendment: studentLevel and badge fields stay excluded from the
+        // serialized contract even though the internal row projection has them.
+        assertThat(body).doesNotContain("studentLevel", "lastBadge", "phone", "userEmail");
     }
 
     private void assertEntryFields(JsonNode node) {
         Set<String> fields = new HashSet<>();
         node.fieldNames().forEachRemaining(fields::add);
-        assertThat(fields).containsExactlyInAnyOrder("studentFullName", "totalPoints");
+        assertThat(fields).containsExactlyInAnyOrder("studentFullName", "studentEmail", "studentProfileImageUrl", "rank", "totalPoints");
     }
 
     @Test void directServiceRejectsSpoofedEmailAndMissingId() {

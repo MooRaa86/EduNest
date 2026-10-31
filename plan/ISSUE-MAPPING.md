@@ -43,7 +43,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CHAT-08** | Low | P0-03 → P4-06 | 0,4 | ws | V→T (cond.) → FIXED | RESOLVED by EB-1 (2026-10-29, same-PR): mechanism confirmed by V-01 probe, then `@Payload ChatMessageRequest` DTO + blank guard shipped; objects now bind to pure text, raw strings rejected ([tasks#p0-03](phases/phase-00-planning-baseline/tasks.md#p0-03)) — P4-06 keeps CHAT-01/06 only |
 | **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | Planned |
 | **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
-| **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04) | EB-23 implementation: leaderboard scoped to enrolled student, owner or ADMIN; review and CI pending |
+| **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04, amended Ruler B) | EB-23 implementation: leaderboard scoped to enrolled student, owner or ADMIN; rows = `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` (no `studentLevel`/badges); review and CI pending |
 | **MSH-04** | Med | P3-02 | 3 | database | T | Planned |
 | **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned |
 | **MSH-06** | Med | P1-22 | 1 | file-storage | T | **Hardened - EB-29 (implementation + probe suite)**: stored extension derives from the detected content format, not the client filename; declared MIME cross-checked against the canonical set for the detected type; all nine replace flows now save the new file before deleting the old one so a rejected upload no longer destroys the previous file ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |

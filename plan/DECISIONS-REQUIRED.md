@@ -64,6 +64,7 @@
 - **Impact:** (a) smallest code change + real privacy win; FE must render names.
 - **Default:** (a). Decide-by: before P1-16.
 - **Outcome (decided 2026-10-31, user-approved):** **(a) display names only.** Public surfaces (reviews, leaderboard, public profiles) expose the user's **display name and points only** — no emails, no phone, no other personal profile data. FE renders names instead of emails. Unblocks `P1-16` (Jira **EB-23**, Leaderboard Privacy).
+- **Amendment — Ruler B (2026-10-31, Engineering Lead-approved): supersedes the leaderboard-row rule above for the leaderboard surface only.** The leaderboard is NOT public: it is accessible only to students enrolled in the mentorship, the owning mentor, and ADMIN. Because enrollment authorization already protects access, the approved student leaderboard row contract is `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints`; `studentLevel` and badge fields remain excluded. Public reviews keep the earlier display-name-only rule (no reviewer email or profile image).
 
 ### D-05 — Open push/mail endpoints
 - **Question:** `POST /api/v1/notifications/send` (any→any), `POST /admin/.../send-notification`, and public `POST /send` platform mailbox (SEL-10/NOTIF-01, MAIL-01) — admin-gate, restrict, or delete?
