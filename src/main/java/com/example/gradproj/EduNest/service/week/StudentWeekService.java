@@ -134,7 +134,7 @@ public class StudentWeekService {
     @PreAuthorize("hasRole('STUDENT')")
     public StudentWeekContentsResponse getWeekContents(Long weekId) {
         Week week = weekRepository.findById(weekId)
-                .orElseThrow(() -> new globalLogicEx("Week not found"));
+                .orElseThrow(() -> new AccessDeniedException("Week not found"));
         Long studentId = getCurrentStudentId();
         if (!enrollmentRepository.isStudentEnrolledInWeekMentorship(weekId, studentId)) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
