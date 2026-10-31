@@ -50,7 +50,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-06** | Med | P1-22 | 1 | file-storage | T | **Hardened - EB-29 (implementation + probe suite)**: stored extension derives from the detected content format, not the client filename; declared MIME cross-checked against the canonical set for the detected type; all nine replace flows now save the new file before deleting the old one so a rejected upload no longer destroys the previous file ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **MSH-07** | Low | P4-10 | 4 | learning | T (default: effective price) | Planned |
 | **MSH-08** | Low | P4-10, P4-11 | 4 | learning | T | Planned |
-| **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | EB-23 removes reviewer email and image from public review projections; review and CI pending |
+| **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | Public-review email temporarily restored for frontend compatibility pending usage verification and Lead/PO approval; image exposure also pending approval |
 | **MSH-10** | Med | P4-03 | 4 | notifications | T | Planned |
 | **MSH-11** | Med | P1-17 | 1 | auth | T | Planned |
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |

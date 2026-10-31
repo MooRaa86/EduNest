@@ -46,7 +46,8 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
         r.feedBack as feedback,
         r.rating as rating,
         CONCAT(s.firstName, ' ', s.lastName) as studentFullName,
-        s.profileImageUrl as userProfileImageUrl
+        s.profileImageUrl as userProfileImageUrl,
+        s.email as studentEmail
     FROM MentorShipReviews r
     JOIN r.student s
     WHERE r.mentorShip.id = :mentorshipId
@@ -68,6 +69,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
         r.id,
         CONCAT(r.student.firstName, ' ', r.student.lastName),
+        r.student.email,
         r.rating,
         r.feedBack,
         r.student.profileImageUrl,

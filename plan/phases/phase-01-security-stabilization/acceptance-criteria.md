@@ -24,7 +24,7 @@
 | P1-13 | History/edit blocked for non-participants; edit events carry server-derived recipient | WS/API IT | Security Reviewer |
 | P1-14 | Lectures/tasks detail+filters gate on ownership/enrollment; DRAFT hidden inside them | matrix IT | Backend Dev |
 | P1-15 | DRAFT invisible (404) for non-owner everywhere incl. public overview | anon/authed probes | Backend Dev |
-| P1-16 | Leaderboard 403 for outsiders; public reviews contain no emails | EB-23 `LeaderboardPrivacyTest` and G7 production-chain probe; Security/PO/Lead and frontend review, CI and merge pending | PO (privacy) — review pending |
+| P1-16 | Leaderboard 403 for outsiders; public-review email compatibility exception pending Lead/PO approval and frontend usage verification | EB-23 `LeaderboardPrivacyTest` and G7 production-chain probe; Security/PO/Lead and frontend review, CI and merge pending | PO (privacy) — review pending |
 | P1-17 | `/homepage/progress/{id}` 403 without enrollment | probe | Backend Dev |
 | P1-18 | `correctAnswer` absent pre-submission; present only for correct mentor/student contexts | captures + FE note | Backend Dev |
 | P1-19 | Foreign-quiz re-parent rejected; award listings scoped | cross-mentor IT | Security Reviewer |

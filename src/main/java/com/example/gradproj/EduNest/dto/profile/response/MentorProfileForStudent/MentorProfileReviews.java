@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class MentorProfileReviews {
     private Long id;
     private String userName;
+    private String userEmail;
     private long rating;
     private String feedBack;
     private String userProfileImageUrl;

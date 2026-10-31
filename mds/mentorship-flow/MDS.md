@@ -55,7 +55,7 @@ Supporting documents:
 
 Full inventory in [../api/endpoints.md](../api/endpoints.md). Base paths:
 - `/api/v1/mentorship` — mentor CRUD + lifecycle (`POST /update-status/{id}`), join/rate (student), explore/categories (public), counts for mentor, cover image endpoints.
-- `/api/v1/student/mentorships` — overview (public), reviews (public; reviewer name + `userProfileImageUrl`, reviewer email private), leaderboard (enrolled student, owning mentor or ADMIN; rows carry `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` per the D-04 amendment (Ruler B) — the enrollment gate makes the row contract safe; `studentLevel`/badges stay excluded), top mentorships by mentor. EB-23 implementation is pending review; the review-image restore is a D-04 follow-up amendment pending Engineering Lead confirmation.
+- `/api/v1/student/mentorships` — overview (public), reviews (public; `studentFullName`, `studentEmail`, `userProfileImageUrl`), leaderboard (enrolled student, owning mentor or ADMIN; rows carry `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` per the D-04 amendment (Ruler B); `studentLevel`/badges stay excluded), top mentorships by mentor. Public-review email is temporarily restored pending frontend usage verification and Lead/PO approval; image exposure also awaits approval.
 - `/api/v1/week`, `/lectures` — curriculum CRUD (mentor) and reads.
 - Validation: `mentorShipCreateDTO`/`UpdateDTO` (+ 0–100 discount); review ≤500 chars.
 
@@ -69,7 +69,7 @@ Full inventory in [../api/endpoints.md](../api/endpoints.md). Base paths:
 - **MSH-06 (Medium):** cover-image upload trusts client `Content-Type`; extension taken raw from multipart filename; no Tika/magic-byte validation (contrast with submission files); old image deleted-before-new-uploaded (failure window).
 - **MSH-07 (Low):** explore price filters compare **base** price while UI shows discounted price.
 - **MSH-08 (Low):** N+1 on mentorship listing (`whatWillLearn` lazy per row) and in-memory pagination in homepage upcoming-items aggregation.
-- **MSH-09 (Medium):** EB-23 removes reviewer emails and profile images from public mentorship and mentor-profile reviews; review pending.
+- **MSH-09 (Medium):** Public mentorship and mentor-profile reviews expose reviewer emails and profile images; the temporary compatibility exception and image exposure are pending Lead/PO approval.
 - **MSH-10 (Medium):** status side effects (completion → certificates + fan-out notifications) run **inside** the status transaction — entangled transactional boundary.
 - **MSH-11 (Medium):** homepage progress endpoint `GET /api/v1/homepage/progress/{mentorshipId}` performs no enrollment check — any student queries any mentorship's content composition.
 - **MSH-12 (Medium, ⚠️ suspected):** explore keyword search builds `LIKE '%kw%'` without wildcard escaping — unbounded scans / pattern abuse under load.

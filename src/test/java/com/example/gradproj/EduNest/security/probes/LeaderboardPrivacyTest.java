@@ -118,11 +118,27 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
         } finally { SecurityContextHolder.clearContext(); }
     }
 
-    @Test void publicReviewPayloadsRestoreReviewerImageOmitReviewerEmail() throws Exception {
-        for (String path : List.of("/api/v1/student/mentorships/" + mentorshipId + "/reviews", "/api/v1/profile/mentor/" + OWNER + "/reviews")) {
-            String body = mockMvc.perform(get(path)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-            assertThat(body).contains(firstName, "Helpful", "userProfileImageUrl", "https://example.org/private-image")
-                    .doesNotContain(FIRST, "userEmail", "studentEmail", "\"email\"");
+    @Test void publicReviewPayloadsKeepOriginalContractEmailAndImageRestore() throws Exception {
+        // Backwards-compatibility contract with the separate FE project: public
+        // review cards expose the reviewer email + profile image under the
+        // original per-surface property names until FE usage is verified —
+        // both restorations are PENDING Lead/PO approval (D-04).
+        String mentorshipRoute = "/api/v1/student/mentorships/" + mentorshipId + "/reviews";
+        String profileRoute = "/api/v1/profile/mentor/" + OWNER + "/reviews";
+        for (String[] pathAndEmailKey : new String[][]{{mentorshipRoute, "studentEmail", "feedback", "reviewId"}, {profileRoute, "userEmail", "feedBack", "id"}}) {
+            String body = mockMvc.perform(get(pathAndEmailKey[0])).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            JsonNode cards = json.readTree(body).path("apiResponse").path("reviews").path("content");
+            assertThat(body).contains(firstName, "Helpful", "userProfileImageUrl", "https://example.org/private-image", pathAndEmailKey[1], FIRST);
+            boolean reviewCard = false;
+            for (JsonNode card : cards) {
+                if (card.path(pathAndEmailKey[2]).asText("").equals("Helpful")) {
+                    assertThat(card.path(pathAndEmailKey[1]).asText()).isEqualTo(FIRST);
+                    assertThat(card.path("userProfileImageUrl").asText()).isEqualTo("https://example.org/private-image");
+                    assertThat(card.hasNonNull(pathAndEmailKey[3])).isTrue();
+                    reviewCard = true;
+                }
+            }
+            assertThat(reviewCard).isTrue();
         }
     }
 }
