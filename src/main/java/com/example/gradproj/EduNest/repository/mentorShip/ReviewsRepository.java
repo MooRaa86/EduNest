@@ -46,7 +46,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
         r.feedBack as feedback,
         r.rating as rating,
         CONCAT(s.firstName, ' ', s.lastName) as studentFullName,
-        s.profileImageUrl as studentProfileImageUrl,
+        s.profileImageUrl as userProfileImageUrl,
         s.email as studentEmail
     FROM MentorShipReviews r
     JOIN r.student s

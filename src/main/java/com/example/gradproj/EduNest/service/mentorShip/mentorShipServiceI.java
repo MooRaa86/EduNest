@@ -24,6 +24,8 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.certificate.CertificateService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
+import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -56,6 +58,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final TotalPointsRepository totalPointsRepository;
     private final NotificationService notificationService;
     private final CommissionService commissionService;
+    private final ContentReadGuard contentReadGuard;
 
 
     private String getCurrentUserEmail() {
@@ -237,12 +240,12 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     public List<TaskResponse> getMentorShipTasks(Long mentorShipId) {
-        if(!MentorShipRepository.existsById(mentorShipId)) {
-            throw new globalLogicEx("MentorShip not found");
-        }
+        contentReadGuard.requireMentorship(mentorShipId);
+        boolean studentView = contentReadGuard.isStudentView(mentorShipId);
 
         List<Task> mentorshipTasks = taskRepository.findByWeek_Mentorship_Id(mentorShipId);
         return mentorshipTasks.stream()
+                .filter(task -> !studentView || task.getStatus() == TaskStatus.PUBLISHED || task.getStatus() == TaskStatus.CLOSED)
                 .map(this::mapToTaskResponse)
                 .collect(Collectors.toList());
 

@@ -48,7 +48,7 @@ The team's own `legacy-audits/IDOR_Audit_Report.md` tracked protection roll-out;
 | G4 | **Lecture reads** (3 GET endpoints) | `LectureController` (no annotations), `LectureService.getLectureById/getLecturesByWeekId/getLecturesByMentorshipId` (L95/101/106) | any authenticated user (media URL exposure) |
 | G5 | **Mentorship task list** `GET /api/v1/mentorship/{mid}/get-tasks` | `mentorShipServiceI.getMentorShipTasks` L239–249 — only `existsById` | any authenticated user (incl. DRAFT/unpublished tasks, attachment paths) |
 | G6 | **Task/project detail + mentorship filters** | `TaskController#getById`, `TaskServiceImpl#getTaskById`; `ProjectController#getById`; `/filter/{msid}` variants | any authenticated user |
-| G7 | **Mentorship leaderboard** | `MentorshipLeaderboardService` L26–28 — enrollment guard commented out | any authenticated user (student emails+points) |
+| G7 | **Mentorship leaderboard** | EB-23: service checks principal role and enrollment/ownership or ADMIN | outsiders denied; rows expose the five fields approved by the D-04 amendment (Ruler B): `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints`; `studentLevel`/badges excluded; review pending |
 | G8 | **Mentorship DRAFT access** | `getMentorShipById`/`getMentorShips` no status filter; public overview query `findMentorshipDetailsById` has only `WHERE m.id = :id` (`MentorShipRepository` L244–248) | any user incl. anonymous for the overview path |
 | G9 | **Generic file endpoint** `GET /files?filePath=...` | EB-27 resolves current database path and applies typed-resource checks; unknown/ambiguous paths deny | implementation pending Security/Lead review |
 | G10 | **Notifications: user-to-user send** | `POST /api/v1/notifications/send` — class guard `isAuthenticated()` only; `NotificationService.sendToUserByEmail` has no admin gate | any authenticated user can push arbitrary notification content to any email's `/queue/notifications` |
@@ -62,12 +62,15 @@ Correctly-enforced (verified, for balance): grading ownership (task/project/quiz
 
 ## 4. Public-surface privacy effects
 
-- `/api/v1/student/mentorships/{id}/reviews` is permitAll and returns reviewer **emails** + profile images (`MentorshipReviewProjection.studentEmail`).
+- Public mentorship reviews expose `studentFullName`, `studentEmail` and `userProfileImageUrl`; public mentor-profile reviews expose `userName`, `userEmail` and `userProfileImageUrl`. The temporary D-04 compatibility exception is Engineering Lead approved. Frontend usage verification remains pending, and future removal of reviewer emails requires coordination with the separate frontend project. User-supplied review text remains unchanged.
+- The leaderboard is NOT public (D-04 amendment, Ruler B — Engineering Lead-approved 2026-10-31; supersedes the earlier name-and-points-only leaderboard-row rule for the leaderboard surface only). Enrollment rows remain the membership condition, so student rows are the five-field Ruler B contract (`studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints`); `studentLevel` and badge fields stay excluded. Page/count and current-user rank are retained as technical metadata. Anonymous requests are 401, outsiders and nonexistent mentorships are 403. The row-contract change requires frontend coordination.
 - Public mentor profile (`/api/v1/profile/mentor/**`) exposes mentor email as identifier.
 - Swagger enabled anonymously in prod (`/swagger-ui/**`).
 - `/uploads/**` permits only `mentorship-cover-images`, `student`, `mentor`, and `chatroom`; other folders are denied by the chain and lack explicit MVC handlers. EB-27 implements a separately authenticated generic path with current-reference checks; FE use and Security/Lead review remain unconfirmed.
 
 ## 5. Open questions
+
+EB-21 / D-03: the production chain rejects anonymous callers with 401; authenticated outsiders and missing content are denied with 403. Student task/project reads expose only PUBLISHED or CLOSED content; owner mentors and ADMIN can read drafts. Student-submission projections and student-week membership checks use the authenticated identity, not a caller-supplied email. An enrollment row is the current authoritative membership condition; there is no individual unenrollment or revocation feature. Any future cancellation or revocation feature must revisit the content-read checks. Account deactivation and deletion are enforced separately by JWT validation. Frontend coordination and Security/Lead review remain pending.
 
 - Confirm intended access for `GET /lectures/**` and `GET /api/v1/mentorship/{id}/get-tasks` (closed-content leak vs accidental omission).
 - Confirm whether `/api/v1/notifications/send` should be admin-only (it was likely added for testing; it is a live phishing vector).

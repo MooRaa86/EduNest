@@ -14,7 +14,7 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 | 🔓 POST `/api/v1/register/verify-user` | Validate required email and six-digit numeric `otp`, then verify → `enabled=true`. |
 | 🔓 POST `/api/v1/register/send-otp` | Resend verification OTP using required nonblank, valid `email` request parameter. |
 | 🔓 POST `/api/v1/register/restore` · `/confirm-restore` | Restore deleted account via OTP |
-| 🔓 POST `/api/v1/admin/register` | First-admin bootstrap (`RegisterAdminRequest`) — echoes password |
+| 🔓 POST `/api/v1/admin/register` | First-admin bootstrap (`RegisterAdminRequest`) — **one-shot**: succeeds only while zero admins exist (`400 ERR_BUSINESS_RULE "Admin bootstrap is no longer available."` afterwards); response carries **identity only** (no credentials) (P1-09/EB-16) |
 | 🔓 POST `/send` | Platform free-form mail (`MailRequest{email,name,message}`) — `PlatformMailController`; **effective path is bare `/send`** due to `@RestController("/mail")` bean-name quirk (no path mapping) — public in prod (MAIL-01) |
 
 Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATION` with a `fields` map; malformed JSON retains `ERR_MALFORMED_BODY`. Frontend coordination has been requested on EB-32; approval is not implied.
@@ -33,8 +33,8 @@ Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATIO
 
 | Endpoint | Purpose |
 |---|---|
-| ⟡ GET `/api/v1/admin` | List admins — **password hash included** (SEL-08); `@PreAuthorize` commented out |
-| ⟡ DELETE `/api/v1/admin/{email}` | Delete admin account |
+| ⟡ GET `/api/v1/admin` | List admins — **identity only, no hash material** (P1-09/EB-16 removed the password field from the response; `@PreAuthorize` stays commented out — route-level `hasRole("ADMIN")` covers it) |
+| ⟡ DELETE `/api/v1/admin/{email}` | Delete admin account — **the last remaining admin cannot be deleted** (`400 ERR_BUSINESS_RULE "Cannot delete the last remaining admin."`); deletion is transactional (previously a bare 500 — fixed in EB-16) |
 | ⟡ GET `/api/v1/admin/users/{id}` · `/role/{roleName}` · `/dashboard-summary` | User directory, paged search, KPIs |
 | ⟡ POST `/api/v1/admin/users/send-email` | Direct email to a user (`admin-message.html`) |
 | ⟡ POST `/api/v1/admin/users/send-notification` | Direct in-app notification (SUPPORT) |
@@ -64,7 +64,7 @@ Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATIO
 | ⟡ POST `/api/v1/mentorship/update-status/{id}` (MENTOR) | role+owner | Lifecycle transition (`ChangeStatusRequest`) |
 | ⟡ POST `/api/v1/mentorship/{mentorshipId}/change-cover-image` (MENTOR, multipart) | role+owner | Upload cover (5MB cap, header-based MIME) |
 | ⟡ DELETE `/api/v1/mentorship/{mentorshipId}/delete-cover-image` (MENTOR) | role+owner | Delete cover |
-| 🔐 GET `/api/v1/mentorship/{mid}/get-tasks` | authenticated-only | **Task list of any mentorship incl. DRAFT, unguarded ownership/enrollment** (MSH-02) |
+| 🔐 GET `/api/v1/mentorship/{mid}/get-tasks` | enrolled student, owning mentor or ADMIN | Course task list; drafts excluded for students (EB-21). |
 | ⟡ GET `/api/v1/mentorship/count-for-mentor`, `/count-students-for-mentor` (MENTOR) | role | Counts |
 | ⟡ POST `/api/v1/mentorship/{mentorshipId}/join` (STUDENT) | role | Enroll (ACTIVE-only; commission snapshot) |
 | ⟡ POST `/api/v1/mentorship/{mentorshipId}/rate` (STUDENT) | role+enrolled | Create review (`CreateReviewRequest`) |
@@ -74,9 +74,9 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | Endpoint | Gate | Purpose |
 |---|---|---|
 | 🔓 GET `/api/v1/student/mentorships/{id}/overview` | public | Details + top-3 + upcoming + enrollment flag |
-| 🔓 GET `/api/v1/student/mentorships/{id}/reviews` | public | Paged reviews (**emails exposed**, MSH-09) |
+| 🔓 GET `/api/v1/student/mentorships/{id}/reviews` | public | Paged reviews include reviewer `studentFullName`, `studentEmail` and `userProfileImageUrl`. The temporary compatibility exception is Engineering Lead approved; frontend usage verification remains pending and future email removal requires frontend coordination. |
 | 🔐 GET `/api/v1/student/mentorships/mentor/{mentorEmail}/top-mentorships` | authenticated | Mentor's top-list |
-| 🔐 GET `/api/v1/student/mentorships/{id}/leaderboard` | authenticated-only | Points leaderboard (**enrollment guard commented out**, MSH-03) |
+| 🔐 GET `/api/v1/student/mentorships/{id}/leaderboard` | enrolled student, owning mentor or ADMIN | Rows and current-user expose `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank` and `totalPoints` — the D-04 amendment (Ruler B, Engineering Lead-approved 2026-10-31): enrollment-gated access supersedes the earlier name-and-points-only leaderboard-row rule; `studentLevel` and badge fields stay excluded. Pagination, total count and `userRank` remain. Existing off-page current-user append is retained. |
 
 ## 5. Weeks, lectures (curriculum)
 
@@ -86,7 +86,7 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | ⟡ GET `/api/v1/week/{mentorshipId}/weeks`, `/{weekId}/contents` (MENTOR) | role+owner | Curriculum views incl. typed content items |
 | ⟡ GET `/api/v1/student/week/{mentorshipId}/weeks`, `/{weekId}/contents`, `/{mentorshipId}/weeks-with-contents` (STUDENT, class) | role+enrolled | Student curriculum (DRAFT content filtered; lecture completion flags **hardcoded true**) |
 | ⟡ POST/DELETE/PATCH `/lectures`… (MENTOR via service) | role+owner | Lecture CRUD |
-| 🔐 GET `/lectures/{id}` · `/lectures/week/{weekId}` · `/lectures/mentorship/{mentorshipId}` | authenticated-only | **Unguarded curriculum reads** (MSH-02/G4) |
+| 🔐 GET `/lectures/{id}` · `/lectures/week/{weekId}` · `/lectures/mentorship/{mentorshipId}` | enrolled student, owning mentor or ADMIN | Course-scoped curriculum reads (EB-21). |
 
 ## 6. Tasks
 
@@ -95,8 +95,8 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | ⟡ POST `/api/v1/task` (multipart) · PATCH `/{id}/status` · PATCH `/{id}` (multipart) · DELETE `/{id}` (MENTOR) | role+owner | Task CRUD (`CreateTaskRequest`), publish/close, attachment mgmt |
 | ⟡ GET `/api/v1/task/dashboard/{mentorshipId}` · `/full-dashboard/{mentorshipId}` (MENTOR) | role+owner | Dashboards |
 | ⟡ GET `/api/v1/task/{taskId}/statistics` (MENTOR) | role+owner | Stats (**pendingReview bug**, LEARN-04) |
-| 🔐 GET `/api/v1/task/{id}` · `/filter/{msid}` | authenticated-only | **Unguarded reads** (LEARN-02) |
-| 🔐 GET `/api/v1/task/{taskId}/student` | authenticated-only | Task + own submission — **no enrollment check** (LEARN-02) |
+| 🔐 GET `/api/v1/task/{id}` · `/filter/{msid}` | enrolled student, owning mentor or ADMIN | Course-scoped task reads; drafts excluded for students (EB-21). |
+| 🔐 GET `/api/v1/task/{taskId}/student` | enrolled student, owning mentor or ADMIN | Course-scoped task + current caller's submission (EB-21). |
 | ⟡ GET `/api/v1/task-submission/{taskId}` (MENTOR) | service-validated | Paged submissions of a task |
 | ⟡ POST `/api/v1/task-submission/{taskId}` (STUDENT, multipart `file`/`fileUrl`) | role+enrolled | Submit (unique row per task+student; resubmit overwrites) |
 | ⟡ POST `/api/v1/task-submission/{submissionId}/grade` (MENTOR) | role+owner | Grade (`GradeTaskSubmissionRequest`) |
@@ -105,9 +105,11 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 
 Same twin structure under `/api/v1/project` (shared base for `ProjectController` + `ProjectSubmissionController`):
 
+EB-21 also scopes project detail, mentorship filter and student-submission detail to the enrolled student, owning mentor or ADMIN; student drafts are hidden. Anonymous callers receive 401, authenticated outsiders or missing content receive 403. Frontend consumers should handle the change from previously successful foreign-content reads; liaison agreement is not yet recorded.
+
 - ⟡ POST `` (multipart), PATCH `/{id}/status`, PATCH `/{id}` (multipart), DELETE `/{id}` — MENTOR role+owner.
 - ⟡ GET `/{projectId}/statistics`, `/full-dashboard/{mentorshipId}` — MENTOR.
-- 🔐 GET `/{id}` · `/filter/{msid}` — authenticated-only (**unguarded**, LEARN-02).
+- 🔐 GET `/{id}` · `/filter/{msid}` | enrolled student, owning mentor or ADMIN — course-scoped project reads; drafts excluded for students (EB-21, closes LEARN-02 for the project twin).
 - ⟡ GET `/{projectId}/student` — STUDENT role + **enforced enrollment** (`validateEnrolled`).
 - ⟡ POST `/{projectId}/submissions` (STUDENT, multipart, enforced enrollment).
 - ⟡ GET `/{projectId}/submissions` (MENTOR), POST `/submissions/{submissionId}/grade` (MENTOR).
