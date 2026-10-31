@@ -246,7 +246,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 		String path = fixture(folder, "legacy-" + UNIQUE_SUFFIX + ".txt");
 		mockMvc.perform(get("/files").param("filePath", path)
 				.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
-				.andExpect(status().isForbidden());
+				.andExpect(status().isNotFound());
 	}
 
 	@Test

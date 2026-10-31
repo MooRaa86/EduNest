@@ -7,7 +7,7 @@ Two storage services coexist with different rigor levels:
 1. **`FileStorageService`** (secure path) — Tika content sniffing, extension allow/deny lists, sanitized naming, atomic writes, traversal guards. Used for submissions/attachments.
 2. **`ImageStorageService`** (hardened path, EB-29 [P1-22]) — image saves for avatars/cover images/chatroom images prove the actual bytes via the shared `service/fileSotageService/UploadContentValidator` (magic bytes + structural checks + JDK decode for jpg/png) before anything is written; the stored extension comes from the detected format, not the client filename.
 
-The proposed **upload exposure policy ([P1-21]/EB-28, D-07)** serves only four anonymous-public folders statically. The legacy arbitrary-path endpoint is disabled pending an ownership-aware replacement; private categories use typed, ownership-checked `/files/**` endpoints.
+The **upload exposure policy ([P1-21]/EB-28, D-07)** serves only four anonymous-public folders statically. EB-27 implements an authenticated, current-reference-checked generic path in addition to typed, ownership-checked `/files/**` endpoints; review is pending.
 
 ## 2. Current Implementation
 
@@ -61,7 +61,7 @@ Also removed as part of the policy: the prod `file:uploads/` entry in `spring.we
 - **`/files/**`** (`controller/file/FileController`) — typed endpoints route through `service/fileSotageService/FileAccessService` with ownership verification:
   - `GET /files/task-submissions/{id}` / `/files/project-submissions/{id}` — owner student or the mentor of the mentorship mold.
   - `GET /files/tasks/{id}/attachment`, `/files/projects/{id}/attachment` — mentor or enrolled student.
-  - **`GET /files?filePath=…&download=`** returns 403 from the handler for authenticated requests with the required parameter: it cannot associate arbitrary paths with owners. Anonymous requests are rejected by the production chain. This is a compatibility break; coordinate migration to typed endpoints and EB-27.
+  - **`GET /files?filePath=…&download=`** requires authentication and a two-component allowlisted path. A public image requires one current image URL reference; private paths must match exactly one current task, project or submission path and pass the corresponding typed authorization. Missing, stale, ambiguous, forbidden, malformed and symlink-resolved paths return 404. Noncanonical legacy forms (backslashes, percent literals, dot segments, nested paths, and paths outside the configured root) are not supported. Anonymous requests remain 401. FE use is unconfirmed.
 - Regression pins: `security/probes/UploadExposurePolicyProbeTest` covers anonymous/authenticated private denials, public allowlist and returned bytes, independent MVC checks, admin/unknown fail-closed, traversal/encoded variants, configured image root, and task-submission typed-route authorization; `UploadsServingProbeTest` pins the G14 explicit rule; **EB-29 [P1-22]: `security/probes/UploadValidationHardeningProbeTest` pins the hardened upload matrix end-to-end** — real jpg/png/webp accepted per surface (byte-identical serve-back), malformed/spoofed/double-extension/truncated/tampered-CRC images and content-vs-extension-zip mismatches rejected on 400 `ERR_BUSINESS_RULE` with no file/`.tmp`/metadata remnants, stored-extension normalization, per-surface allowlists, and zip integrity including genuine-zip-named-`.pdf` and local-header-only archives.
 - Response headers via `util/FileResponseBuilder`: `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`, inline vs attachment disposition, MIME by `Files.probeContentType` (octet-stream fallback).
 
@@ -82,7 +82,7 @@ sequenceDiagram
 
 ## 4. Known Issues (IDs in ../ISSUES.md)
 
-- **FILE-01 (Critical):** proposed EB-28 changes restrict static serving and disable the generic arbitrary-path download; verification and review remain pending. EB-27 remains relevant for any ownership-aware replacement.
+- **FILE-01 (Critical):** EB-28 restricts static serving; EB-27 implements the authenticated ownership-aware generic resolver pending review. The realpath-check/open race and deployment filesystem permissions remain release considerations.
 - **FILE-02 (High) — hardened by EB-29 [P1-22]:** image surfaces now detect by content (magic bytes + structural checks + JDK decode) and ignore the client-controlled Content-Type except as a cross-check; regression suite `UploadValidationHardeningProbeTest` (covers/avatars/chatroom/zip/submission spoofing).
 - **FILE-03 (Medium) — hardened by EB-29 [P1-22]:** stored extension is derived from the detected format; the client filename no longer reaches the path (double-extension spoofing normalizes to the real type).
 - **FILE-04 (Medium) — hardened by EB-29 [P1-22]:** weak `application/octet-stream` zip mapping removed and a stored `.zip` must have a parseable central directory (local-header-only/garbage payloads rejected before the target file is created).
@@ -93,7 +93,7 @@ sequenceDiagram
 ## 5. Open Questions
 
 - D-07 policy is implemented in the EB-28 working tree and pending review: static public serving for four folders; private content uses typed endpoints. FE must coordinate submission, attachment, legacy download and admin-image migrations.
-- EB-28 temporarily disables the legacy generic endpoint as a security dependency; this breaks public-category callers and departs from D-06's guard-first default. Eng Lead and FE liaison approval is required; EB-27 remains open for a compatible ownership-aware solution.
+- EB-27's generic endpoint deliberately rejects noncanonical and unreferenced paths. FE liaison must confirm usage and compatibility; Security/Lead review is pending. Retirement requires explicit FE confirmation of non-use.
 - Is blob-store (S3/GCS) planned? — **decided (D-25/[ADD-03], EB-83): Supabase Storage**; until it lands the local-disk exposure policy above is the transitional contract (`UploadPolicy` sets map onto bucket policies).
 
 ## 6. Related Documentation

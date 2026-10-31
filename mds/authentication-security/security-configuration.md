@@ -63,7 +63,7 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 Everything else — protected from anonymous, but **not role-restricted** (role checks only via `@PreAuthorize` or service checks; see [authorization-rules.md](authorization-rules.md)).
 
 ### denyAll
-After the public upload patterns, `/uploads/**` denies private, admin and unknown categories to all callers. MVC maps only the public folders. The generic `GET /files?filePath=` handler returns 403 for authenticated requests with the required parameter; anonymous requests are rejected by the production chain. The endpoint is disabled pending an ownership-aware replacement.
+After the public upload patterns, `/uploads/**` denies private, admin and unknown categories to all callers. MVC maps only the public folders. EB-27 adds an authenticated generic `GET /files?filePath=` resolver: public images require a current image reference; private files require one current database reference and typed-resource authorization. Unknown, stale, ambiguous and unauthorized paths return 404. Anonymous requests remain rejected by the production chain. Security/Lead review and frontend coordination are pending.
 
 Notable consequences:
 - Swagger UI + OpenAPI docs are public **in prod**.

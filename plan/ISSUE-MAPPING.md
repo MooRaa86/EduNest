@@ -55,7 +55,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
 | **LEARN-01** | Crit | P1-18 | 1 | learning | T | Planned |
 | **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
-| **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | Planned — EB-27 remains To Do; the temporary generic-endpoint denial merged in [PR #23](https://github.com/MooRaa86/EduNest/pull/23) does not satisfy the guard-first contract; frontend migration remains unverified. |
+| **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | EB-27 implements current-reference and ownership-checked generic access; Security/Lead review, CI and frontend compatibility remain pending. |
 | **LEARN-04** | Med | P4-05 | 4 | learning | T | Planned |
 | **LEARN-05** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
 | **LEARN-06** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |

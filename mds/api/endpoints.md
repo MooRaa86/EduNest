@@ -199,7 +199,7 @@ State machine (PENDING→UNDER_REVIEW→COMPLETED) + email side effects: `admin-
 | Endpoint | Gate |
 |---|---|
 | 🔐 GET `/files/task-submissions/{id}` · `/files/project-submissions/{id}` · `/files/tasks/{id}/attachment` · `/files/projects/{id}/attachment` | Ownership-verified via `FileAccessService` |
-| 🔐 GET `/files?filePath=…` | **No ownership check** (FILE-01/LEARN-03) — traversal is blocked |
+| 🔐 GET `/files?filePath=…` | Authenticated; allowed image requires one current image reference; private paths require one current matching resource and typed ownership/enrollment rules. Unavailable, ambiguous and unauthorized paths → 404; anonymous → 401. |
 
 ## 18. WebSocket (STOMP, non-HTTP)
 
