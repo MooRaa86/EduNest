@@ -29,6 +29,7 @@ public class ConversationService {
     private final ConversationRepository conversationRepo;
     private final MessageRepository messageRepo;
     private final UserRepository userRepo;
+    private final com.example.gradproj.EduNest.service.chat.ChatAuthorization chatAuthorization;
 
     public ConversationMessageResponse mapToResponse(Message msg) {
         return ConversationMessageResponse.builder()
@@ -48,6 +49,12 @@ public class ConversationService {
             String senderEmail,
             ConversationMessageRequest request
     ) {
+
+        // P1-12 / EB-19 — sender↔recipient pair validation: the recipient must
+        // be a distinct user (existence is enforced by the lookup below).
+        // Client-controlled event ROUTING (CHAT-04) is re-derived server-side
+        // under P1-13; the pair shape itself is guarded here.
+        chatAuthorization.validatePrivatePair(senderEmail, request.getRecipientEmail());
 
         UserEntity sender =
                 userRepo.findByEmail(senderEmail).orElseThrow(
