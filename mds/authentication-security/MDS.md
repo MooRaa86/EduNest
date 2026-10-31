@@ -25,7 +25,7 @@ Supporting documents:
 | R4 | Forgot password: OTP → verify → reset within a 1-hour window | Implemented (with design weaknesses, see risks) |
 | R5 | Account delete (soft), deactivate, restore via OTP | Implemented |
 | R6 | Change email via OTP sent to the **new** address; change password with old-password check | Implemented |
-| R7 | Admin bootstrap: one-time public `POST /api/v1/admin/register` (first admin only) | Implemented |
+| R7 | Admin bootstrap: one-time public `POST /api/v1/admin/register` (first admin only, synchronized one-shot guard; credentials never returned; last-admin delete guarded — P1-09/EB-16) | Implemented |
 | R8 | Server-side logout/invalidation, refresh tokens | **Not implemented** |
 | R9 | Rate limiting / brute-force protection on OTP and login | **Not implemented** |
 
@@ -42,8 +42,8 @@ Supporting documents:
 | `/api/v1/register/send-otp` | POST | Resend OTP (bare `String email` param, `@Valid @Email` unenforced — no `@Validated`) | Public |
 | `/api/v1/register/restore`, `/confirm-restore` | POST | Restore deleted account via OTP | Public |
 | `/settings/request-email-change`, `/confirm-email-change`, `/password`, `/delete`, `/confirm-delete`, `/deactivate` | POST/PATCH | Self-service account settings | `@PreAuthorize("isAuthenticated()")` (class) + URL `authenticated()` |
-| `/api/v1/admin/register` | POST | First-admin bootstrap (409 if an admin exists) | Public in both profiles |
-| `/api/v1/admin` | GET | List admins — **`@PreAuthorize` commented out** (`AdminController.java:33`); response **includes password hash** (`AdminService.java:57-66`) | URL rule ((prod only)) |
+| `/api/v1/admin/register` | POST | First-admin bootstrap (one-shot; `400 ERR_BUSINESS_RULE` once an admin exists) | Public in both profiles; response is identity-only (P1-09/EB-16) |
+| `/api/v1/admin` | GET | List admins — **`@PreAuthorize` commented out** (`AdminController.java:33`); response is **identity only, no hash material** (P1-09/EB-16 removed the `password` field from `AdminAccResponse`) | URL rule ((prod only)) |
 
 ### 3.2 Core classes
 

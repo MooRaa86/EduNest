@@ -11,5 +11,4 @@ public class AdminAccResponse {
     private String email;
     private String firstName;
     private String lastName;
-    private String password;
 }

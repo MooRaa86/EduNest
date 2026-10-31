@@ -21,7 +21,8 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-05** | High | P1-06 | 1 | auth | T | **Verified** (merged to `main` via PR #19, `d3a14a2`, 2026-10-28; 376-line `OtpTypeIsolationIntegrationTest` green in CI; Jira EB-13 = Done) |
 | **SEL-06** | High | P1-27 (cond.) | 1 | auth | D→T (D-01) | Planned |
 | **SEL-07** | Med | P1-25 | 1 | auth | T | EB-32 implementation in progress: login and verification DTO validation; resend email parameter validation; legacy password-match path retired. Verification, review and merge pending. |
-| **SEL-08** | High | P1-09 | 1 | auth | T (+API-04) | Planned |
+| **SEL-08** | High | P1-09 | 1 | auth | T (+API-04) | **Implemented — EB-16** (branch `feat/p1-09-admin-bootstrap-protection`; review/merge pending): bootstrap response no longer echoes plaintext; admin list no longer exports hashes; one-shot bootstrap guard synchronised (`400 ERR_BUSINESS_RULE "Admin bootstrap is no longer available."` once any admin exists, audited text); last-admin delete guard closes the bootstrap re-open hole; `deleteAdmin` made transactional (was a bare 500); probe suite `AdminBootstrapProbesTest` (7 probes). |
+| **API-04** | High | P1-09 | 1 | auth | = SEL-08 | **Implemented — same scope as SEL-08 above (EB-16).** Field removed from shared admin response DTO = FE-visible contract change; FE note included in docs (`endpoints.md` admin rows). |
 | **SEL-09** | Med | P1-10 | 1 | auth | T | Planned |
 | **SEL-10** | High | P1-11 | 1 | auth | D→T (D-05) | Planned |
 | **SEL-11** | Med | P1-23 | 1 | auth | D→T (D-23) | Planned |
@@ -106,7 +107,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **API-01** | Low | P4-16 (cond.) | 4 | api | D→T (D-20), DEF expected | Planned |
 | **API-02** | Med | P4-09 | 4 | api | T | Planned |
 | **API-03** | Low | P4-16 (cond.) | 4 | api | D→T (D-20), DEF expected | Planned |
-| **API-04** | High | P1-09 | 1 | auth | = SEL-08 | Planned |
+| **API-04** | High | P1-09 | 1 | auth | = SEL-08 | **Implemented — same scope as SEL-08 above (EB-16).** Field removed from shared admin response DTO = FE-visible contract change; FE note included in docs (`endpoints.md` admin rows). |
 | **API-05** | Med | P4-14 | 4 | api | T | Planned |
 | **INT-01** | Low | P1-26 | 1 | integrations | T (+Agora/R11) | Planned |
 | **INT-02** | Med | P4-13 | 4 | integrations | T | Planned |

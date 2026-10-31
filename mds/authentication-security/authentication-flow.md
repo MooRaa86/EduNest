@@ -77,8 +77,8 @@ Soft-delete flag lives on `UserEntity.deleted` (default false, lines 61–63). A
 
 ## 6. Admin bootstrap
 
-- `POST /api/v1/admin/register` (public in both profiles; `AdminController` line 23) → `AdminService.registerAdmin` — throws `globalLogicEx` if any admin exists (first-admin-only), then **echoes the plaintext password in the response** (`AdminService.java:52`).
-- `GET /api/v1/admin` — `@PreAuthorize("hasRole('ADMIN')")` **commented out** (`AdminController.java:33`); response maps password hash via `AdminAccResponse` (`AdminService.java:57-66`). URL rule `/api/v1/admin/** → hasRole(ADMIN)` still covers it in prod only.
+| 🔓 POST `/api/v1/admin/register` (public in both profiles; `AdminController` line 23) → `AdminService.registerAdmin` — synchronized one-shot guard (first admin only), then returns **identity only** — the plaintext is encoded and persisted, never echoed (fixed by P1-09/EB-16).
+- `GET /api/v1/admin` — `@PreAuthorize("hasRole('ADMIN')")` **commented out** (`AdminController.java:33`); response is **identity only** (`AdminAccResponse` no longer has `password` field, fixed by P1-09/EB-16). URL rule `/api/v1/admin/** → hasRole(ADMIN)` still covers it in prod only.
 - Admin password change/email change: `controller/admin/AdminProfileAndSettingsController` (`/admin/profile/*`, OTP flows mirroring user settings).
 
 ## 7. Data model (auth-relevant)
