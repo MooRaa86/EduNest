@@ -43,14 +43,14 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CHAT-07** | Med | P4-07 (cond.) | 4 | ws | D→T (D-13) | Planned |
 | **CHAT-08** | Low | P0-03 → P4-06 | 0,4 | ws | V→T (cond.) → FIXED | RESOLVED by EB-1 (2026-10-29, same-PR): mechanism confirmed by V-01 probe, then `@Payload ChatMessageRequest` DTO + blank guard shipped; objects now bind to pure text, raw strings rejected ([tasks#p0-03](phases/phase-00-planning-baseline/tasks.md#p0-03)) — P4-06 keeps CHAT-01/06 only |
 | **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | Planned |
-| **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation in progress: service-level course read guards; review, CI and merge pending. |
-| **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04) | Planned |
+| **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
+| **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04, amended Ruler B) | EB-23 implementation: leaderboard scoped to enrolled student, owner or ADMIN; rows = `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` (no `studentLevel`/badges); review and CI pending |
 | **MSH-04** | Med | P3-02 | 3 | database | T | Planned |
 | **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned |
 | **MSH-06** | Med | P1-22 | 1 | file-storage | T | **Hardened - EB-29 (implementation + probe suite)**: stored extension derives from the detected content format, not the client filename; declared MIME cross-checked against the canonical set for the detected type; all nine replace flows now save the new file before deleting the old one so a rejected upload no longer destroys the previous file ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **MSH-07** | Low | P4-10 | 4 | learning | T (default: effective price) | Planned |
 | **MSH-08** | Low | P4-10, P4-11 | 4 | learning | T | Planned |
-| **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | Planned |
+| **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | Temporary public-review email and image compatibility exception Engineering Lead approved; frontend usage verification pending |
 | **MSH-10** | Med | P4-03 | 4 | notifications | T | Planned |
 | **MSH-11** | Med | P1-17 | 1 | auth | T | Planned |
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
@@ -66,11 +66,11 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **LEARN-10** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
 | **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | Planned |
 | **USR-01** | Med | P4-09 | 4 | users | T | Planned |
-| **USR-02** | Low | P1-16 | 1 | auth | D→T (D-04) | Planned |
+| **USR-02** | Low | P1-16 | 1 | auth | D→T (D-04) | EB-23 addresses leaderboard and public review reviewer fields; broader public-profile/project surfaces require separate verification |
 | **USR-03** | Low | P4-05 | 4 | users | T | Planned |
 | **USR-04** | Low | P4-09 | 4 | users | T | Planned |
 | **USR-05** | Med | P4-01 | 4 | notifications | = NOTIF-04 | Planned |
-| **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Planned |
+| **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Leaderboard portion in EB-23; G11 badge-award portion remains P1-19 |
 | **GAME-02** | Med | P1-19 | 1 | gamification | T | Planned |
 | **GAME-03** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
 | **GAME-04** | Low | P4-02 | 4 | gamification | T | Planned |

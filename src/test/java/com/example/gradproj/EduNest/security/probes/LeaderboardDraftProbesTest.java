@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,16 +23,10 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 	private static final String ENROLLED_STUDENT = "probe-lb-enrolled@example.org";
 	private static final String OUTSIDER = "probe-lb-outsider@example.org";
 
-	/**
-	 * G7 — leaderboard readable by an UN-enrolled student (emails + points leak).
-	 * Audit: MentorshipLeaderboardService guard commented out (L26-28).
-	 * Probe asserts BOTH: reachability (200) AND content leak (the other student's
-	 * email-shaped identifier in the response).
-	 * FLIPS WITH: [P1-16] leaderboard guard (EB-23) → expect 403 then.
-	 */
+	/** G7 / EB-23: an unenrolled student cannot access another course leaderboard. */
 	@Test
-	@DisplayName("G7/todayOpen: un-enrolled student sees foreign leaderboard incl. member emails → 200")
-	void g7_outsiderSeesForeignLeaderboardWithEmails() throws Exception {
+	@DisplayName("G7: un-enrolled student is denied the foreign leaderboard")
+	void g7_outsiderCannotSeeForeignLeaderboard() throws Exception {
 		auth.student(OUTSIDER); // token-holder must exist in DB (validator checks users table)
 		var chain = auth.mentorship("probe-lb-mentor@example.org",
 				com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
@@ -42,13 +35,9 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 				.student(auth.student(ENROLLED_STUDENT))
 				.mentorship(chain.mentorship()).totalPoints(42).build());
 
-		String body = mockMvc.perform(get("/api/v1/student/mentorships/{mid}/leaderboard", chain.mentorship().getId())
+		mockMvc.perform(get("/api/v1/student/mentorships/{mid}/leaderboard", chain.mentorship().getId())
 						.header("Authorization", auth.authToken(OUTSIDER, AuthFixture.STUDENT)))
-				.andExpect(status().isOk())
-				.andReturn().getResponse().getContentAsString();
-
-		assertTrue(body.contains(ENROLLED_STUDENT),
-				"G7 audit: un-enrolled caller receives member PII (email) — hole documented");
+				.andExpect(status().isForbidden());
 	}
 
 	/**

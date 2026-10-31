@@ -275,14 +275,14 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Priority:** P1 — leaderboards open to anyone (MSH-03/G7) and review/public/project surfaces expose student emails (MSH-09, USR-02).  **Size:** S
 **Owner role:** Backend Developer   **Reviewers:** Security Reviewer + PO (privacy sign-off)
 **Issues:** MSH-03 (=GAME-01+G11 partial), MSH-09, USR-02 (D-04 default (a))   **Domain:** mentorship-flow / users-profiles
-**Components:** `MentorshipLeaderboardService` guards (re-enable commented pass), review projections (student name, not email), public project DTOs
+**Components:** `MentorshipLeaderboardService` guards, public review projections, public project DTOs
 
 **Evidence:** ISSUES MSH-03/MSH-09/USR-02; [`mds/mentorship-flow/MDS.md`](../../../mds/mentorship-flow/MDS.md).
-**Expected outcome:** leaderboard reads gate on enrollment/ownership/admin; review surfaces expose display names only; no emails in any public payload (grep-verified).
+**Expected outcome:** leaderboard reads gate on enrollment/ownership/admin and follow the D-04 Ruler B five-field contract. The temporary public-review email and image compatibility exception is Engineering Lead approved; frontend usage verification remains pending.
 **Approach:** re-enable membership check with message; project `student.SimplfiedUserInfo` style DTO (name+avatar id); endpoints.md notes.
-**FE / API impact:** review UI must render `name` field instead of `email` — **coordination required** (D-04).
+**FE / API impact:** verify use of reviewer email and coordinate any future email removal with the separate frontend project (D-04).
 **Depends on:** D-04 default.  **Blocks:** P2-03.
-**Tests:** outsider → 403 leaderboard; anonymous list reviews → no email fields (payload asserts).
+**Tests:** outsider → 403 leaderboard; anonymous review responses assert reviewer email and image values for both public surfaces.
 **Docs:** mentorship-flow/MDS.md (leaderboard + review sections); ISSUE-MAPPING MSH-03/MSH-09/USR-02/G7/GAME-01.
 
 <a id="p1-17"></a>
