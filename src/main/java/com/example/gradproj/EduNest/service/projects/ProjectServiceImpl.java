@@ -24,6 +24,7 @@ import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSt
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -51,6 +52,7 @@ public class ProjectServiceImpl implements ProjectService{
     private final MentorRepository mentorRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final ContentReadGuard contentReadGuard;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -130,7 +132,9 @@ public class ProjectServiceImpl implements ProjectService{
     @Override
     public ProjectResponse getProjectById(Long projectId) {
         Project project=projectRepository.findById(projectId)
-                .orElseThrow(() -> new globalLogicEx("project not found"));
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        contentReadGuard.requireMentorship(project.getWeek().getMentorship().getId());
+        contentReadGuard.requireVisibleToStudent(project.getWeek().getMentorship().getId(), project.getStatus() == ProjectStatus.PUBLISHED || project.getStatus() == ProjectStatus.CLOSED);
         return  mapToProjectResponse(project);
     }
 
@@ -223,8 +227,9 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public PageResponse<ProjectWithStatsResponse> getProject(String projectName, ProjectStatus status, Long msid, Pageable pageable) {
+        contentReadGuard.requireMentorship(msid);
         Page<ProjectWithStatsProjection> projects =
-                projectRepository.findProjectsWithStatsByMentorship(msid, projectName, status, pageable);
+                projectRepository.findProjectsWithStatsByMentorship(msid, projectName, status, contentReadGuard.isStudentView(msid), pageable);
 
         List<ProjectWithStatsResponse> responses = projects.getContent()
                 .stream()

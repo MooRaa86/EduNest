@@ -58,11 +58,13 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
     WHERE t.week.mentorship.id = :msid
       AND (:taskName IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', :taskName, '%')))
       AND (:status IS NULL OR t.status = :status)
+      AND (:studentView = false OR t.status IN (com.example.gradproj.EduNest.enums.tasks.TaskStatus.PUBLISHED, com.example.gradproj.EduNest.enums.tasks.TaskStatus.CLOSED))
 """)
     Page<Task> findTasksByMentorship(
             @Param("msid") Long msid,
             @Param("taskName") String taskName,
             @Param("status") TaskStatus status,
+            @Param("studentView") boolean studentView,
             Pageable pageable
     );
 

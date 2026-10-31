@@ -23,11 +23,10 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,12 +49,10 @@ public class StudentWeekService {
     private final LectureRepository lectureRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
+    private final ContentReadGuard contentReadGuard;
 
     private Long getCurrentStudentId() {
-        String email = Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                .filter(Authentication::isAuthenticated)
-                .map(Authentication::getName)
-                .orElseThrow(() -> new AccessDeniedException("Unauthenticated user"));
+        String email = contentReadGuard.currentEmail();
         return studentRepository.findIdByEmail(email)
                 .orElseThrow(() -> new AccessDeniedException("Student not found"));
     }
@@ -63,7 +60,8 @@ public class StudentWeekService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('STUDENT')")
     public MentorshipWeeksResponse getWeeksByMentorship(Long mentorshipId, String stEmail) {
-        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, stEmail)) {
+        // Retain the legacy argument for callers, but never trust it for authorization.
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, contentReadGuard.currentEmail())) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
         }
         List<Week> weeks = weekRepository.findByMentorship_IdOrderByIdAsc(mentorshipId);
@@ -87,7 +85,7 @@ public class StudentWeekService {
     @PreAuthorize("hasRole('STUDENT')")
     public MentorshipWeeksWithContentsResponse getMentorshipWeeksWithContents(Long mentorshipId, String stEmail) {
         Long studentId = getCurrentStudentId();
-        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, stEmail)) {
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, contentReadGuard.currentEmail())) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
         }
         List<Week> weeks = weekRepository.findByMentorship_IdOrderByIdAsc(mentorshipId);
@@ -136,7 +134,7 @@ public class StudentWeekService {
     @PreAuthorize("hasRole('STUDENT')")
     public StudentWeekContentsResponse getWeekContents(Long weekId) {
         Week week = weekRepository.findById(weekId)
-                .orElseThrow(() -> new globalLogicEx("Week not found"));
+                .orElseThrow(() -> new AccessDeniedException("Week not found"));
         Long studentId = getCurrentStudentId();
         if (!enrollmentRepository.isStudentEnrolledInWeekMentorship(weekId, studentId)) {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
