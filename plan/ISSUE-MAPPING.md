@@ -31,8 +31,8 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) → **FIXED** | EB-12 (2026-10-29): unified `ApiError` envelope + `ApiErrorCode` catalog across all five producers; catch-all leak fixed (409+message → 500 sanitized + refId); explicit 403 for method-security `AccessDeniedException`; three 401 dialects → one writer; zero-leak probes E1–E6 in `ErrorShapeProbeTest` (flipped same-PR); D-26 fields map kept (nested under envelope) |
 | **SEL-15** | Med | P0-04 → P1-24 | 0,1 | auth | V→T | Planned |
 | **SEL-16** | Med | P1-03 | 1 | auth | T | Planned |
-| **WS-01** | Crit | P1-12 | 1 | ws | D→T (D-14) | Planned |
-| **WS-02** | Low | P1-12 | 1 | ws | T | Planned |
+| **WS-01** | Crit | P1-12 | 1 | ws | D→T (D-14) | **Implemented — EB-19** (branch `feat/p1-12-ws-room-authorization`; review/merge pending): `ChatAuthorization` enforces the D-14 READ rule on SUBSCRIBE and WRITE rule on SEND; `saveMessage` re-checks as defense in depth; violations dropped with explicit STOMP ERROR frame; probe suite `WSRoomAuthorizationProbesTest` (10) + V-01 re-seeded under the new contract; full suite 371 green |
+| **WS-02** | Low | P1-12 | 1 | ws | T | **Implemented — EB-19** (same scope as WS-01 above): dead `JwtHandshakeInterceptor` deleted; `connectedUsers` remnants removed; DISCONNECT logging via SLF4J |
 | **WS-03** | Low | P4-09 | 4 | api | T | Planned |
 | **CHAT-01** | Med | P4-06 | 4 | ws | T | Planned |
 | **CHAT-02** | Crit | P1-13 | 1 | ws | T | Planned |
@@ -134,7 +134,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **TD-05** | Low | P1-26 (+P5-02) | 1,5 | tech-debt | T | Planned |
 | **TD-06** | Low | P5-05 | 5 | tech-debt | D→T (D-21) | Planned |
 | **TD-07** | Med | P1-10 | 1 | ws | = G12 | Planned |
-| **TD-08** | Low | P1-12 | 1 | ws | = G13 (D-14) | Planned |
+| **TD-08** | Low | P1-12 | 1 | ws | = G13 (D-14) | **Implemented — EB-19** (see WS-01): the three inconsistent membership semantics collapsed into the two D-14 rules centralized in `ChatAuthorization` |
 | **TD-09** | Low | P1-21 | 1 | file-storage | = G14 | **In Progress** — actual folder names in the public allowlist merged in [PR #23](https://github.com/MooRaa86/EduNest/pull/23); EB-28 acceptance remains open pending the reviews and coordination described for FILE-01. |
 
 **Roll-up wrappers (not separate work):** `ARCH-001..007` resolve to their canonical rows (SEL-02, WS-01, SEL-01, DEP-02+broker, TD-01/02, DOC-01, TD-06 — see [`mds/ISSUES.md`](../mds/ISSUES.md) §18 cross-cutting rollups). `G1..G15` are the authorization-gap register; each row's canonical mapping lives in [`mds/ISSUES.md`](../mds/ISSUES.md) §1 — the plan implements canonical IDs (G-matrix rows are the same work: e.g., G4/G5→P1-14, G6→P1-14, G7→P1-16, G8→P1-15, G9→P1-20, G10→P1-11, G11→P1-19, G12→P1-10, G13→P1-12, G14→P1-21, G15→P1-19).

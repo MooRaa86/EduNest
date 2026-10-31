@@ -7,37 +7,36 @@ Verified walkthrough of `config/webSocket/` with exact line citations. The key d
 - `WebSocketConfig#registerStompEndpoints` (lines 34–38): **`/ws`**, `setAllowedOriginPatterns("*")`, `.withSockJS()` (XHR-family fallback transports included).
 - HTTP path `/ws/**` is `permitAll` in both security profiles — **no HTTP-side auth** before the STOMP session starts.
 
-## 2. Handshake phase — dead interceptor
+## 2. Handshake phase — interceptor removed (P1-12 / EB-19)
 
-`JwtHandshakeInterceptor` (`@Component`) checks a JWT from the **query parameter** `Authorization` (`?Authorization=<jwt>`, lines 36–39), validates it, and stores `email`/`fullName` in session attributes.
-
-**It is never registered**: `WebSocketConfig` adds no `addInterceptors(...)` on the endpoint; grep finds only self-references. ⇒ the handshake is anonymous; tokens never appear in URLs today. (If re-enabled to support SockJS transports, the query-token design leaks tokens into access logs — see open questions in [MDS.md](MDS.md).)
+The handshake layer has **no HTTP-side auth by design**: `/ws` is `permitAll` and the STOMP CONNECT command is the single authentication point. A `JwtHandshakeInterceptor` (query-parameter `?Authorization=<jwt>`) once existed as a `@Component` but was **never registered by `WebSocketConfig`** — verified dead code — and was **deleted outright by EB-19** (2026-10-31). Consequence (unchanged behavior, now explicit): SockJS fallback transports cannot set native STOMP headers, so they **cannot authenticate** — the frontend must use the native WebSocket transport. Raising a query-param handshake back from the dead is NOT an option (it leaks tokens into access logs); a fallback design would need a short-lived single-use ticket (see open questions in [MDS.md](MDS.md)).
 
 ## 3. STOMP frame phases (`JwtChannelInterceptor.preSend`)
 
 | Command | What runs today | State |
 |---|---|---|
-| **CONNECT** | Requires native header `Authorization` (raw JWT, no `Bearer ` prefix). `jwtService.isTokenValid` else `InvalidJwtToken`. On success: `accessor.setUser(new ChatPrincipal(email, fullName))` (lines 52–70) | ✅ active |
-| **SUBSCRIBE** | Guards: `user == null` → reject; null destination. **Room-membership check fully commented out (lines 87–105).** | ⛔ authorization absent |
-| **SEND** | Guards: `user == null`; for `/app/chat/` destinations extracts `{roomId}` and **the membership check is commented out (lines 130–140)** | ⛔ authorization absent |
-| **DISCONNECT** | `System.out.println("Disconnected: " + email)` only; session-map removal commented (lines 146–155) | debug only |
+| **CONNECT** | Requires native header `Authorization` (raw JWT, no `Bearer ` prefix). On success: `accessor.setUser(new ChatPrincipal(email, fullName))`. Missing/invalid token → `MessagingException` ( connection rejected) | ✅ active |
+| **SUBSCRIBE** | Guards: `user == null` → reject; null destination ignored. **`/topic/room/{id}` enforced by the D-14 READ rule** via `ChatAuthorization#canReadRoom` (`AuthorizationRepository#isUserMemberOfChatRoom`: enrolled student or owning mentor) — violations dropped with an explicit STOMP ERROR frame (P1-12 / EB-19) | ✅ active |
+| **SEND** | Guards: `user == null`; for `/app/chat/{roomId}` the **D-14 WRITE rule** runs via `ChatAuthorization#canWriteRoom` (explicit `chat_room_members` row or the room's owning mentor) — violations dropped with an explicit STOMP ERROR frame (P1-12 / EB-19). `/app/chat.private` needs an authenticated user only; the sender↔recipient pair is validated in `ConversationService` | ✅ active |
+| **DISCONNECT** | SLF4J `debug` log of the disconnecting principal (`JwtChannelInterceptor`, P1-12 / EB-19 removed the `System.out`) | debug only |
 
 Notes:
-- The single-session `connectedUsers` map (one session per account) is commented out — multiple concurrent sessions per account are allowed.
+- **Rules are centralized in `service/chat/ChatAuthorization`** (P1-12 / EB-19): one component answers READ/WRITE/PRIVATE for every chat surface, reused by the interceptor and by `ChatMessageService#saveMessage` (defense in depth). The former three inconsistent membership semantics (TD-08 / G13) are collapsed into the two D-14 rules.
+- Multiple concurrent sessions per account remain allowed (the single-session `connectedUsers` map was never built; its commented remnants were deleted by EB-19).
 - `isTokenValid` (`service/jwt/JwtService`) checks signature+expiry only — **no enabled/deleted re-check at CONNECT**, unlike the HTTP validator filter. A token issued before deactivation stays usable for the full 7 days on the WS surface.
-- `extractRoomId` parses the trailing path segment (`lastIndexOf('/')+1`).
+- `extractRoomId` parses the trailing path segment (`lastIndexOf('/')+1`); non-numeric ids are rejected (`MessagingException "Invalid destination format"`).
 
-## 4. Dead-code trap (cannot be "just re-enabled")
+## 4. Dead-code trap — resolved (P1-12 / EB-19)
 
-The commented blocks call `chatRoomRepository.isUserInRoom(email, roomId)` — **no such method exists** on `repository/chat/ChatRoomRepository` (verified by full read). The interceptor injects the repository (line 21) solely for this. Re-enabling the guard as written will not compile; the team must first add a membership query (or reuse `AuthorizationRepository#isUserMemberOfChatRoom`, which checks mentorship-based membership rather than explicit room join).
+The commented blocks referenced `chatRoomRepository.isUserInRoom(email, roomId)` — a method that **never existed**, so the guard could not have been re-enabled as written. EB-19 (2026-10-31) removed the commented stubs and built the real guards instead of resurrecting them: a new **`ChatAuthorization`** component (`service/chat`) centralizes the rules, reusing `AuthorizationRepository#isUserMemberOfChatRoom` (enrollment-based READ) and adding `ChatRoomRepository#isRoomOwnedByMentor` + explicit `ChatRoomMember` membership (WRITE).
 
-## 5. What any authenticated user can do today (exposure statement)
+## 5. What any authenticated user can do today (exposure statement — post EB-19)
 
-With any valid JWT (STUDENT, MENTOR, ADMIN, or an *unverified* user's token — CONNECT does not check `enabled`):
+Since EB-19 the room surfaces are gated; what remains reachable with any valid JWT is:
 
-1. **Subscribe** to `/topic/room/{roomId}` for any room id (sequential ids) → receives all live messages + edit/delete events for every cohort room platform-wide.
-2. **Send** to `/app/chat/{roomId}` → `ChatWebSocketController` → `ChatMessageService.saveMessage` has **no membership check** either → message is persisted and broadcast under the attacker's own name/email to all legitimate subscribers.
-3. Receive pushes only on `/user/{ownEmail}/queue/...` (user-queue prefix is server-resolvable), **except** where senders control the recipient: REST conversation edit/delete pushes to a client-supplied `recipientEmail` queue ([messaging-flow.md §3](messaging-flow.md)) — a user can be targeted with forged edit/delete events outside the real channel.
+1. ~~Subscribe/send into any cohort room~~ — **closed by EB-19**: SUBSCRIBE/SEND require mentorship membership per D-14.
+2. **Private conversations to any user** (`/app/chat.private`) — get-or-create `Conversation` lets any enabled user message any registered user (product-level reach, not an IDOR); the sender↔recipient *pair shape* is validated, the client-controlled event *routing* of REST edit/delete pushes to a client-supplied `recipientEmail` queue remains open under **CHAT-04 / P1-13** ([messaging-flow.md §3](messaging-flow.md)).
+3. CONNECT does not re-check `enabled`/`deleted` (unlike the HTTP validator filter) — a token issued before deactivation remains usable on the WS surface for its 7-day lifetime (SEL-06 row).
 
 ## 6. Connection lifecycle summary (mermaid)
 
@@ -53,13 +52,21 @@ sequenceDiagram
   FE->>CI: STOMP CONNECT (Authorization header)
   CI->>CI: validate JWT (signature+expiry only)
   CI--)FE: sets ChatPrincipal(email, fullName)
-  FE->>CI: SUBSCRIBE /topic/room/7 (any id)
-  CI-->>FE: allowed (membership check commented out)
-  FE->>CI: SEND /app/chat/7 content
-  CI->>C: deliver (membership check commented out)
-  C->>C: ChatMessageService.saveMessage (no check) → DB
-  C--)B: convertAndSend /topic/room/7
-  B--)FE: broadcast to every subscriber (including outsiders)
+  FE->>CI: SUBSCRIBE /topic/room/7
+  alt not a cohort member
+    CI--)FE: ERROR frame "Forbidden: you are not a member of this room"
+  else enrolled student or owning mentor
+    CI-->>FE: subscription accepted
+    FE->>CI: SEND /app/chat/7 content
+    alt not a joined member / not the owner mentor
+      CI--)FE: ERROR frame
+    else explicit member or owning mentor
+      CI->>C: deliver
+      C->>C: ChatMessageService/saveMessage re-checks WRITE rule → DB
+      C--)B: convertAndSend /topic/room/7
+      B--)FE: broadcast to every member subscriber
+    end
+  end
 ```
 
 ## 7. Guards *ahead of the WebSocket surface*

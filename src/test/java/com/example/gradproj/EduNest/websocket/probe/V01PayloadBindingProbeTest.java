@@ -2,9 +2,11 @@ package com.example.gradproj.EduNest.websocket.probe;
 
 import com.example.gradproj.EduNest.config.webSocket.ChatPrincipal;
 import com.example.gradproj.EduNest.entity.chat.ChatRoom;
+import com.example.gradproj.EduNest.entity.chat.ChatRoomMember;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.repository.chat.ChatMessageRepository;
 import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
+import com.example.gradproj.EduNest.repository.chat.MembersRepo;
 import com.example.gradproj.EduNest.security.probes.AuthFixture;
 import com.example.gradproj.EduNest.testing.ProdChainIntegrationTestBase;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +22,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -54,6 +57,7 @@ class V01PayloadBindingProbeTest extends ProdChainIntegrationTestBase {
 	@Autowired private AuthFixture auth;
 	@Autowired private ChatRoomRepository chatRooms;
 	@Autowired private ChatMessageRepository messageRepo;
+	@Autowired private MembersRepo membersRepo;
 	@Qualifier("clientInboundChannel")
 	@Autowired private MessageChannel clientInboundChannel;
 
@@ -134,7 +138,9 @@ class V01PayloadBindingProbeTest extends ProdChainIntegrationTestBase {
 
 	/* ===================== helpers ===================== */
 
-	/** Seeds mentor → ACTIVE mentorship → room; returns the room id. */
+	/** Seeds mentor → ACTIVE mentorship → room; the sender is enrolled in the
+	 * mentorship AND joined the room, per the P1-12/EB-19 WRITE rule
+	 * (previously the sender needed no membership — the guards did not exist). */
 	private Long seedRoom(String label) {
 		var chain = auth.mentorship("probe-v01-mentor-" + label + "@example.org", Status.ACTIVE);
 		auth.student(SENDER_EMAIL);
@@ -143,14 +149,20 @@ class V01PayloadBindingProbeTest extends ProdChainIntegrationTestBase {
 				.mentorship(chain.mentorship())
 				.creator(chain.mentor())
 				.build());
+		auth.enroll(chain.mentorship().getId(), SENDER_EMAIL);
+		membersRepo.saveAndFlush(ChatRoomMember.builder()
+				.chatRoom(room)
+				.user(auth.student(SENDER_EMAIL))
+				.joinedAt(LocalDateTime.now())
+				.build());
 		return room.getId();
 	}
 
 	/**
 	 * Sends a SEND frame through the clientInboundChannel with a pre-set user
-	 * (the JWT interceptor accepts any authenticated principal on SEND — the
-	 * membership checks are commented out, per G1/G13 register). Records a
-	 * synchronous conversion/handler exception if one propagates to the caller.
+	 * (the sender is a joined room member — the P1-12/EB-19 WRITE rule is in
+	 * force; see seedRoom). Records a synchronous conversion/handler exception
+	 * if one propagates to the caller.
 	 */
 	private String sendFrame(Long roomId, String body) {
 		StompHeaderAccessor acc = StompHeaderAccessor.create(StompCommand.SEND);

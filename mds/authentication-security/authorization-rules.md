@@ -42,7 +42,7 @@ The team's own `legacy-audits/IDOR_Audit_Report.md` tracked protection roll-out;
 
 | # | Surface | Evidence | Who can exploit |
 |---|---|---|---|
-| G1 | **Chat room subscribe/send over STOMP** — membership checks commented out | `config/webSocket/JwtChannelInterceptor` L87–105, L130–140; `ChatMessageService.saveMessage` has no membership check | any authenticated WS user (read+write any room) |
+| G1 | **Chat room subscribe/send over STOMP** — EB-19: SUBSCRIBE runs the D-14 READ rule (enrollment proxy or owning mentor), SEND the WRITE rule (explicit member or owning mentor) via `service/chat/ChatAuthorization`; violations → STOMP ERROR frame; `saveMessage` re-checks WRITE (defense in depth) | `config/webSocket/JwtChannelInterceptor` (guards active); `service/chat/ChatAuthorization`; `ws` probes `WSRoomAuthorizationProbesTest` (10) | closed — was: any authenticated WS user (read+write any room) |
 | G2 | **Private conversation history** | `ConversationRESTControllers#getMessages` → `ConversationService.getConversationMessages` (no ownership check) | any authenticated user, by probing `conversationId` |
 | G3 | **Private message edit** — ownership check commented out | `ConversationService.editMessage` L119–121 | any authenticated user |
 | G4 | **Lecture reads** (3 GET endpoints) | `LectureService` applies `ContentReadGuard` to the lecture/week/mentorship's actual course | owner mentor, enrolled student or ADMIN; others denied |
@@ -54,7 +54,7 @@ The team's own `legacy-audits/IDOR_Audit_Report.md` tracked protection roll-out;
 | G10 | **Notifications: user-to-user send** | `POST /api/v1/notifications/send` — class guard `isAuthenticated()` only; `NotificationService.sendToUserByEmail` has no admin gate | any authenticated user can push arbitrary notification content to any email's `/queue/notifications` |
 | G11 | **Badge award reads** | `BadgeAwardController` GETs unannotated; `BadgeAwardService#getAwardsByStudent` L108–112 no ownership check | any authenticated user |
 | G12 | **Room creation ownership gap** | `ChatRoomService.createRoom` L43–79 — MENTOR gate but no mentorship-ownership check | any mentor can create rooms in any mentorship |
-| G13 | **Room "membership" = mentorship-enrollment proxy** | `AuthorizationRepository.isUserMemberOfChatRoom` L82–93 — enrolled students can read rooms they never joined; the room-join (`joinRoom`) uses a different student-only query | inconsistent membership semantics |
+| G13 | **Room "membership" = mentorship-enrollment proxy** — EB-19: unified into the two D-14 rules — READ stays the enrollment proxy (documented bridge while `chat_room_members` is sparse), WRITE requires an explicit member row or the owning mentor | `service/chat/ChatAuthorization` (READ/WRITE/PRIVATE); `AuthorizationRepository.isUserMemberOfChatRoom` L82–93; `MembersRepo.existsByChatRoom_IdAndUser_Email` | resolved — semantics centralized (was: 3 inconsistent rules) |
 | G14 | **Profile image folder mismatch** — the previous rules listed names different from actual folders | Proposed EB-28 policy uses actual public folder names; admin is non-public | pending review; see §4 |
 | G15 | **Question re-parenting** | `QuestionServiceImp#updateQuestion` — target quiz ownership not validated before `question.setQuiz(…)` | mentor can move their question into another mentor's quiz |
 

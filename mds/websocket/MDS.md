@@ -17,7 +17,8 @@ Plus **notifications** push (see [../notifications/MDS.md](../notifications/MDS.
 
 - **Endpoint:** single STOMP endpoint **`/ws`** with `withSockJS()` and `setAllowedOriginPatterns("*")` (`config/webSocket/WebSocketConfig:34-38`).
 - **Broker:** simple in-memory broker on `/topic`, `/queue`; user destination prefix `/user`; app prefix `/app`.
-- **Inbound interceptors:** only `JwtChannelInterceptor`. `JwtHandshakeInterceptor` (`@Component`) is **never registered** — verified dead code.
+- **Inbound interceptors:** only `JwtChannelInterceptor` — the sole WS auth/gate path since EB-19 deleted the (never-registered) `JwtHandshakeInterceptor`. **Consequence: only the native WebSocket transport can authenticate CONNECT** — SockJS XHR fallbacks cannot set native STOMP headers.
+- **Authorization (P1-12 / EB-19):** `service/chat/ChatAuthorization` centralizes the D-14 rules; `JwtChannelInterceptor` applies them per frame — SUBSCRIBE `/topic/room/{id}` (READ: enrollment proxy or owning mentor), SEND `/app/chat/{roomId}` (WRITE: explicit room member or owning mentor), CONNECT (JWT). Violations are dropped with an explicit STOMP ERROR frame; `ChatMessageService#saveMessage` re-checks WRITE before persisting.
 - **Client SEND destinations:**
   - `/app/chat/{roomId}` → `ChatWebSocketController.sendMessage` (raw `String content` bound, no `@Payload` DTO).
   - `/app/chat.private` → `ConversationWebSocketControllers.sendPrivate` (`ConversationMessageRequest`).
@@ -48,15 +49,15 @@ Base `/api/v1/conversation` (`controller/chat/ConversationRestControllers`):
 
 ## 5. Security (summary — details in §3 of lifecycle doc)
 
-- STOMP CONNECT requires a valid JWT native header (**this is the only WS auth**); handshake endpoint is `permitAll` and unauthenticated.
-- Room membership authorization on SUBSCRIBE and SEND is **commented out**; the resolvable repository method the comments reference (`chatRoomRepository.isUserInRoom`) **does not exist** — the guard never worked and cannot be re-enabled as written.
-- Therefore: any authenticated user can **eavesdrop on any room** (subscribe) and **save messages into any room** (REST membership checks apply only to *reading history*, not sending over STOMP).
+- STOMP CONNECT requires a valid JWT native header (**this is the only WS auth path** since EB-19 deleted the never-registered handshake interceptor); the handshake endpoint is `permitAll` and unauthenticated.
+- **Since P1-12 / EB-19 room membership is enforced** (`service/chat/ChatAuthorization`, D-14 semantics): SUBSCRIBE runs the READ rule (enrollment proxy or owning mentor), SEND the WRITE rule (explicit member or owning mentor), with a documented STOMP ERROR-frame contract; `saveMessage` re-checks WRITE before persisting. Probe evidence: `WSRoomAuthorizationProbesTest` (10), V-01 re-seeded.
 
 ## 6. Error Handling
 
+- STOMP authorization violations (P1-12 / EB-19) throw `MessagingException` in the inbound channel — Spring's protocol error handler converts them into an explicit **STOMP ERROR frame** carrying the authored message (`"Forbidden: you are not a member of this room"` / `"Invalid destination format"`). For compliant clients nothing changes.
 - Service-side chat save failures push `/queue/errors` strings and return `null`.
-- `exception/WebSocketExceptionHandler` (`@MessageExceptionHandler(Exception.class)`, `@SendToUser("/queue/errors")`) delivers raw `ex.getMessage()` — info-leak suspicion (internal messages to users).
-- SockJS transports (XHR fallbacks) cannot set STOMP native headers on CONNECT — this is likely why a query-param handshake interceptor was written; it is currently unused, so **SockJS fallback transports presumably cannot authenticate a CONNECT** (flagged as open question for the frontend team).
+- `exception/WebSocketExceptionHandler` (`@MessageExceptionHandler(Exception.class)`, `@SendToUser("/queue/errors")`) forwards authored business messages and sanitizes everything else.
+- SockJS transports (XHR fallbacks) cannot set STOMP native headers on CONNECT — **resolved stance (EB-19): fallback transports are unsupported; the frontend must use the native WebSocket transport.** A future fallback would require a short-lived single-use ticket design (NOT the old query-param handshake, which leaks tokens).
 
 ## 7. Data Model
 
@@ -69,14 +70,14 @@ No tests exist for chat/WS (see [../testing/MDS.md](../testing/MDS.md)). Recomme
 
 ## 9. Known Issues (IDs defined in ../ISSUES.md)
 
-- **WS-01 (Critical):** no room authorization on subscribe/send → any authenticated user reads/writes any room.
+- **WS-01 (Critical):** ~~no room authorization on subscribe/send → any authenticated user reads/writes any room~~ **FIXED (EB-19):** D-14 READ/WRITE rules enforced via `ChatAuthorization`; ERROR-frame contract; defense-in-depth in `saveMessage`.
 - **CHAT-02/CHAT-03 (Critical/High):** conversation history IDOR; edit IDOR (commented check).
 - **CHAT-04 (High):** client-controlled `recipientEmail` in REST edit/delete lets the caller choose which user queue receives events.
 - **CHAT-05 (Medium):** duplicate-conversation race (get-or-create, no unique constraint, no transaction).
 - **CHAT-06 (Medium):** REST edit/delete broadcast build `/topic/room/{pathVar}` not the message's real room.
 - **CHAT-07 (Medium):** `Message.seen` never set; no unread count for chat.
 - **CHAT-08 (Low):** raw `String content` binding (JSON-vs-plaintext ambiguity, needs frontend confirmation).
-- **WS-02 (Low):** handshake interceptor dead code; `connectedUsers` map commented out; debug prints.
+- **WS-02 (Low):** ~~handshake interceptor dead code; `connectedUsers` map commented out; debug prints~~ **FIXED (EB-19):** deleted the never-registered interceptor, removed remnants, SLF4J logging.
 - **WS-03 (Low):** unbounded `size` params on message pagination.
 
 ## 10. Open Questions

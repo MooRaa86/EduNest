@@ -73,6 +73,15 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     List<ChatRoomProjection> findRoomsByUserEmail(String userEmail);
 
     @Query("""
+    SELECT COUNT(cr) > 0
+    FROM ChatRoom cr
+    WHERE cr.id = :roomId
+    AND cr.mentorship.mentor.email = :email
+""")
+    Boolean isRoomOwnedByMentor(@Param("roomId") Long roomId,
+                                @Param("email") String email);
+
+    @Query("""
     SELECT new com.example.gradproj.EduNest.dto.chat.MentorshipRoomDetailsResponse(
         cr.id,
         cr.name,

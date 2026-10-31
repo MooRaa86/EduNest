@@ -10,6 +10,7 @@ import com.example.gradproj.EduNest.repository.chat.ChatMessageRepository;
 import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
 import com.example.gradproj.EduNest.repository.chat.projection.ChatMessageProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.chat.ChatAuthorization;
 import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +34,7 @@ public class ChatMessageService {
     private final UserRepository userRepo;
     private final SimpMessagingTemplate messagingTemplate;
     private final SecurityService securityService;
+    private final ChatAuthorization chatAuthorization;
 
     public ChatMessageResponse saveMessage(
             Long roomId,
@@ -50,6 +52,20 @@ public class ChatMessageService {
                     principal.getName(),
                     "/queue/errors",
                     "Room not found with this id"
+            );
+            return null;
+        }
+
+        // P1-12 / EB-19 — defense in depth: the STOMP interceptor already
+        // gates SEND frames, but nothing guarantees this method is only
+        // reached through the channel chain. Re-check the D-14 WRITE rule
+        // before persisting; unauthorized sends are dropped with no DB row.
+        if (!chatAuthorization.canWriteRoom(roomId, principal.email())) {
+
+            messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    "Forbidden: you are not a member of this room"
             );
             return null;
         }
