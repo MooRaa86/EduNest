@@ -45,7 +45,8 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
         r.id as reviewId,
         r.feedBack as feedback,
         r.rating as rating,
-        CONCAT(s.firstName, ' ', s.lastName) as studentFullName
+        CONCAT(s.firstName, ' ', s.lastName) as studentFullName,
+        s.profileImageUrl as userProfileImageUrl
     FROM MentorShipReviews r
     JOIN r.student s
     WHERE r.mentorShip.id = :mentorshipId
@@ -69,6 +70,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
         CONCAT(r.student.firstName, ' ', r.student.lastName),
         r.rating,
         r.feedBack,
+        r.student.profileImageUrl,
         r.mentorShip.id,
         r.mentorShip.title,
         r.updatedAt

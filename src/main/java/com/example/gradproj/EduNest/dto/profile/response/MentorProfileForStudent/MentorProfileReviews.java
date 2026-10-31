@@ -14,6 +14,7 @@ public class MentorProfileReviews {
     private String userName;
     private long rating;
     private String feedBack;
+    private String userProfileImageUrl;
     private Long mentorshipId;
     private String mentorshipTitle;
     private LocalDateTime createdAt;

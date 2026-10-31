@@ -62,7 +62,7 @@ Correctly-enforced (verified, for balance): grading ownership (task/project/quiz
 
 ## 4. Public-surface privacy effects
 
-- `/api/v1/student/mentorships/{id}/reviews` and public mentor-profile review lists expose reviewer display names but not reviewer emails or profile images (EB-23; review pending). User-supplied review text remains unchanged.
+- `/api/v1/student/mentorships/{id}/reviews` and public mentor-profile review lists expose reviewer display names and reviewer profile images (`userProfileImageUrl`), while reviewer emails stay private (no email fields in any review payload). The image restore is a D-04 follow-up amendment pending Engineering Lead confirmation — the record in `plan/DECISIONS-REQUIRED.md` stays authoritative until Omar approves. User-supplied review text remains unchanged.
 - The leaderboard is NOT public (D-04 amendment, Ruler B — Engineering Lead-approved 2026-10-31; supersedes the earlier name-and-points-only leaderboard-row rule for the leaderboard surface only). Enrollment rows remain the membership condition, so student rows are the five-field Ruler B contract (`studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints`); `studentLevel` and badge fields stay excluded. Page/count and current-user rank are retained as technical metadata. Anonymous requests are 401, outsiders and nonexistent mentorships are 403. The row-contract change requires frontend coordination.
 - Public mentor profile (`/api/v1/profile/mentor/**`) exposes mentor email as identifier.
 - Swagger enabled anonymously in prod (`/swagger-ui/**`).

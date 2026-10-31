@@ -118,10 +118,11 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
         } finally { SecurityContextHolder.clearContext(); }
     }
 
-    @Test void publicReviewPayloadsOmitReviewerEmailAndPhoto() throws Exception {
+    @Test void publicReviewPayloadsRestoreReviewerImageOmitReviewerEmail() throws Exception {
         for (String path : List.of("/api/v1/student/mentorships/" + mentorshipId + "/reviews", "/api/v1/profile/mentor/" + OWNER + "/reviews")) {
             String body = mockMvc.perform(get(path)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-            assertThat(body).contains(firstName, "Helpful").doesNotContain(FIRST, "private-image", "studentEmail", "userEmail", "studentProfileImageUrl", "userProfileImageUrl");
+            assertThat(body).contains(firstName, "Helpful", "userProfileImageUrl", "https://example.org/private-image")
+                    .doesNotContain(FIRST, "userEmail", "studentEmail", "\"email\"");
         }
     }
 }
