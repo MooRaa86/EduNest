@@ -43,7 +43,7 @@ Supporting documents:
 | `/api/v1/register/restore`, `/confirm-restore` | POST | Restore deleted account via OTP | Public |
 | `/settings/request-email-change`, `/confirm-email-change`, `/password`, `/delete`, `/confirm-delete`, `/deactivate` | POST/PATCH | Self-service account settings | `@PreAuthorize("isAuthenticated()")` (class) + URL `authenticated()` |
 | `/api/v1/admin/register` | POST | First-admin bootstrap (one-shot; `400 ERR_BUSINESS_RULE` once an admin exists) | Public in both profiles; response is identity-only (P1-09/EB-16) |
-| `/api/v1/admin` | GET | List admins — **`@PreAuthorize` commented out** (`AdminController.java:33`); response **includes password hash** (`AdminService.java:57-66`) | URL rule ((prod only)) |
+| `/api/v1/admin` | GET | List admins — **`@PreAuthorize` commented out** (`AdminController.java:33`); response is **identity only, no hash material** (P1-09/EB-16 removed the `password` field from `AdminAccResponse`) | URL rule ((prod only)) |
 
 ### 3.2 Core classes
 
