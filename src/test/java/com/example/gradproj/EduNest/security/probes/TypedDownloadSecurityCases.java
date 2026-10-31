@@ -166,6 +166,7 @@ abstract class TypedDownloadSecurityCases {
             mvc.perform(get("/files").param("filePath", item.path()).param("download", "true")
                     .header("Authorization", token(email, role)))
                     .andExpect(status().isOk()).andExpect(content().bytes(BYTES))
+                    .andExpect(header().string("Content-Length", String.valueOf(BYTES.length)))
                     .andExpect(header().string("Cache-Control", "no-store"))
                     .andExpect(header().string("X-Content-Type-Options", "nosniff"))
                     .andExpect(header().string("Content-Security-Policy", "default-src 'none'"))
@@ -334,7 +335,8 @@ abstract class TypedDownloadSecurityCases {
         for (String email : List.of(OWNER, MENTOR)) {
             String role = email.equals(MENTOR) ? AuthFixture.MENTOR : AuthFixture.STUDENT;
             mvc.perform(get(item.url()).param("download", "true").header("Authorization", token(email, role)))
-                    .andExpect(status().isOk()).andExpect(content().bytes(BYTES));
+                    .andExpect(status().isOk()).andExpect(content().bytes(BYTES))
+                    .andExpect(header().string("Content-Length", String.valueOf(BYTES.length)));
         }
         var enrolled = mvc.perform(get(item.url()).header("Authorization", token(ENROLLED, AuthFixture.STUDENT)))
                 .andReturn().getResponse();
