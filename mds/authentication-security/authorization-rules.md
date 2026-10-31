@@ -45,9 +45,9 @@ The team's own `legacy-audits/IDOR_Audit_Report.md` tracked protection roll-out;
 | G1 | **Chat room subscribe/send over STOMP** — membership checks commented out | `config/webSocket/JwtChannelInterceptor` L87–105, L130–140; `ChatMessageService.saveMessage` has no membership check | any authenticated WS user (read+write any room) |
 | G2 | **Private conversation history** | `ConversationRESTControllers#getMessages` → `ConversationService.getConversationMessages` (no ownership check) | any authenticated user, by probing `conversationId` |
 | G3 | **Private message edit** — ownership check commented out | `ConversationService.editMessage` L119–121 | any authenticated user |
-| G4 | **Lecture reads** (3 GET endpoints) | `LectureController` (no annotations), `LectureService.getLectureById/getLecturesByWeekId/getLecturesByMentorshipId` (L95/101/106) | any authenticated user (media URL exposure) |
-| G5 | **Mentorship task list** `GET /api/v1/mentorship/{mid}/get-tasks` | `mentorShipServiceI.getMentorShipTasks` L239–249 — only `existsById` | any authenticated user (incl. DRAFT/unpublished tasks, attachment paths) |
-| G6 | **Task/project detail + mentorship filters** | `TaskController#getById`, `TaskServiceImpl#getTaskById`; `ProjectController#getById`; `/filter/{msid}` variants | any authenticated user |
+| G4 | **Lecture reads** (3 GET endpoints) | `LectureService` applies `ContentReadGuard` to the lecture/week/mentorship's actual course | owner mentor, enrolled student or ADMIN; others denied |
+| G5 | **Mentorship task list** `GET /api/v1/mentorship/{mid}/get-tasks` | `mentorShipServiceI.getMentorShipTasks` applies the guard and filters student-visible statuses | owner mentor, enrolled student or ADMIN; student drafts hidden |
+| G6 | **Task/project detail + mentorship filters and student details** | task/project services apply the guard before returning content or pagination metadata | owner mentor, enrolled student or ADMIN; student drafts hidden |
 | G7 | **Mentorship leaderboard** | `MentorshipLeaderboardService` L26–28 — enrollment guard commented out | any authenticated user (student emails+points) |
 | G8 | **Mentorship DRAFT access** | `getMentorShipById`/`getMentorShips` no status filter; public overview query `findMentorshipDetailsById` has only `WHERE m.id = :id` (`MentorShipRepository` L244–248) | any user incl. anonymous for the overview path |
 | G9 | **Generic file endpoint** `GET /files?filePath=...` | `FileController#serveFile` now denies all requests; typed endpoints perform ownership checks | disabled pending ownership-aware replacement and review |
@@ -68,6 +68,8 @@ Correctly-enforced (verified, for balance): grading ownership (task/project/quiz
 - `/uploads/**` — proposed EB-28 policy permits only `mentorship-cover-images`, `student`, `mentor`, and `chatroom`; other folders are denied by the chain and lack explicit MVC handlers. The generic `/files?filePath=` endpoint is disabled as a temporary cross-scope safeguard, subject to Eng Lead and FE approval; EB-27's guard-first replacement remains open. FE coordination is required for submission and attachment links, generic downloads, and admin avatars. Review and verification remain pending.
 
 ## 5. Open questions
+
+EB-21 / D-03: the production chain rejects anonymous callers with 401; authenticated outsiders and missing content are denied with 403. Student task/project reads expose only PUBLISHED or CLOSED content; owner mentors and ADMIN can read drafts. Student-submission projections and student-week membership checks use the authenticated identity, not a caller-supplied email. An enrollment row is the current authoritative membership condition; there is no individual unenrollment or revocation feature. Any future cancellation or revocation feature must revisit the content-read checks. Account deactivation and deletion are enforced separately by JWT validation. Frontend coordination and Security/Lead review remain pending.
 
 - Confirm intended access for `GET /lectures/**` and `GET /api/v1/mentorship/{id}/get-tasks` (closed-content leak vs accidental omission).
 - Confirm whether `/api/v1/notifications/send` should be admin-only (it was likely added for testing; it is a live phishing vector).
