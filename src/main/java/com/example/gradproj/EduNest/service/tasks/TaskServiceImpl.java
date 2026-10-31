@@ -19,6 +19,7 @@ import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissi
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +42,7 @@ public class TaskServiceImpl implements TaskService {
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
     private final FileStorageService StorageService;
+    private final ContentReadGuard contentReadGuard;
 
     private void validateMentorshipOwnership(Long mentorShipId, String email) {
         if (!mentorShipRepository.existsByIdAndMentor_Email(mentorShipId, email)) {
@@ -102,7 +104,9 @@ public class TaskServiceImpl implements TaskService {
     @Transactional(readOnly = true)
     public TaskResponse getTaskById(Long taskId) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new globalLogicEx("Task not found"));
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        contentReadGuard.requireMentorship(task.getWeek().getMentorship().getId());
+        contentReadGuard.requireVisibleToStudent(task.getWeek().getMentorship().getId(), task.getStatus() == TaskStatus.PUBLISHED || task.getStatus() == TaskStatus.CLOSED);
         return mapToTaskResponse(task);
     }
 
@@ -206,7 +210,8 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, Long msid, Pageable pageable) {
-        Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status, pageable);
+        contentReadGuard.requireMentorship(msid);
+        Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status, contentReadGuard.isStudentView(msid), pageable);
         List<TaskResponse> taskDTOs = tasks.getContent().stream()
                 .map(task -> TaskResponse.builder()
                         .id(task.getId())
@@ -305,7 +310,10 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public TaskWithSubmissionForStudentResponse getTaskWithSubmission(Long taskId, String email) {
-        TaskWithSubmissionProjection p = taskSubmissionRepository.findTaskWithSubmission(taskId, email);
+        Task task = taskRepository.findById(taskId).orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        contentReadGuard.requireMentorship(task.getWeek().getMentorship().getId());
+        contentReadGuard.requireVisibleToStudent(task.getWeek().getMentorship().getId(), task.getStatus() == TaskStatus.PUBLISHED || task.getStatus() == TaskStatus.CLOSED);
+        TaskWithSubmissionProjection p = taskSubmissionRepository.findTaskWithSubmission(taskId, contentReadGuard.currentEmail());
         if (p == null) throw new globalLogicEx("Task not found");
         return TaskWithSubmissionForStudentResponse.builder()
                 .taskId(p.getTaskId())

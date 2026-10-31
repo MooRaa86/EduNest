@@ -78,6 +78,7 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
     WHERE p.week.mentorship.id = :msid
       AND (:projectName IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :projectName, '%')))
       AND (:status IS NULL OR p.status = :status)
+      AND (:studentView = false OR p.status IN (com.example.gradproj.EduNest.enums.project.ProjectStatus.PUBLISHED, com.example.gradproj.EduNest.enums.project.ProjectStatus.CLOSED))
     GROUP BY p.id, p.title, p.goal, p.brief, p.descriptionUrl, p.uploadedAttachmentPath,
              p.startAt, p.endAt, p.points, p.status, p.week.id, p.createdAt
     """)
@@ -85,6 +86,7 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             @Param("msid") Long msid,
             @Param("projectName") String projectName,
             @Param("status") ProjectStatus status,
+            @Param("studentView") boolean studentView,
             Pageable pageable
     );
 
