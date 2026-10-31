@@ -25,7 +25,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **API-04** | High | P1-09 | 1 | auth | = SEL-08 | **Implemented — same scope as SEL-08 above (EB-16).** Field removed from shared admin response DTO = FE-visible contract change; FE note included in docs (`endpoints.md` admin rows). |
 | **SEL-09** | Med | P1-10 | 1 | auth | T | Planned |
 | **SEL-10** | High | P1-11 | 1 | auth | D→T (D-05) | Planned |
-| **SEL-11** | Med | P1-23 | 1 | auth | D→T (D-23) | Planned |
+| **SEL-11** | Med | P1-23 | 1 | auth | D→T (D-23) | **Implemented, awaiting verification** (branch `feat/p1-23-cors-allowlist`; Jira EB-30): wildcard CORS preserved per approved D-23 public contract, `allowCredentials` set to `false` in prod and dev chains, eliminates credentialed wildcard misconfiguration; `Authorization` exposed; verified by dedicated regression suite `CorsProbesTest` (5 probes green); PR pending lead review/merge. |
 | **SEL-12** | Med | P1-04 | 1 | auth | T (+D-01 note) | EB-11 implementation in review: JWT always in Authorization header; body gated by compatibility property (default true pending FE migration); ProviderManager erases credentials. Merge, CI and FE/security review remain pending. |
 | **SEL-13** | Med | — | — | auth | DEF (latent design) | Deferred |
 | **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) → **FIXED** | EB-12 (2026-10-29): unified `ApiError` envelope + `ApiErrorCode` catalog across all five producers; catch-all leak fixed (409+message → 500 sanitized + refId); explicit 403 for method-security `AccessDeniedException`; three 401 dialects → one writer; zero-leak probes E1–E6 in `ErrorShapeProbeTest` (flipped same-PR); D-26 fields map kept (nested under envelope) |

@@ -25,7 +25,7 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 | formLogin | **enabled** | disabled |
 | JWT filters | none | `JwtTokenValidatorFilter` before `BasicAuthenticationFilter`; `JwtTokenGeneratorFilter` after (generator is dead code — see below) |
 | Rule behavior | explicit matchers `permitAll()` **and `.anyRequest().permitAll()`** (line 53) | public/admin/authenticated matchers + `.anyRequest().authenticated()` (line 117) |
-| CORS | `*` origins/methods/headers, `allowCredentials=false` | `*` origin patterns, `*` methods/headers, **`allowCredentials=true`**, exposes `Authorization`, maxAge 3600 |
+| CORS | `*` origins/methods/headers, `allowCredentials=false`, exposes `Authorization`, maxAge 3600 | `*` origins/methods/headers, `allowCredentials=false`, exposes `Authorization`, maxAge 3600 (P1-23 / D-23) |
 | Exception handling | none custom | `EduNestAuthenticationEntryPoint` (401 JSON + header `EduNest-error-reason`) and `EduNestAccessDeniedHandler` (403 JSON + header `EduNest-denied-reason`) |
 | Auth manager | `ProviderManager(EduNestAuthenticationProvider)`, `eraseCredentialsAfterAuthentication=true` | same |
 | Method security | `@EnableMethodSecurity` | `@EnableMethodSecurity` |
@@ -94,8 +94,8 @@ Approved spec (Omar): **8 requests / 1 minute** per bucket (uniform), **5 consec
 
 ## 5. CORS summary
 
-- Dev: `allowedOriginPatterns(["*"])`, methods/headers `*`, credentials **false**.
-- Prod: `allowedOriginPatterns(["*"])` (reflection of any origin), `allowCredentials` **true** — flagged as dangerous-but-ineffective-while-beta (no cookies; bearer header auth). Recommend restricting origins before adding cookie auth. Full risk entry: [security-risks.md](security-risks.md#cors).
+- Dev: `allowedOrigins(["*"])`, methods/headers `*`, credentials **false**, exposes `Authorization`, `maxAge 3600`.
+- Prod: `allowedOrigins(["*"])`, methods/headers `*`, credentials **false** (P1-23 / D-23 / EB-30), exposes `Authorization`, `maxAge 3600`. Auth travels via the `Authorization` bearer header (no cookies/credentials). Wildcard origin is allowed because credentials are not permitted (`allowCredentials=false`). Safety note: if cookie- or session-based cross-origin credentials are introduced in the future, wildcard origin must be dropped and an explicit allowlist defined per D-23.
 
 ## 6. Error handlers (security layer)
 
