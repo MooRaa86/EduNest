@@ -14,7 +14,7 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 | 🔓 POST `/api/v1/register/verify-user` | Validate required email and six-digit numeric `otp`, then verify → `enabled=true`. |
 | 🔓 POST `/api/v1/register/send-otp` | Resend verification OTP using required nonblank, valid `email` request parameter. |
 | 🔓 POST `/api/v1/register/restore` · `/confirm-restore` | Restore deleted account via OTP |
-| 🔓 POST `/api/v1/admin/register` | First-admin bootstrap (`RegisterAdminRequest`) — echoes password |
+| 🔓 POST `/api/v1/admin/register` | First-admin bootstrap (`RegisterAdminRequest`) — **one-shot**: succeeds only while zero admins exist (`400 ERR_BUSINESS_RULE "Admin bootstrap is no longer available."` afterwards); response carries **identity only** (no credentials) (P1-09/EB-16) |
 | 🔓 POST `/send` | Platform free-form mail (`MailRequest{email,name,message}`) — `PlatformMailController`; **effective path is bare `/send`** due to `@RestController("/mail")` bean-name quirk (no path mapping) — public in prod (MAIL-01) |
 
 Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATION` with a `fields` map; malformed JSON retains `ERR_MALFORMED_BODY`. Frontend coordination has been requested on EB-32; approval is not implied.
@@ -33,8 +33,8 @@ Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATIO
 
 | Endpoint | Purpose |
 |---|---|
-| ⟡ GET `/api/v1/admin` | List admins — **password hash included** (SEL-08); `@PreAuthorize` commented out |
-| ⟡ DELETE `/api/v1/admin/{email}` | Delete admin account |
+| ⟡ GET `/api/v1/admin` | List admins — **identity only, no hash material** (P1-09/EB-16 removed the password field from the response; `@PreAuthorize` stays commented out — route-level `hasRole("ADMIN")` covers it) |
+| ⟡ DELETE `/api/v1/admin/{email}` | Delete admin account — **the last remaining admin cannot be deleted** (`400 ERR_BUSINESS_RULE "Cannot delete the last remaining admin."`); deletion is transactional (previously a bare 500 — fixed in EB-16) |
 | ⟡ GET `/api/v1/admin/users/{id}` · `/role/{roleName}` · `/dashboard-summary` | User directory, paged search, KPIs |
 | ⟡ POST `/api/v1/admin/users/send-email` | Direct email to a user (`admin-message.html`) |
 | ⟡ POST `/api/v1/admin/users/send-notification` | Direct in-app notification (SUPPORT) |
