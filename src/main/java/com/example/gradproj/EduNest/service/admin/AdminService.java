@@ -24,13 +24,15 @@ public class AdminService {
     private final RoleRepository rolesRepository;
     private final UserRepository userRepository;
 
-    public AdminAccResponse registerAdmin(RegisterAdminRequest request) {
+    public synchronized AdminAccResponse registerAdmin(RegisterAdminRequest request) {
+        // Bootstrap is one-shot: guarded by the count check INSIDE a synchronized block
+        // so two concurrent cold-start requests cannot both pass the check (P1-09).
         if(adminRepository.count() > 0){
-            throw new globalLogicEx("There is already an admin u can't register another one");
+            throw new globalLogicEx("Admin bootstrap is no longer available.");
         }
 
         if(userRepository.existsByEmail(request.getEmail())){
-            throw new globalLogicEx("Email is already in use in other role get out from here !!");
+            throw new globalLogicEx("Email is already in use.");
         }
 
         Roles role = rolesRepository.findByName(SystemUtils.ADMIN)
@@ -45,11 +47,12 @@ public class AdminService {
                 .build();
 
         adminRepository.save(admin);
+        // Credentials never cross the API boundary (P1-09): the request plaintext is
+        // encoded and persisted only; the response carries identity fields exclusively.
         return AdminAccResponse.builder()
                 .email(admin.getEmail())
                 .firstName(admin.getFirstName())
                 .lastName(admin.getLastName())
-                .password(request.getPassword())
                 .build();
     }
 
@@ -60,12 +63,19 @@ public class AdminService {
                         .email(a.getEmail())
                         .firstName(a.getFirstName())
                         .lastName(a.getLastName())
-                        .password(a.getPassword())
                         .build()
         ).toList();
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteAdmin(String email) {
+        // Last-admin guard (P1-09): deleting the final admin would re-open the public
+        // bootstrap endpoint (count -> 0) to the internet. Never allow it.
+        // (Transactional added by EB-16: this was previously unannotated — the derived
+        // delete threw a bare 500 on every call, so the route was never functional.)
+        if (adminRepository.count() <= 1) {
+            throw new globalLogicEx("Cannot delete the last remaining admin.");
+        }
         adminRepository.deleteByEmail(email);
     }
 
