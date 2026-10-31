@@ -278,7 +278,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Components:** `MentorshipLeaderboardService` guards (re-enable commented pass), review projections (student name, not email), public project DTOs
 
 **Evidence:** ISSUES MSH-03/MSH-09/USR-02; [`mds/mentorship-flow/MDS.md`](../../../mds/mentorship-flow/MDS.md).
-**Expected outcome:** leaderboard reads gate on enrollment/ownership/admin; review surfaces expose display names only; no emails in any public payload (grep-verified).
+**Expected outcome:** leaderboard reads gate on enrollment/ownership/admin; review surfaces expose display names only; no emails in any public review payload (grep-verified); leaderboard rows follow the D-04 Ruler B amendment (five-field contract, enrollment-gated).
 **Approach:** re-enable membership check with message; project `student.SimplfiedUserInfo` style DTO (name+avatar id); endpoints.md notes.
 **FE / API impact:** review UI must render `name` field instead of `email` — **coordination required** (D-04).
 **Depends on:** D-04 default.  **Blocks:** P2-03.

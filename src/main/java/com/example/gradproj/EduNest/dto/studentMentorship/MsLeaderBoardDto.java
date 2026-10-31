@@ -9,8 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class MsLeaderBoardDto {
-    private PageResponse<StudentInLeaderboardDto> leaderboard;
-    private StudentInLeaderboardDto currentUser;
+    private PageResponse<LeaderboardEntry> leaderboard;
+    private LeaderboardEntry currentUser;
     private Long totalStudents;
     private long userRank;
 }

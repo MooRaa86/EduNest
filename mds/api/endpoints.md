@@ -74,9 +74,9 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | Endpoint | Gate | Purpose |
 |---|---|---|
 | 🔓 GET `/api/v1/student/mentorships/{id}/overview` | public | Details + top-3 + upcoming + enrollment flag |
-| 🔓 GET `/api/v1/student/mentorships/{id}/reviews` | public | Paged reviews (**emails exposed**, MSH-09) |
+| 🔓 GET `/api/v1/student/mentorships/{id}/reviews` | public | Paged reviews; reviewer display name only (no email or profile image) |
 | 🔐 GET `/api/v1/student/mentorships/mentor/{mentorEmail}/top-mentorships` | authenticated | Mentor's top-list |
-| 🔐 GET `/api/v1/student/mentorships/{id}/leaderboard` | authenticated-only | Points leaderboard (**enrollment guard commented out**, MSH-03) |
+| 🔐 GET `/api/v1/student/mentorships/{id}/leaderboard` | enrolled student, owning mentor or ADMIN | Rows and current-user expose `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank` and `totalPoints` — the D-04 amendment (Ruler B, Engineering Lead-approved 2026-10-31): enrollment-gated access supersedes the earlier name-and-points-only leaderboard-row rule; `studentLevel` and badge fields stay excluded. Pagination, total count and `userRank` remain. Existing off-page current-user append is retained. |
 
 ## 5. Weeks, lectures (curriculum)
 
