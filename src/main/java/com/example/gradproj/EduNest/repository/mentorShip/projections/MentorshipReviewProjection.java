@@ -5,6 +5,4 @@ public interface MentorshipReviewProjection {
     String getFeedback();
     Long getRating();
     String getStudentFullName();
-    String getStudentProfileImageUrl();
-    String getStudentEmail();
 }
