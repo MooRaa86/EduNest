@@ -43,6 +43,7 @@
 - **Blocked:** P1-27, P2-03.
 - **Default:** (a) with a transitional period allowing 7-day tokens to be marked short (evidence: validator already re-checks DB per request — (b) is the low-risk fallback if FE integration stalls).
 - **Owner:** PO + Eng Lead. **Decide-by:** before P1-27 (Phase 1).
+- **Outcome (decided 2026-10-31, user-approved):** **(a) narrowed — stateless JWT stands for Sprint 1.** No refresh tokens and no server-side revocation model this sprint. Logout invalidation is purely client-side token erasure (the erasure contract already enforced by EB-11: credentials wiped post-auth, token served in `Authorization` header). **Refresh tokens + real session/revocation model move to the Sprint 2 backlog** — `P1-27` is formally **carried with this decision record** (per its acceptance criterion: "implemented per D-01 or formally carried with decision record"), so `EB-34` is unblocked to scope/codify, not to build refresh. Fallback if the audit or FE forces earlier revocation: option (b) (`lastInvalidatedAt` validator check) may be adopted only via a new decision line.
 
 ### D-02 — DRAFT mentorship visibility
 - **Question:** Is DRAFT exposure acceptable "coming soon" behavior (MSH-01)?
@@ -55,12 +56,14 @@
 - **Question:** Confirm lectures/task-lists/details are for enrolled students + owning mentors only.
 - **Options:** (a) enforce enrollment-based access (recommended); (b) allow logged-in preview (broad leak) — not recommended.
 - **Default:** (a). Decide-by: before P1-14; formal confirmation only.
+- **Outcome (decided 2026-10-31, user-approved):** **(a) confirmed.** Course content (lectures, task lists, details) is readable exclusively by: **(1) enrolled students of that course, (2) the owning mentor, (3) ADMIN.** Everyone else is denied. Confirmation covers preview surfaces too (no logged-in browsing of content). Unblocks `P1-14` (Jira **EB-21**, High — first security mover).
 
 ### D-04 — Public-surface privacy
 - **Question:** Which fields stay public on reviews/leaderboards/public profiles (MSH-03/09, USR-02)? Emails exposed today.
 - **Options:** (a) display names only, no emails/photos beyond needed; (b) pseudonyms; (c) status quo.
 - **Impact:** (a) smallest code change + real privacy win; FE must render names.
 - **Default:** (a). Decide-by: before P1-16.
+- **Outcome (decided 2026-10-31, user-approved):** **(a) display names only.** Public surfaces (reviews, leaderboard, public profiles) expose the user's **display name and points only** — no emails, no phone, no other personal profile data. FE renders names instead of emails. Unblocks `P1-16` (Jira **EB-23**, Leaderboard Privacy).
 
 ### D-05 — Open push/mail endpoints
 - **Question:** `POST /api/v1/notifications/send` (any→any), `POST /admin/.../send-notification`, and public `POST /send` platform mailbox (SEL-10/NOTIF-01, MAIL-01) — admin-gate, restrict, or delete?
@@ -72,6 +75,7 @@
 ### D-06 — Generic file endpoint fate
 - **Question:** Keep `GET /files?filePath=` guarded via `FileAccessService` allowlist, or retire it entirely (does FE depend on it)?
 - **Default:** guard-first (retire when FE confirms non-use). Decide-by: before P1-20.
+- **Outcome (decided 2026-10-31, user-approved):** **Guard-first confirmed as the standing rule.** The endpoint stays under the `FileAccessService` allowlist. The already-merged temporary protection counts as **partial progress, not task closure** — `P1-20` (Jira **EB-27**) remains open until FE confirms the endpoint is unused, at which point it is retired outright.
 
 ### D-07 — Upload exposure policy (P0-critical for FE)
 - **Question:** Which `uploads/**` folders remain publicly URL-fetchable and which become authorization-checked (submissions must be private)?
@@ -152,6 +156,7 @@
 ### D-23 — CORS origins
 - **Question:** Which origins whitelist in prod (SEL-11)?
 - **Default:** FE + admin origin(s) the team provides; credentials stays `true`, wildcard never combined with credentials. Decide-by: before P1-23.
+- **Outcome (decided 2026-10-31, user-approved):** **Public — no origin allowlist for now** ("make it public, no problem"). Implementation note: auth travels in the `Authorization` header (post-EB-11, no cookies/credentials), so credentialed CORS is not required; wildcard (`*`) is permitted **without** `allowCredentials=true`. Safety note on record: the moment any cookie/session-based request appears, wildcard must be dropped and this decision revisited. Unblocks `P1-23` (Jira **EB-30**) with scope: permissive open policy, no allowlist.
 
 ### D-24 — OSIV disable timing
 - **Question:** When to disable Open-Session-In-View (DB-06)?
@@ -170,3 +175,4 @@
 - **Question:** Testcontainers MySQL or H2 for the test profile (P2-01)?
 - **Default (plan original):** Testcontainers MySQL ("native SQL rules out H2" — rationale written before verification).
 - **Outcome (decided 2026-10-28, user-approved):** **H2 in-memory only; Docker is NOT allowed** (team no-Docker policy per Omar). The blocking rationale was re-verified and found overstated: exactly **one** special query exists (`TotalPointsRepository` rank list, `ROW_NUMBER() OVER`), and H2 2.x supports it — proven by the EB-35 smoke probe. Mitigations already in place: H2 `MODE=MySQL` compatibility, the window-function smoke test, and the rank query gets real-data fixtures in P2-02; if some future corner case fights H2, fallback = rewrite that single query in portable JPQL (never reintroduce Docker). CI note: EB-41 needs no special runner because tests are fully self-contained.
+- **Application to EB-7 (ruled 2026-10-31):** the EB-7 rehearsal request for an isolated Docker/MySQL environment is **denied** under this decision. The fresh-database rehearsal runs on **H2 in-memory (MySQL-compat mode)**: scripted schema recreate + seeded-dump reset between rehearsal steps; "old security behavior before the fix" is evidenced via git-history diffs (`before` refs checked out in the rehearsal run) + rehearsal logs, all inside `mvnw test`. No Docker, ever.
