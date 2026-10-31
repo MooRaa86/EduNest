@@ -43,7 +43,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CHAT-07** | Med | P4-07 (cond.) | 4 | ws | D→T (D-13) | Planned |
 | **CHAT-08** | Low | P0-03 → P4-06 | 0,4 | ws | V→T (cond.) → FIXED | RESOLVED by EB-1 (2026-10-29, same-PR): mechanism confirmed by V-01 probe, then `@Payload ChatMessageRequest` DTO + blank guard shipped; objects now bind to pure text, raw strings rejected ([tasks#p0-03](phases/phase-00-planning-baseline/tasks.md#p0-03)) — P4-06 keeps CHAT-01/06 only |
 | **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | Planned |
-| **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
+| **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation: service-level course read guards (ContentReadGuard) merged to main (PR #38, commit 8175e28); content reads restricted to enrolled student, owning mentor or ADMIN; student drafts hidden; CI passed |
 | **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04, amended Ruler B) | EB-23 implementation: leaderboard scoped to enrolled student, owner or ADMIN; rows = `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` (no `studentLevel`/badges); review and CI pending |
 | **MSH-04** | Med | P3-02 | 3 | database | T | Planned |
 | **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned |
@@ -55,7 +55,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-11** | Med | P1-17 | 1 | auth | T | Planned |
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
 | **LEARN-01** | Crit | P1-18 | 1 | learning | T | Planned |
-| **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | Planned |
+| **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation: course-scoped task/project reads and caller-scoped submission views merged to main (PR #38, commit 8175e28); access restricted to enrolled student, owning mentor or ADMIN; CI passed |
 | **LEARN-03** | High | P1-20 | 1 | file-storage | D→T (D-06) | EB-27 implements current-reference and ownership-checked generic access; Security/Lead review, CI and frontend compatibility remain pending. |
 | **LEARN-04** | Med | P4-05 | 4 | learning | T | Planned |
 | **LEARN-05** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
