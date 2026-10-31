@@ -109,7 +109,7 @@ EB-21 also scopes project detail, mentorship filter and student-submission detai
 
 - ⟡ POST `` (multipart), PATCH `/{id}/status`, PATCH `/{id}` (multipart), DELETE `/{id}` — MENTOR role+owner.
 - ⟡ GET `/{projectId}/statistics`, `/full-dashboard/{mentorshipId}` — MENTOR.
-- 🔐 GET `/{id}` · `/filter/{msid}` — authenticated-only (**unguarded**, LEARN-02).
+- 🔐 GET `/{id}` · `/filter/{msid}` | enrolled student, owning mentor or ADMIN — course-scoped project reads; drafts excluded for students (EB-21, closes LEARN-02 for the project twin).
 - ⟡ GET `/{projectId}/student` — STUDENT role + **enforced enrollment** (`validateEnrolled`).
 - ⟡ POST `/{projectId}/submissions` (STUDENT, multipart, enforced enrollment).
 - ⟡ GET `/{projectId}/submissions` (MENTOR), POST `/submissions/{submissionId}/grade` (MENTOR).

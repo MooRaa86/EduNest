@@ -201,6 +201,18 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
         } finally { SecurityContextHolder.clearContext(); }
     }
 
+    @Test void missingWeekContentsReturnsForbiddenNotBadRequest() throws Exception {
+        // Student is enrolled here on purpose: the 403 must be caused by the
+        // missing week itself, not by any enrollment/identity outcome.
+        var response = mockMvc.perform(get("/api/v1/student/week/999999999/contents")
+                        .header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
+                .andExpect(status().isForbidden()).andReturn().getResponse();
+        assertThat((String) com.jayway.jsonpath.JsonPath.read(response.getContentAsString(), "$.errorCode"))
+                .isEqualTo("ERR_FORBIDDEN");
+        assertThat((Integer) com.jayway.jsonpath.JsonPath.read(response.getContentAsString(), "$.status"))
+                .isEqualTo(403);
+    }
+
     @Test void deactivatedAccountCannotUseExistingJwtForCurriculum() throws Exception {
         String token = auth.authToken(STUDENT, AuthFixture.STUDENT);
         var student = students.findByEmail(STUDENT).orElseThrow();
