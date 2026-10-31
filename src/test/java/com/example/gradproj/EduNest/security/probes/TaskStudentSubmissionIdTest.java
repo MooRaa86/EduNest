@@ -9,14 +9,19 @@ import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.tasks.TaskService;
 import com.example.gradproj.EduNest.testing.ProdChainIntegrationTestBase;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,6 +37,7 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
     @Autowired private TaskRepository tasks;
     @Autowired private TaskSubmissionRepository submissions;
     @Autowired private ObjectMapper mapper;
+    @Autowired private TaskService taskService;
 
     private Task task;
     private long studentSubmissionId;
@@ -40,6 +46,9 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
     @BeforeEach
     void seed() {
         var mentorship = auth.mentorship("task-id-mentor@example.org", Status.ACTIVE).mentorship();
+        auth.enroll(mentorship.getId(), STUDENT);
+        auth.enroll(mentorship.getId(), OTHER);
+        auth.enroll(mentorship.getId(), NO_SUBMISSION);
         Week week = weeks.saveAndFlush(Week.builder().mentorship(mentorship).title("task id week").build());
         task = tasks.saveAndFlush(Task.builder().week(week).title("task id fixture")
                 .description("existing description").points(10).passPoints(5).estimatedMinutes(30)
@@ -80,5 +89,16 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
         assertThat(data.has("submissionId")).isTrue();
         assertThat(data.get("submissionId").isNull()).isTrue();
         assertThat(data.path("taskId").asLong()).isEqualTo(task.getId());
+    }
+
+    @Test
+    void directServiceIgnoresForgedSubmissionEmail() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(STUDENT, "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
+        try {
+            assertThat(taskService.getTaskWithSubmission(task.getId(), OTHER).getSubmissionId()).isEqualTo(studentSubmissionId);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }

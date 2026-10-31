@@ -22,7 +22,7 @@
 | P1-11 | Notifications `/send` and platform mail `/send` admin-only (or removed per decision); docs updated | 403 probe + endpoints.md diff | Eng Lead |
 | P1-12 | Unauthorized SUBSCRIBE/SEND rejected for foreign rooms; membership semantics per D-14; dead WS code removed | WS IT suite (P2-05) run | Security Reviewer |
 | P1-13 | History/edit blocked for non-participants; edit events carry server-derived recipient | WS/API IT | Security Reviewer |
-| P1-14 | Lectures/tasks detail+filters gate on ownership/enrollment; DRAFT hidden inside them | matrix IT | Backend Dev |
+| P1-14 | Lectures/tasks detail+filters gate on ownership/enrollment; DRAFT hidden inside them | EB-21 `ContentReadProbesTest` production-chain role matrix; CI, Security/Lead review and merge pending | Backend Dev — verification pending |
 | P1-15 | DRAFT invisible (404) for non-owner everywhere incl. public overview | anon/authed probes | Backend Dev |
 | P1-16 | Leaderboard 403 for outsiders; public reviews contain no emails | captures | PO (privacy) |
 | P1-17 | `/homepage/progress/{id}` 403 without enrollment | probe | Backend Dev |

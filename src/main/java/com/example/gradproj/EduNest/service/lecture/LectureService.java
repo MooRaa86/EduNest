@@ -10,6 +10,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -28,6 +30,7 @@ public class LectureService {
     private final LectureRepository lectureRepository;
     private final WeekRepository weekRepository;
     private final MentorRepository mentorRepository;
+    private final ContentReadGuard contentReadGuard;
 
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -92,18 +95,25 @@ public class LectureService {
                 .build();
         return response;
     }
+    @Transactional(readOnly = true)
     public LectureResponse getLectureById(Long LectureId){
         Lecture lecture=lectureRepository.findById(LectureId).orElseThrow(
-                ()->new globalLogicEx("lecture not found")
+                ()->new AccessDeniedException("Content unavailable")
         );
+        contentReadGuard.requireMentorship(lecture.getWeek().getMentorship().getId());
         return mapToLectureResponse(lecture);
     }
+    @Transactional(readOnly = true)
     public List<LectureResponse> getLecturesByWeekId(Long weekId){
+        Week week = weekRepository.findById(weekId).orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        contentReadGuard.requireMentorship(week.getMentorship().getId());
         List<Lecture> lectures=lectureRepository.findByWeek_Id(weekId);
         return lectures.stream().map(this::mapToLectureResponse).toList();
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<LectureResponse> getLecturesByMentorshipId(Long mentorshipId, int page, int size){
+        contentReadGuard.requireMentorship(mentorshipId);
         Pageable pageable = PageRequest.of(page, size);
         Page<Lecture> lecturePage = lectureRepository.findByWeek_Mentorship_Id(mentorshipId, pageable);
         List<LectureResponse> lectures = lecturePage.getContent().stream()

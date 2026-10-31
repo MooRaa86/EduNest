@@ -64,7 +64,7 @@ Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATIO
 | ⟡ POST `/api/v1/mentorship/update-status/{id}` (MENTOR) | role+owner | Lifecycle transition (`ChangeStatusRequest`) |
 | ⟡ POST `/api/v1/mentorship/{mentorshipId}/change-cover-image` (MENTOR, multipart) | role+owner | Upload cover (5MB cap, header-based MIME) |
 | ⟡ DELETE `/api/v1/mentorship/{mentorshipId}/delete-cover-image` (MENTOR) | role+owner | Delete cover |
-| 🔐 GET `/api/v1/mentorship/{mid}/get-tasks` | authenticated-only | **Task list of any mentorship incl. DRAFT, unguarded ownership/enrollment** (MSH-02) |
+| 🔐 GET `/api/v1/mentorship/{mid}/get-tasks` | enrolled student, owning mentor or ADMIN | Course task list; drafts excluded for students (EB-21). |
 | ⟡ GET `/api/v1/mentorship/count-for-mentor`, `/count-students-for-mentor` (MENTOR) | role | Counts |
 | ⟡ POST `/api/v1/mentorship/{mentorshipId}/join` (STUDENT) | role | Enroll (ACTIVE-only; commission snapshot) |
 | ⟡ POST `/api/v1/mentorship/{mentorshipId}/rate` (STUDENT) | role+enrolled | Create review (`CreateReviewRequest`) |
@@ -86,7 +86,7 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | ⟡ GET `/api/v1/week/{mentorshipId}/weeks`, `/{weekId}/contents` (MENTOR) | role+owner | Curriculum views incl. typed content items |
 | ⟡ GET `/api/v1/student/week/{mentorshipId}/weeks`, `/{weekId}/contents`, `/{mentorshipId}/weeks-with-contents` (STUDENT, class) | role+enrolled | Student curriculum (DRAFT content filtered; lecture completion flags **hardcoded true**) |
 | ⟡ POST/DELETE/PATCH `/lectures`… (MENTOR via service) | role+owner | Lecture CRUD |
-| 🔐 GET `/lectures/{id}` · `/lectures/week/{weekId}` · `/lectures/mentorship/{mentorshipId}` | authenticated-only | **Unguarded curriculum reads** (MSH-02/G4) |
+| 🔐 GET `/lectures/{id}` · `/lectures/week/{weekId}` · `/lectures/mentorship/{mentorshipId}` | enrolled student, owning mentor or ADMIN | Course-scoped curriculum reads (EB-21). |
 
 ## 6. Tasks
 
@@ -95,8 +95,8 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | ⟡ POST `/api/v1/task` (multipart) · PATCH `/{id}/status` · PATCH `/{id}` (multipart) · DELETE `/{id}` (MENTOR) | role+owner | Task CRUD (`CreateTaskRequest`), publish/close, attachment mgmt |
 | ⟡ GET `/api/v1/task/dashboard/{mentorshipId}` · `/full-dashboard/{mentorshipId}` (MENTOR) | role+owner | Dashboards |
 | ⟡ GET `/api/v1/task/{taskId}/statistics` (MENTOR) | role+owner | Stats (**pendingReview bug**, LEARN-04) |
-| 🔐 GET `/api/v1/task/{id}` · `/filter/{msid}` | authenticated-only | **Unguarded reads** (LEARN-02) |
-| 🔐 GET `/api/v1/task/{taskId}/student` | authenticated-only | Task + own submission — **no enrollment check** (LEARN-02) |
+| 🔐 GET `/api/v1/task/{id}` · `/filter/{msid}` | enrolled student, owning mentor or ADMIN | Course-scoped task reads; drafts excluded for students (EB-21). |
+| 🔐 GET `/api/v1/task/{taskId}/student` | enrolled student, owning mentor or ADMIN | Course-scoped task + current caller's submission (EB-21). |
 | ⟡ GET `/api/v1/task-submission/{taskId}` (MENTOR) | service-validated | Paged submissions of a task |
 | ⟡ POST `/api/v1/task-submission/{taskId}` (STUDENT, multipart `file`/`fileUrl`) | role+enrolled | Submit (unique row per task+student; resubmit overwrites) |
 | ⟡ POST `/api/v1/task-submission/{submissionId}/grade` (MENTOR) | role+owner | Grade (`GradeTaskSubmissionRequest`) |
@@ -104,6 +104,8 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 ## 7. Projects
 
 Same twin structure under `/api/v1/project` (shared base for `ProjectController` + `ProjectSubmissionController`):
+
+EB-21 also scopes project detail, mentorship filter and student-submission detail to the enrolled student, owning mentor or ADMIN; student drafts are hidden. Anonymous callers receive 401, authenticated outsiders or missing content receive 403. Frontend consumers should handle the change from previously successful foreign-content reads; liaison agreement is not yet recorded.
 
 - ⟡ POST `` (multipart), PATCH `/{id}/status`, PATCH `/{id}` (multipart), DELETE `/{id}` — MENTOR role+owner.
 - ⟡ GET `/{projectId}/statistics`, `/full-dashboard/{mentorshipId}` — MENTOR.

@@ -18,6 +18,7 @@ import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSu
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     private final MentorRepository mentorRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final ContentReadGuard contentReadGuard;
 
     private void validateEnrolled(Long projectId, String email) {
         if (!enrollmentRepository.isStudentEnrolledForProjectByEmail(projectId, email)) {
@@ -193,8 +195,10 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     @Override
     @Transactional(readOnly = true)
     public ProjectWithSubmissionResponse getProjectWithSubmission(Long projectId, String email) {
-        validateEnrolled(projectId, email);
-        ProjectWithSubmissionProjection p = projectSubmissionRepository.findProjectWithSubmission(projectId, email);
+        Project project = projectRepository.findById(projectId).orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        contentReadGuard.requireMentorship(project.getWeek().getMentorship().getId());
+        contentReadGuard.requireVisibleToStudent(project.getWeek().getMentorship().getId(), project.getStatus() == ProjectStatus.PUBLISHED || project.getStatus() == ProjectStatus.CLOSED);
+        ProjectWithSubmissionProjection p = projectSubmissionRepository.findProjectWithSubmission(projectId, contentReadGuard.currentEmail());
         if (p == null) throw new globalLogicEx("Project not found");
         return ProjectWithSubmissionResponse.builder()
                 .projectId(p.getProjectId())
