@@ -69,7 +69,7 @@ Correctly-enforced (verified, for balance): grading ownership (task/project/quiz
 
 ## 5. Open questions
 
-EB-21 / D-03: the production chain rejects anonymous callers with 401; authenticated outsiders and missing content are denied with 403. Student task/project reads expose only PUBLISHED or CLOSED content; owner mentors and ADMIN can read drafts. Student-submission projections use the authenticated identity, not a caller-supplied email. An enrollment row is the only currently modeled enrollment state: there is no active/revoked flag, so a retained row for a revoked enrollment would still grant access. Independently verifying an active lifecycle is not supported by the present schema. Frontend coordination and Security/Lead review remain pending.
+EB-21 / D-03: the production chain rejects anonymous callers with 401; authenticated outsiders and missing content are denied with 403. Student task/project reads expose only PUBLISHED or CLOSED content; owner mentors and ADMIN can read drafts. Student-submission projections and student-week membership checks use the authenticated identity, not a caller-supplied email. An enrollment row is the current authoritative membership condition; there is no individual unenrollment or revocation feature. Any future cancellation or revocation feature must revisit the content-read checks. Account deactivation and deletion are enforced separately by JWT validation. Frontend coordination and Security/Lead review remain pending.
 
 - Confirm intended access for `GET /lectures/**` and `GET /api/v1/mentorship/{id}/get-tasks` (closed-content leak vs accidental omission).
 - Confirm whether `/api/v1/notifications/send` should be admin-only (it was likely added for testing; it is a live phishing vector).

@@ -11,12 +11,16 @@ import com.example.gradproj.EduNest.repository.lectures.LectureRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.tasks.TaskService;
 import com.example.gradproj.EduNest.service.lecture.LectureService;
 import com.example.gradproj.EduNest.service.mentorShip.mentorShipService;
 import com.example.gradproj.EduNest.service.projects.ProjectService;
 import com.example.gradproj.EduNest.service.projects.ProjectSubmissionService;
+import com.example.gradproj.EduNest.service.week.StudentWeekService;
 import com.example.gradproj.EduNest.testing.ProdChainIntegrationTestBase;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Tag;
@@ -47,6 +51,9 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
     @Autowired private mentorShipService mentorService;
     @Autowired private ProjectService projectService;
     @Autowired private ProjectSubmissionService projectSubmissionService;
+    @Autowired private StudentWeekService studentWeekService;
+    @Autowired private StudentRepository students;
+    @Autowired private ObjectMapper objectMapper;
     private static final String OWNER = "eb21-owner@example.org", STUDENT = "eb21-student@example.org";
     private static final String OTHER = "eb21-other@example.org", FOREIGN = "eb21-foreign@example.org";
     private static final String MENTOR = "eb21-mentor-other@example.org", ADMIN = "eb21-admin@example.org";
@@ -142,5 +149,69 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
             assertThatThrownBy(() -> taskService.getTaskById(draftTaskId)).isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> projectService.getProjectById(draftProjectId)).isInstanceOf(AccessDeniedException.class);
         } finally { SecurityContextHolder.clearContext(); }
+    }
+
+    @Test void studentCurriculumProductionChainAndResponseContract() throws Exception {
+        String token = auth.authToken(STUDENT, AuthFixture.STUDENT);
+        for (String route : List.of("/api/v1/student/week/" + mentorshipId + "/weeks",
+                "/api/v1/student/week/" + mentorshipId + "/weeks-with-contents",
+                "/api/v1/student/week/" + weekId + "/contents")) {
+            mockMvc.perform(get(route)).andExpect(status().isUnauthorized());
+            for (String email : List.of(OTHER, FOREIGN)) {
+                mockMvc.perform(get(route).header("Authorization", auth.authToken(email, AuthFixture.STUDENT)))
+                        .andExpect(status().isForbidden());
+            }
+            JsonNode api = objectMapper.readTree(mockMvc.perform(get(route).header("Authorization", token))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("apiResponse");
+            assertThat(api.path("status").asText()).isNotBlank();
+            if (route.endsWith("/weeks")) {
+                assertThat(api.path("weeks").path("mentorshipTitle").asText()).isNotBlank();
+                assertThat(api.path("weeks").path("weeks").get(0).path("id").asLong()).isEqualTo(weekId);
+                assertThat(api.path("weeks").path("weeks").get(0).path("title").asText()).isEqualTo("eb21 week");
+            } else {
+                JsonNode week = route.endsWith("/contents") && !route.endsWith("/weeks-with-contents")
+                        ? api.path("week") : api.path("weeks").path("weeks").get(0);
+                assertThat(week.path("weekId").asLong()).isEqualTo(weekId);
+                assertThat(week.path("weekTitle").asText()).isEqualTo("eb21 week");
+                JsonNode items = week.path("items");
+                assertThat(items.isArray()).isTrue();
+                assertThat(items.toString()).contains("eb21-secret-PUBLISHED", "eb21-secret")
+                        .doesNotContain("eb21-secret-DRAFT");
+                assertThat(items.findValuesAsText("type")).contains("LECTURE", "TASK", "PROJECT");
+            }
+        }
+    }
+
+    @Test void studentCurriculumDirectServiceUsesPrincipalNotSuppliedEmail() {
+        for (String caller : List.of(OTHER, FOREIGN)) {
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(caller, "n/a",
+                    List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
+            try {
+                assertThatThrownBy(() -> studentWeekService.getWeeksByMentorship(mentorshipId, STUDENT)).isInstanceOf(AccessDeniedException.class);
+                assertThatThrownBy(() -> studentWeekService.getMentorshipWeeksWithContents(mentorshipId, STUDENT)).isInstanceOf(AccessDeniedException.class);
+                assertThatThrownBy(() -> studentWeekService.getWeekContents(weekId)).isInstanceOf(AccessDeniedException.class);
+            } finally { SecurityContextHolder.clearContext(); }
+        }
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(STUDENT, "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
+        try {
+            assertThat(studentWeekService.getWeeksByMentorship(mentorshipId, OTHER).getWeeks()).hasSize(1);
+            assertThat(studentWeekService.getMentorshipWeeksWithContents(mentorshipId, OTHER).getWeeks()).hasSize(1);
+            assertThat(studentWeekService.getWeekContents(weekId).getWeekId()).isEqualTo(weekId);
+        } finally { SecurityContextHolder.clearContext(); }
+    }
+
+    @Test void deactivatedAccountCannotUseExistingJwtForCurriculum() throws Exception {
+        String token = auth.authToken(STUDENT, AuthFixture.STUDENT);
+        var student = students.findByEmail(STUDENT).orElseThrow();
+        student.setEnabled(false);
+        students.saveAndFlush(student);
+        try {
+            mockMvc.perform(get("/api/v1/student/week/" + mentorshipId + "/weeks-with-contents")
+                    .header("Authorization", token)).andExpect(status().isUnauthorized());
+        } finally {
+            student.setEnabled(true);
+            students.saveAndFlush(student);
+        }
     }
 }
