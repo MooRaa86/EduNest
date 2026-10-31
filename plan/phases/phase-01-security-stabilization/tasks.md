@@ -278,9 +278,9 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Components:** `MentorshipLeaderboardService` guards, public review projections, public project DTOs
 
 **Evidence:** ISSUES MSH-03/MSH-09/USR-02; [`mds/mentorship-flow/MDS.md`](../../../mds/mentorship-flow/MDS.md).
-**Expected outcome:** leaderboard reads gate on enrollment/ownership/admin and follow the D-04 Ruler B five-field contract. Public review email is temporarily restored for frontend compatibility pending usage verification and Lead/PO approval; image exposure also awaits approval.
+**Expected outcome:** leaderboard reads gate on enrollment/ownership/admin and follow the D-04 Ruler B five-field contract. The temporary public-review email and image compatibility exception is Engineering Lead approved; frontend usage verification remains pending.
 **Approach:** re-enable membership check with message; project `student.SimplfiedUserInfo` style DTO (name+avatar id); endpoints.md notes.
-**FE / API impact:** verify use of reviewer email in the separate frontend before changing this public contract; Lead/PO approval remains required (D-04).
+**FE / API impact:** verify use of reviewer email and coordinate any future email removal with the separate frontend project (D-04).
 **Depends on:** D-04 default.  **Blocks:** P2-03.
 **Tests:** outsider → 403 leaderboard; anonymous review responses assert reviewer email and image values for both public surfaces.
 **Docs:** mentorship-flow/MDS.md (leaderboard + review sections); ISSUE-MAPPING MSH-03/MSH-09/USR-02/G7/GAME-01.

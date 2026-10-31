@@ -74,7 +74,7 @@ Student-side views (see also [../mentorship-flow/explore-and-homepage.md](../men
 | Endpoint | Gate | Purpose |
 |---|---|---|
 | 🔓 GET `/api/v1/student/mentorships/{id}/overview` | public | Details + top-3 + upcoming + enrollment flag |
-| 🔓 GET `/api/v1/student/mentorships/{id}/reviews` | public | Paged reviews include reviewer `studentFullName`, `studentEmail` and `userProfileImageUrl`. Public email is temporarily restored for frontend compatibility pending usage verification and Lead/PO approval; image exposure also awaits approval. |
+| 🔓 GET `/api/v1/student/mentorships/{id}/reviews` | public | Paged reviews include reviewer `studentFullName`, `studentEmail` and `userProfileImageUrl`. The temporary compatibility exception is Engineering Lead approved; frontend usage verification remains pending and future email removal requires frontend coordination. |
 | 🔐 GET `/api/v1/student/mentorships/mentor/{mentorEmail}/top-mentorships` | authenticated | Mentor's top-list |
 | 🔐 GET `/api/v1/student/mentorships/{id}/leaderboard` | enrolled student, owning mentor or ADMIN | Rows and current-user expose `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank` and `totalPoints` — the D-04 amendment (Ruler B, Engineering Lead-approved 2026-10-31): enrollment-gated access supersedes the earlier name-and-points-only leaderboard-row rule; `studentLevel` and badge fields stay excluded. Pagination, total count and `userRank` remain. Existing off-page current-user append is retained. |
 
