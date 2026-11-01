@@ -448,6 +448,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Depends on:** P1-12, P1-13 landed.  **Blocks:** —
 **Tests:** context boot + smoke compile; `dependency:analyze` run attached.
 **Docs:** integrations/external-services.md; ISSUE-MAPPING rows.
+**Status:** ✅ **Implemented — EB-33** (2026-11-01): Removed unused `org.openjfx:javafx-base:20` and `io.agora:authentication:2.1.3` (D-16) from `pom.xml`, eliminating 6 Maven model warnings; documented `certificate-template.html` preserved for D-11 (PDF certificates); consolidated redundant `util` package into `utils` (`FileResponseBuilder` moved to `com.example.gradproj.EduNest.utils`); cleaned dead code (`DirectMessageRequest`, `NotificationProjection`, `UserNotificationProjection`, `ChatMessageRepository.findSenderInfo`, `MessageRepository.findByConversationIdOrderBySentAtDesc`, unused `@Scheduled` in `QuizSubmissionServiceImpl`); replaced raw `System.out` and `System.err` prints with SLF4J logging across `RolesSeeder`, `QuizSubmissionServiceImpl`, `OtpCleanupService`, and `ImageStorageService`.
 
 <a id="p1-27"></a>
 ### P1-27 — Session invalidation & refresh (conditional)

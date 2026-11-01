@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.controller.file;
 
 import com.example.gradproj.EduNest.service.fileSotageService.FileAccessService;
-import com.example.gradproj.EduNest.util.FileResponseBuilder;
+import com.example.gradproj.EduNest.utils.FileResponseBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

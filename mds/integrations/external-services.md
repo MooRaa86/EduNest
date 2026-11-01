@@ -24,8 +24,8 @@ Companion tables to [MDS.md](MDS.md). All usages verified by grep on `src/main/j
 | `badge-award.html` | `AdminBadgeService.awardBadgeToUser` (line 160) | Admin badge award + `BadgePdfGeneratorService` PDF attachment; values escaped via `HtmlUtils`; sent `afterCommit` |
 | `admin-reply.html` | `ContactMessageService` (line 111) | Admin reply to a contact-us message |
 | `admin-message.html` | `AdminUserDirectory` (line 198) | Admin → user direct message (also mirrored to admin-management endpoint `/api/v1/admin/users/send-email`) |
-| `general-mail.html` | `PlatformMailController POST /send` (line 22) | Free-form platform email (`{{name}}`, `{{message}}`) — **public endpoint** |
-| `certificate-template.html` | **no references** | Dead artifact (certificates have no email/PDF flow) |
+| `general-mail.html` | DELETED (EB-18 / D-05) | Deleted along with `POST /send` |
+| `certificate-template.html` | **no references (preserved for D-11)** | Preserved template for Decision D-11 (PDF certificate generation); not an orphan debt |
 
 ## 3. Jitsi Meet
 
