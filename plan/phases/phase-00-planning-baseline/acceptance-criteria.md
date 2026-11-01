@@ -17,7 +17,7 @@
 | P0-06 | Upload matrix complete (4 surfaces × ≥5 payloads) | [Local evidence: 4 × 7 image cases; ZIP service contrast; traversal and endpoint ZIP cases pending](EB-4-UPLOAD-MATRIX.md) | Security Reviewer — pending |
 | P0-07 | Zip-spoof verdict recorded | — | Security Reviewer |
 | P0-08 | QZ-06 verdict recorded (two-mentor fixture) | — | Security Reviewer |
-| P0-09 | Fresh-DB rehearsal log incl. permissive-chain observation | — | DevOps |
+| P0-09 | Fresh-DB rehearsal log incl. permissive-chain observation | [Executed 2026-11-01: fresh-UUID H2 boot; MSH-05 reproduced (400 ERR_BUSINESS_RULE, zero writes); 10% commission success, 200 → 20 split; full suite 409 run / 0 fail; SEL-02 git evidence + boot matrix 5/5](EB-7-FRESH-DB-REHEARSAL.md) | DevOps — evidence recorded; MSH-05 fix pending D-17 (P3-05) |
 
 ## 3. Phase-level checks
 

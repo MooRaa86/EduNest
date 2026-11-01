@@ -46,7 +46,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation: service-level course read guards (ContentReadGuard) merged to main (PR #38, commit 8175e28); content reads restricted to enrolled student, owning mentor or ADMIN; student drafts hidden; CI passed |
 | **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04, amended Ruler B) | EB-23 implementation: leaderboard scoped to enrolled student, owner or ADMIN; rows = `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` (no `studentLevel`/badges); review and CI pending |
 | **MSH-04** | Med | P3-02 | 3 | database | T | Planned |
-| **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned |
+| **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned (EB-7 2026-11-01: defect reproduced on fresh-DB rehearsal, `plan/phases/phase-00-planning-baseline/EB-7-FRESH-DB-REHEARSAL.md`; no seed exists yet, fix deferred to P3-05 pending D-17) |
 | **MSH-06** | Med | P1-22 | 1 | file-storage | T | **Hardened - EB-29 (implementation + probe suite)**: stored extension derives from the detected content format, not the client filename; declared MIME cross-checked against the canonical set for the detected type; all nine replace flows now save the new file before deleting the old one so a rejected upload no longer destroys the previous file ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **MSH-07** | Low | P4-10 | 4 | learning | T (default: effective price) | Planned |
 | **MSH-08** | Low | P4-10, P4-11 | 4 | learning | T | Planned |
