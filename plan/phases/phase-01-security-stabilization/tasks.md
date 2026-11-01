@@ -201,6 +201,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **FE / API impact:** any UI using these loses access (none expected; if FE uses them, it's admin UI — decision recorded).
 **Depends on:** D-05 (default adopted).  **Blocks:** —
 **Tests:** IT: student → 403; admin → 200.  **Docs:** endpoints.md; ISSUE-MAPPING SEL-10/MAIL-01/G10.
+**Status:** ✅ **Implemented (Deleted) — EB-18** (2026-11-01): `PlatformMailController` (POST `/send`), `MailRequest`, `general-mail.html`, `NotificationSendRequest`, and `NotificationController#sendNotification` deleted per Decision D-05. Probes in `FileNotifyBadgeProbesTest` verify both `/send` and `/api/v1/notifications/send` return 404 Not Found.
 
 <a id="p1-12"></a>
 ### P1-12 — WebSocket room authorization + dead-code removal

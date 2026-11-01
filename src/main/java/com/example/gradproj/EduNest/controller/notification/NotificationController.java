@@ -3,11 +3,9 @@ package com.example.gradproj.EduNest.controller.notification;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
-import com.example.gradproj.EduNest.dto.notification.NotificationSendRequest;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,20 +82,6 @@ public class NotificationController {
             Authentication authentication
     ){
         notificationService.markOneAsRead(id, authentication.getName());
-    }
-
-    @PostMapping("/send")
-    @Operation(summary = "send notification to user by email")
-    public void sendNotification(
-            @RequestBody @Valid NotificationSendRequest request
-    ){
-
-        notificationService.sendToUserByEmail(
-                request.getEmail(),
-                request.getTitle(),
-                request.getContent(),
-                request.getType()
-        );
     }
 
     @DeleteMapping("/delete/{id}")

@@ -34,7 +34,7 @@ minimal mentorship chain, mints real JWTs signed with the test-profile secret.
 | G8b | ANON reads DRAFT overview (public path) | `LeaderboardDraftProbesTest g8b_` | 2xx (query has no status filter) | [P1-15] → 404 |
 | G9 | generic `/files?filePath=` no ownership | `FileNotifyBadgeProbesTest g9_` | 200 + file bytes for foreigner | [P1-20] EB-27 → 403 |
 | G9r | traversal guard-rail (FIXED behavior) | same test, second call | **400 forever — do not flip** | stays |
-| G10 | notification push to any email | `FileNotifyBadgeProbesTest g10_` | 2xx | [P1-11] EB-18 (endpoint REMOVAL) → 404, then retired |
+| G10 | notification push to any email | `FileNotifyBadgeProbesTest g10_` | **404 Not Found** (deleted per D-05) | [P1-11] EB-18 (delivered) |
 | G11 | foreign student's badge awards | `FileNotifyBadgeProbesTest g11_` | 200 | [P1-19] → 403 |
 | G12 | foreign mentor creates room | `RoomProbesTest g12_` | 2xx (mentorship-ownership unchecked) | [P1-10] → 403 |
 | G13 | enrolled-but-never-joined reads room | `RoomProbesTest g13_` | 200 (membership = enrollment proxy) | [P1-12] EB-19 → 403 |
