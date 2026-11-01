@@ -214,7 +214,10 @@ public class mentorShipServiceI implements mentorShipService{
 
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<MentorShip> mentorShipsPage = MentorShipRepository.findAll(pageable);
+        // P1-15 / EB-22 — D-02 default (a): the public overview excludes DRAFT
+        // for every caller; owners see their drafts only in the mentor
+        // dashboard (findMentorMentorships, mentor-scoped).
+        Page<MentorShip> mentorShipsPage = MentorShipRepository.findAllByStatusNot(Status.DRAFT, pageable);
 
         List<mentorShipFDto> content = mentorShipsPage.getContent()
                 .stream()
@@ -234,6 +237,15 @@ public class mentorShipServiceI implements mentorShipService{
     public mentorShipFDto getMentorShipById(Long mentorShipId) {
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
+
+        // P1-15 / EB-22 — D-02 default (a): DRAFT detail is confined to its
+        // owner-mentor and ADMIN. Everyone else (including anonymous) gets the
+        // same 404 shape — no existence or status leak (EntityNotFoundException
+        // maps to 404 ERR_RESOURCE_NOT_FOUND in GlobalExceptionHandler).
+        if (mentorShip.getStatus() == Status.DRAFT
+                && !contentReadGuard.isOwnerMentorOrAdmin(mentorShipId)) {
+            throw new jakarta.persistence.EntityNotFoundException("MentorShip not found");
+        }
 
         return mapToMentorShipResponse(mentorShip);
     }

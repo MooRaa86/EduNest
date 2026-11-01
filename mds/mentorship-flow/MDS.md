@@ -61,7 +61,7 @@ Full inventory in [../api/endpoints.md](../api/endpoints.md). Base paths:
 
 ## 7. Known Issues (summary — IDs & evidence in ../ISSUES.md)
 
-- **MSH-01 (High):** DRAFT mentorships readable/published via `GET /api/v1/mentorship/{id}` and via the **public overview endpoint** (no status filter in `findMentorshipDetailsById`) → unreleased content/versioned pricing leak.
+- **MSH-01 (High):** **FIXED (P1-15 / EB-22, D-02 default (a)):** DRAFT mentorships confined to owner-mentor + ADMIN on every read surface — `GET /api/v1/mentorship/{id}` and the student overview 404 for everyone else (no existence/status leak), public paged overview excludes DRAFT (`findAllByStatusNot`); explore/categories/top-mentorships/recommendations verified ACTIVE-only. Probes: `MentorshipDraftConfinementProbesTest` (8) + G8/G8b flips in `LeaderboardDraftProbesTest` (pending review).
 - **MSH-02 (High):** loaded-content leak — `GET /{mid}/get-tasks`, `GET /lectures/**` (3 GETs unguarded — any authenticated user reads lecture media URLs of any mentorship).
 - **MSH-03 (Medium):** EB-23 adds the leaderboard membership/ownership guard; review pending.
 - **MSH-04 (Medium):** enrollment double-insert protected only by the `TotalPoints` unique constraint (Enrollment itself lacks one) + race on `exists`-check pattern.

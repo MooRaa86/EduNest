@@ -41,13 +41,14 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 	}
 
 	/**
-	 * G8 — DRAFT mentorship detail readable directly.
-	 * Audit: getMentorShipById has no status filter.
-	 * EXPECT TODAY: 200 (stranger sees an unpublished mentorship).
-	 * FLIPS WITH: [P1-15] DRAFT confinement (per ISSUE-MAPPING) → expect 404/403 then.
+	 * G8 — DRAFT mentorship detail confinement (FLIPPED 2026-11-01, EB-22).
+	 * Was (Option A pin): 200 — stranger saw an unpublished mentorship detail.
+	 * Now: D-02 default (a) gates DRAFT to owner-mentor/ADMIN; every other
+	 * authenticated caller gets 404 (no existence leak) via
+	 * {@code JwtChannelInterceptor}-independent guard in getMentorShipById.
 	 */
 	@Test
-	@DisplayName("G8/todayOpen: stranger opens a DRAFT (unpublished) mentorship detail → 200")
+	@DisplayName("G8/confined: stranger opens a DRAFT (unpublished) mentorship detail → 404")
 	void g8_strangerReadsDraftMentorshipDetail() throws Exception {
 		auth.student(OUTSIDER); // token-holder must exist in DB (validator checks users table)
 		var chain = auth.mentorship("probe-draft-mentor@example.org",
@@ -56,22 +57,23 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 
 		mockMvc.perform(get("/api/v1/mentorship/{id}", mid)
 						.header("Authorization", auth.authToken(OUTSIDER, AuthFixture.STUDENT)))
-				.andExpect(status().isOk());
+				.andExpect(status().isNotFound());
 	}
 
 	/**
-	 * G8b — the PUBLIC overview path serves DRAFT mentorship data to ANONYMOUS callers
-	 * (query `findMentorshipDetailsById` filters only by id).
-	 * EXPECT TODAY: not-401/403 (public) and reachable for a DRAFT.
-	 * FLIPS WITH: [P1-15] → 404 then.
+	 * G8b — the PUBLIC student-overview path (FLIPPED 2026-11-01, EB-22).
+	 * Was (Option A pin): anonymous callers could read DRAFT details
+	 * (findMentorshipDetailsById filtered only by id).
+	 * Now: 404 — D-02 default (a) confines DRAFT to owner-mentor/ADMIN on the
+	 * permitAll route too.
 	 */
 	@Test
-	@DisplayName("G8b/todayOpen: anonymous caller reads a DRAFT mentorship overview → public")
+	@DisplayName("G8b/confined: anonymous caller reads a DRAFT mentorship overview → 404")
 	void g8b_anonymousReadsDraftMentorshipOverview() throws Exception {
 		var chain = auth.mentorship("probe-draft-mentor2@example.org",
 				com.example.gradproj.EduNest.enums.mentorShip.Status.DRAFT);
 
 		mockMvc.perform(get("/api/v1/student/mentorships/{mid}/overview", chain.mentorship().getId()))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isNotFound());
 	}
 }

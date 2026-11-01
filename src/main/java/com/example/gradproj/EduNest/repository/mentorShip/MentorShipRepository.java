@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.repository.mentorShip;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.*;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.AdminDashboardCardsProjection;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,10 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @EntityGraph(attributePaths = {"tags"})
     Page<MentorShip> findAll(Pageable pageable);
+
+    /** P1-15 / EB-22 — public overview: DRAFT mentorships excluded (D-02 (a)). */
+    @EntityGraph(attributePaths = {"tags"})
+    Page<MentorShip> findAllByStatusNot(Status status, Pageable pageable);
 
     @Query("""
     SELECT 
