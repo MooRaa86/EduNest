@@ -4,14 +4,14 @@
 **Branch:** `feat/p0-09-fresh-db-rehearsal`
 **Base:** `origin/main` @ `917df99d12f4197fa220ec6bfe0cd8a455bf0565` ("P1-11: Delete test push and platform mail endpoints per D-05 (EB-18) (#48)", 2026-11-01)
 **Date:** 2026-11-01
-**Nature:** rehearsal / verification-only evidence task. **`src/main` is zero-touch** — no production file was added, changed, or deleted on this branch (verified with `git diff` after the run, §7). The MSH-05 defect is proved, not fixed: per D-17 the default-commission-seed decision is still open and its fix is owned by Phase 3 (P3-05).
+**Nature:** rehearsal / verification-only evidence task. **`src/main` is zero-touch** — no production file was added, changed, or deleted on this branch; the final-audit `git diff` against the merge base contains exactly the four files inventoried in this document. The MSH-05 defect is proved, not fixed: per D-17 the default-commission-seed decision is still open and its fix is owned by Phase 3 (P3-05).
 
 ## 1. Question under investigation
 
 V-08 asks: does a **freshly created** EduNest database — the exact state a first deploy boots into — serve prime-time traffic correctly? Two concrete scenarios were rehearsed against a virgin schema:
 
-1. **Scenario A (MSH-05, defect):** the `commission` table has never been populated (no seed exists yet). A student tries to enroll in a priced mentorship on day one. Expected today: hard rejection.
-2. **Scenario B (success path):** an admin sets the commission rate to 10% (fixture insert — the admin UI write path itself is already covered elsewhere). A student enrolls in a 200-money mentorship. Expected today: enrollment succeeds and the money split is computed correctly.
+1. **Scenario A (MSH-05, defect):** the `commission` table has never been populated (no seed exists yet). A student tries to enroll in an ACTIVE mentorship on day one. Expected today: hard rejection. (The executed fixture used the `AuthFixture` default price 0.0 — the rate lookup throws before any price math matters, so the observed rejection covers even zero-price enrollments.)
+2. **Scenario B (success path):** the commission rate is set to 10% via a direct repository fixture insert (the commission write path is only unit-covered in `MentorCommissionCalcTest`; its HTTP surface was not exercised here). A student enrolls in a 200-money mentorship. Expected today: enrollment succeeds and the money split is computed correctly.
 
 Both scenarios are governed by:
 
@@ -59,7 +59,7 @@ Final Run A result: **Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 — BUILD
 
 ## 5. Scenario A — MSH-05 defect reproduced on a virgin schema (P0 evidence)
 
-Method (order 2 of the class): assert commission/enrollment/total_points/students/mentors/mentorships all still 0 → seed one student + one `ACTIVE-priced-pattern` mentorship through `AuthFixture` → assert commission is still 0 (no seeder exists) → `POST /api/v1/mentorship/…/join` with a real student JWT.
+Method (order 2 of the class): assert commission/enrollment/total_points/students/mentors/mentorships all still 0 → seed one student + one ACTIVE mentorship (AuthFixture default price 0.0) → assert commission is still 0 (no seeder exists) → `POST /api/v1/mentorship/…/join` with a real student JWT.
 
 Observed:
 
@@ -98,7 +98,7 @@ Ruling applied: SEL-02 is fixed and locked on `origin/main`; this task provides 
 | MSH-05 defect reproduced (P0 evidence) | DONE (§5) — 400 `ERR_BUSINESS_RULE`, zero persistence side effects |
 | 10% fixture commission enrollment succeeds with correct split | DONE (§6) — 200; price 200 → platform profit 20.0 ±1e-9; TotalPoints 0 baseline row |
 | Full Maven test suite passes (Elisha gate) | DONE (§4 run B) — 409 run / 0 failed / 0 errored / 2 skipped (pre-existing), exit 0 |
-| New test file adds rehearsal-only coverage, prod untouched | DONE (§2/§7 of this doc + zero-touch `src/main` verified via git diff) |
+| New test file adds rehearsal-only coverage, prod untouched | DONE (§2; final-audit `git diff` contains exactly the four files inventoried here, none from `src/main`) |
 | Evidence doc linking to EB-7/MSH-05 with live reflections | DONE — this document |
 
 **Open items left for others (intentionally):** D-17 decision + MSH-05 fix (P3-05); CI confirmation of the 409-test gate on JDK 21 (first push of this branch); local runs used JDK 23 with `release 21` compile.
