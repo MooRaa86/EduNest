@@ -27,17 +27,19 @@ Verified from `service/quiz/quiz/QuizServiceImpl`, `service/quiz/question/Questi
 6. Pass criterion (display-time): `score ≥ fullMark/2` → "Passed" else "Failed" (`getAllSubmissionsByQuiz` L283–291; `getQuizOverviewDto` L345–354).
 7. Pushes notifications mentor-side ("New Quiz Submission") and student-side ("Quiz Submitted").
 
-## 4. Answer-key disclosure (critical)
+## 4. Answer-key disclosure (critical — FIXED 2026-11-01, P1-18/EB-25)
 
-`GET /api/v1/my-answers/{quizId}` (`QuizSubmissionController#getStudentQuizReview` L58) → `QuizSubmissionServiceImpl#getStudentQuizReview` (L196–247):
-- Returns **`correctAnswer` for every question**, guarded only by enrollment — **callable before submitting** → perfect score trivially (LEARN-01, Critical).
-- Post-submission review is legitimate; the fix is scoping the answer key to non-null submissions (or splitting endpoints).
+`GET /api/v1/my-answers/{quizId}` (`QuizSubmissionController#getStudentQuizReview` L58) → `QuizSubmissionServiceImpl#getStudentQuizReview` (L196–257):
+- Pre-fix: returned **`correctAnswer` for every question**, guarded only by enrollment (LEARN-01, Critical) — callable before submitting → perfect score trivially.
+- **Fixed (P1-18/EB-25, 2026-11-01):** the key is populated **only once the attempt is genuinely submitted** — `QuizSubmission#score != null`, the same marker `submitQuizAnswers` uses as its "already submitted" guard (opening a quiz creates the row with `score == null`, LEARN-07). Pre-submission the field stays null and `StudentQuizReviewDTO` **omits it from the JSON entirely** (`@JsonInclude(NON_NULL)` on the field, not class-level — other fields keep their null contract).
+- Mentor-side `GET /answer/{studentId}/{quizId}` keeps full keys and asserts quiz ownership (`SecurityService#isMentorOwnQuiz` → `AccessDeniedException` → 403 for foreign mentors).
+- Regression probes: `QuizAnswerKeyScopingProbesTest` (key omitted pre-submission / key visible after genuine submit / mentor view 403-foreign vs 200-owner).
 
 ## 5. Mentor-side review surfaces
 
 - `GET /submissions/quiz/{quizId}` (mentor, own-quiz) — per-student rows incl. "Not Submitted" label for opened-but-unsubmitted attempts; NPE edge if both score & startDate were null (data-dependent; today's rows always have startDate).
 - `GET /submissions/student/{studentId}` — mentor access via `validateMentorHasAccessToStudent`.
-- `GET /answer/{studentId}/{quizId}` — inspect a student's chosen answers.
+- `GET /answer/{studentId}/{quizId}` — inspect a student's chosen answers; ownership-asserted (`SecurityService#isMentorOwnQuiz` → 403 for foreign mentors; pinned by `QuizAnswerKeyScopingProbesTest`, P1-18/EB-25).
 
 ## 6. Data model notes
 
@@ -46,7 +48,7 @@ Verified from `service/quiz/quiz/QuizServiceImpl`, `service/quiz/question/Questi
 
 ## 7. Test recommendations
 
-1. **Key-leak regression test**: `/my-answers` before submit must not include `correctAnswer` (post-fix).
+1. **Key-leak regression test**: `/my-answers` before submit must not include `correctAnswer` (post-fix) — **delivered** 2026-11-01: `QuizAnswerKeyScopingProbesTest` (P1-18/EB-25).
 2. Attempt window: submit 1 second before endDate ok; after → penalty math exact; re-submit rejected.
 3. Scoring: partial correctness, wrong answer, empty answers list accepted as 0 (current behavior), unknown question rejected.
 4. First-open creates attempt row; progress accounting excludes unsubmitted rows (post-fix).
