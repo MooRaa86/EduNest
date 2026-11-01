@@ -48,8 +48,15 @@ public class ChatRoomService {
             String creatorEmail
     ) {
 
-        if(!mentorshipRepo.existsById(mentorshipId)) {
-            throw new UsernameNotFoundException("Mentorship not found");
+        // G12 / TD-07 (P1-10 / EB-17): the MENTOR role gate alone let any
+        // mentor create a room inside ANY mentorship by id. Ownership is now
+        // verified with the sibling convention used across the dashboard
+        // services (SecurityService#isMentorOwnMentorship →
+        // existsByIdAndMentor_Email). Foreign and non-existent mentorship ids
+        // both answer 403 — one uniform denial, and the previous
+        // existsById→404 path no longer distinguishes roomable ids for probing.
+        if (!securityService.isMentorOwnMentorship(mentorshipId, creatorEmail)) {
+            throw new AccessDeniedException("you are not authorized to create a room for this mentorship");
         }
 
         MentorShip mentorship =

@@ -77,6 +77,11 @@ public class MentorshipDashboardService {
                 .build();
     }
 
+    // P1-10 / EB-17 (SEL-09): every sibling in this service carries the MENTOR
+    // role gate; getStats was reachable by any authenticated user. Ownership
+    // itself stays with the email-keyed stats query below (foreign mentorship
+    // ids still answer 404 — no new oracle added).
+    @PreAuthorize("hasRole('MENTOR')")
     public MentorshipStatsResponse getStats(Long mentorshipId) {
 
         String email = SecurityContextHolder.getContext()

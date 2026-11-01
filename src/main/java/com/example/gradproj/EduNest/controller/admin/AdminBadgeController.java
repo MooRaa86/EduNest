@@ -11,11 +11,21 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * P1-10 / EB-17 (SEL-09): every endpoint here was guarded by the URL matrix
+ * alone — the `/api/admin/**` admin block plus the admin-only user-badge read
+ * (GET /api/users/{userId}/badges). The class-level annotation mirrors that
+ * rule at the method-security layer so the admin badge surface stops
+ * depending on URL-config drift — matching the other admin controllers
+ * (AdminUserDirectory/AdminProfileAndSettings style).
+ */
 @RestController
 @Tag(name = "admin-badges", description = "APIs for managing admin badges and assigning them to users")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminBadgeController {
 
     private final AdminBadgeService adminBadgeService;

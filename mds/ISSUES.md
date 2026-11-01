@@ -50,7 +50,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | G9 | FILE-01/LEARN-03 | `/files?filePath=` ownership bypass |
 | G10 | SEL-10 | Notifications send: any authenticated user → any email's queue (CLOSED — EB-18 / P1-11 deleted per D-05) |
 | G11 | GAME-02 | Badge/award reads unguarded (CLOSED — EB-26 / P1-19: `/badge-awards/student/{id}` confined to self/ADMIN/mentor-of-enrollment; mentorship+badge award reads were already owner-only; badge catalog stays open per plan — no personal data) |
-| G12 | TD-07 | Room creation ownership gap (any mentor, any mentorship) |
+| G12 | TD-07 | Room creation ownership gap (CLOSED — EB-17 / P1-10: `createRoom` enforces `SecurityService#isMentorOwnMentorship` before creation — foreign/non-existent id → 403, owner → 200; probes `MethodSecuritySweepProbesTest`) |
 | G13 | TD-08 | Room-membership = 3 inconsistent semantics |
 | G14 | TD-09 | Profile-image folder name mismatch (relying on catch-all public route) |
 | G15 | QZ-06 | Question re-parent target-quiz ownership gap (CLOSED — EB-26 / P1-19: `updateQuestion` enforces `isMentorOwnQuiz` on the TARGET quiz before the status check; V-06/P0-08 verdict CONFIRMED) |
