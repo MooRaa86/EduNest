@@ -14,8 +14,6 @@ import java.security.Principal;
 @RequiredArgsConstructor
 public class ConversationWebSocketControllers {
 
-    //ToDo review all the flow 
-
     private final ConversationService conversationService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -30,9 +28,10 @@ public class ConversationWebSocketControllers {
         ConversationMessageResponse msg =
                 conversationService.sendMessage(email, request);
 
-        // send to receiver
+        // send to receiver (server-derived from persisted message / response)
+        String recipient = msg.getRecipientEmail() != null ? msg.getRecipientEmail() : request.getRecipientEmail();
         messagingTemplate.convertAndSendToUser(
-                request.getRecipientEmail(),
+                recipient,
                 "/queue/messages",
                 msg
         );

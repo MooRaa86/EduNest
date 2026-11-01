@@ -34,12 +34,19 @@ public class ConversationRestControllers {
     public ResponseEntity<SimpleResponse> getMessages(
             @PathVariable Long conversationId,
             @RequestParam(required = false) Long beforeId,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
     ) {
+        String email = authentication != null ? authentication.getName() : null;
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
         List<ConversationMessageResponse> messages = conversationService.getConversationMessages(
                 conversationId,
                 beforeId,
-                size
+                size,
+                email,
+                isAdmin
         );
         SimpleResponse response = new SimpleResponse();
         response.addMessage("messages", messages);
@@ -67,11 +74,14 @@ public class ConversationRestControllers {
                 messageResponse
         );
         
-        messagingTemplate.convertAndSendToUser(
-                request.getRecipientEmail(),
-                "/queue/messages",
-                messageResponse
-        );
+        // CHAT-04: recipient email derived from conversation, not client DTO
+        if (messageResponse.getRecipientEmail() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    messageResponse.getRecipientEmail(),
+                    "/queue/messages",
+                    messageResponse
+            );
+        }
         
         return ResponseEntity.ok(response);
     }
@@ -80,10 +90,10 @@ public class ConversationRestControllers {
     @Operation(summary = "Delete a message")
     public void delete(
             @PathVariable Long messageId,
-            @RequestBody DeleteMessageRequest request,
+            @RequestBody(required = false) DeleteMessageRequest request,
             Authentication authentication
     ) {
-        conversationService.deleteMessage(
+        String recipientEmail = conversationService.deleteMessage(
                 messageId,
                 authentication.getName()
         );
@@ -99,11 +109,14 @@ public class ConversationRestControllers {
                 event
         );
         
-        messagingTemplate.convertAndSendToUser(
-                request.getRecipientEmail(),
-                "/queue/messages",
-                event
-        );
+        // CHAT-04: recipient email derived from conversation, not client DTO
+        if (recipientEmail != null) {
+            messagingTemplate.convertAndSendToUser(
+                    recipientEmail,
+                    "/queue/messages",
+                    event
+            );
+        }
     }
 
     @GetMapping("/all")

@@ -233,8 +233,9 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Approach:** ownership predicate helper; remove client `recipientEmail` from DTO reliance (DTO field *kept* but ignored — contract-preserving); server asserts pair before event send.
 **FE / API impact:** none for compliant clients (spoofed events stop; honest behavior unchanged).
 **Depends on:** —  **Blocks:** P2-03 IDOR suite rowset.
-**Tests:** three IT denial cases + honest-client happy path.
-**Docs:** users-profiles/profiles.md (conversation section); ISSUE-MAPPING CHAT-02/03/04.
+**Tests:** three IT denial cases + honest-client happy path (`ConversationProbesTest`: 8 probes).
+**Docs:** users-profiles/profiles.md (conversation section); ISSUE-MAPPING CHAT-02/03/04; mds/ISSUES.md; authorization-rules.md; messaging-flow.md.
+**Status:** ✅ **Implemented — EB-20** (2026-11-01): History read requires participant or ADMIN (403 for strangers without ID oracle); edit and delete enforce sender ownership; event routing derives recipient strictly from conversation record; probes flipped and verified.
 
 <a id="p1-14"></a>
 ### P1-14 — Content-read guards (lectures / tasks / get-tasks / detail)
