@@ -186,6 +186,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **FE / API impact:** none (docs note renames rejected deliberately).  **Depends on:** —  **Blocks:** P2-03 role matrix.
 **Tests:** role-matrix IT: outsider/mentor-B on mentor-A's mentorship → 403 for room create + dashboard reads.
 **Docs:** authorization-rules.md; ISSUE-MAPPING SEL-09/TD-07.
+**Status:** ✅ **Implemented — EB-17** (2026-11-01): Class-level `@PreAuthorize("hasRole('ADMIN')")` on `AdminBadgeController`; class-level `@PreAuthorize("hasRole('MENTOR')")` on `MentorDashboardController`; method-level `@PreAuthorize("hasRole('MENTOR')")` on `DashboardService` (`getSalesChartData`, `getStudents`) and `MentorshipDashboardService#getStats`; enforced mentorship ownership on `MentorshipDashboardService#getStats` via `securityService.isMentorOwnMentorship` (throws 403 `AccessDeniedException`); `ChatRoomService.createRoom` validates caller ownership of the target mentorship (`securityService.isMentorOwnMentorship(mentorshipId, creatorEmail)`) throwing 403 `AccessDeniedException` for foreign mentors; verified by `RoomProbesTest.g12_foreignMentorCreatesRoomInForeignMentorship` (flipped to 403) and `MethodSecurityOwnershipProbesTest` (13 probes green).
 
 <a id="p1-11"></a>
 ### P1-11 — Gate open push/mail endpoints

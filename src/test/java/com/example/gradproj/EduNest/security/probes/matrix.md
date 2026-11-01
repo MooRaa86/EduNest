@@ -36,7 +36,7 @@ minimal mentorship chain, mints real JWTs signed with the test-profile secret.
 | G9r | traversal guard-rail (FIXED behavior) | same test, second call | **400 forever — do not flip** | stays |
 | G10 | notification push to any email | `FileNotifyBadgeProbesTest g10_` | **404 Not Found** (deleted per D-05) | [P1-11] EB-18 (delivered) |
 | G11 | foreign student's badge awards | `FileNotifyBadgeProbesTest g11_` | 200 | [P1-19] → 403 |
-| G12 | foreign mentor creates room | `RoomProbesTest g12_` | 2xx (mentorship-ownership unchecked) | [P1-10] → 403 |
+| G12 | foreign mentor creates room | `RoomProbesTest g12_` | **403 Forbidden** (mentorship ownership enforced) | [P1-10] EB-17 (delivered) |
 | G13 | enrolled-but-never-joined reads room | `RoomProbesTest g13_` | 200 (membership = enrollment proxy) | [P1-12] EB-19 → 403 |
 | G14 | `/uploads/**` anonymous-public (folder mismatch) | `UploadsServingProbeTest g14_` | 200 for ANON | [P1-21] EB-28 / D-25 → private/404 |
 | G15 | question re-parent, target-quiz unvalidated | `QuestionReparentProbeTest g15_` | **200 + moved into foreign quiz** (⚠️ register correction: gate checks CURRENT quiz's owner only; actor = own question → foreign quiz) | [P1-19] → 403 |
@@ -74,6 +74,21 @@ minimal mentorship chain, mints real JWTs signed with the test-profile secret.
 | P1-08 | five bad logins → all 401, **no 429 anywhere** (no limiter) | `p08_` | [P1-08] EB-15 → 429 |
 | P1-09 | `/api/v1/admin/register` anonymous-reachable (not 401/403) | `p09_` | [P1-09] EB-16 |
 | P1-07 | reset endpoint accepts a fresh RESET OTP → 2xx (flow reachable); strict single-use semantics themselves are EB-14's delivery — EB-14 reuses this probe for the reuse-assert | `p07_` | [P1-07] EB-14 |
+
+## Method-security & ownership probes ([P1-10] / EB-17 / SEL-09 / TD-07)
+
+| Boundary | Probe (`MethodSecurityOwnershipProbesTest`) | EXPECT |
+|---|---|---|
+| AdminBadge anonymous access rejected | `adminBadge_anonymous_returns401` | 401 ANON |
+| AdminBadge non-admin access rejected | `adminBadge_student_returns403`, `adminBadge_mentor_returns403` | 403 Forbidden |
+| AdminBadge admin access allowed | `adminBadge_admin_returnsSuccess` | 200 OK |
+| MentorDashboard anonymous access rejected | `mentorDashboard_anonymous_returns401` | 401 ANON |
+| MentorDashboard non-mentor access rejected | `mentorDashboard_student_returns403`, `mentorDashboard_admin_returns403` | 403 Forbidden |
+| MentorDashboard mentor access allowed | `mentorDashboard_salesChartData_mentor_returns200`, `mentorDashboard_students_mentor_returns200` | 200 OK |
+| Mentorship stats anonymous access rejected | `mentorshipDashboardStats_anonymous_returns401` | 401 ANON |
+| Mentorship stats non-mentor access rejected | `mentorshipDashboardStats_student_returns403`, `mentorshipDashboardStats_admin_returns403` | 403 Forbidden |
+| Mentorship stats foreign mentor rejected | `mentorshipDashboardStats_foreignMentor_returns403` | 403 Forbidden |
+| Mentorship stats owner mentor allowed | `mentorshipDashboardStats_ownerMentor_returns200` | 200 OK |
 
 ## Referenced-from-EB-9/EB-8/EB-13 (green already, NOT duplicated)
 

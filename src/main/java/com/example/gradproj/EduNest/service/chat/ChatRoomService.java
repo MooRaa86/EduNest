@@ -52,6 +52,11 @@ public class ChatRoomService {
             throw new UsernameNotFoundException("Mentorship not found");
         }
 
+        // P1-10 / EB-17 (TD-07 / G12): Enforce that only the mentor who owns the mentorship can create rooms
+        if (!securityService.isMentorOwnMentorship(mentorshipId, creatorEmail)) {
+            throw new AccessDeniedException("You are not the mentor of this mentorship");
+        }
+
         MentorShip mentorship =
                 mentorshipRepo.getReferenceById(mentorshipId);
 

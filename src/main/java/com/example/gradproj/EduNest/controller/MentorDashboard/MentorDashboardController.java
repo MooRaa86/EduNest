@@ -19,10 +19,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * P1-10 / EB-17 (SEL-09):
+ * Method-level security enforces ROLE_MENTOR on all mentor dashboard endpoints.
+ */
 @RestController
 @RequestMapping("/api/v1/dashboard")
 @Tag(
@@ -30,6 +35,7 @@ import java.util.List;
         description = "Cards, Sessions, Reviews and other details in the dashboard & mentorship dashboard apis"
 )
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('MENTOR')")
 public class MentorDashboardController {
 
     private final DashboardService mentorDashboardService;
@@ -225,4 +231,3 @@ public class MentorDashboardController {
         return ResponseEntity.ok(resp);
     }
 }
-

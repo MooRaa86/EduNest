@@ -77,11 +77,18 @@ public class MentorshipDashboardService {
                 .build();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public MentorshipStatsResponse getStats(Long mentorshipId) {
 
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
+        String email = getCurrentUserEmail();
+
+        if (!mentorShipRepository.existsById(mentorshipId)) {
+            throw new UsernameNotFoundException("Mentorship not found");
+        }
+
+        if (!securityService.isMentorOwnMentorship(mentorshipId, email)) {
+            throw new AccessDeniedException("you are not authorized to access this mentorship");
+        }
 
         MentorshipStatsResponse stats =
                 mentorShipRepository.getMentorshipStats(mentorshipId, email);

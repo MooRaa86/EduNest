@@ -133,6 +133,7 @@ public class DashboardService {
                 .build();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public List<SalesChartResponse> getSalesChartData(Integer months) {
 
         String email = getCurrentUserEmail();
@@ -167,6 +168,7 @@ public class DashboardService {
                 .build();
     }
 
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<MentorStudentListResponse> getStudents(
             int page,
             int size

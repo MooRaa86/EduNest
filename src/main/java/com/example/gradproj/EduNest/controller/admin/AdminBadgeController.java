@@ -11,11 +11,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * P1-10 / EB-17 (SEL-09):
+ * Method-level security enforces ROLE_ADMIN on all admin badge endpoints.
+ */
 @RestController
 @Tag(name = "admin-badges", description = "APIs for managing admin badges and assigning them to users")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminBadgeController {
 
     private final AdminBadgeService adminBadgeService;
