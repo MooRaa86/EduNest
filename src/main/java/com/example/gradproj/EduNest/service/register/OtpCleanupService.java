@@ -2,12 +2,14 @@ package com.example.gradproj.EduNest.service.register;
 
 import com.example.gradproj.EduNest.repository.OTPRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OtpCleanupService {
@@ -19,6 +21,6 @@ public class OtpCleanupService {
     public void removeExpiredOtps() {
         LocalDateTime now = LocalDateTime.now();
         otpRepository.deleteByExpiresAtBefore(now);
-        System.out.println("Expired OTPs cleaned up at: " + now);
+        log.info("Expired OTPs cleaned up at: {}", now);
     }
 }

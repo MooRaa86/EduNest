@@ -218,9 +218,9 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
-| INT-01 | TECHNICAL DEBT | Low | ✅ | Unused JavaFX dependency (`org.openjfx:javafx-base:20`) | `pom.xml` + zero imports |
+| INT-01 | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-33 / P1-26):** Removed unused JavaFX dependency (`org.openjfx:javafx-base:20`) and unused `io.agora:authentication:2.1.3` (per D-16) from `pom.xml`. | `pom.xml` |
 | INT-02 | RELIABILITY | Medium | ✅ | No email-delivery observability: `@Async` failures swallowed/logged only; no retry/outbox; no bounce metrics | `EmailService` |
-| INT-03 | TECHNICAL DEBT | Low | ✅ | Dead template `certificate-template.html` (unreferenced) | template grep |
+| INT-03 | TECHNICAL DEBT | Low | ✅ | **RESOLVED / DOCUMENTED (EB-33 / P1-26):** `certificate-template.html` preserved intentionally for Decision D-11 (PDF certificate generation); documented in `mds/integrations/external-services.md`. | `templates/emails/certificate-template.html` |
 
 ---
 
@@ -265,10 +265,10 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | ID | Cat | Sev | Status | Issue |
 |---|---|---|---|---|
 | TD-01 | TECHNICAL DEBT | Low | ✅ | Naming inversions: `service/auth/LoginService` is the **interface**, `LoginServiceI` the impl; `mentorShipServiceI`; lowercase `chatRestControllers`, `ConversationRestControllers` |
-| TD-02 | TECHNICAL DEBT | Low | ✅ | Two utility packages `utils` + `util` (Constants vs FileResponseBuilder) |
-| TD-03 | TECHNICAL DEBT | Low | ✅ | Dead code inventory: `JwtTokenGeneratorFilter` (=missing `/test-login` route), `DirectMessageRequest`, `NotificationProjection`, `ChatRoomRepository` injection in interceptor (method doesn't exist), `ChatMessageRepository.findSenderInfo`, `MessageRepository.findByConversationIdOrderBySentAtDesc`, `CommissionService.calculateMentorPayout`, unused `@Scheduled` imports |
-| TD-04 *(xref)* | TECHNICAL DEBT | Low | ✅ | = INT-01 (JavaFX dep) |
-| TD-05 | TECHNICAL DEBT | Low | ✅ | `System.out.println` debug prints in production paths (`JwtChannelInterceptor:153`, `RolesSeeder:24`, `QuizSubmissionServiceImpl:97`) |
+| TD-02 | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-33 / P1-26):** Consolidated redundant `util` package into `utils`; `FileResponseBuilder` moved to `com.example.gradproj.EduNest.utils`. | `com.example.gradproj.EduNest.utils` |
+| TD-03 | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-33 / P1-26):** Dead code cleaned: deleted dead DTO `DirectMessageRequest`, dead projections `NotificationProjection` and `UserNotificationProjection`, removed dead queries `ChatMessageRepository.findSenderInfo` and `MessageRepository.findByConversationIdOrderBySentAtDesc`, removed unused `@Scheduled` import in `QuizSubmissionServiceImpl`. | `dto/chat`, `repository/notification`, `repository/chat` |
+| TD-04 *(xref)* | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-33 / P1-26):** = INT-01 (JavaFX and Agora dependencies removed). |
+| TD-05 | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-33 / P1-26):** Replaced raw `System.out.println` and `System.err.println` debug prints with structured SLF4J logging across `RolesSeeder`, `QuizSubmissionServiceImpl`, `OtpCleanupService`, and `ImageStorageService`. |
 | TD-06 | TECHNICAL DEBT | Low | ✅ | `features/roadmap/**` empty skeleton (zero files, zero references) — implement or delete |
 | TD-07 | TECHNICAL DEBT | Medium | ✅ | Room creation ownership gap: any mentor can create rooms in anyone's mentorship (`ChatRoomService.createRoom:43-79`) |
 | TD-08 | TECHNICAL DEBT | Low | ✅ | Three inconsistent "membership" semantics — enrollment-proxy REST vs room-join vs commented WS checks (`AuthorizationRepository:82-93` vs `EnrollmentRepository:178-191`) |

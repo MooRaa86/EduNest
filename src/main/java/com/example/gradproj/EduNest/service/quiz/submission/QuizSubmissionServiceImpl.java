@@ -24,7 +24,6 @@ import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -93,8 +92,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         QuizSubmission quizSubmission = quizSubmissionRepository
                 .findByStudent_IdAndQuiz_Id(student.getId(), quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not started yet"));
-
-        System.out.println(quizSubmission.getScore());
         if (quizSubmission.getScore() != null) {
             throw new globalLogicEx("Quiz already submitted");
         }

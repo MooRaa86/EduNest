@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.service.mentorShip;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.service.fileSotageService.UploadContentValidator;
 import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +26,7 @@ import java.util.UUID;
  * (FILE-02/FILE-03/MSH-06). Legitimate uploads keep their URL contract:
  * {@code /uploads/{folder}/{id}-EduNest-{uuid}.{ext}}.
  */
+@Slf4j
 @Service
 public class ImageStorageService {
 
@@ -58,7 +60,7 @@ public class ImageStorageService {
                 Files.deleteIfExists(oldFilePath);
             }
         } catch (IOException e) {
-            System.err.println("Failed to delete old cover image");
+            log.warn("Failed to delete old cover image: {}", oldImageUrl, e);
         }
     }
 

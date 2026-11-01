@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.util;
+package com.example.gradproj.EduNest.utils;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

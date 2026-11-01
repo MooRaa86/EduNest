@@ -20,7 +20,7 @@ import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
-import com.example.gradproj.EduNest.util.FileResponseBuilder;
+import com.example.gradproj.EduNest.utils.FileResponseBuilder;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

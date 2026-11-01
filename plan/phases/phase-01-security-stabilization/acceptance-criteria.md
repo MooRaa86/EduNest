@@ -34,7 +34,7 @@
 | P1-23 | Unlisted origin denied (preflight, credentialed) | probe | Backend Dev |
 | P1-24 | Injection payload renders escaped in email (or P0-04 refuted → task unneeded) | email capture | Backend Dev |
 | P1-25 | Malformed login/verify/resend payloads → 400 field-aware | EB-32: `AuthRequestValidationTest` and OTP/rate-limit/login regression suites; CI, review and merge pending | Backend Dev — verification pending |
-| P1-26 | JavaFX+Agora removed; unused code paths deleted; build green | diff + build log | Eng Lead |
+| P1-26 | JavaFX+Agora removed; unused code paths deleted; build green | **Delivered (EB-33)**: Removed `org.openjfx:javafx-base:20` and `io.agora:authentication:2.1.3` from `pom.xml` (6 build warnings eliminated); `certificate-template.html` preserved for D-11; consolidated `util` into `utils`; removed dead DTO `DirectMessageRequest`, dead projections `NotificationProjection` and `UserNotificationProjection`, dead queries in `ChatMessageRepository` and `MessageRepository`, unused `@Scheduled` import; replaced raw `System.out`/`System.err` with SLF4J loggers. Build and regression tests green. | Eng Lead |
 | P1-27 (cond.) | Refresh/invalidation implemented per D-01 or formally carried with decision record | IT + decision link | Eng Lead |
 
 ## 3. Phase-level checks

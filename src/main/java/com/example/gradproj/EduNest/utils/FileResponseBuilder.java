@@ -1,4 +1,4 @@
-package com.example.gradproj.EduNest.util;
+package com.example.gradproj.EduNest.utils;
 
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;

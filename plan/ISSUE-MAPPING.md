@@ -109,9 +109,9 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **API-03** | Low | P4-16 (cond.) | 4 | api | D→T (D-20), DEF expected | Planned |
 | **API-04** | High | P1-09 | 1 | auth | = SEL-08 | **Implemented — same scope as SEL-08 above (EB-16).** Field removed from shared admin response DTO = FE-visible contract change; FE note included in docs (`endpoints.md` admin rows). |
 | **API-05** | Med | P4-14 | 4 | api | T | Planned |
-| **INT-01** | Low | P1-26 | 1 | integrations | T (+Agora/R11) | Planned |
+| **INT-01** | Low | P1-26 | 1 | integrations | T (+Agora/R11) | **Implemented — EB-33** (2026-11-01): removed unused `org.openjfx:javafx-base:20` and `io.agora:authentication:2.1.3` (D-16) from `pom.xml`; eliminated 6 Maven build model warnings. |
 | **INT-02** | Med | P4-13 | 4 | integrations | T | Planned |
-| **INT-03** | Low | P1-26 | 1 | integrations | T | Planned |
+| **INT-03** | Low | P1-26 | 1 | integrations | T | **Resolved / Documented — EB-33** (2026-11-01): `certificate-template.html` preserved intentionally for Decision D-11 (PDF certificate generation); documented in `external-services.md`. |
 | **DEP-01** | High | P2-07 → P6-04 | 2,6 | deployment | T | **P2-07 Verified** (workflow merged & green on main `0cd3464`; branch protection ON per Omar 2026-10-28; P6-04 extension of this workflow still open) |
 | **DEP-02** | High | P5-01, P5-02 | 5 | deployment | T | Planned |
 | **DEP-03** | High | P6-05 | 6 | deployment | T | Planned |
@@ -128,10 +128,10 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DOC-02** | Low | P5-05 | 5 | deployment | T | Planned |
 | **DOC-03** | Low | — | — | docs | RES (mds reorganization) | Resolved |
 | **TD-01** | Low | — | — | tech-debt | DEF (risk>value now) | Deferred |
-| **TD-02** | Low | P1-26 | 1 | tech-debt | T | Planned |
-| **TD-03** | Low | P1-26 (+P1-12 dead code) | 1 | tech-debt | T | Planned |
-| **TD-04** | Low | P1-26 | 1 | tech-debt | = INT-01 | Planned |
-| **TD-05** | Low | P1-26 (+P5-02) | 1,5 | tech-debt | T | Planned |
+| **TD-02** | Low | P1-26 | 1 | tech-debt | T | **Implemented — EB-33** (2026-11-01): consolidated redundant `util` package into `utils`; `FileResponseBuilder` moved to `com.example.gradproj.EduNest.utils`. |
+| **TD-03** | Low | P1-26 (+P1-12 dead code) | 1 | tech-debt | T | **Implemented — EB-33** (2026-11-01): dead code cleaned: deleted dead DTO `DirectMessageRequest`, dead projections `NotificationProjection` and `UserNotificationProjection`, removed dead queries `ChatMessageRepository.findSenderInfo` and `MessageRepository.findByConversationIdOrderBySentAtDesc`, removed unused `@Scheduled` import in `QuizSubmissionServiceImpl`. |
+| **TD-04** | Low | P1-26 | 1 | tech-debt | = INT-01 | **Implemented — EB-33** (2026-11-01): = INT-01 (JavaFX and Agora dependencies removed). |
+| **TD-05** | Low | P1-26 (+P5-02) | 1,5 | tech-debt | T | **Implemented — EB-33** (2026-11-01): replaced raw `System.out.println` and `System.err.println` debug prints with structured SLF4J logging across `RolesSeeder`, `QuizSubmissionServiceImpl`, `OtpCleanupService`, and `ImageStorageService`. |
 | **TD-06** | Low | P5-05 | 5 | tech-debt | D→T (D-21) | Planned |
 | **TD-07** | Med | P1-10 | 1 | ws | = G12 | **Implemented — EB-17 (2026-11-01):** createRoom ownership guard shipped (`SecurityService#isMentorOwnMentorship` before creation) — foreign/non-existent mentorship id → 403, owner → 200; see G12 rows — merged via [PR #59](https://github.com/MooRaa86/EduNest/pull/59) (merge `8b5f2f9`) — **Verified**, Jira EB-17 = Done |
 | **TD-08** | Low | P1-12 | 1 | ws | = G13 (D-14) | **Implemented — EB-19** (see WS-01): the three inconsistent membership semantics collapsed into the two D-14 rules centralized in `ChatAuthorization` |
