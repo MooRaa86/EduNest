@@ -50,4 +50,18 @@ public class ContentReadGuard {
     public void requireVisibleToStudent(Long mentorshipId, boolean visible) {
         if (!visible && isStudentView(mentorshipId)) throw new AccessDeniedException("Content unavailable");
     }
+
+    /**
+     * P1-15 / EB-22 — D-02 default (a): a DRAFT mentorship is visible only to
+     * its owner-mentor and ADMIN. Principal-derived (never a caller-supplied
+     * email, D-03 rule); anonymous always denied.
+     */
+    public boolean isOwnerMentorOrAdmin(Long mentorshipId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return false;
+        }
+        if (hasRole(auth, "ADMIN")) return true;
+        return hasRole(auth, "MENTOR") && mentorships.existsByIdAndMentor_Email(mentorshipId, auth.getName());
+    }
 }

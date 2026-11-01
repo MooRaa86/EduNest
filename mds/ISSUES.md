@@ -46,7 +46,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | G5 | MSH-02b* | Mentorship task list unguarded (folded into MSH-02) |
 | G6 | LEARN-02 | Task/project detail + `/filter/{msid}` unguarded |
 | G7 | MSH-03 | Mentorship leaderboard guard disabled |
-| G8 | MSH-01 | DRAFT mentorship exposure (`getMentorShip`, public overview) |
+| G8 | MSH-01 | DRAFT mentorship exposure (`getMentorShip`, public overview) (CLOSED — EB-22 / P1-15, D-02 (a) confinement) |
 | G9 | FILE-01/LEARN-03 | `/files?filePath=` ownership bypass |
 | G10 | SEL-10 | Notifications send: any authenticated user → any email's queue (CLOSED — EB-18 / P1-11 deleted per D-05) |
 | G11 | GAME-02 | Badge/award reads unguarded |
@@ -81,7 +81,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
-| MSH-01 | SECURITY | High | ✅ | DRAFT mentorships readable by id/list + via **public** overview query (no status filter) → unreleased content/pricing leak | `MentorShipRepository.findMentorshipDetailsById:244-248`; `mentorShipServiceI` getters |
+| MSH-01 | SECURITY | High | ✅ | **FIXED (EB-22 / P1-15):** DRAFT mentorships confined to owner-mentor + ADMIN on every read surface (D-02 default (a)) — detail + student overview 404 for everyone else (no existence/status leak), public paged overview excludes DRAFT (`findAllByStatusNot`), explore/categories/top-mentorships/recommendations verified ACTIVE-only, join rejected on DRAFT already | `mentorShipServiceI#getMentorshipById`; `MentorshipOverviewService#getMentorshipWithEnrollmentStatus`; `MentorShipRepository#findAllByStatusNot`; `ContentReadGuard#isOwnerMentorOrAdmin`; probes `MentorshipDraftConfinementProbesTest` (8, EB-22) | branch `feat/p1-15-draft-confinement` (pending review) |
 | MSH-02 | SECURITY | High | ✅ | Unguarded reads: any authenticated user can list any mentorship's tasks (incl. DRAFT, attachment paths) and read every lecture of any week/mentorship (`/mid/get-tasks`, `/lectures/**` GETs) | `mentorShipServiceI.getMentorShipTasks:239-249`; `LectureService:95-119` |
 | MSH-03 | SECURITY | Medium | ✅ | Leaderboard enrollment guard **commented out** — any authenticated user sees any mentorship leaderboard | `MentorshipLeaderboardService:24-28` |
 | MSH-04 | DATA INTEGRITY | Medium | ✅ | Enrollment dedupe protected only incidentally by the `TotalPoints` unique — concurrent join fails as 500 instead of "already enrolled"; `enrollments` lacks a unique constraint | `Enrollment` entity index (non-unique); `joinMentorship:387-441` |

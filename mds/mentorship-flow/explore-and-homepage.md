@@ -8,7 +8,7 @@ Public discovery and the authenticated student home experience.
 |---|---|---|
 | `GET /api/v1/mentorship/explore` | filters `keyword`, `category`, `minPrice`, `maxPrice`; returns only `status=ACTIVE` + not-deleted mentors; `MentorShipRepository#searchMentorShips` (L91–121) — LIKE across title/subtitle/description/category/mentor name (case-insensitive), category exact, price bounds on **base** price (UI displays `priceAfterDiscount` — mismatch MSH-07); defaults page 0/size 5 | `service/mentorShip/mentorShipServiceI` |
 | `GET /api/v1/mentorship/categories` | distinct lowercased categories from ACTIVE mentorships | repo `findAllCategories` |
-| `GET /api/v1/student/mentorships/{id}/overview` | mentorship details + top-3 mentorships + upcoming sessions/tasks/projects + enrollment flag for authenticated callers | `MentorshipOverviewService#getMentorshipWithEnrollmentStatus` (L62–133); underlying detail query has **no status filter** → DRAFT leak (MSH-01) |
+| `GET /api/v1/student/mentorships/{id}/overview` | mentorship details + top-3 mentorships + upcoming sessions/tasks/projects + enrollment flag for authenticated callers | `MentorshipOverviewService#getMentorshipWithEnrollmentStatus` — since P1-15 / EB-22, a **DRAFT** mentorship 404s for every caller except the owner-mentor and ADMIN (no existence leak; the underlying detail query itself is still id-only) |
 | `GET /api/v1/student/mentorships/{id}/reviews` | paginated reviews incl. reviewer emails/image (MSH-09) | `ReviewsRepository#findMentorshipReviews` |
 
 ## 2. Authenticated student homepage (`HomePageController`, STUDENT role)
@@ -26,5 +26,5 @@ Public discovery and the authenticated student home experience.
 ## 4. Test recommendations
 
 1. Explore respects status/category/price filters (and documents the base-price-vs-discounted decision).
-2. Overview of a DRAFT mentorship as anonymous — currently leaks; assert chosen policy post-fix.
+2. ~~Overview of a DRAFT mentorship as anonymous — currently leaks; assert chosen policy post-fix.~~ **DONE (P1-15 / EB-22, D-02 (a))** — DRAFT overview 404s for anonymous/non-owners; owner-mentor and ADMIN get 200. Probes: `security/probes/MentorshipDraftConfinementProbesTest` (8) + G8/G8b flips in `LeaderboardDraftProbesTest`.
 3. Recommendation determinism given a fresh student (no enrollments) — category dict empty path.

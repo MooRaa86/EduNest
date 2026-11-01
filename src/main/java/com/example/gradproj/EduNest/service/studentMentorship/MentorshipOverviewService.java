@@ -10,7 +10,9 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipDetailsProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipReviewProjection;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.service.homepage.HomePageService;
+import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +28,7 @@ public class MentorshipOverviewService {
     private final MentorShipRepository mentorShipRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final HomePageService homePageService;
+    private final ContentReadGuard contentReadGuard;
 
     public PageResponse<MentorshipReviewProjection> getMentorshipReviews(
             Long mentorshipId, 
@@ -69,6 +72,14 @@ public class MentorshipOverviewService {
         
         if (mentorship == null) {
             throw new UsernameNotFoundException("Mentorship not found");
+        }
+
+        // P1-15 / EB-22 — D-02 default (a): DRAFT is confined to the
+        // owner-mentor and ADMIN on every surface; anonymous/students get the
+        // same 404 shape (EntityNotFoundException → ERR_RESOURCE_NOT_FOUND).
+        if (mentorship.getStatus() == Status.DRAFT
+                && !contentReadGuard.isOwnerMentorOrAdmin(mentorshipId)) {
+            throw new jakarta.persistence.EntityNotFoundException("Mentorship not found");
         }
         
         List<String> tags = mentorShipRepository.findTagsByMentorshipId(mentorshipId);
