@@ -216,7 +216,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **Approach:** parse destination per frame type in interceptor; centralize rule in a `ChatAuthorization` component; re-check in `ChatMessageService` (defense in depth); delete dead blocks; saveMessage only persists authorized sender.
 **FE / API impact:** error-frame contract addition (documented in messaging-flow.md); no change for compliant clients.
 **Depends on:** D-14 default (Phase 0).  **Blocks:** P2-05 WS suite; P7-02.
-**Tests:** WS IT (P2-05): foreign subscribe/send → ERROR frame + no persistence; member flows unchanged.
+**Tests:** WS IT (P2-05): foreign subscribe/send → frame dropped + authored error on `/user/queue/errors` (no STOMP ERROR frame is wire-observable — async inbound channel swallows interceptor exceptions) + no persistence; member flows unchanged.
 **Docs:** websocket/*; ISSUE-MAPPING WS-01/02, TD-08, G13.
 
 <a id="p1-13"></a>

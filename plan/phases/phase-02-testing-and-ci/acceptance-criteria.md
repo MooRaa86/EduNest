@@ -14,7 +14,7 @@
 | P2-02 | All fixed math branches have table tests; known-wrong branches documented | suite files | Backend Lead |
 | P2-03 | G1–G15 probes + security matrix green; red-run note exists | suite run + matrix file | Security Reviewer |
 | P2-04 | 6 business-flow suites green (or rows explicitly dependency-marked) | suite run | QA |
-| P2-05 | WS auth matrix + error-frame contract green | suite run | WS implementer |
+| P2-05 | WS auth matrix + drop + `/queue/errors` contract green (wire-real, real-socket suite) | suite run | WS implementer |
 | P2-06 | Contract suites green; API docs reconciled | suite run | Eng Lead |
 | P2-07 | CI green on `main`; **red run** proven; branch protection on | run links + protection config | Eng Lead |
 | P2-08 | Scan advisory green triaged; suppressions justified | first report | Eng Lead |

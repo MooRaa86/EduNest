@@ -4,9 +4,11 @@ import com.example.gradproj.EduNest.service.chat.ChatAuthorization;
 import com.example.gradproj.EduNest.service.jwt.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -14,7 +16,8 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
 /**
- * STOMP frame gate (P1-12 / EB-19).
+ * STOMP frame gate (P1-12 / EB-19; wire-delivery contract repaired by
+ * P2-05 / EB-39).
  *
  * Authorization contract (D-14 semantics, Engineering Lead-approved):
  * <ul>
@@ -23,19 +26,27 @@ import org.springframework.stereotype.Component;
  *       batch. This is the only WS auth path: the old (never-registered)
  *       {@code JwtHandshakeInterceptor} was removed with EB-19, so SockJS
  *       fallback transports cannot authenticate — the FE must use the native
- *       WebSocket transport (documented in mds/websocket/MDS.md §6).</li>
+ *       WebSocket transport (documented in mds/websocket/MDS.md §6).
+ *       Missing/invalid tokens fail the session setup (connection-level
+ *       rejection, no principal exists yet).</li>
  *   <li><b>SUBSCRIBE {@code /topic/room/{roomId}}</b> — READ rule via
- *       {@link ChatAuthorization#canReadRoom}; violations are dropped with an
- *       explicit STOMP ERROR frame.</li>
+ *       {@link ChatAuthorization#canReadRoom}. Violations are DROPPED
+ *       (preSend returns null) and the authored message
+ *       ("Forbidden: you are not a member of this room") is pushed to the
+ *       violating session's {@code /user/{email}/queue/errors}.</li>
  *   <li><b>SEND {@code /app/chat/{roomId}}</b> — WRITE rule via
- *       {@link ChatAuthorization#canWriteRoom}; same ERROR-frame contract.
- *       {@code /app/chat.private} only requires an authenticated user; the
- *       sender↔recipient pair is validated in ConversationService.</li>
+ *       {@link ChatAuthorization#canWriteRoom}; same drop + /queue/errors
+ *       contract. {@code /app/chat.private} only requires an authenticated
+ *       user; the sender↔recipient pair is validated in ConversationService.</li>
  * </ul>
  *
- * All checks run per frame (stateless); every non-room destination that
- * requires no membership passes untouched, so notifications and user queues
- * keep working unchanged for compliant clients.
+ * Why /queue/errors instead of a raw STOMP ERROR frame: the client inbound
+ * channel executes interceptor preSend on the async executor — a thrown
+ * exception is only LOGGED there and never reaches the wire (proven by the
+ * EB-39 socket matrix). Returning null + pushing to /queue/errors is the
+ * deterministic error path every connected client already observes (the same
+ * queue ChatMessageService and WebSocketExceptionHandler use). Probes assert
+ * the authored text on /user/queue/errors.
  */
 @Slf4j
 @Component
@@ -47,6 +58,13 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private final JwtService jwtService;
     private final ChatAuthorization chatAuthorization;
+    /**
+     * Provider, not the bean itself: SimpMessagingTemplate is owned by the
+     * broker configuration this interceptor is registered into — direct
+     * injection would be a circular reference. Resolved lazily at call time
+     * (after the context is up, so it is never null in practice).
+     */
+    private final ObjectProvider<SimpMessagingTemplate> messagingTemplateProvider;
 
     @Override
     public Message<?> preSend(
@@ -66,8 +84,12 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
         switch (command) {
             case CONNECT -> handleConnect(accessor);
-            case SUBSCRIBE -> handleSubscribe(accessor);
-            case SEND -> handleSend(accessor);
+            case SUBSCRIBE -> {
+                if (!handleSubscribe(accessor)) return null;
+            }
+            case SEND -> {
+                if (!handleSend(accessor)) return null;
+            }
             case DISCONNECT -> {
                 if (accessor.getUser() != null) {
                     log.debug("WS disconnected: {}", accessor.getUser().getName());
@@ -86,6 +108,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                 accessor.getFirstNativeHeader("Authorization");
 
         if (token == null || !jwtService.isTokenValid(token)) {
+            // No principal exists yet — no user queue to reach; fail the session.
             throw new MessagingException("Invalid or missing authentication token");
         }
 
@@ -95,59 +118,84 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         accessor.setUser(new ChatPrincipal(email, fullName));
     }
 
-    // ===================== SUBSCRIBE =====================
+    // ===================== SUBSCRIBE (READ rule) =====================
 
-    private void handleSubscribe(StompHeaderAccessor accessor) {
+    /** Returns false when the frame must be dropped (error already queued). */
+    private boolean handleSubscribe(StompHeaderAccessor accessor) {
 
         if (accessor.getUser() == null) {
-            throw new MessagingException("Unauthorized subscribe");
+            return false; // unauthenticated mid-stream — nothing to notify
         }
 
         String destination = accessor.getDestination();
 
-        if (destination == null) return;
+        if (destination == null) return true;
 
-        // READ rule — cohort room topic
         if (destination.startsWith("/topic/room/")) {
-
-            Long roomId = extractRoomId(destination);
+            Long roomId = extractRoomId(accessor);
+            if (roomId == null) {
+                return false; // "Invalid destination format" error already queued
+            }
             String email = accessor.getUser().getName();
 
             if (!chatAuthorization.canReadRoom(roomId, email)) {
-                throw new MessagingException(FORBIDDEN_ROOM);
+                errorToUser(email, FORBIDDEN_ROOM);
+                return false;
             }
         }
+        return true;
     }
 
-    // ===================== SEND =====================
+    // ===================== SEND (WRITE rule) =====================
 
-    private void handleSend(StompHeaderAccessor accessor) {
+    private boolean handleSend(StompHeaderAccessor accessor) {
 
         if (accessor.getUser() == null) {
-            throw new MessagingException("Unauthorized send");
+            return false;
         }
 
         String destination = accessor.getDestination();
 
-        if (destination == null) return;
+        if (destination == null) return true;
 
         // WRITE rule — room chat (note: /app/chat.private does NOT match this
         // prefix; it only needs the authenticated user checked above, with the
         // sender↔recipient pair validated in ConversationService)
         if (destination.startsWith("/app/chat/")) {
-
-            Long roomId = extractRoomId(destination);
+            Long roomId = extractRoomId(accessor);
+            if (roomId == null) {
+                return false; // "Invalid destination format" error already queued
+            }
             String email = accessor.getUser().getName();
 
             if (!chatAuthorization.canWriteRoom(roomId, email)) {
-                throw new MessagingException(FORBIDDEN_ROOM);
+                errorToUser(email, FORBIDDEN_ROOM);
+                return false;
             }
+        }
+        return true;
+    }
+
+    // ===================== HELPERS =====================
+
+    private void errorToUser(String email, String text) {
+        try {
+            SimpMessagingTemplate template = messagingTemplateProvider.getIfAvailable();
+            if (template == null) {
+                log.debug("No messaging template available yet — auth error for {} not delivered", email);
+                return;
+            }
+            template.convertAndSendToUser(email, "/queue/errors", text);
+        } catch (Exception ex) {
+            // the violating user may have vanished mid-frame — never fail the gate
+            log.debug("Could not deliver auth error to {}: {}", email, ex.getMessage());
         }
     }
 
-    // ===================== HELPER =====================
-
-    private Long extractRoomId(String destination) {
+    /** Returns the room id, or {@code null} when the destination is not a room
+     *  id (the authored error is already pushed to the violator's queue). */
+    private Long extractRoomId(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
         try {
             return Long.parseLong(
                     destination.substring(
@@ -155,7 +203,10 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
                     )
             );
         } catch (Exception e) {
-            throw new MessagingException("Invalid destination format");
+            String email = accessor.getUser() != null ? accessor.getUser().getName() : null;
+            if (email != null) errorToUser(email, "Invalid destination format");
+            return null;
         }
     }
 }
+

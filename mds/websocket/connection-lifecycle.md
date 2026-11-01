@@ -16,8 +16,8 @@ The handshake layer has **no HTTP-side auth by design**: `/ws` is `permitAll` an
 | Command | What runs today | State |
 |---|---|---|
 | **CONNECT** | Requires native header `Authorization` (raw JWT, no `Bearer ` prefix). On success: `accessor.setUser(new ChatPrincipal(email, fullName))`. Missing/invalid token → `MessagingException` ( connection rejected) | ✅ active |
-| **SUBSCRIBE** | Guards: `user == null` → reject; null destination ignored. **`/topic/room/{id}` enforced by the D-14 READ rule** via `ChatAuthorization#canReadRoom` (`AuthorizationRepository#isUserMemberOfChatRoom`: enrolled student or owning mentor) — violations dropped with an explicit STOMP ERROR frame (P1-12 / EB-19) | ✅ active |
-| **SEND** | Guards: `user == null`; for `/app/chat/{roomId}` the **D-14 WRITE rule** runs via `ChatAuthorization#canWriteRoom` (explicit `chat_room_members` row or the room's owning mentor) — violations dropped with an explicit STOMP ERROR frame (P1-12 / EB-19). `/app/chat.private` needs an authenticated user only; the sender↔recipient pair is validated in `ConversationService` | ✅ active |
+| **SUBSCRIBE** | Guards: `user == null` → frame dropped; null destination ignored. **`/topic/room/{id}` enforced by the D-14 READ rule** via `ChatAuthorization#canReadRoom` (`AuthorizationRepository#isUserMemberOfChatRoom`: enrolled student or owning mentor) — violations: frame DROPPED + authored error pushed to the violator's `/user/{email}/queue/errors` (P1-12 / EB-19; contract verified on real sockets by P2-05 / EB-39) | ✅ active |
+| **SEND** | Guards: `user == null`; for `/app/chat/{roomId}` the **D-14 WRITE rule** runs via `ChatAuthorization#canWriteRoom` (explicit `chat_room_members` row or the room's owning mentor) — violations: frame DROPPED + authored error on `/user/{email}/queue/errors` (P1-12 / EB-19; wire-proven by P2-05 / EB-39). `/app/chat.private` needs an authenticated user only; the sender↔recipient pair is validated in `ConversationService` | ✅ active |
 | **DISCONNECT** | SLF4J `debug` log of the disconnecting principal (`JwtChannelInterceptor`, P1-12 / EB-19 removed the `System.out`) | debug only |
 
 Notes:
@@ -50,21 +50,26 @@ sequenceDiagram
 
   FE->>S: Open transport (no auth)
   FE->>CI: STOMP CONNECT (Authorization header)
-  CI->>CI: validate JWT (signature+expiry only)
-  CI--)FE: sets ChatPrincipal(email, fullName)
-  FE->>CI: SUBSCRIBE /topic/room/7
-  alt not a cohort member
-    CI--)FE: ERROR frame "Forbidden: you are not a member of this room"
-  else enrolled student or owning mentor
-    CI-->>FE: subscription accepted
-    FE->>CI: SEND /app/chat/7 content
-    alt not a joined member / not the owner mentor
-      CI--)FE: ERROR frame
-    else explicit member or owning mentor
-      CI->>C: deliver
-      C->>C: ChatMessageService/saveMessage re-checks WRITE rule → DB
-      C--)B: convertAndSend /topic/room/7
-      B--)FE: broadcast to every member subscriber
+  alt missing / invalid JWT
+    CI--)S: MessagingException → session setup fails (connection-level rejection)
+  else valid JWT
+    CI->>FE: session established (ChatPrincipal(email, fullName))
+    FE->>CI: SUBSCRIBE /topic/room/7
+    alt not a cohort member
+      CI->>CI: frame dropped (preSend returns null)
+      CI--)FE: /user/queue/errors «Forbidden: you are not a member of this room»
+    else enrolled student or owning mentor
+      CI-->>FE: subscription accepted
+      FE->>CI: SEND /app/chat/7 content
+      alt not a joined member / not the owner mentor
+        CI->>CI: frame dropped (preSend returns null)
+        CI--)FE: /user/queue/errors «Forbidden: you are not a member of this room»
+      else explicit member or owning mentor
+        CI->>C: deliver
+        C->>C: ChatMessageService/saveMessage re-checks WRITE rule → DB
+        C--)B: convertAndSend /topic/room/7
+        B--)FE: broadcast to every member subscriber
+      end
     end
   end
 ```

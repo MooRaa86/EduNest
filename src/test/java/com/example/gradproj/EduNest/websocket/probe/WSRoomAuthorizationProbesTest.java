@@ -21,9 +21,14 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -41,7 +46,14 @@ import java.util.concurrent.TimeUnit;
  *   <li>READ on a room = enrollment proxy (enrolled student or owning mentor)
  *       — an enrolled-but-not-joined student may still SUBSCRIBE.</li>
  *   <li>Foreign users (neither enrolled nor mentors) are rejected on both
- *       SUBSCRIBE and SEND, and nothing persists.</li>
+ *       SUBSCRIBE and SEND, and nothing persists. Post-EB-39 contract: the
+ *       violated frame is DROPPED (no synchronous exception on the async
+ *       inbound channel) and the authored message ("Forbidden: you are not a
+ *       member of this room") is pushed to the violator's
+ *       {@code /user/queue/errors} — the same queue
+ *       {@code ChatMessageService} and {@code WebSocketExceptionHandler} use.
+ *       The wire-level shape is asserted by the EB-39 socket matrix
+ *       ({@code WSAuthMatrixIntegrationTest}).</li>
  *   <li>Defense in depth: {@code ChatMessageService#saveMessage} re-checks the
  *       WRITE rule; a direct call from an unauthorized principal drops the
  *       message with no DB row.</li>
@@ -64,6 +76,7 @@ class WSRoomAuthorizationProbesTest extends ProdChainIntegrationTestBase {
 	@Autowired private ConversationService conversationService;
 	@Qualifier("clientInboundChannel")
 	@Autowired private MessageChannel clientInboundChannel;
+	@MockitoSpyBean private SimpMessagingTemplate messagingTemplate;
 
 	private static final String MEMBER_EMAIL = "probe-eb19-member@example.org";
 	private static final String UNJOINED_EMAIL = "probe-eb19-unjoined@example.org";
@@ -100,7 +113,7 @@ class WSRoomAuthorizationProbesTest extends ProdChainIntegrationTestBase {
 
 		String syncError = sendFrame(ctx.roomId(), "{\"content\":\"sneaky write\"}", UNJOINED_EMAIL);
 
-		assertSendRejected(ctx.roomId(), syncError);
+		assertSendRejected(ctx.roomId(), syncError, UNJOINED_EMAIL);
 	}
 
 	@Test
@@ -111,7 +124,7 @@ class WSRoomAuthorizationProbesTest extends ProdChainIntegrationTestBase {
 
 		String syncError = sendFrame(ctx.roomId(), "{\"content\":\"foreign write\"}", FOREIGN_EMAIL);
 
-		assertSendRejected(ctx.roomId(), syncError);
+		assertSendRejected(ctx.roomId(), syncError, FOREIGN_EMAIL);
 	}
 
 	@Test
@@ -145,17 +158,20 @@ class WSRoomAuthorizationProbesTest extends ProdChainIntegrationTestBase {
 	}
 
 	@Test
-	@DisplayName("EB19/[6] foreign user SUBSCRIBE → rejected (eavesdrop blocked)")
+	@DisplayName("EB19/[6] foreign user SUBSCRIBE → dropped + authored error pushed to /user/queue/errors (eavesdrop blocked)")
 	void subscribe_byForeignUser_rejected() {
 		var ctx = seedRoom("foreign-sub");
 		auth.student(FOREIGN_EMAIL);
 
 		String syncError = sendSubscribe(ctx.roomId(), FOREIGN_EMAIL);
 
-		if (syncError == null) {
-			throw new AssertionError("Foreign user was allowed to SUBSCRIBE to /topic/room/"
-					+ ctx.roomId() + " — WS-01 eavesdrop NOT fixed");
+		if (syncError != null) {
+			throw new AssertionError("Foreign SUBSCRIBE threw synchronously — post-EB-39 the violated frame is "
+					+ "dropped silently, got: " + syncError);
 		}
+		// the accounting must still happen: authored error on the violator's queue
+		verify(messagingTemplate).convertAndSendToUser(eq(FOREIGN_EMAIL), eq("/queue/errors"),
+				eq("Forbidden: you are not a member of this room"));
 	}
 
 	@Test
@@ -290,12 +306,20 @@ class WSRoomAuthorizationProbesTest extends ProdChainIntegrationTestBase {
 		return null;
 	}
 
-	private void assertSendRejected(Long roomId, String syncError) throws InterruptedException {
+	private void assertSendRejected(Long roomId, String syncError, String principalEmail)
+			throws InterruptedException {
 		String persisted = awaitPersistedContent(roomId);
-		if (syncError == null && persisted != null) {
-			throw new AssertionError("Unauthorized SEND persisted into room " + roomId
-					+ " — WS-01 NOT fixed (no rejection frame and a row landed)");
+		if (syncError != null) {
+			throw new AssertionError("Violated SEND threw synchronously — post-EB-39 the frame must be "
+					+ "dropped silently, got: " + syncError);
 		}
+		if (persisted != null) {
+			throw new AssertionError("Unauthorized SEND persisted into room " + roomId
+					+ " — WS-01 NOT fixed (frame not dropped and a row landed)");
+		}
+		// the accounting must still happen: authored error on the violator's queue
+		verify(messagingTemplate).convertAndSendToUser(eq(principalEmail), eq("/queue/errors"),
+				eq("Forbidden: you are not a member of this room"));
 	}
 
 	private String awaitPersistedContent(Long roomId) throws InterruptedException {
