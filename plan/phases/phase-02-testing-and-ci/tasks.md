@@ -73,6 +73,9 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Depends on:** P2-01; P3-02 (enrollment + conversation uniqueness rows); P4-01/02 for post-fix assertions.
 **Acceptance criteria:** suites exist for the 6 flows; known-pending rows marked with dependency notes rather than skipped.
 
+**Delivered (2026-11-02):** EB-38 / P2-04 delivered: 6 business-flow integration test suites (19 tests, `@Tag("critical")`, `@Tag("business-flow")`) covering end-to-end happy and failure paths across mentorship enrollment, task grading and leaderboard points, quiz lifecycle, completion certificates and badges, direct messaging, and notification delivery. Full suite execution green against H2 in-memory (0 failures, 0 skips).
+**Docs:** `mds/testing/MDS.md` §2 inventory update; `acceptance-criteria.md` P2-04 row completed.
+
 <a id="p2-05"></a>
 ### P2-05 — WebSocket integration tests
 
