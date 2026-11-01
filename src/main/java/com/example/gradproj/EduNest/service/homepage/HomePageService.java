@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.projection.UpcomingTaskProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,6 +35,17 @@ public class HomePageService {
     private final MentorShipRepository mentorShipRepository;
 
     public studentProgressDto getStudentMentorshipProgress(String email, Long mentorshipId) {
+        // P1-17 / EB-24 (MSH-11) — enrollment is required: a non-enrolled
+        // student must not read a mentorship's private content composition
+        // (totals of tasks/quizzes/projects). Email here is always the
+        // principal-derived caller (never client-supplied, D-03); mentors and
+        // admins cannot reach this STUDENT-only endpoint at all, so the guard
+        // is a plain enrollment check. AccessDeniedException -> 403 via
+        // GlobalExceptionHandler (same shape as StudentWeekService).
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Email(mentorshipId, email)) {
+            throw new AccessDeniedException("You are not enrolled in this mentorship");
+        }
+
         var progress = enrollmentRepository.getContentProgress(mentorshipId, email);
 
         long totalItems = (progress.getTotalTasks() != null ? progress.getTotalTasks() : 0) +
