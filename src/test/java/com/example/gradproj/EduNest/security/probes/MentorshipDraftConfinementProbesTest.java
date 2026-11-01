@@ -126,11 +126,25 @@ class MentorshipDraftConfinementProbesTest extends ProdChainIntegrationTestBase 
 		mockMvc.perform(get("/api/v1/mentorship?page=0&size=50"))
 				.andExpect(status().isUnauthorized());
 
-		String body = mockMvc.perform(
-						get("/api/v1/mentorship?page=0&size=50")
-								.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
-				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		assertThat(body).doesNotContain(draftTitle).contains(activeTitle);
+		// Scan ALL pages (other probe suites share the H2 context and seed many
+		// mentorships, so our seed can sit beyond page 0) and assert the DRAFT
+		// never appears anywhere while the seeded ACTIVE does.
+		StringBuilder combined = new StringBuilder();
+		int page = 0;
+		while (true) {
+			String body = mockMvc.perform(
+					get("/api/v1/mentorship?page=" + page + "&size=50")
+							.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
+					.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+			combined.append(body);
+			int totalPages = com.jayway.jsonpath.JsonPath.read(
+					body, "$.apiResponse.mentorShips.totalPages");
+			if (++page >= totalPages) break;
+		}
+		assertThat(combined.toString())
+				.doesNotContain(draftTitle)
+				.contains(activeTitle)
+				.doesNotContain("\"status\":\"DRAFT\"");
 	}
 
 	/* ---------- 4. regression: ACTIVE-only surfaces stay DRAFT-free ---------- */
