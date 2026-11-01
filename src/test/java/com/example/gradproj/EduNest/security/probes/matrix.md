@@ -23,8 +23,8 @@ minimal mentorship chain, mints real JWTs signed with the test-profile secret.
 | ID | Hole / boundary | Probe (class → test) | EXPECT TODAY | Flip target |
 |----|-----------------|----------------------|--------------|-------------|
 | G1 | WS/STOMP surface security | **deferred** → [P2-05] EB-39 | — | EB-39 |
-| G2 | stranger reads private conversation | `ConversationProbesTest#s g2_` | 200 (no ownership check) | [P1-13] EB-20 → 403 |
-| G3 | stranger edits foreigner's DM message | `ConversationProbesTest#s g3_` | 200 + edit applied (check commented, `ConversationService.editMessage` L119–121) | [P1-13] EB-20 → 403 |
+| G2 | stranger reads private conversation | `ConversationProbesTest#s g2_` | **403 Forbidden** (CHAT-02 fixed) | [P1-13] EB-20 (delivered) |
+| G3 | stranger edits foreigner's DM message | `ConversationProbesTest#s g3_` | **403 Forbidden** (CHAT-03 fixed) | [P1-13] EB-20 (delivered) |
 | G3b | stranger edits foreigner's room message | `ConversationProbesTest#s g3b_` | **400** — sender-only IS enforced on room surface (⚠️ register correction; room-membership gap tracked by G13) | EB-19 revisit w/ EB-12 (may restrengthen to 403) |
 | G4 | lecture read x3 (id / mentorship / week) | `ContentReadProbesTest` (3 tests) | 200 (media URLs leak to any authed user) | [P1-14] EB-21 → 403 |
 | G5 | foreigner lists tasks (incl. DRAFT) | `ContentReadProbesTest g5_` | 200 | [P1-14] EB-21 → 403 |

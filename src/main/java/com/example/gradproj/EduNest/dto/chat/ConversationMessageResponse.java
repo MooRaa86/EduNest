@@ -15,6 +15,7 @@ public class ConversationMessageResponse {
     private String senderEmail;
     private String senderName;
     private String senderProfileImageUrl;
+    private String recipientEmail;
     private String content;
     private LocalDateTime sentAt;
 }

@@ -11,10 +11,11 @@ import com.example.gradproj.EduNest.repository.chat.ConversationRepository;
 import com.example.gradproj.EduNest.repository.chat.MessageRepository;
 import com.example.gradproj.EduNest.repository.chat.projection.ConversationMessageProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,18 +33,28 @@ public class ConversationService {
     private final com.example.gradproj.EduNest.service.chat.ChatAuthorization chatAuthorization;
 
     public ConversationMessageResponse mapToResponse(Message msg) {
+        Conversation c = msg.getConversation();
+        String recipientEmail = null;
+        if (c != null && msg.getSender() != null) {
+            String senderEmail = msg.getSender().getEmail();
+            if (c.getUser1() != null && senderEmail.equals(c.getUser1().getEmail())) {
+                recipientEmail = c.getUser2() != null ? c.getUser2().getEmail() : null;
+            } else if (c.getUser2() != null && senderEmail.equals(c.getUser2().getEmail())) {
+                recipientEmail = c.getUser1() != null ? c.getUser1().getEmail() : null;
+            }
+        }
+
         return ConversationMessageResponse.builder()
                 .id(msg.getId())
-                .conversationId(msg.getConversation().getId())
+                .conversationId(c != null ? c.getId() : null)
                 .senderEmail(msg.getSender().getEmail())
                 .senderName(msg.getSender().getFirstName() + " " + msg.getSender().getLastName())
                 .senderProfileImageUrl(msg.getSender().getProfileImageUrl())
+                .recipientEmail(recipientEmail)
                 .sentAt(msg.getSentAt())
                 .content(msg.getContent())
                 .build();
     }
-
-
 
     public ConversationMessageResponse sendMessage(
             String senderEmail,
@@ -84,11 +95,31 @@ public class ConversationService {
         return mapToResponse(savedMessage);
     }
 
+    /**
+     * CHAT-02 (P1-13 / EB-20): Only conversation participants or ADMIN can read messages.
+     * Prevents IDOR and enumeration oracles.
+     */
     public List<ConversationMessageResponse> getConversationMessages(
             Long conversationId,
             Long beforeId,
-            int size
+            int size,
+            String requesterEmail,
+            boolean isAdmin
     ) {
+        Conversation conversation = conversationRepo.findById(conversationId).orElse(null);
+        if (conversation == null) {
+            if (isAdmin) {
+                throw new EntityNotFoundException("Conversation not found");
+            }
+            throw new AccessDeniedException("Not authorized to view this conversation");
+        }
+
+        boolean isParticipant = (conversation.getUser1() != null && conversation.getUser1().getEmail().equals(requesterEmail))
+                || (conversation.getUser2() != null && conversation.getUser2().getEmail().equals(requesterEmail));
+
+        if (!isAdmin && !isParticipant) {
+            throw new AccessDeniedException("Not authorized to view this conversation");
+        }
 
         Pageable pageable = PageRequest.of(0, size);
 
@@ -99,19 +130,31 @@ public class ConversationService {
                         pageable
                 );
 
+        String user1Email = conversation.getUser1() != null ? conversation.getUser1().getEmail() : null;
+        String user2Email = conversation.getUser2() != null ? conversation.getUser2().getEmail() : null;
+
         return messages.stream()
-                .map(m -> ConversationMessageResponse.builder()
-                        .id(m.getMessageId())
-                        .conversationId(m.getConversationId())
-                        .content(m.getContent())
-                        .sentAt(m.getSentAt())
-                        .senderEmail(m.getSenderEmail())
-                        .senderName(m.getSenderName())
-                        .senderProfileImageUrl(m.getSenderProfileImageUrl())
-                        .build())
+                .map(m -> {
+                    String sender = m.getSenderEmail();
+                    String recipient = (sender != null && sender.equals(user1Email)) ? user2Email : user1Email;
+                    return ConversationMessageResponse.builder()
+                            .id(m.getMessageId())
+                            .conversationId(m.getConversationId())
+                            .content(m.getContent())
+                            .sentAt(m.getSentAt())
+                            .senderEmail(sender)
+                            .senderName(m.getSenderName())
+                            .senderProfileImageUrl(m.getSenderProfileImageUrl())
+                            .recipientEmail(recipient)
+                            .build();
+                })
                 .toList();
     }
 
+    /**
+     * CHAT-03 (P1-13 / EB-20): Enforce message ownership.
+     * Throws AccessDeniedException on message absence or ownership mismatch.
+     */
     @Transactional
     public ConversationMessageResponse editMessage(
             Long messageId,
@@ -119,13 +162,14 @@ public class ConversationService {
             EditMessageRequest request
     ) {
 
-        Message msg = messageRepo.findById(messageId)
-                .orElseThrow();
+        Message msg = messageRepo.findById(messageId).orElse(null);
+        if (msg == null) {
+            throw new AccessDeniedException("Not allowed to edit this message");
+        }
 
-        // security check
-//        if (!msg.getSenderEmail().equals(senderEmail)) {
-//            throw new globalLogicEx("Not allowed");
-//        }
+        if (msg.getSender() == null || !msg.getSender().getEmail().equals(senderEmail)) {
+            throw new AccessDeniedException("Not allowed to edit this message");
+        }
 
         msg.setContent(request.getContent());
         msg.setUpdated(true);
@@ -133,20 +177,36 @@ public class ConversationService {
         return mapToResponse(msg);
     }
 
+    /**
+     * CHAT-03 / CHAT-04 (P1-13 / EB-20): Enforce message ownership and return
+     * server-derived recipient email for event routing.
+     */
     @Transactional
-    public void deleteMessage(
+    public String deleteMessage(
             Long messageId,
             String senderEmail
     ) {
-        int deleted =
-                messageRepo.deleteByIdAndSender(
-                        messageId,
-                        senderEmail
-                );
-
-        if (deleted == 0) {
-            throw new BadCredentialsException("Not allowed");
+        Message msg = messageRepo.findById(messageId).orElse(null);
+        if (msg == null) {
+            throw new AccessDeniedException("Not allowed to delete this message");
         }
+
+        if (msg.getSender() == null || !msg.getSender().getEmail().equals(senderEmail)) {
+            throw new AccessDeniedException("Not allowed to delete this message");
+        }
+
+        Conversation c = msg.getConversation();
+        String recipientEmail = null;
+        if (c != null) {
+            if (c.getUser1() != null && senderEmail.equals(c.getUser1().getEmail())) {
+                recipientEmail = c.getUser2() != null ? c.getUser2().getEmail() : null;
+            } else if (c.getUser2() != null && senderEmail.equals(c.getUser2().getEmail())) {
+                recipientEmail = c.getUser1() != null ? c.getUser1().getEmail() : null;
+            }
+        }
+
+        messageRepo.delete(msg);
+        return recipientEmail;
     }
 
     public List<ConversationListResponse> getUserConversations(

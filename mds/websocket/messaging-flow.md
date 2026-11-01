@@ -34,10 +34,10 @@ Consequences (post EB-19; READ/WRITE unified per **D-14**): the three inconsiste
    - Resolves both users by email.
    - **Get-or-create** `Conversation` via `conversationRepo.findBetweenUsers(emailA, emailB)` (ordered/unordered pair match) or `createConversation` — *not* transactional, **no unique constraint** on `(user1_id, user2_id)` → concurrent first messages can create duplicate conversations (CHAT-05).
    - Saves `entity/chat/Message{content, sender, sentAt = LocalDateTime.now(), seen = false}`.
-   - Pushes `convertAndSendToUser(recipientEmail, "/queue/messages", msg)` **and** to sender (lines 34–45); the recipient queue is derived from the request's `recipientEmail` — client-controlled targeting (CHAT-04 pattern).
-2. **Edit** — REST `PATCH /messages/{messageId}`: sets `content` + `updated=true`; **ownership check commented out** (lines 119–121) → any authenticated user can edit any message (CHAT-03). Pushes edit events to caller + client-supplied recipient queue.
-3. **Delete** — `DELETE /messages/{messageId}`: `MessageRepository` JPQL delete guarded `m.sender.email = :senderEmail` (sender-only hard delete); pushes delete event to caller + client-supplied recipient queue.
-4. **History** — `GET /{conversationId}/messages?beforeId&size` (cursor via `MessageRepository.findConversationMessages`): **no ownership check** (CHAT-02).
+   - Pushes `convertAndSendToUser(recipientEmail, "/queue/messages", msg)` **and** to sender; recipient is server-derived from the persisted conversation record (fixed by P1-13 / EB-20).
+2. **Edit** — REST `PATCH /messages/{messageId}`: sets `content` + `updated=true`; sender ownership enforced (P1-13 / EB-20; strangers receive 403 Forbidden). Pushes edit events to caller + server-derived recipient queue.
+3. **Delete** — `DELETE /messages/{messageId}`: sender ownership enforced (P1-13 / EB-20; strangers receive 403 Forbidden). Pushes delete event to caller + server-derived recipient queue.
+4. **History** — `GET /{conversationId}/messages?beforeId&size` (cursor via `MessageRepository.findConversationMessages`): ownership enforced (P1-13 / EB-20; requires participant or ROLE_ADMIN, strangers receive 403 Forbidden without ID enumeration oracle).
 5. **`/all`** — `ConversationListResponse` list filtered by `authentication.getName()` (safe).
 
 ## 4. Read-state reality

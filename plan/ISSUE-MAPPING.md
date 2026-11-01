@@ -35,9 +35,9 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **WS-02** | Low | P1-12 | 1 | ws | T | **Implemented — EB-19** (same scope as WS-01 above): dead `JwtHandshakeInterceptor` deleted; `connectedUsers` remnants removed; DISCONNECT logging via SLF4J |
 | **WS-03** | Low | P4-09 | 4 | api | T | Planned |
 | **CHAT-01** | Med | P4-06 | 4 | ws | T | Planned |
-| **CHAT-02** | Crit | P1-13 | 1 | ws | T | Planned |
-| **CHAT-03** | High | P1-13 | 1 | ws | T | Planned |
-| **CHAT-04** | High | P1-13 | 1 | ws | T | Planned |
+| **CHAT-02** | Crit | P1-13 | 1 | ws | T | **Implemented — EB-20**: History read requires conversation participant or ROLE_ADMIN; strangers receive 403 Forbidden without ID enumeration oracle (`ConversationProbesTest.g2_`) |
+| **CHAT-03** | High | P1-13 | 1 | ws | T | **Implemented — EB-20**: Private message edit and delete enforce sender ownership; foreigners receive 403 Forbidden (`ConversationProbesTest.g3_`) |
+| **CHAT-04** | High | P1-13 | 1 | ws | T | **Implemented — EB-20**: Server-derived recipient event routing for edit, delete, and send; client-supplied recipientEmail ignored (`ConversationProbesTest.g3_senderEditsOwnMessage`) |
 | **CHAT-05** | Med | P3-02 | 3 | database | T | Planned |
 | **CHAT-06** | Low | P4-06 | 4 | ws | T | Planned |
 | **CHAT-07** | Med | P4-07 (cond.) | 4 | ws | D→T (D-13) | Planned |
