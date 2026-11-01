@@ -64,7 +64,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **LEARN-08** | High | P4-15 (cond.) | 4 | learning | D→T (D-10), DEF ok | Planned |
 | **LEARN-09** | Low | P4-05 | 4 | learning | T | Planned |
 | **LEARN-10** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
-| **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | **V-06 verdict: CONFIRMED (EB-26, 2026-11-01)** — two-mentor probe `QuestionReparentProbeTest` pre-fix returned 200 (own question into a foreign mentor's quiz); code audit shows `updateQuestion` never validated the target quiz's ownership → **Implemented — EB-26**: target-quiz ownership enforced (`isMentorOwnQuiz`) before the DRAFT-status check (no foreign-status oracle); foreign re-parent 403, self re-parent 200 (G15/G15b flip) — pending review |
+| **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | **V-06 verdict: CONFIRMED (EB-26, 2026-11-01)** — two-mentor probe `QuestionReparentProbeTest` pre-fix returned 200 (own question into a foreign mentor's quiz); code audit shows `updateQuestion` never validated the target quiz's ownership → **Implemented — EB-26**: target-quiz ownership enforced (`isMentorOwnQuiz`) before the DRAFT-status check (no foreign-status oracle); foreign re-parent 403, self re-parent 200 (G15/G15b flip); merged via [PR #53](https://github.com/MooRaa86/EduNest/pull/53) (squash `4bc8a52`) — verification-first loop closed by EB-6 (P0-08 sync) |
 | **USR-01** | Med | P4-09 | 4 | users | T | Planned |
 | **USR-02** | Low | P1-16 | 1 | auth | D→T (D-04) | EB-23 addresses leaderboard and public review reviewer fields; broader public-profile/project surfaces require separate verification |
 | **USR-03** | Low | P4-05 | 4 | users | T | Planned |

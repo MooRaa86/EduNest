@@ -9,7 +9,7 @@
 | `LIKE '%kw%'` wildcard abuse | MSH-12 | ⚠️ needs runtime/load POC | P0-05 |
 | Cover-image filename extension trust | FILE-03 | EB-4 confirmed arbitrary extension; traversal remained inconclusive ([matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) | P0-06; hardening P1-22 |
 | Zip MIME allowlist looseness (`octet-stream`) | FILE-04 | Confirmed on four upload surfaces in isolated EB-5 runs; see [verdict and limitations](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md) | P0-06/P0-07; hardening P1-22 |
-| Question re-parenting ownership | QZ-06 | ⚠️ needs cross-mentor POC | P0-08 |
+| Question re-parenting ownership | QZ-06 | 🔴 CONFIRMED (EB-26, 2026-11-01): the pre-fix two-mentor pin probe `QuestionReparentProbeTest` G15 drove mentor A's `PATCH` with a foreign `quizId` and got 200 with the question re-pointed into mentor B's DRAFT quiz (code audit matched — `updateQuestion` validated only source ownership + target DRAFT status); fix shipped the same ticket — cross-mentor re-parent → 403, self re-parent → 200 (G15/G15b flip), merged via [PR #53](https://github.com/MooRaa86/EduNest/pull/53) (`4bc8a52`) | P0-08 ✅ done — verified + fixed by EB-26/P1-19; sync closed by EB-6 |
 | Fresh-DB commission + first-admin boot behavior | MSH-05 | ⚠️ needs clean-DB rehearsal | P0-09 |
 | WS transport/backend-header contract with FE | WS-01 (CHAT-08's payload half RESOLVED by EB-1: DTO contract shipped; raw JWT header quirk remains) | unknown FE client | Payload half closed; header half tracked in EB-12 |
 
