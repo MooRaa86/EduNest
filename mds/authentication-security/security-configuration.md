@@ -87,6 +87,33 @@ Approved spec (Omar): **8 requests / 1 minute** per bucket (uniform), **5 consec
 - **Response contract:** `429 ERR_RATE_LIMITED` (window remainder) / `429 ERR_ACCOUNT_LOCKED` (lock remainder, starts 300) — envelope rows in [../api/error-responses.md](../api/error-responses.md#2-status--errorcode-catalog-rest); FE countdown rules in Jira EF-3.
 - **Enumeration node (canonical 401):** `EduNestAuthenticationProvider` folds unknown-email / wrong-password / unverified / deleted into one `BadCredentialsException` → `401 ERR_INVALID_CREDENTIALS` byte-identical bodies (illegal states: no-role misconfig escapes as a runtime exception → sanitized generic `500 ERR_INTERNAL_SYSTEM`, never an enumeration signal). Probes: `RateLimitProbesTest` (R1–R6).
 
+## 3c. Session invalidation model (SEL-06 / D-01 — documented 2026-11-01, Jira EB-34 / P1-27)
+
+**Approved outcome — D-01 (`plan/DECISIONS-REQUIRED.md`, decided 2026-10-31, user-approved): "(a) narrowed — stateless JWT stands for Sprint 1."** No refresh tokens and no server-side revocation model in Sprint 1; logout invalidation is purely **client-side token erasure** (the erasure contract already enforced by EB-11/P1-04). **Refresh tokens + a real session/revocation model are deferred to the Sprint 2 backlog** — at documentation time they are tracked only by the D-01 decision record; **no dedicated Jira issue exists yet**. P1-27/EB-34 therefore **codifies the current state** (per its acceptance criterion "implemented per D-01 or formally carried with decision record"); it does not build refresh. The rejected alternative (b) — a `lastInvalidatedAt` validator check — may be adopted **only via a new D-01 decision line**.
+
+Current behavior, verified against code (`JwtService`, `filters/JwtTokenValidatorFilter`, `service/account/SettingsService`):
+
+| Aspect | As-built (Sprint 1) |
+|---|---|
+| Token lifetime | **7 days, hardcoded** (`JwtService.EXPIRATION_TIME_MS` = 7×24 h); stateless — no session store, no sliding window, no refresh minting |
+| Delivery | Requests carry the **raw JWT in the `Authorization` header** (`Constants.JWT_HEADER`, no `Bearer` prefix); login sets it as the response header, body echo gated by transitional `app.auth.return-token-in-body` (EB-11) |
+| Per-request enforcement | Validator re-checks **`enabled` AND not `deleted` from DB on every request** (admins exempt — separate table, no such fields). A state change therefore takes effect on the **next request** (no cache TTL) |
+
+**A token stops working** (the only real invalidation paths):
+1. **Natural expiry** — 7 days after minting.
+2. **Account deactivation** — `POST /settings/deactivate` sets `enabled=false` → next request → `401 ERR_INVALID_TOKEN` "Invalid token: user is deactivated or deleted, please login again".
+3. **Confirmed soft deletion** — `/settings/confirm-delete` sets `deleted=true` (reversible via `/register/restore`). Same 401 as (2); filter-written, unified `ApiError` envelope (EB-12).
+4. **Email change (incidental)** — `/settings/confirm-email-change` rewrites the row's email, so outstanding tokens carrying the *old* username claim stop resolving and fail the lookup → same 401. This is a **side effect of the by-email claim lookup, not a designed revocation**.
+
+**A token keeps working** (accepted residual risk until the Sprint 2 model lands — clearly distinguished per D-01):
+- **Client logout:** no logout endpoint exists; clients erase the stored token and stop sending it. **This is NOT server-side invalidation —** a preserved or copied token remains fully valid until its 7-day expiry.
+- **Password change/reset** (`PATCH /settings/password`, forget-password flow): no account-state check changes, so **all previously minted tokens survive** until expiry.
+- **No revocation of any kind:** no session registry, no token blocklist, no `lastInvalidatedAt`.
+
+**Residual risk statement:** a **stolen or hoarded token** (XSS, logs, proxies) remains usable for the remainder of its 7-day window unless the account is deactivated or deleted. Accepted interim mitigations: TLS-only transport, credential-body erasure (EB-11), login throttling/lockout (§3b). This risk is **accepted per D-01** for Sprint 1.
+
+**Reconsideration conditions** (any ⇒ reopen D-01 with a new decision line): the audit or frontend requires real revocation before Sprint 2; cookie- or session-based credentials appear (cf. §5/D-23); removing the transitional body-token property is deemed insufficient to shorten the exposure window.
+
 ## 4. Roles & seeding
 
 - `config/RolesSeeder` (CommandLineRunner): inserts `ADMIN`, `MENTOR`, `STUDENT` into `roles` if missing; `System.out.println` on registration.

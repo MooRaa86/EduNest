@@ -19,15 +19,17 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 
 Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATION` with a `fields` map; malformed JSON retains `ERR_MALFORMED_BODY`. Frontend coordination has been requested on EB-32; approval is not implied.
 
+Session invalidation (SEL-06 / D-01, documented 2026-11-01 — Jira EB-34/P1-27): there is **no refresh endpoint and no server-side session revocation** in Sprint 1 — a stateless JWT minted by `/login-api` is valid **7 days** (hardcoded in `JwtService`; mechanics in [../authentication-security/security-configuration.md §3c](../authentication-security/security-configuration.md#3c-session-invalidation-model-sel-06--d-01--documented-2026-11-01-jira-eb-34--p1-27)). **Logout is client-side token erasure only:** clients must delete the stored token and stop sending it; the platform neither tracks sessions nor revokes tokens. Server-side, an issued token stops working only via natural 7-day expiry or an account-state change (see the §2 rows for deactivate/delete and the email-change side effect). Refresh tokens + a real revocation model are deferred to the Sprint 2 backlog per the D-01 record (no dedicated Jira issue exists yet).
+
 ## 2. Account settings (authenticated)
 
 | Endpoint | Purpose |
 |---|---|
 | 🔐 POST `/settings/request-email-change` | OTP to the *new* email (`ChangeEmailRequest`) |
-| 🔐 PATCH `/settings/confirm-email-change?otpCode` | Apply pending email → forces re-login |
-| 🔐 PATCH `/settings/password` | Change password (old pwd + confirm) |
-| 🔐 POST `/settings/delete` · `/confirm-delete?otp` | Soft-delete account (OTP template `delete-account.html`) |
-| 🔐 POST `/settings/deactivate?password` | `enabled=false` |
+| 🔐 PATCH `/settings/password` | Change password (old pwd + confirm). **Does NOT invalidate existing JWTs** — no account-state check changes; outstanding tokens stay valid up to their 7-day expiry (stateless; SEL-06/D-01 residual risk). |
+| 🔐 POST `/settings/delete` · `/confirm-delete?otp` | Soft-delete account (OTP template `delete-account.html`). Once confirmed → `deleted=true` → **all outstanding JWTs rejected on the next request** (`401 ERR_INVALID_TOKEN`); reversible via `/register/restore`. |
+| 🔐 POST `/settings/deactivate?password` | `enabled=false` → **all outstanding JWTs rejected on the next request** (`401 ERR_INVALID_TOKEN`). |
+| 🔐 PATCH `/settings/confirm-email-change?otpCode` | Apply pending email → forces re-login. Server-side effect: outstanding JWTs carry the *old* username claim, which no longer resolves → same `401 ERR_INVALID_TOKEN` on the next request. |
 
 ## 3. Admin (ADMIN role ⟡ unless noted)
 
