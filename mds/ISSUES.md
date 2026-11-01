@@ -92,7 +92,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | MSH-09 | SECURITY | Medium | ✅ | Public reviews endpoint exposes reviewer emails + profile images | `MentorshipReviewProjection`; permitAll reviews route |
 | MSH-10 | RELIABILITY | Medium | ✅ | Completion side effects (certificates + fan-out notifications) inside the status TX: rollback ghosting, I/O entanglement | `mentorShipServiceI.updateMentorShipStatus:253-319` |
 | MSH-11 | SECURITY | Medium | ✅ | **FIXED (EB-24 / P1-17):** homepage progress endpoint now requires the caller's own enrollment (`existsByMentorShip_IdAndStudent_Email`) → non-enrolled 403, no curriculum-structure/composition leak, nonexistent ids 403 (no existence oracle); overview internal call already enrollment-gated (defense in depth unchanged) | `HomePageService.getStudentMentorshipProgress`; probes `HomepageProgressEnrollmentProbesTest` (5, EB-24) |
-| MSH-12 | PERFORMANCE | Medium | ⚠️ | `LIKE '%kw%'` without wildcard escaping → unbounded scans / perf abuse in explore keyword search | `searchMentorShips:104-109` |
+| MSH-12 | PERFORMANCE | Medium | ✅ | **CONFIRMED (EB-3 / P0-05, 2026-11-01 — V-03 POC, fix pending P4-10):** `:keyword` is bound RAW into `LIKE '%kw%'` across 5 columns with no `ESCAPE` clause — from the PUBLIC explore route, anonymous match-all payloads (`%`, `%%`, `%_`, `_%`, `__`) return the full ACTIVE candidate set (keyword destroyed as a selector; DRAFT confinement unaffected by wildcards) and `%`/`_` inside an otherwise-literal keyword silently widen the match (sibling rows impossible to isolate) | `searchMentorShips:104-109`; probes `security/probes/MentorshipExploreWildcardPocTest` (2) |
 
 ---
 

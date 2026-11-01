@@ -20,7 +20,7 @@ Supporting documents:
 |---|---|---|
 | R1 | CRUD for mentor-owned mentorships incl. cover image upload/delete | Implemented |
 | R2 | Lifecycle transitions with business guards | Implemented (`updateMentorShipStatus`) |
-| R3 | Public explore/search/category browse (ACTIVE only) | Implemented (`searchMentorShips` LIKE query) |
+| R3 | Public explore/search/category browse (ACTIVE only) | Implemented (`searchMentorShips` LIKE query — keyword is wildcard-blind, POC-confirmed by EB-3 / MSH-12; escape due in P4-10) |
 | R4 | Enrollment of students into ACTIVE mentorships (self-service, no payment gateway) | Implemented |
 | R5 | Commission captured per enrollment (admin-set global rate) | Implemented |
 | R6 | Manual student rating/review with denormalized rating on mentorship | Implemented |
@@ -72,7 +72,7 @@ Full inventory in [../api/endpoints.md](../api/endpoints.md). Base paths:
 - **MSH-09 (Medium):** Public mentorship and mentor-profile reviews expose reviewer emails and profile images under an Engineering Lead-approved temporary compatibility exception; frontend usage verification remains pending.
 - **MSH-10 (Medium):** status side effects (completion → certificates + fan-out notifications) run **inside** the status transaction — entangled transactional boundary.
 - **MSH-11 (Medium):** homepage progress endpoint `GET /api/v1/homepage/progress/{mentorshipId}` performs no enrollment check — any student queries any mentorship's content composition.
-- **MSH-12 (Medium, ⚠️ suspected):** explore keyword search builds `LIKE '%kw%'` without wildcard escaping — unbounded scans / pattern abuse under load.
+- **MSH-12 (Medium):** **CONFIRMED (EB-3 / P0-05, 2026-11-01 — V-03 POC, fix pending P4-10):** explore keyword search binds `:keyword` raw into `LIKE '%kw%'` across 5 columns with no `ESCAPE` clause — from the PUBLIC route, anonymous `%`/`_`-only keywords return the full ACTIVE candidate set (keyword destroyed as a selector; DRAFT confinement unaffected), and `%`/`_` inside a literal keyword silently widen the match. Probes: `MentorshipExploreWildcardPocTest` (2). Fix = P4-10 (LIKE `ESCAPE` of `%`/`_`, Small).
 
 ## 8. Open Questions
 
