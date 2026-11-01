@@ -12,7 +12,7 @@ STOMP messaging over `JwtChannelInterceptor` (token auth at CONNECT), group room
 - [ ] Server derives recipients/rooms from persisted rows (client payload never trusted — CHAT-04 invariant).
 - [ ] Persistence/authorization ordering: authorize first, persist second; failure → explicit ERROR frame (CHAT-01).
 - [ ] No `System.out`; no commented-out authorization left "temporarily".
-- [ ] WS suite ([P2-05](../../phases/phase-02-testing-and-ci/tasks.md#p2-05) — auth matrix + error-frame contract) updated.
+- [ ] WS suite ([P2-05](../../phases/phase-02-testing-and-ci/tasks.md#p2-05) — auth matrix + `/queue/errors` contract) updated.
 
 ## 3. Implementation requirements (per canonical issue)
 
@@ -29,4 +29,4 @@ STOMP messaging over `JwtChannelInterceptor` (token auth at CONNECT), group room
 
 ## 5. Definition of done (domain)
 
-WS rows (WS-01..03, CHAT-01..08, TD-08) on [`ISSUE-MAPPING.md`](../../ISSUE-MAPPING.md) resolve to Verified (or documented deferral); `messaging-flow.md` updated to describe validated destinations + error-frame contract; P2-05 suite green.
+WS rows (WS-01..03, CHAT-01..08, TD-08) on [`ISSUE-MAPPING.md`](../../ISSUE-MAPPING.md) resolve to Verified (or documented deferral); `messaging-flow.md` updated to describe validated destinations + `/queue/errors` contract; P2-05 suite green.
