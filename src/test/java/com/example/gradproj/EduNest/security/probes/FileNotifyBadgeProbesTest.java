@@ -96,19 +96,22 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 	}
 
 	/**
-	 * G11 — badge-award reads for ANY student id, no ownership scoping.
-	 * Audit: BadgeAwardController GETs unannotated; service getAwardsByStudent no check.
-	 * EXPECT TODAY: 200.
-	 * FLIPS WITH: [P1-19] badge/award read scoping (per ISSUE-MAPPING).
+	 * G11 — badge-award read scoping (FLIPPED 2026-11-01, EB-26 / P1-19).
+	 * Was (Option A pin): 200 — any authenticated user could enumerate any
+	 * student's badge awards by id (BadgeAwardService.getAwardsByStudent had
+	 * no scoping at all).
+	 * Now: 403 — /student/{id} is confined to ADMIN, the student themself
+	 * (principal-derived email) or a mentor of one of the student's
+	 * enrollments. Fuller matrix: BadgeAwardScopingProbesTest (EB-26).
 	 */
 	@Test
-	@DisplayName("G11/todayOpen: stranger reads another student's badge awards → 200")
+	@DisplayName("G11/confined: stranger reads another student's badge awards → 403")
 	void g11_strangerReadsForeignBadgeAwards() throws Exception {
 		auth.student(STRANGER); // token-holder must exist in DB (validator checks users table)
 		var victim = auth.student("probe-badge-victim@example.org");
 
 		mockMvc.perform(get("/api/v1/badge-awards/student/{studentId}", victim.getId())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
-				.andExpect(status().isOk());
+				.andExpect(status().isForbidden());
 	}
 }

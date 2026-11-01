@@ -6,7 +6,7 @@ Verified from `service/quiz/quiz/QuizServiceImpl`, `service/quiz/question/Questi
 
 - `QuizServiceImpl#createQuiz` (L47–86): week + ownership enforced; status default DRAFT; publish notifies students.
 - Questions (`QuestionServiceImp#createQuestion` L40–66): **only while quiz DRAFT**; MCQ A–D (`AnswerChoices`), per-question `points` (int), `correctAnswer` stored as enum on the question (plaintext in DB — key discovery is the main leak below).
-- Edit quirks: `updateQuestion` validates ownership of the *source* question but **not the target quiz** before `question.setQuiz(...)` (suspected cross-mentor re-parenting, LEARN/QZ-06); `PATCH` allowed on questions of PUBLISHED quizzes? — authoring gate is only on create.
+- Edit quirks: `updateQuestion` since P1-19 / EB-26 validates BOTH the source question's ownership AND the **target quiz's** ownership (`isMentorOwnQuiz`, enforced before the DRAFT-status check so a foreign quiz's status is not probed) — cross-mentor re-parent → 403, mentor's own quiz-to-quiz moves unchanged; authoring gate is only on create. (V-06/P0-08 verdict: the cross-mentor gap was CONFIRMED pre-fix; probes `QuestionReparentProbeTest` G15/G15b.)
 
 ## 2. Start an attempt (side effect on GET)
 

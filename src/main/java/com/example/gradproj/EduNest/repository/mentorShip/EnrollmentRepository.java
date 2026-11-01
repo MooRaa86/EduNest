@@ -196,6 +196,9 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
 
     boolean existsByMentorShip_IdAndStudent_Id(Long mentorShipId, Long studentId);
 
+    /** P1-19 / EB-26 — mentor-of-enrollment tie check for badge-award read scoping. */
+    boolean existsByStudent_IdAndMentorShip_Mentor_Email(Long studentId, String mentorEmail);
+
     @Query("""
         SELECT e.student.id
         FROM Enrollment e

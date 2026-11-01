@@ -139,6 +139,14 @@ public class QuestionServiceImp implements QuestionService {
         Quiz quiz = quizRepository.findById(dto.getQuizId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        // P1-19 / EB-26 (G15/QZ-06) — the TARGET quiz must also be the
+        // caller's own. Checked BEFORE the status check so a foreign quiz's
+        // DRAFT status is not leaked ("already published" would be an
+        // existence/status oracle for another mentor's quizzes).
+        if (!Boolean.TRUE.equals(securityService.isMentorOwnQuiz(dto.getQuizId(), email))) {
+            throw new AccessDeniedException("You are not authorized to move this question to this quiz");
+        }
+
         if (quiz.getStatus() != QuizStatus.DRAFT) {
             throw new globalLogicEx("Cannot update question. Quiz is already published or closed.");
         }

@@ -53,6 +53,11 @@ public class BadgeAwardService {
                 .orElseThrow(() -> new AccessDeniedException("Mentor not found"));
     }
 
+    private boolean hasRole(Authentication auth, String role) {
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_" + role));
+    }
+
     public BadgeAwardResponse awardBadge(Long badgeId, AwardBadgeRequest req) {
         Badge badge = badgeRepository.findById(badgeId)
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
@@ -107,6 +112,24 @@ public class BadgeAwardService {
 
     @Transactional(readOnly = true)
     public List<BadgeAwardResponse> getAwardsByStudent(Long studentId) {
+        // P1-19 / EB-26 (G11 / GAME-02) — award lists carry personal data
+        // (who earned what, notes); badge awards were enumerable by
+        // incrementing ids. Scoped to: ADMIN, the student themself (email
+        // match on the principal-derived caller, D-03), or a MENTOR of one of
+        // the student's enrollments (matches the mentor student-profile
+        // surface). Everyone else -> 403; anonymous -> 401 (chain).
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String callerEmail = getCurrentUserEmail();
+
+        boolean admin = hasRole(authentication, "ADMIN");
+        boolean self = studentId != null && studentRepository.findById(studentId)
+                .map(s -> callerEmail.equals(s.getEmail())).orElse(false);
+        boolean mentorOfEnrollment = studentId != null && hasRole(authentication, "MENTOR")
+                && enrollmentRepository.existsByStudent_IdAndMentorShip_Mentor_Email(studentId, callerEmail);
+
+        if (!admin && !self && !mentorOfEnrollment)
+            throw new AccessDeniedException("You are not authorized to view this student's badge awards");
+
         return badgeAwardRepository.findByStudent_IdOrderByCreatedAtDesc(studentId)
                 .stream().map(this::toDto).toList();
     }
