@@ -133,6 +133,11 @@ public class DashboardService {
                 .build();
     }
 
+    // P1-10 / EB-17 (SEL-09): role gate added to match the sibling dashboard
+    // methods — URL rules only say "authenticated" for /api/v1/dashboard/**,
+    // so the MENTOR restriction lives at this layer. Revenue data is
+    // mentor-scoped; students must not reach the money chart at all.
+    @PreAuthorize("hasRole('MENTOR')")
     public List<SalesChartResponse> getSalesChartData(Integer months) {
 
         String email = getCurrentUserEmail();
@@ -167,6 +172,10 @@ public class DashboardService {
                 .build();
     }
 
+    // P1-10 / EB-17 (SEL-09): role gate added to match the sibling dashboard
+    // methods — the roster read is keyed to the calling mentor's email and
+    // must stay MENTOR-only at the method-security layer.
+    @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<MentorStudentListResponse> getStudents(
             int page,
             int size

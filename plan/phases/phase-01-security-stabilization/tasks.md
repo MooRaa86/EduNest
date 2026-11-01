@@ -186,6 +186,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **FE / API impact:** none (docs note renames rejected deliberately).  **Depends on:** —  **Blocks:** P2-03 role matrix.
 **Tests:** role-matrix IT: outsider/mentor-B on mentor-A's mentorship → 403 for room create + dashboard reads.
 **Docs:** authorization-rules.md; ISSUE-MAPPING SEL-09/TD-07.
+**Status:** ✅ **Implemented — EB-17** (2026-11-01): `AdminBadgeController` class-level `@PreAuthorize("hasRole('ADMIN')")` (URL rules unchanged); `MentorshipDashboardService#getStats` + `DashboardService#getSalesChartData`/`getStudents` completed with the sibling `hasRole('MENTOR')` gate; G12 closed — `createRoom` enforces `SecurityService#isMentorOwnMentorship` (foreign/non-existent mentorship id → 403, owner → 200, `existsById→404` distinguishing path retired); probes `MethodSecuritySweepProbesTest` (11 role-matrix cases).
 
 <a id="p1-11"></a>
 ### P1-11 — Gate open push/mail endpoints

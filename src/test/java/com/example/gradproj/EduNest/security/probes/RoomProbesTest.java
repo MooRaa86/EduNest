@@ -14,7 +14,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * P2-03 / EB-37 — G12/G13: room creation ownership gap + enrollment-as-membership proxy.
+ * P2-03 / EB-37 — G12/G13: room creation ownership + enrollment-as-membership proxy.
+ * G12 half FLIPPED/CLOSED by EB-17 (P1-10) — see the test note; the G13 pin
+ * stays "todayOpen" until the WS membership semantics land (EB-19 / P1-12).
  */
 @Tag("critical")
 class RoomProbesTest extends ProdChainIntegrationTestBase {
@@ -28,11 +30,15 @@ class RoomProbesTest extends ProdChainIntegrationTestBase {
 	/**
 	 * G12 — any MENTOR can create a room in ANY mentorship (mentorship-ownership unchecked).
 	 * Audit: ChatRoomService.createRoom L43-79 — mentor gate only.
-	 * EXPECT TODAY: 2xx room created for a mentorship owned by a different mentor.
-	 * FLIPS WITH: [P1-10] room-create sweep (per ISSUE-MAPPING) → expect 403 then.
+	 * EXPECTED TODAY (pre-fix pin): 2xx room created for a mentorship owned by a different mentor.
+	 * FLIPPED — CLOSED by [P1-10] / EB-17 (2026-11-01): createRoom now enforces
+	 * SecurityService#isMentorOwnMentorship before creation → foreign (and
+	 * non-existent) mentorship ids answer 403. The full post-fix matrix
+	 * (no-persistence check, owner 200, unknown-id 403, dashboard role gates)
+	 * lives in MethodSecuritySweepProbesTest.
 	 */
 	@Test
-	@DisplayName("G12/todayOpen: foreign mentor creates a room in another mentor's mentorship → 2xx")
+	@DisplayName("G12/closed-EB17: foreign mentor creating a room in another mentor's mentorship → 403")
 	void g12_foreignMentorCreatesRoomInForeignMentorship() throws Exception {
 		var ownedChain = auth.mentorship("probe-room-owner-mentor@example.org", Status.ACTIVE);
 		auth.mentor(FOREIGN_MENTOR);
@@ -41,7 +47,7 @@ class RoomProbesTest extends ProdChainIntegrationTestBase {
 						.header("Authorization", auth.authToken(FOREIGN_MENTOR, AuthFixture.MENTOR))
 						.contentType("application/json")
 						.content("{\"name\":\"probe foreign room\"}"))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isForbidden());
 	}
 
 	/**
