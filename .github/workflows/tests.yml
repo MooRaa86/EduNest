@@ -46,3 +46,16 @@ jobs:
           name: surefire-reports
           path: target/surefire-reports/
           if-no-files-found: ignore
+
+      # P2-08 / EB-42 (TST-04): Advisory static analysis scan
+      - name: Static analysis scan (SpotBugs advisory)
+        run: ./mvnw -B spotbugs:check
+        continue-on-error: true
+
+      - name: Upload SpotBugs reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-reports
+          path: target/spotbugsXml.xml
+          if-no-files-found: ignore

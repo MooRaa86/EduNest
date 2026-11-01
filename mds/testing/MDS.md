@@ -85,4 +85,4 @@ Environment note (local Windows): the Maven wrapper runs on JDK 24 while the app
 - **TST-01 (High):** no functional test coverage at all (single context check).
 - **TST-02 (Medium):** no test configuration/profile; smoke test depends on external env.
 - **TST-03 (Medium):** Docker build skips tests (`-DskipTests`) — green images with zero verification.
-- **TST-04 (Low):** no static analysis/coverage tooling configured.
+- **TST-04 (Low):** Static analysis & dependency check baseline configured (SpotBugs 4.8.6.6 + OWASP dependency-check 10.0.4, `spotbugs-exclude.xml`, CI advisory step).

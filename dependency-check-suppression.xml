@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+      P2-08 / EB-42 — OWASP Dependency Check Suppressions Baseline (TST-04).
+      Documented justifications for triaged vulnerabilities or false positives:
+    -->
+
+    <!-- Example: Netty / Spring Web false-positives when using embedded Tomcat -->
+</suppressions>
