@@ -52,7 +52,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **MSH-08** | Low | P4-10, P4-11 | 4 | learning | T | Planned |
 | **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | Temporary public-review email and image compatibility exception Engineering Lead approved; frontend usage verification pending |
 | **MSH-10** | Med | P4-03 | 4 | notifications | T | Planned |
-| **MSH-11** | Med | P1-17 | 1 | auth | T | Planned |
+| **MSH-11** | Med | P1-17 | 1 | auth | T | **Implemented — EB-24**: homepage progress (`GET /api/v1/homepage/progress/{id}`) requires the caller's own enrollment — non-enrolled STUDENT gets 403 (`AccessDeniedException`), no curriculum-composition leak, nonexistent ids 403 (no existence oracle); overview internal call already gated (unchanged); probes `HomepageProgressEnrollmentProbesTest` (5) + full suite 422 green — pending review |
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
 | **LEARN-01** | Crit | P1-18 | 1 | learning | T | Planned |
 | **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation: course-scoped task/project reads and caller-scoped submission views merged to main (PR #38, commit 8175e28); access restricted to enrolled student, owning mentor or ADMIN; CI passed |

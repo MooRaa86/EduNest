@@ -15,7 +15,7 @@ Public discovery and the authenticated student home experience.
 
 - `GET /full` — `HomePageService.getStudentHomePage`: top-2 "continue learning" (native `findContinueLearningWithProgress`), up to **3 items each** of upcoming sessions/tasks/projects (each `PageRequest.of(0,2)` post-filter) merged, sorted by due date.
 - `GET /recommended` — category-affinity recommendation engine: native query weighting category-match `100 + rating*15 + enrollmentCount*0.5`, `LIMIT 5`, excludes enrolled (queries the student's own enrollments first).
-- `GET /progress/{mentorshipId}` — content counts + the student's own submission counts (native `getContentProgress`). ⚠️ **No enrollment check** — any student can query any mentorship's content composition (MSH-11), and the in-course comment literally warns "don't try".
+- `GET /progress/{mentorshipId}` — content counts + the student's own submission counts (native `getContentProgress`). Since P1-17 / EB-24: **enrollment required** — otherwise `AccessDeniedException` → 403 (nonexistent ids 403 too, no existence oracle); the endpoint remains STUDENT-only by role gate. Probes: `security/probes/HomepageProgressEnrollmentProbesTest` (5).
 - **In-memory pagination caution:** `getUpcomingItemsByMentorship` (L161–219) loads *all* upcoming items of a mentorship then `subList(start,end)`s — unbounded sets scale badly; dev `//ToDo make only 2 items return for each type`.
 
 ## 3. My-Learning & achievements (student)
