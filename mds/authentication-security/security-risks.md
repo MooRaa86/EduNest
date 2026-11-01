@@ -30,7 +30,7 @@ Severity guide: **C**critical / **H**igh / **M**edium / **L**ow. Status: ✅ Con
 | SEL-12 | Token in login response body (`SimpleResponse.jwt`) + `eraseCredentialsAfterAuthentication=false` | ✅ |
 | SEL-13 | WS handshake uses query-param token (dead code today, latent log-leak) | ✅ (latent) |
 | SEL-14 | Bulk exception handler returns **409** with raw `getMessage()` (info disclosure + wrong status) — cross-domain but lives here conceptually | ✅ | 
-| SEL-15 | Contact-reply HTML injection into email (values not escaped) | ⚠️ |
+| SEL-15 | Contact-reply HTML injection into email (values not escaped) — **POC CONFIRMED (V-02/P0-04, 2026-11-01)**: `POST /api/v1/contact/save-message` is PUBLIC and validates `name` as `@NotBlank` only; `sendAdminReply` merges `{{name}}`/`{{reply}}` unescaped into `admin-reply.html` (contrast badge flow `HtmlUtils`); evidence probes `ContactReplyInjectionPocTest` (2) — payload survives verbatim in the captured email; fix = P1-24 escaping at merge time | ⚠️ |
 
 ## Tier 3 — hardening backlog
 
