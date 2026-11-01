@@ -62,22 +62,37 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 
 	/**
 	 * G10 — any authenticated user pushes a notification to ANY email.
-	 * Audit: NotificationController POST /send class-guard isAuthenticated() only.
-	 * EXPECT TODAY: 2xx (push through).
-	 * ⚠️ OMAR'S NOTE: this is a pure test endpoint scheduled for complete removal —
-	 * when it is deleted this probe flips to 404 and is then retired with [P1-11] (EB-18).
+	 * P1-11 / EB-18 (Decision D-05): Deleted the test endpoint POST /api/v1/notifications/send.
+	 * Now returns 404 Not Found (SEL-10 / NOTIF-01 closed).
 	 */
 	@Test
-	@DisplayName("G10/todayOpen: authenticated user pushes a notification to any email → 2xx")
+	@DisplayName("G10/enforced: test notification send endpoint deleted → 404 (SEL-10/NOTIF-01 fixed)")
 	void g10_userPushesNotificationToAnyone() throws Exception {
-		auth.student(STRANGER); // token-holder must exist in DB (validator checks users table)
-		auth.student("victim@example.org"); // the pushed-to user must resolve in NotificationService
+		auth.student(STRANGER);
+		auth.student("victim@example.org");
 		mockMvc.perform(post("/api/v1/notifications/send")
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT))
 						.contentType("application/json")
 						.content("{\"email\":\"victim@example.org\",\"title\":\"probe\","
 								+ "\"content\":\"unsolicited\",\"type\":\"ANNOUNCEMENT\"}"))
-				.andExpect(status().is2xxSuccessful());
+				.andExpect(status().isNotFound());
+	}
+
+	/**
+	 * MAIL-01 — open platform email relay POST /send (PlatformMailController).
+	 * P1-11 / EB-18 (Decision D-05): Deleted PlatformMailController and POST /send.
+	 * Now returns 404 Not Found (MAIL-01 closed).
+	 */
+	@Test
+	@DisplayName("MAIL-01/enforced: open platform mail endpoint POST /send deleted → 404 (MAIL-01 fixed)")
+	void g10_platformMailSendEndpointDeleted() throws Exception {
+		auth.student(STRANGER);
+		mockMvc.perform(post("/send")
+						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT))
+						.contentType("application/json")
+						.content("{\"email\":\"victim@example.org\",\"name\":\"Stranger\","
+								+ "\"message\":\"unsolicited email\"}"))
+				.andExpect(status().isNotFound());
 	}
 
 	/**

@@ -15,7 +15,7 @@ All base paths and route mappings verified directly against `@RequestMapping`/`@
 | 🔓 POST `/api/v1/register/send-otp` | Resend verification OTP using required nonblank, valid `email` request parameter. |
 | 🔓 POST `/api/v1/register/restore` · `/confirm-restore` | Restore deleted account via OTP |
 | 🔓 POST `/api/v1/admin/register` | First-admin bootstrap (`RegisterAdminRequest`) — **one-shot**: succeeds only while zero admins exist (`400 ERR_BUSINESS_RULE "Admin bootstrap is no longer available."` afterwards); response carries **identity only** (no credentials) (P1-09/EB-16) |
-| 🔓 POST `/send` | Platform free-form mail (`MailRequest{email,name,message}`) — `PlatformMailController`; **effective path is bare `/send`** due to `@RestController("/mail")` bean-name quirk (no path mapping) — public in prod (MAIL-01) |
+| ❌ ~~POST `/send`~~ | **DELETED (EB-18 / D-05)**: Platform free-form mail (`PlatformMailController` & `MailRequest`) completely deleted; returns 404 (MAIL-01 closed) |
 
 Invalid fields on login, verify-user and send-otp return HTTP 400 `ERR_VALIDATION` with a `fields` map; malformed JSON retains `ERR_MALFORMED_BODY`. Frontend coordination has been requested on EB-32; approval is not implied.
 
@@ -152,7 +152,7 @@ Base `/api/v1/chat-room` and `/api/v1/conversation` — full table with auth sem
 | 🔐 GET `` · `/unread` · `/unread/count` (paged) | Inbox; 🔐 unbounded `size` |
 | 🔐 PATCH `/mark-all-read` · `/{id}/mark-read` | Read ops (ownership-checked) |
 | 🔐 DELETE `/delete/{id}` · `/delete-for-user` | Deletions (ownership-checked) |
-| 🔐 POST `/send` | **Any-user → any-email push** (`NotificationDto` request; NOTIF-01) |
+| ❌ ~~POST `/send`~~ | **DELETED (EB-18 / D-05)**: Any-user → any-email test push completely deleted; returns 404 (NOTIF-01 / SEL-10 closed) |
 
 Admin mirror: `/api/v1/admin/notifications` (⟡ list/delete/delete-all/send).
 

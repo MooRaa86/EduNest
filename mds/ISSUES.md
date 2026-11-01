@@ -27,7 +27,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | SEL-07 | TECHNICAL DEBT | Medium | ✅ | Missing `@Valid` on `/login-api` (`AuthController:34`) and `/register/verify-user` (`UserManagementController:53`); no `@Validated` anywhere → resend-OTP `@Email` constraint unenforced; `PasswordMatches` validator bound only to a legacy unused DTO | cited lines; grep `@Validated` = 0 | Annotate + adopt `@Validated` on method-param validation; wire modern DTOs |
 | SEL-08 | SECURITY | High | ✅ | **FIXED (EB-16):** admin exposure resolved — credentials dropped from DTOs (register response no longer echoes plaintext, admin list no longer exports hashes), one-shot synchronized bootstrap with audited text, last-admin deletion guard closes the bootstrap re-open hole, `deleteAdmin` made transactional (was a bare 500). Route-level `hasRole("ADMIN")` covers the list endpoint; the DTO removal makes the commented-out annotation moot. | branch `feat/p1-09-admin-bootstrap-protection`; probes `AdminBootstrapProbesTest` (7); see ISSUE-MAPPING SEL-08 | (resolved in EB-16) |
 | SEL-09 | SECURITY | Medium | ✅ | AdminBadge endpoints rely on prod URL rules only (no method security; `/api/admin/**` patterns inconsistent); admin-badge GETs readable by any authenticated user | `controller/admin/AdminBadgeController`, `ProjectSecurityProdconfig:99-107` | Add `@PreAuthorize` + normalize paths |
-| SEL-10 | SECURITY | High | ✅ | `POST /api/v1/notifications/send` lets **any authenticated user deliver arbitrary notification content to any email's queue** (phishing vector; likely test leftover) | `NotificationController:89-101` | Admin-gate or delete the endpoint |
+| SEL-10 | SECURITY | High | ✅ | **DELETED (EB-18 / P1-11):** `POST /api/v1/notifications/send` deleted per Decision D-05 (now 404 Not Found); closes user-to-user arbitrary notification spam/phishing vector. | `FileNotifyBadgeProbesTest.g10_userPushesNotificationToAnyone` | (resolved in EB-18) |
 | SEL-11 | SECURITY | Medium | ✅ | Prod CORS reflects any origin + `allowCredentials(true)`; dev CORS `*` (no creds). Benign while header-only auth; footgun once cookies exist | `ProjectSecurityProdconfig:50-63`; `ProjectSecurityConfig:70-75` | Whitelist origins; forbid credentialed wildcard |
 | SEL-12 | SECURITY | Medium | ✅ | JWT also returned in login response **body**; `ProviderManager` keeps credentials (`eraseCredentialsAfterAuthentication=false`) in both profiles | `AuthController:41`; both configs | Return header only; erase credentials |
 | SEL-13 | SECURITY | Medium | ✅ (latent) | WS handshake design reads JWT from URL query param — tokens in access logs/Referer if the dead interceptor is ever registered (SockJS fallback motivation is real) | `JwtHandshakeInterceptor.java:36-39`; registration absent (`WebSocketConfig:34-38`) | Replace with short-lived single-use ticket flow if needed |
@@ -48,7 +48,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | G7 | MSH-03 | Mentorship leaderboard guard disabled |
 | G8 | MSH-01 | DRAFT mentorship exposure (`getMentorShip`, public overview) |
 | G9 | FILE-01/LEARN-03 | `/files?filePath=` ownership bypass |
-| G10 | SEL-10 | Notifications send: any authenticated user → any email's queue |
+| G10 | SEL-10 | Notifications send: any authenticated user → any email's queue (CLOSED — EB-18 / P1-11 deleted per D-05) |
 | G11 | GAME-02 | Badge/award reads unguarded |
 | G12 | TD-07 | Room creation ownership gap (any mentor, any mentorship) |
 | G13 | TD-08 | Room-membership = 3 inconsistent semantics |
@@ -165,12 +165,12 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
-| NOTIF-01 | SECURITY | High | ✅ | Open `/api/v1/notifications/send` (any-user → any-email push) — canonical ID for SEL-10 | `NotificationController:89-101` |
+| NOTIF-01 | SECURITY | High | ✅ | **DELETED (EB-18 / P1-11):** Open `/api/v1/notifications/send` deleted per Decision D-05 (returns 404) | `NotificationController` |
 | NOTIF-02 | BUG | Medium | ✅ | Contact reply/notification path throws 404 for unregistered (guest) sender emails | `NotificationService.sendToUserByEmail` + `ContactMessageService` |
 | NOTIF-03 | RELIABILITY | Medium | ✅ | STOMP pushes execute **pre-commit** (ghost notifications on rollback); inconsistent with admin-badge flow's afterCommit email | `NotificationService:94-98` vs `AdminBadgeService:65-76` |
 | NOTIF-04 | SECURITY | Medium | ✅ | All admin-targeted pushes route to only the **newest** admin (`findTopByOrderByCreatedAtDesc`); no true broadcast | `NotificationService#sendToAdmin:149` |
 | NOTIF-05 | TECHNICAL DEBT | Low | ✅ | Unused `NotificationProjection`; no email/push channel; unbounded page sizes | repo/service grep |
-| MAIL-01 | SECURITY | High | ✅ | `POST /send` (PlatformMailController) is **public** → anyone can send free-form email from the platform mailbox to arbitrary recipients | `controller/mail/PlatformMailController` (+ `@RestController("/mail")` bean-name quirk making endpoint bare `/send`) |
+| MAIL-01 | SECURITY | High | ✅ | **DELETED (EB-18 / P1-11):** `POST /send` (`PlatformMailController` & `MailRequest`) deleted per Decision D-05 (returns 404) | `FileNotifyBadgeProbesTest.g10_platformMailSendEndpointDeleted` |
 
 ---
 
