@@ -129,7 +129,7 @@ EB-21 also scopes project detail, mentorship filter and student-submission detai
 | ⟡ GET `api/v1/question/fetch/{quizId}` · `/{id}` (MENTOR) | role+owner | Authoring views |
 | ⟡ POST `api/v1/submit-quiz-answer/{quizId}` (STUDENT) | role+enrolled | Submit answers → auto-grade (single attempt, late −1 pt/min) |
 | ⟡ GET `api/v1/answer/{studentId}/{quizId}` (MENTOR) | role+owner | Inspect a student's answers |
-| 🔐 GET `api/v1/my-answers/{quizId}` (STUDENT) | role+enrolled | **Answer-key leak — returns correctAnswer pre-submission** (LEARN-01, Critical) |
+| ⟡ GET `api/v1/my-answers/{quizId}` (STUDENT) | role+enrolled | Review with correctAnswer **only after a genuinely submitted attempt** (`score != null`); key omitted from JSON pre-submission (LEARN-01 fixed, P1-18/EB-25) |
 | ⟡ GET `api/v1/submissions/quiz/{quizId}` (MENTOR) | role+owner | Submission list ("Passed"/"Failed" ≥50%) |
 | ⟡ GET `api/v1/submissions/student/{studentId}` (MENTOR) | role (access-to-student check) | All quiz submissions of one student |
 

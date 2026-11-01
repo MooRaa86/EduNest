@@ -230,6 +230,14 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                             .findFirst()
                             .orElse(null);
 
+                    /*
+                     * P1-18 / LEARN-01 — answer-key scoping: the key is part of the review
+                     * only once the attempt is genuinely submitted. Opening a quiz already
+                     * creates the submission row (LEARN-07) with score == null, while
+                     * submitQuizAnswers sets score — the same marker it uses as its
+                     * "already submitted" guard. Pre-submission the field stays null and
+                     * StudentQuizReviewDTO omits it from the JSON entirely.
+                     */
                     return StudentQuizReviewDTO.builder()
                             .questionId(question.getId())
                             .text(question.getText())
@@ -237,7 +245,9 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                             .optionB(question.getOptionB())
                             .optionC(question.getOptionC())
                             .optionD(question.getOptionD())
-                            .correctAnswer(String.valueOf(question.getCorrectAnswer()))
+                            .correctAnswer(submission.getScore() != null
+                                    ? String.valueOf(question.getCorrectAnswer())
+                                    : null)
                             .selectedAnswer(
                                     answer == null ? null : answer.getSelectedAnswer()
                             )
