@@ -41,7 +41,7 @@ minimal mentorship chain, mints real JWTs signed with the test-profile secret.
 | G14 | `/uploads/**` anonymous-public (folder mismatch) | `UploadsServingProbeTest g14_` | 200 for ANON | [P1-21] EB-28 / D-25 → private/404 |
 | G15 | question re-parent, target-quiz unvalidated | `QuestionReparentProbeTest g15_` | **200 + moved into foreign quiz** (⚠️ register correction: gate checks CURRENT quiz's owner only; actor = own question → foreign quiz) | [P1-19] → 403 |
 
-## Route matrix pins ([P1-03] as coded after EB-9 collapse)
+## Route matrix pins ([P1-03] as coded after EB-9 collapse & EB-10 single-source policy)
 
 | Boundary | Probe (`PublicRouteMatrixProbeTest`) | EXPECT |
 |----------|--------------------------------------|--------|
@@ -52,6 +52,11 @@ minimal mentorship chain, mints real JWTs signed with the test-profile secret.
 | `/student/profile/**` protected | `studentProfileAnon401` | 401 ANON |
 | `hasRole(ADMIN)` boundary | `adminRouteStudent403` | 403 STUDENT |
 | `/settings/**` protected | `settingsAnon401` | 401 ANON |
+| Public API + stale/garbage token (3 token shapes) | `staleTokenOnApiDocsPublic200`, `staleTokenOnContactSavePublic201`, `staleTokenOnExploreMentorshipPublic200`, `staleTokenOnCategoriesPublic200` | 200/201 (graceful anonymous fallback) |
+| Public upload + stale/garbage token | `staleTokenOnPublicUploadPathNot401` | 404 resource (NOT 401 JWT reject) |
+| Protected route + stale/garbage token | `staleTokenOnSettingsProtected401`, `staleTokenOnAdminProtected401`, `staleTokenOnContactAllMessagesProtected401` | 401 `ERR_INVALID_TOKEN` |
+| Dual-mode public overview (anonymous / stale / valid) | `mentorshipOverviewAnonymous`, `mentorshipOverviewStaleTokenFallback`, `mentorshipOverviewValidTokenEnrolled` | 200 unauthenticated view vs 200 authenticated view |
+| Protected route + valid token (ADMIN) | `validTokenAdminOnContactAllMessages200` | 200 OK |
 
 ## Error-shape snapshots ([P1-05] / SEL-14, flips with EB-12)
 

@@ -19,7 +19,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-03** | Crit | P1-08 → P5-03 | 1,5 | auth | T (two-stage) → **core half FIXED** | **EB-15 (2026-10-30, merge `4529aeb`, PR #31, CI green):** throttling + lockout + enumeration unification all live — `AuthRateLimitFilter` 8/1min on the 6 public credential buckets (key `ip|bucket|account`, 10-min TTL sweep), `LoginLockoutService` 5 consecutive failures → 5-min `ERR_ACCOUNT_LOCKED`, all five failure kinds fold to one canonical 401 `ERR_INVALID_CREDENTIALS` byte-identical body (R4 probe-pinned), dynamic `Retry-After` on 429s; FE contract in EF-3. P5-03 keeps the platform-wide extension (public unauthenticated routes at scale) |
 | **SEL-04** | High | P1-07 | 1 | auth | T | **Verified** (merged to `main` via PR #30, `52452a0`, 2026-10-29, Team Lead-approved; Linux/JDK 21 CI 187/187 — [run 40966140701](https://github.com/MooRaa86/EduNest/actions/runs/40966140701); one-time reset credential, digest-only storage, atomic consumption under user lock; Jira EB-14 = Done). Pre-deployment follow-ups remain: frontend adoption of `resetToken`, target-database `otp.otp_code` capacity/lock verification, mixed-version rollout coordination (see authentication-flow.md). |
 | **SEL-05** | High | P1-06 | 1 | auth | T | **Verified** (merged to `main` via PR #19, `d3a14a2`, 2026-10-28; 376-line `OtpTypeIsolationIntegrationTest` green in CI; Jira EB-13 = Done) |
-| **SEL-06** | High | P1-27 (cond.) | 1 | auth | D→T (D-01) | Planned |
+| **SEL-06** | High | P1-27 (cond.) | 1 | auth | D→T (D-01) | **Documented — EB-34 (2026-11-01):** D-01 outcome "(a) narrowed — stateless JWT stands for Sprint 1" codified, **no build**: refresh tokens + real session/revocation model formally **carried to the Sprint 2 backlog** (tracked only by the D-01 decision record; no dedicated Jira issue exists yet). Docs: `mds/authentication-security/security-configuration.md` §3c + `mds/api/endpoints.md` (§1 session-invalidation note + §2 state-effect rows). Jira EB-34 closure pending Omar's PR review. |
 | **SEL-07** | Med | P1-25 | 1 | auth | T | EB-32 implementation in progress: login and verification DTO validation; resend email parameter validation; legacy password-match path retired. Verification, review and merge pending. |
 | **SEL-08** | High | P1-09 | 1 | auth | T (+API-04) | **Implemented — EB-16** (branch `feat/p1-09-admin-bootstrap-protection`; review/merge pending): bootstrap response no longer echoes plaintext; admin list no longer exports hashes; one-shot bootstrap guard synchronised (`400 ERR_BUSINESS_RULE "Admin bootstrap is no longer available."` once any admin exists, audited text); last-admin delete guard closes the bootstrap re-open hole; `deleteAdmin` made transactional (was a bare 500); probe suite `AdminBootstrapProbesTest` (7 probes). |
 | **API-04** | High | P1-09 | 1 | auth | = SEL-08 | **Implemented — same scope as SEL-08 above (EB-16).** Field removed from shared admin response DTO = FE-visible contract change; FE note included in docs (`endpoints.md` admin rows). |
@@ -30,7 +30,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **SEL-13** | Med | — | — | auth | DEF (latent design) | Deferred |
 | **SEL-14** | High | P1-05 | 1 | api | D→T (D-26) → **FIXED** | EB-12 (2026-10-29): unified `ApiError` envelope + `ApiErrorCode` catalog across all five producers; catch-all leak fixed (409+message → 500 sanitized + refId); explicit 403 for method-security `AccessDeniedException`; three 401 dialects → one writer; zero-leak probes E1–E6 in `ErrorShapeProbeTest` (flipped same-PR); D-26 fields map kept (nested under envelope) |
 | **SEL-15** | Med | P0-04 → P1-24 | 0,1 | auth | V→T | Planned |
-| **SEL-16** | Med | P1-03 | 1 | auth | T | Planned |
+| **SEL-16** | Med | P1-03 | 1 | auth | T | **Implemented — EB-10** (2026-11-01): `PublicRoutesPolicy` single source of truth for all public routes (APIs + public upload folders); `JwtTokenValidatorFilter` catches invalid/stale/garbage JWTs and gracefully proceeds anonymously on public routes; protected routes continue to reject with 401 `ERR_INVALID_TOKEN`; dual-mode routes preserve authentication context when valid token is present; verified by 35 probes in `PublicRouteMatrixProbeTest`. |
 | **WS-01** | Crit | P1-12 | 1 | ws | D→T (D-14) | **Implemented — EB-19** (branch `feat/p1-12-ws-room-authorization`; review/merge pending): `ChatAuthorization` enforces the D-14 READ rule on SUBSCRIBE and WRITE rule on SEND; `saveMessage` re-checks as defense in depth; violations dropped with explicit STOMP ERROR frame; probe suite `WSRoomAuthorizationProbesTest` (10) + V-01 re-seeded under the new contract; full suite 371 green |
 | **WS-02** | Low | P1-12 | 1 | ws | T | **Implemented — EB-19** (same scope as WS-01 above): dead `JwtHandshakeInterceptor` deleted; `connectedUsers` remnants removed; DISCONNECT logging via SLF4J |
 | **WS-03** | Low | P4-09 | 4 | api | T | Planned |
@@ -42,17 +42,17 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CHAT-06** | Low | P4-06 | 4 | ws | T | Planned |
 | **CHAT-07** | Med | P4-07 (cond.) | 4 | ws | D→T (D-13) | Planned |
 | **CHAT-08** | Low | P0-03 → P4-06 | 0,4 | ws | V→T (cond.) → FIXED | RESOLVED by EB-1 (2026-10-29, same-PR): mechanism confirmed by V-01 probe, then `@Payload ChatMessageRequest` DTO + blank guard shipped; objects now bind to pure text, raw strings rejected ([tasks#p0-03](phases/phase-00-planning-baseline/tasks.md#p0-03)) — P4-06 keeps CHAT-01/06 only |
-| **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | Planned |
+| **MSH-01** | High | P1-15 | 1 | auth | D→T (D-02) | **Implemented — EB-22**: DRAFT mentorship confined to owner-mentor + ADMIN on every read surface (D-02 default (a)) — detail + student overview 404 for everyone else (no existence/status leak), public paged overview excludes DRAFT (`findAllByStatusNot`), explore/categories/top-mentorships/recommendations verified ACTIVE-only, join already rejected DRAFT; probes `MentorshipDraftConfinementProbesTest` (8) + G8/G8b flips in `LeaderboardDraftProbesTest`, full suite 414 green — pending review |
 | **MSH-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation: service-level course read guards (ContentReadGuard) merged to main (PR #38, commit 8175e28); content reads restricted to enrolled student, owning mentor or ADMIN; student drafts hidden; CI passed |
 | **MSH-03** | Med | P1-16 | 1 | auth | D→T (D-04, amended Ruler B) | EB-23 implementation: leaderboard scoped to enrolled student, owner or ADMIN; rows = `studentFullName`, `studentEmail`, `studentProfileImageUrl`, `rank`, `totalPoints` (no `studentLevel`/badges); review and CI pending |
 | **MSH-04** | Med | P3-02 | 3 | database | T | Planned |
-| **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned |
+| **MSH-05** | Med | P0-09 → P3-05 | 0,3 | database | V→T (D-17) | Planned (EB-7 2026-11-01: defect reproduced on fresh-DB rehearsal, `plan/phases/phase-00-planning-baseline/EB-7-FRESH-DB-REHEARSAL.md`; no seed exists yet, fix deferred to P3-05 pending D-17) |
 | **MSH-06** | Med | P1-22 | 1 | file-storage | T | **Hardened - EB-29 (implementation + probe suite)**: stored extension derives from the detected content format, not the client filename; declared MIME cross-checked against the canonical set for the detected type; all nine replace flows now save the new file before deleting the old one so a rejected upload no longer destroys the previous file ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **MSH-07** | Low | P4-10 | 4 | learning | T (default: effective price) | Planned |
 | **MSH-08** | Low | P4-10, P4-11 | 4 | learning | T | Planned |
 | **MSH-09** | Med | P1-16 | 1 | auth | D→T (D-04) | Temporary public-review email and image compatibility exception Engineering Lead approved; frontend usage verification pending |
 | **MSH-10** | Med | P4-03 | 4 | notifications | T | Planned |
-| **MSH-11** | Med | P1-17 | 1 | auth | T | Planned |
+| **MSH-11** | Med | P1-17 | 1 | auth | T | **Implemented — EB-24**: homepage progress (`GET /api/v1/homepage/progress/{id}`) requires the caller's own enrollment — non-enrolled STUDENT gets 403 (`AccessDeniedException`), no curriculum-composition leak, nonexistent ids 403 (no existence oracle); overview internal call already gated (unchanged); probes `HomepageProgressEnrollmentProbesTest` (5) + full suite 422 green — pending review |
 | **MSH-12** | Med | P0-05 → P4-10 | 0,4 | learning | V→T | Planned |
 | **LEARN-01** | Crit | P1-18 | 1 | learning | T | Planned |
 | **LEARN-02** | High | P1-14 | 1 | learning | D→T (D-03) | EB-21 implementation: course-scoped task/project reads and caller-scoped submission views merged to main (PR #38, commit 8175e28); access restricted to enrolled student, owning mentor or ADMIN; CI passed |
@@ -64,14 +64,14 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **LEARN-08** | High | P4-15 (cond.) | 4 | learning | D→T (D-10), DEF ok | Planned |
 | **LEARN-09** | Low | P4-05 | 4 | learning | T | Planned |
 | **LEARN-10** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
-| **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | Planned |
+| **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | **V-06 verdict: CONFIRMED (EB-26, 2026-11-01)** — two-mentor probe `QuestionReparentProbeTest` pre-fix returned 200 (own question into a foreign mentor's quiz); code audit shows `updateQuestion` never validated the target quiz's ownership → **Implemented — EB-26**: target-quiz ownership enforced (`isMentorOwnQuiz`) before the DRAFT-status check (no foreign-status oracle); foreign re-parent 403, self re-parent 200 (G15/G15b flip) — pending review |
 | **USR-01** | Med | P4-09 | 4 | users | T | Planned |
 | **USR-02** | Low | P1-16 | 1 | auth | D→T (D-04) | EB-23 addresses leaderboard and public review reviewer fields; broader public-profile/project surfaces require separate verification |
 | **USR-03** | Low | P4-05 | 4 | users | T | Planned |
 | **USR-04** | Low | P4-09 | 4 | users | T | Planned |
 | **USR-05** | Med | P4-01 | 4 | notifications | = NOTIF-04 | Planned |
-| **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Leaderboard portion in EB-23; G11 badge-award portion remains P1-19 |
-| **GAME-02** | Med | P1-19 | 1 | gamification | T | Planned |
+| **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Leaderboard portion in EB-23; G11 badge-award portion **delivered in EB-26** (both now closed) |
+| **GAME-02** | Med | P1-19 | 1 | gamification | T | **Implemented — EB-26**: `/badge-awards/student/{id}` (the unguarded surface — any authenticated user enumerated any student's awards by id) now confined to self/ADMIN/mentor-of-enrollment; `/mentorship/{id}` + `/badge/{id}` award reads already owner-mentor-only; badge catalog GETs stay open by plan (no personal data); probes `BadgeAwardScopingProbesTest` (8) + G11 flip — pending review |
 | **GAME-03** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
 | **GAME-04** | Low | P4-02 | 4 | gamification | T | Planned |
 | **GAME-05** | Low | P4-02 | 4 | gamification | T (doc-in-code) | Planned |

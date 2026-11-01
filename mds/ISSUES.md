@@ -33,7 +33,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | SEL-13 | SECURITY | Medium | ✅ (latent) | WS handshake design reads JWT from URL query param — tokens in access logs/Referer if the dead interceptor is ever registered (SockJS fallback motivation is real) | `JwtHandshakeInterceptor.java:36-39`; registration absent (`WebSocketConfig:34-38`) | Replace with short-lived single-use ticket flow if needed |
 | SEL-14 | SECURITY | High | ✅ | Catch-all `@ExceptionHandler` maps **every** unhandled error to **409 Conflict** with raw `getMessage()` (info disclosure + wrong status); `AccessDeniedException` from method security also lands here (409 instead of 403) | `GlobalExceptionHandler:223-226` | Map to 500 + generic body; add explicit 403 handler |
 | SEL-15 | SECURITY | Medium | ⚠️ | Admin reply/moderation HTML/email templates merge unescaped values (HTML injection into emails; contact fields revert without escaping) | `ContactMessageService:111` (merge only); contrast `AdminBadgeService` using `HtmlUtils` | Escape all template inputs |
-| SEL-16 | BUG | Medium | ✅ | `JwtTokenValidatorFilter` runs on **all** routes except `/login-api` → a stale `Authorization` header makes otherwise-public endpoints (register, verify, forget-password, uploads next-requests) 401 | `filters/JwtTokenValidatorFilter.java:54-57` + prod chain registration | Permit anonymous-safe paths in validator; or skip filter on permitAll matchers |
+| SEL-16 | BUG | Medium | ✅ | **FIXED (EB-10 / P1-03):** Unified `PublicRoutesPolicy` single source of truth for public routes (APIs + public uploads). `JwtTokenValidatorFilter` catches invalid/stale/garbage JWTs and gracefully proceeds anonymously for public routes instead of returning 401; protected routes continue to reject with 401 `ERR_INVALID_TOKEN`. Dual-mode routes preserve authentication context when a valid token is present. Probed by 35 tests in `PublicRouteMatrixProbeTest`. | `PublicRoutesPolicy.java`; `ProjectSecurityConfig.java`; `JwtTokenValidatorFilter.java`; `PublicRouteMatrixProbeTest` | (resolved in EB-10) |
 
 **Authorization-gap matrix (G#)** — cross-verified object-level gaps (detailed in [authentication-security/authorization-rules.md §3](authentication-security/authorization-rules.md#3-verified-object-level-gaps-idor-style)); canonical IDs shown:
 
@@ -46,14 +46,14 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | G5 | MSH-02b* | Mentorship task list unguarded (folded into MSH-02) |
 | G6 | LEARN-02 | Task/project detail + `/filter/{msid}` unguarded |
 | G7 | MSH-03 | Mentorship leaderboard guard disabled |
-| G8 | MSH-01 | DRAFT mentorship exposure (`getMentorShip`, public overview) |
+| G8 | MSH-01 | DRAFT mentorship exposure (`getMentorShip`, public overview) (CLOSED — EB-22 / P1-15, D-02 (a) confinement) |
 | G9 | FILE-01/LEARN-03 | `/files?filePath=` ownership bypass |
 | G10 | SEL-10 | Notifications send: any authenticated user → any email's queue (CLOSED — EB-18 / P1-11 deleted per D-05) |
-| G11 | GAME-02 | Badge/award reads unguarded |
+| G11 | GAME-02 | Badge/award reads unguarded (CLOSED — EB-26 / P1-19: `/badge-awards/student/{id}` confined to self/ADMIN/mentor-of-enrollment; mentorship+badge award reads were already owner-only; badge catalog stays open per plan — no personal data) |
 | G12 | TD-07 | Room creation ownership gap (any mentor, any mentorship) |
 | G13 | TD-08 | Room-membership = 3 inconsistent semantics |
 | G14 | TD-09 | Profile-image folder name mismatch (relying on catch-all public route) |
-| G15 | QZ-06 | Question re-parent target-quiz ownership gap |
+| G15 | QZ-06 | Question re-parent target-quiz ownership gap (CLOSED — EB-26 / P1-19: `updateQuestion` enforces `isMentorOwnQuiz` on the TARGET quiz before the status check; V-06/P0-08 verdict CONFIRMED) |
 
 *TD-07/08/09 live in §17 with the rest of the TD register; TD-04 = INT-01 (xref). The TD numbering keeps the `G#` references in [authentication-security/authorization-rules.md §3](authentication-security/authorization-rules.md#3-verified-object-level-gaps-idor-style) stable.*
 
@@ -81,7 +81,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
-| MSH-01 | SECURITY | High | ✅ | DRAFT mentorships readable by id/list + via **public** overview query (no status filter) → unreleased content/pricing leak | `MentorShipRepository.findMentorshipDetailsById:244-248`; `mentorShipServiceI` getters |
+| MSH-01 | SECURITY | High | ✅ | **FIXED (EB-22 / P1-15):** DRAFT mentorships confined to owner-mentor + ADMIN on every read surface (D-02 default (a)) — detail + student overview 404 for everyone else (no existence/status leak), public paged overview excludes DRAFT (`findAllByStatusNot`), explore/categories/top-mentorships/recommendations verified ACTIVE-only, join rejected on DRAFT already | `mentorShipServiceI#getMentorshipById`; `MentorshipOverviewService#getMentorshipWithEnrollmentStatus`; `MentorShipRepository#findAllByStatusNot`; `ContentReadGuard#isOwnerMentorOrAdmin`; probes `MentorshipDraftConfinementProbesTest` (8, EB-22); merged via PR #51 |
 | MSH-02 | SECURITY | High | ✅ | Unguarded reads: any authenticated user can list any mentorship's tasks (incl. DRAFT, attachment paths) and read every lecture of any week/mentorship (`/mid/get-tasks`, `/lectures/**` GETs) | `mentorShipServiceI.getMentorShipTasks:239-249`; `LectureService:95-119` |
 | MSH-03 | SECURITY | Medium | ✅ | Leaderboard enrollment guard **commented out** — any authenticated user sees any mentorship leaderboard | `MentorshipLeaderboardService:24-28` |
 | MSH-04 | DATA INTEGRITY | Medium | ✅ | Enrollment dedupe protected only incidentally by the `TotalPoints` unique — concurrent join fails as 500 instead of "already enrolled"; `enrollments` lacks a unique constraint | `Enrollment` entity index (non-unique); `joinMentorship:387-441` |
@@ -91,7 +91,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | MSH-08 | PERFORMANCE | Low | ✅ | N+1 on mentorship listing (`whatWillLearn` lazy per row) + in-memory pagination in homepage upcoming-items aggregator | repo `@EntityGraph({"tags"})` only; `HomePageService.getUpcomingItemsByMentorship:161-219` |
 | MSH-09 | SECURITY | Medium | ✅ | Public reviews endpoint exposes reviewer emails + profile images | `MentorshipReviewProjection`; permitAll reviews route |
 | MSH-10 | RELIABILITY | Medium | ✅ | Completion side effects (certificates + fan-out notifications) inside the status TX: rollback ghosting, I/O entanglement | `mentorShipServiceI.updateMentorShipStatus:253-319` |
-| MSH-11 | SECURITY | Medium | ✅ | Homepage progress endpoint has no enrollment check (any student reads any mentorship's content composition) | `HomePageService.getStudentMentorshipProgress:36-58` |
+| MSH-11 | SECURITY | Medium | ✅ | **FIXED (EB-24 / P1-17):** homepage progress endpoint now requires the caller's own enrollment (`existsByMentorShip_IdAndStudent_Email`) → non-enrolled 403, no curriculum-structure/composition leak, nonexistent ids 403 (no existence oracle); overview internal call already enrollment-gated (defense in depth unchanged) | `HomePageService.getStudentMentorshipProgress`; probes `HomepageProgressEnrollmentProbesTest` (5, EB-24) |
 | MSH-12 | PERFORMANCE | Medium | ⚠️ | `LIKE '%kw%'` without wildcard escaping → unbounded scans / perf abuse in explore keyword search | `searchMentorShips:104-109` |
 
 ---
@@ -110,7 +110,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | LEARN-08 | BUG | High | ✅ | `passPoints` dead logic; **no pass/unlock mechanism anywhere** (docs/books imply checkpoint gating) — grep `unlock`=0 | `Task.passPoints` unused; tree-wide grep |
 | LEARN-09 | BUG | Low | ✅ | `rawScore` stores max score; quiz points truncated `(int)`; NPE-shaped branches on zero-snapshot quiz stats | grade paths; `getAllSubmissionsByQuiz:283-291` |
 | LEARN-10 | RELIABILITY | Medium | ✅ | Quizzes never hard-close (−1pt/min soft penalty only); promised `@Scheduled` auto-close doesn't exist | `QuizSubmissionServiceImpl:84-117` (unused import L27) |
-| QZ-06 | SECURITY | Medium | ⚠️ | `updateQuestion` validates source-question ownership but not the **target quiz's** ownership before re-parenting | `QuestionServiceImp#updateQuestion:130-173` |
+| QZ-06 | SECURITY | Medium | ✅ | **FIXED (EB-26 / P1-19):** `updateQuestion` now validates the **target quiz's** ownership (`isMentorOwnQuiz` on `dto.quizId`) BEFORE the DRAFT-status check (no foreign-status oracle) — cross-mentor re-parent → 403, self-re-parent → 200; V-06/P0-08 verdict CONFIRMED (two-mentor probe) | `QuestionServiceImp#updateQuestion`; `QuestionReparentProbeTest` (G15/G15b, flipped EB-26) |
 
 ---
 
@@ -131,7 +131,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
 | GAME-01 *(xref)* | SECURITY | High | ✅ | = MSH-03 + G11 combined exposure (points/badges of any mentorship readable) | – |
-| GAME-02 | SECURITY | Medium | ✅ | Badge & award reads unguarded (`GET /api/v1/badges/**`, award listings) | `BadgeController` GETs; `BadgeAwardController:36-61` |
+| GAME-02 | SECURITY | Medium | ✅ | **FIXED (EB-26 / P1-19):** award reads scoped — `/badge-awards/student/{id}` had **zero scoping** (any authenticated id enumeration) and is now confined to self/ADMIN/mentor-of-enrollment; `/mentorship/{id}` + `/badge/{id}` were already owner-mentor-only (403 for others); badge **catalog** GETs stay open by plan (title/category/description/points — no personal data) | `BadgeAwardService#getAwardsByStudent`; probes `BadgeAwardScopingProbesTest` (8, EB-26) + G11 flip in `FileNotifyBadgeProbesTest` |
 | GAME-03 | DATA INTEGRITY | Medium | ✅ | Badge point edits bulk-update all awardees bypassing lock + 0-clamp (totals can go negative; inconsistent with `applyDelta`) | `TotalPointsRepository.updatePointsForBadgeAwards:137-150`; contrast `applyDelta` |
 | GAME-04 | RELIABILITY | Low | ✅ | 10-badges-per-mentorship cap is read-then-insert (racy) | `BadgeService#createBadge` |
 | GAME-05 | TECHNICAL DEBT | Low | ✅ | Inconsistent accounting model (single-user clamp+lock vs bulk `@Modifying`) documented as accepted quirk | same as GAME-03 files |
