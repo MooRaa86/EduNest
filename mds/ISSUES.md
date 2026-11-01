@@ -246,7 +246,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | TST-01 | TEST GAP | High | ✅ | One context-load smoke test only; **zero** functional/integration coverage across all domains | `src/test/**` |
 | TST-02 | TEST GAP | Medium | ✅ | No test profile/Testcontainers/fixtures — smoke test depends on live env | no `application-test.properties` |
 | TST-03 | TEST GAP | Medium | ✅ | Docker build explicitly `-DskipTests` — zero verification on shipped images | `Dockerfile:6` |
-| TST-04 | TEST GAP | Low | ✅ | No static analysis / coverage tooling | pom |
+| TST-04 | TEST GAP | Low | ✅ | Static analysis & dependency check baseline configured (`spotbugs-maven-plugin`, `dependency-check-maven`, `spotbugs-exclude.xml`, CI advisory step) | `pom.xml`, `.github/workflows/tests.yml` |
 
 ---
 

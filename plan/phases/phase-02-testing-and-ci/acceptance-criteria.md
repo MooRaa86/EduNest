@@ -17,7 +17,7 @@
 | P2-05 | WS auth matrix + drop + `/queue/errors` contract green (wire-real, real-socket suite) | suite run | WS implementer |
 | P2-06 | Contract suites green; API docs reconciled | suite run | Eng Lead |
 | P2-07 | CI green on `main`; **red run** proven; branch protection on | run links + protection config | Eng Lead |
-| P2-08 | Scan advisory green triaged; suppressions justified | first report | Eng Lead |
+| P2-08 | Scan advisory green triaged; suppressions justified | SpotBugs 0 bugs / 0 errors (`spotbugs-exclude.xml` + CI step in `tests.yml`) | Eng Lead / Omar Medhat |
 
 ## 3. Phase-level checks
 

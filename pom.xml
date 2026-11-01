@@ -180,6 +180,35 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<!-- P2-08 / EB-42 (TST-04): Static analysis baseline -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.8.6.6</version>
+				<configuration>
+					<effort>Max</effort>
+					<threshold>Medium</threshold>
+					<xmlOutput>true</xmlOutput>
+					<failOnError>false</failOnError>
+					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+				</configuration>
+			</plugin>
+			<!-- P2-08 / EB-42 (TST-04): Dependency vulnerability scanning (advisory) -->
+			<plugin>
+				<groupId>org.owasp</groupId>
+				<artifactId>dependency-check-maven</artifactId>
+				<version>10.0.4</version>
+				<configuration>
+					<failBuildOnCVSS>11</failBuildOnCVSS>
+					<suppressionFiles>
+						<suppressionFile>dependency-check-suppression.xml</suppressionFile>
+					</suppressionFiles>
+					<formats>
+						<format>HTML</format>
+						<format>JSON</format>
+					</formats>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

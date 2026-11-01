@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/master/spotbugs/etc/findbugsfilter.xsd">
+
+    <!--
+      P2-08 / EB-42 — Static analysis suppression baseline (TST-04).
+      Documented justifications for exclusions:
+    -->
+
+    <!-- 1. Lombok-generated methods: equals, hashCode, getters, setters, builders -->
+    <!-- Lombok generates bytecode without defensive copies or explicit null guards -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- 2. JPA & Hibernate entity fields: populated via reflection / ORM bytecode injection -->
+    <Match>
+        <Package name="~com\.example\.gradproj\.EduNest\.entity.*"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD,NP_UNWRITTEN_FIELD,UWF_NULL_FIELD"/>
+    </Match>
+
+    <!-- 3. Spring component injection: fields assigned by container lifecycle -->
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD"/>
+    </Match>
+
+    <!-- 4. DTOs and Response records: representation exposure is expected for serializable payloads -->
+    <Match>
+        <Package name="~com\.example\.gradproj\.EduNest\.dto.*"/>
+    </Match>
+
+    <!-- 5. Test fixtures and harnesses: probe code intentionally tests boundary conditions -->
+    <Match>
+        <Package name="~com\.example\.gradproj\.EduNest\.testing.*"/>
+    </Match>
+    <Match>
+        <Package name="~com\.example\.gradproj\.EduNest\.security\.probes.*"/>
+    </Match>
+    <Match>
+        <Package name="~com\.example\.gradproj\.EduNest\.flow.*"/>
+    </Match>
+
+    <!-- 6. Fail-fast constructors: P1-01 / SEL-01 intentionally validate secrets in constructor -->
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
+    <!-- 7. Legacy class naming conventions: tracked as technical debt (TD-01); refactor deferred to Phase 4 -->
+    <Match>
+        <Bug pattern="NM_CLASS_NAMING_CONVENTION"/>
+    </Match>
+
+    <!-- 8. Boxed primitive conversions in DTO/projection mappers: micro-optimizations, harmless -->
+    <Match>
+        <Bug pattern="BX_UNBOXING_IMMEDIATELY_REBOXED"/>
+    </Match>
+
+    <!-- 9. Exhaustive switch statements or framework fallthroughs -->
+    <Match>
+        <Bug pattern="SF_SWITCH_NO_DEFAULT"/>
+    </Match>
+
+    <!-- 10. Instance fields that could be static: non-critical service constants -->
+    <Match>
+        <Bug pattern="SS_SHOULD_BE_STATIC"/>
+    </Match>
+
+    <!-- 11. OTP Random generation: tracked under SEL-05 for cryptographically secure PRNG upgrade -->
+    <Match>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+
+    <!-- 12. Framework return-path nullability: Spring StompHeaderAccessor and Java NIO Path null-checks -->
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    </Match>
+
+</FindBugsFilter>

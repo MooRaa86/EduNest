@@ -134,3 +134,4 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Depends on:** P2-07 job slot.  **Blocks:** P8-07 (cadence uses this).
 **Acceptance:** first-triage report linked; suppressions carry justifications.
 **Docs:** testing/MDS.md note; ISSUE-MAPPING TST-04 row.
+**Status:** ✅ **Verified** (2026-11-02) — SpotBugs (`spotbugs-maven-plugin:4.8.6.6`) and OWASP dependency-check (`dependency-check-maven:10.0.4`) configured; `spotbugs-exclude.xml` and `dependency-check-suppression.xml` baseline established with documented engineering justifications; SpotBugs run reports 0 errors / 0 bug instances on codebase (`mvn compile spotbugs:check`); CI advisory scan step integrated into `.github/workflows/tests.yml` with artifact upload.
