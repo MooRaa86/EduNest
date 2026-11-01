@@ -11,7 +11,7 @@
 |---|---|---|---|
 | P1-01 | App fails to boot without `JWT_SECRET`; role parse works with rotated secret | startup log + unit/IT evidence | Security Reviewer |
 | P1-02 | No `prod` → fail-fast unless explicit unsafe flag; permissive chain unavailable by default | boot test matrix (prod/none/unsafe) | Security Reviewer |
-| P1-03 | Stale-token header no longer breaks public endpoints; secured endpoints still 401 | IT probe results | Backend Dev |
+| P1-03 | Stale-token header no longer breaks public endpoints; secured endpoints still 401 | Delivered (EB-10): `PublicRoutesPolicy` single source of truth; graceful anonymous fallback in `JwtTokenValidatorFilter` for public routes; 401 `ERR_INVALID_TOKEN` preserved on protected endpoints; verified by 35 probes in `PublicRouteMatrixProbeTest` | Backend Dev |
 | P1-04 | Login returns header (body retained only while FE depends on it); ProviderManager erases credentials | contract test + code evidence | Backend Dev |
 | P1-05 | Unexpected exceptions → 500 generic; 403 handler exists; three 401 shapes unified | error-contract IT set | Backend Dev |
 | P1-06 | OTP verify scoped by type; cross-flow interference impossible (fixture test) | Local H2 results below; verification pending | Security Reviewer — pending |

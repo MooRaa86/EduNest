@@ -60,8 +60,9 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md). 
 **FE / API impact:** none.  **Decisions:** none.
 **Depends on:** P1-02 (single-chain refactor reduces duplication).  **Blocks:** P2-03.
 **Acceptance criteria:**
-- [ ] IT: stale token + public endpoint → 200/intended; stale token + protected endpoint → 401.
+- [x] IT: stale token + public endpoint → 200/intended; stale token + protected endpoint → 401.
 **Docs:** security-configuration.md; ISSUE-MAPPING SEL-16.
+**Status:** Delivered — EB-10 (`PublicRoutesPolicy` single source of truth, graceful anonymous fallback in `JwtTokenValidatorFilter`, 35 probes in `PublicRouteMatrixProbeTest` green).
 
 <a id="p1-04"></a>
 ### P1-04 — Token from header only; credentials erased after auth

@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.filters;
 
+import com.example.gradproj.EduNest.config.security.PublicRoutesPolicy;
 import com.example.gradproj.EduNest.exception.ApiErrorCode;
 import com.example.gradproj.EduNest.exception.ServletErrorWriter;
 import com.example.gradproj.EduNest.exception.jwt.InvalidJwtToken;
@@ -11,17 +12,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 /**
- * P1-05 / EB-12 — JWT-validation 401s now use the unified error envelope
- * (same shape + ERR_INVALID_TOKEN as the advice-layer InvalidJwtToken
- * handler). The two distinct friendly messages are preserved:
- * deactivation/deletion vs structurally invalid token — only the shape,
- * never the semantics, changed.
+ * P1-03 / EB-10 (SEL-16) & P1-05 / EB-12:
+ * Validates incoming JWT tokens and populates the SecurityContext.
+ *
+ * If a stale or invalid token is supplied to a genuinely public route
+ * (defined in PublicRoutesPolicy), the filter gracefully proceeds anonymously
+ * instead of returning 401, allowing the public endpoint to serve the request.
+ * Protected endpoints continue to reject invalid tokens with 401 ERR_INVALID_TOKEN.
  */
 @RequiredArgsConstructor
 @Component
@@ -37,7 +41,12 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
         }
         try {
             jwtService.validateToken(jwtToken);
-        } catch (InvalidJwtToken ex){
+        } catch (InvalidJwtToken ex) {
+            if (PublicRoutesPolicy.isPublicRoute(request)) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
             ServletErrorWriter.write(response,
                     HttpStatus.UNAUTHORIZED.value(),
                     ApiErrorCode.ERR_INVALID_TOKEN,
@@ -46,6 +55,11 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
             return;
 
         } catch (Exception ex) {
+            if (PublicRoutesPolicy.isPublicRoute(request)) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
             ServletErrorWriter.write(response,
                     HttpStatus.UNAUTHORIZED.value(),
                     ApiErrorCode.ERR_INVALID_TOKEN,
@@ -59,6 +73,6 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        return request.getServletPath().equals("/login-api");
+        return "/login-api".equals(PublicRoutesPolicy.getPathWithinApplication(request));
     }
 }

@@ -34,9 +34,9 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 
 ## 2. Prod URL rule map (`ProjectSecurityConfig.prodChain`)
 
-### permitAll (lines 69–97)
+### permitAll (Single Source of Truth: `PublicRoutesPolicy.ALL_PUBLIC_PATTERNS`)
 ```
-/swagger-ui/**, /v3/api-docs/**, /swagger-resources/**
+/swagger-ui/**, /v3/api-docs, /v3/api-docs/**, /swagger-resources/**
 /api/auth/**, /api/v1/register/**, /login-api, /forget-password/**
 /api/v1/admin/register
 /ws/**
@@ -47,6 +47,7 @@ Regression: `SecurityProfileBootMatrixTest` (4 rows). JWT secret ownership: see 
 /api/v1/mentorship/explore, /api/v1/mentorship/categories
 /api/v1/profile/mentor/**
 ```
+> **P1-03 / EB-10 (SEL-16) Single Source of Truth:** `PublicRoutesPolicy` defines `PUBLIC_API_PATTERNS` concatenated with `UploadPolicy.PUBLIC_UPLOAD_PATTERNS`. Both the Spring Security filter chain (`.requestMatchers(PublicRoutesPolicy.ALL_PUBLIC_PATTERNS.toArray(new String[0])).permitAll()`) and the JWT validation filter reference this single policy.
 
 ### hasRole("ADMIN") (lines 99–107)
 ```
@@ -73,7 +74,10 @@ Notable consequences:
 ## 3. JWT filter mechanics
 
 - **Secret ownership (`config/security/JwtSecretProvider`, implemented 2026-10-28 — P1-01/SEL-01):** the signing key comes **env-only** (`JWT_SECRET`); the app **fails to boot** when it's missing/blank, <32 bytes, or equal to the retired hardcoded default (digest-matched). One key instance, one parser: `JwtService` delegates to the provider, `LoginServiceI.getJwtRole` delegates to `JwtService.extractAuthorities` — role claims survive secret rotation. No default value exists anywhere in the repo (grep-audited).
-- **Validator** (`filters/JwtTokenValidatorFilter`): runs in prod; skips only `/login-api`; sets `Authentication(username, null, authorities-from-claims)`; re-checks `enabled`/`deleted` from DB (except admin); writes its own 401 JSON (unified onto the one `ApiError` envelope by EB-12 since 2026-10-29).
+- **Validator** (`filters/JwtTokenValidatorFilter`): runs in prod; skips only `/login-api` in `shouldNotFilter`.
+  - **Graceful degradation on public routes (EB-10 / P1-03 / SEL-16):** when a stale, expired, or malformed `Authorization` header is passed to a public route (checked via `PublicRoutesPolicy.isPublicRoute(request)`), the filter clears security context and proceeds anonymously (`filterChain.doFilter(request, response)`) instead of aborting with an immediate 401.
+  - **Fail-fast on protected routes:** invalid or stale tokens on protected routes continue to be rejected immediately with 401 `ERR_INVALID_TOKEN` (via `ServletErrorWriter`).
+  - **Dual-mode preservation:** valid JWTs on public endpoints (e.g., `/api/v1/student/mentorships/*/overview`, `/reviews`) populate `SecurityContextHolder`, preserving authentication context and allowing controllers to resolve personalization/enrollment status.
 - **Generator** (`filters/JwtTokenGeneratorFilter`): registered, but `shouldNotFilter` exempts everything except `/test-login` — a path **no controller exposes**. Effectively unreachable; login happens in `service/auth/LoginServiceI` instead.
 
 ## 3b. Throttling & account lockout (EB-15 / SEL-03, implemented 2026-10-30 — merge `4529aeb`)

@@ -151,33 +151,8 @@ public class ProjectSecurityConfig {
                 .addFilterAfter(jwtTokenGeneratorFilter, BasicAuthenticationFilter.class)
                 .addFilterBefore(jwtTokenValidatorFilter, BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        // ========== Public APIs ==========
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**",
-                                "/api/auth/**",
-                                "/api/v1/register/**",
-                                "/login-api",
-                                "/forget-password/**",
-                                "/api/v1/admin/register",
-                                "/ws/**",
-
-                                "/api/v1/contact/save-message",
-                                "/api/v1/student/mentorships/*/overview",
-                                "/api/v1/student/mentorships/*/reviews",
-                                "/api/v1/mentorship/explore",
-                                "/api/v1/mentorship/categories",
-                                "/api/v1/profile/mentor/**"
-                        ).permitAll()
-                        // ==== Upload exposure policy (P1-21 / EB-28, FILE-01,
-                        // TD-09/G14, D-07) — ONLY the anonymous-public categories
-                        // leave the chain. The former wrong-name entries
-                        // (profile-images, student-profile, mentor-profile) and the
-                        // duplicated public upload catch-alls are gone; private
-                        // categories are denyAll'd below and reachable ONLY through
-                        // ownership-checked /files/** typed endpoints. ====
-                        .requestMatchers(UploadPolicy.PUBLIC_UPLOAD_PATTERNS.toArray(new String[0])).permitAll()
+                        // ========== Public APIs & Uploads (Single source of truth: PublicRoutesPolicy) ==========
+                        .requestMatchers(PublicRoutesPolicy.ALL_PUBLIC_PATTERNS.toArray(new String[0])).permitAll()
                         // EVERYTHING ELSE under /uploads/** is non-public (fail-closed):
                         // submissions/task-attachment/project-attachment, admin, unknown
                         // categories, future additions — never served via /uploads/**,
@@ -297,7 +272,7 @@ public class ProjectSecurityConfig {
             com.example.gradproj.EduNest.service.auth.LoginLockoutService lockoutService
     ) {
         AuthenticationProvider authProvider = new EduNestAuthenticationProvider(
-                userDetailsService, passwordEncoder, lockoutService);
+            userDetailsService, passwordEncoder, lockoutService);
         ProviderManager providerManager = new ProviderManager(authProvider);
         providerManager.setEraseCredentialsAfterAuthentication(true);
         return providerManager;
