@@ -76,8 +76,8 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getId())
 						.header("Authorization", auth.authToken(partner.getEmail(), AuthFixture.STUDENT)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.messages[0].content").value("hello partner"))
-				.andExpect(jsonPath("$.messages[0].recipientEmail").value(partner.getEmail()));
+				.andExpect(jsonPath("$.apiResponse.messages[0].content").value("hello partner"))
+				.andExpect(jsonPath("$.apiResponse.messages[0].recipientEmail").value(partner.getEmail()));
 	}
 
 	@Test
@@ -95,7 +95,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getId())
 						.header("Authorization", auth.authToken(ADMIN, AuthFixture.ADMIN)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.messages[0].content").value("confidential chat"));
+				.andExpect(jsonPath("$.apiResponse.messages[0].content").value("confidential chat"));
 	}
 
 	/**
@@ -143,8 +143,8 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 						.content("{\"content\":\"revised text\",\"recipientEmail\":\""
 								+ spoofedVictim + "\"}"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.['message after update'].content").value("revised text"))
-				.andExpect(jsonPath("$.['message after update'].recipientEmail").value(partner.getEmail()));
+				.andExpect(jsonPath("$.apiResponse['message after update'].content").value("revised text"))
+				.andExpect(jsonPath("$.apiResponse['message after update'].recipientEmail").value(partner.getEmail()));
 
 		Message reloaded = messages.findById(msg.getId()).orElseThrow();
 		assertEquals("revised text", reloaded.getContent());
