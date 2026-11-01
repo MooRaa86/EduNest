@@ -49,11 +49,11 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | G8 | MSH-01 | DRAFT mentorship exposure (`getMentorShip`, public overview) (CLOSED — EB-22 / P1-15, D-02 (a) confinement) |
 | G9 | FILE-01/LEARN-03 | `/files?filePath=` ownership bypass |
 | G10 | SEL-10 | Notifications send: any authenticated user → any email's queue (CLOSED — EB-18 / P1-11 deleted per D-05) |
-| G11 | GAME-02 | Badge/award reads unguarded |
+| G11 | GAME-02 | Badge/award reads unguarded (CLOSED — EB-26 / P1-19: `/badge-awards/student/{id}` confined to self/ADMIN/mentor-of-enrollment; mentorship+badge award reads were already owner-only; badge catalog stays open per plan — no personal data) |
 | G12 | TD-07 | Room creation ownership gap (any mentor, any mentorship) |
 | G13 | TD-08 | Room-membership = 3 inconsistent semantics |
 | G14 | TD-09 | Profile-image folder name mismatch (relying on catch-all public route) |
-| G15 | QZ-06 | Question re-parent target-quiz ownership gap |
+| G15 | QZ-06 | Question re-parent target-quiz ownership gap (CLOSED — EB-26 / P1-19: `updateQuestion` enforces `isMentorOwnQuiz` on the TARGET quiz before the status check; V-06/P0-08 verdict CONFIRMED) |
 
 *TD-07/08/09 live in §17 with the rest of the TD register; TD-04 = INT-01 (xref). The TD numbering keeps the `G#` references in [authentication-security/authorization-rules.md §3](authentication-security/authorization-rules.md#3-verified-object-level-gaps-idor-style) stable.*
 
@@ -110,7 +110,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | LEARN-08 | BUG | High | ✅ | `passPoints` dead logic; **no pass/unlock mechanism anywhere** (docs/books imply checkpoint gating) — grep `unlock`=0 | `Task.passPoints` unused; tree-wide grep |
 | LEARN-09 | BUG | Low | ✅ | `rawScore` stores max score; quiz points truncated `(int)`; NPE-shaped branches on zero-snapshot quiz stats | grade paths; `getAllSubmissionsByQuiz:283-291` |
 | LEARN-10 | RELIABILITY | Medium | ✅ | Quizzes never hard-close (−1pt/min soft penalty only); promised `@Scheduled` auto-close doesn't exist | `QuizSubmissionServiceImpl:84-117` (unused import L27) |
-| QZ-06 | SECURITY | Medium | ⚠️ | `updateQuestion` validates source-question ownership but not the **target quiz's** ownership before re-parenting | `QuestionServiceImp#updateQuestion:130-173` |
+| QZ-06 | SECURITY | Medium | ✅ | **FIXED (EB-26 / P1-19):** `updateQuestion` now validates the **target quiz's** ownership (`isMentorOwnQuiz` on `dto.quizId`) BEFORE the DRAFT-status check (no foreign-status oracle) — cross-mentor re-parent → 403, self-re-parent → 200; V-06/P0-08 verdict CONFIRMED (two-mentor probe) | `QuestionServiceImp#updateQuestion`; `QuestionReparentProbeTest` (G15/G15b, flipped EB-26) |
 
 ---
 
@@ -131,7 +131,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
 | GAME-01 *(xref)* | SECURITY | High | ✅ | = MSH-03 + G11 combined exposure (points/badges of any mentorship readable) | – |
-| GAME-02 | SECURITY | Medium | ✅ | Badge & award reads unguarded (`GET /api/v1/badges/**`, award listings) | `BadgeController` GETs; `BadgeAwardController:36-61` |
+| GAME-02 | SECURITY | Medium | ✅ | **FIXED (EB-26 / P1-19):** award reads scoped — `/badge-awards/student/{id}` had **zero scoping** (any authenticated id enumeration) and is now confined to self/ADMIN/mentor-of-enrollment; `/mentorship/{id}` + `/badge/{id}` were already owner-mentor-only (403 for others); badge **catalog** GETs stay open by plan (title/category/description/points — no personal data) | `BadgeAwardService#getAwardsByStudent`; probes `BadgeAwardScopingProbesTest` (8, EB-26) + G11 flip in `FileNotifyBadgeProbesTest` |
 | GAME-03 | DATA INTEGRITY | Medium | ✅ | Badge point edits bulk-update all awardees bypassing lock + 0-clamp (totals can go negative; inconsistent with `applyDelta`) | `TotalPointsRepository.updatePointsForBadgeAwards:137-150`; contrast `applyDelta` |
 | GAME-04 | RELIABILITY | Low | ✅ | 10-badges-per-mentorship cap is read-then-insert (racy) | `BadgeService#createBadge` |
 | GAME-05 | TECHNICAL DEBT | Low | ✅ | Inconsistent accounting model (single-user clamp+lock vs bulk `@Modifying`) documented as accepted quirk | same as GAME-03 files |

@@ -16,7 +16,7 @@
 | P0-05 | MSH-12 scan-abuse evidence recorded | — | Backend Dev |
 | P0-06 | Upload matrix complete (4 surfaces × ≥5 payloads) | [Local evidence: 4 × 7 image cases; ZIP service contrast; traversal and endpoint ZIP cases pending](EB-4-UPLOAD-MATRIX.md) | Security Reviewer — pending |
 | P0-07 | Zip-spoof verdict recorded | — | Security Reviewer |
-| P0-08 | QZ-06 verdict recorded (two-mentor fixture) | — | Security Reviewer |
+| P0-08 | QZ-06 verdict recorded (two-mentor fixture) | **Recorded 2026-11-01 (EB-26): CONFIRMED** — the pre-fix G15 pin probe (`QuestionReparentProbeTest`) drove mentor A's PATCH with a foreign `quizId` and got 200 with the question re-pointed into mentor B's DRAFT quiz; code audit matched (`QuestionServiceImp#updateQuestion` validated only source ownership + target DRAFT status). Verdict annotation added to [P1-19 mapping](../../../plan/ISSUE-MAPPING.md); guard shipped same ticket | Security Reviewer (Omar) — verdict recorded; guard merged |
 | P0-09 | Fresh-DB rehearsal log incl. permissive-chain observation | [Executed 2026-11-01: fresh-UUID H2 boot; MSH-05 reproduced (400 ERR_BUSINESS_RULE, zero writes); 10% commission success, 200 → 20 split; full suite 409 run / 0 fail; SEL-02 git evidence + boot matrix 5/5](EB-7-FRESH-DB-REHEARSAL.md) | DevOps — evidence recorded; MSH-05 fix pending D-17 (P3-05) |
 
 ## 3. Phase-level checks

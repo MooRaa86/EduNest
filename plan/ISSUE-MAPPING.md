@@ -64,14 +64,14 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **LEARN-08** | High | P4-15 (cond.) | 4 | learning | D→T (D-10), DEF ok | Planned |
 | **LEARN-09** | Low | P4-05 | 4 | learning | T | Planned |
 | **LEARN-10** | Med | P4-04 | 4 | learning | D→T (D-08) | Planned |
-| **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | Planned |
+| **QZ-06** | Med | P0-08 → P1-19 | 0,1 | learning | V→T | **V-06 verdict: CONFIRMED (EB-26, 2026-11-01)** — two-mentor probe `QuestionReparentProbeTest` pre-fix returned 200 (own question into a foreign mentor's quiz); code audit shows `updateQuestion` never validated the target quiz's ownership → **Implemented — EB-26**: target-quiz ownership enforced (`isMentorOwnQuiz`) before the DRAFT-status check (no foreign-status oracle); foreign re-parent 403, self re-parent 200 (G15/G15b flip) — pending review |
 | **USR-01** | Med | P4-09 | 4 | users | T | Planned |
 | **USR-02** | Low | P1-16 | 1 | auth | D→T (D-04) | EB-23 addresses leaderboard and public review reviewer fields; broader public-profile/project surfaces require separate verification |
 | **USR-03** | Low | P4-05 | 4 | users | T | Planned |
 | **USR-04** | Low | P4-09 | 4 | users | T | Planned |
 | **USR-05** | Med | P4-01 | 4 | notifications | = NOTIF-04 | Planned |
-| **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Leaderboard portion in EB-23; G11 badge-award portion remains P1-19 |
-| **GAME-02** | Med | P1-19 | 1 | gamification | T | Planned |
+| **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Leaderboard portion in EB-23; G11 badge-award portion **delivered in EB-26** (both now closed) |
+| **GAME-02** | Med | P1-19 | 1 | gamification | T | **Implemented — EB-26**: `/badge-awards/student/{id}` (the unguarded surface — any authenticated user enumerated any student's awards by id) now confined to self/ADMIN/mentor-of-enrollment; `/mentorship/{id}` + `/badge/{id}` award reads already owner-mentor-only; badge catalog GETs stay open by plan (no personal data); probes `BadgeAwardScopingProbesTest` (8) + G11 flip — pending review |
 | **GAME-03** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
 | **GAME-04** | Low | P4-02 | 4 | gamification | T | Planned |
 | **GAME-05** | Low | P4-02 | 4 | gamification | T (doc-in-code) | Planned |

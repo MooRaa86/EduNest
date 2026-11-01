@@ -183,6 +183,8 @@ Probed with `src/test/java/com/example/gradproj/EduNest/websocket/probe/V01Paylo
 **Approach:** two-mentor fixture; PATCH question with foreign `quizId`; assert result.
 **Acceptance criteria:** verdict note + mapping annotation.  **Depends on:** —.  **Blocks:** P1-19 exact-scope.
 
+**Reconciliation (2026-11-01, EB-26):** **V-06 verdict: CONFIRMED.** The two-mentor G15 pin probe (`security/probes/QuestionReparentProbeTest`) drove mentor A's `PATCH /api/v1/question/{id}` with mentor B's DRAFT `quizId` and the question re-parented successfully (200), matching the code audit (`updateQuestion` validated source ownership + target DRAFT status only — target-quiz ownership was never checked). Guard shipped in the same ticket (P1-19/EB-26): `isMentorOwnQuiz(dto.quizId, email)` enforced before the status check (no foreign-status oracle) — foreign re-parent → 403, legitimate self re-parent → 200 (G15/G15b flip). See [P0-08 acceptance criteria](acceptance-criteria.md) and [ISSUE-MAPPING QZ-06](../../ISSUE-MAPPING.md).
+
 ---
 
 <a id="p0-09"></a>
