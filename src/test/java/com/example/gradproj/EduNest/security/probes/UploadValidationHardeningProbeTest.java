@@ -1,13 +1,19 @@
 package com.example.gradproj.EduNest.security.probes;
 
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.entity.chat.ChatRoom;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
+import com.example.gradproj.EduNest.entity.users.Mentor;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.mentorShip.ImageStorageService;
@@ -73,6 +79,9 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	private static final byte[] PNG = encodedFixture("png");
 	private static final byte[] HTML = "<html><body>inert eb29 probe fixture</body></html>".getBytes(StandardCharsets.UTF_8);
 	private static final byte[] GARBAGE = {0, 1, 2, 3, 4, 5};
+	private static final byte[] GIF = encodedFixture("gif");
+	private static final byte[] BMP = encodedFixture("bmp");
+	private static final byte[] SVG = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\"><rect width=\"20\" height=\"20\" fill=\"blue\"/></svg>".getBytes(StandardCharsets.UTF_8);
 
 	/**
 	 * Genuine WebP fixtures from the libwebp test corpus
@@ -95,6 +104,9 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Autowired private WeekRepository weeks;
 	@Autowired private TaskRepository tasks;
 	@Autowired private TaskSubmissionRepository submissions;
+	@Autowired private MentorShipRepository mentorshipRepo;
+	@Autowired private StudentRepository studentRepo;
+	@Autowired private ChatRoomRepository chatRooms;
 	@Value("${app.upload.base-dir}") private String baseDir;
 	@TempDir Path scratch;
 	private final List<Path> writtenFiles = new ArrayList<>();
@@ -133,6 +145,55 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	}
 
 	// ------------------------------------------------------------------
+	private static byte[] exact5MbWebp() {
+		int target = (int) MAX_IMAGE_BYTES;
+		byte[] base = EXTENDED_WEBP;
+		int needed = target - base.length;
+		int chunkSize = needed - 8;
+		byte[] result = new byte[target];
+		System.arraycopy(base, 0, result, 0, base.length);
+		int riffSize = target - 8;
+		for (int i = 0; i < 4; i++) {
+			result[4 + i] = (byte) (riffSize >>> (8 * i));
+		}
+		int offset = base.length;
+		result[offset] = 'E';
+		result[offset + 1] = 'X';
+		result[offset + 2] = 'I';
+		result[offset + 3] = 'F';
+		for (int i = 0; i < 4; i++) {
+			result[offset + 4 + i] = (byte) (chunkSize >>> (8 * i));
+		}
+		return result;
+	}
+
+	private static byte[] genuineZipPaddedTo(int size) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		byte[] payload = new byte[size - 256];
+		java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+		crc.update(payload);
+		try (ZipOutputStream zip = new ZipOutputStream(out)) {
+			ZipEntry entry = new ZipEntry("payload.bin");
+			entry.setMethod(ZipEntry.STORED);
+			entry.setSize(payload.length);
+			entry.setCompressedSize(payload.length);
+			entry.setCrc(crc.getValue());
+			zip.putNextEntry(entry);
+			zip.write(payload);
+			zip.closeEntry();
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
+		return out.toByteArray();
+	}
+
+	static Stream<org.junit.jupiter.params.provider.Arguments> disallowedImageFixtures() {
+		return Stream.of(
+				org.junit.jupiter.params.provider.Arguments.of("gif", new MockMultipartFile("image", "sample.gif", "image/gif", GIF)),
+				org.junit.jupiter.params.provider.Arguments.of("bmp", new MockMultipartFile("image", "sample.bmp", "image/bmp", BMP)),
+				org.junit.jupiter.params.provider.Arguments.of("svg", new MockMultipartFile("image", "vector.svg", "image/svg+xml", SVG)));
+	}
+
 	// WebP malformed variants (derived from genuine verified fixtures)
 	// ------------------------------------------------------------------
 
@@ -287,6 +348,17 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 
 	private Long seedMentorshipForCover() {
 		return auth.mentorship(MENTOR, Status.ACTIVE).mentorship().getId();
+	}
+
+	private Long seedChatRoomForMentor() {
+		MentorShip ms = auth.mentorship(MENTOR, Status.ACTIVE).mentorship();
+		Mentor mentor = auth.mentor(MENTOR);
+		ChatRoom room = chatRooms.saveAndFlush(ChatRoom.builder()
+				.name("Probe Room")
+				.mentorship(ms)
+				.creator(mentor)
+				.build());
+		return room.getId();
 	}
 
 	private long seedPublishedTaskWithEnrollment() {
@@ -826,5 +898,310 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 		writtenFiles.add(Path.of(path));
 		assertThat(Path.of(path)).exists();
 		assertThat(submissions.count()).isEqualTo(rowsBefore + 1);
+	}
+
+	// ------------------------------------------------------------------
+	// EB-87: Image format coverage verdict (GIF, BMP, SVG rejected; 5MB cap; replace safety)
+	// ------------------------------------------------------------------
+
+	@ParameterizedTest(name = "EB-87: cover endpoint rejects disallowed format {0} with 400 ERR_BUSINESS_RULE")
+	@MethodSource("disallowedImageFixtures")
+	void coverEndpoint_rejectsDisallowedFormats(String format, MockMultipartFile upload) throws Exception {
+		long mentorshipId = seedMentorshipForCover();
+		long before = countFiles("mentorship-cover-images");
+
+		MvcResult result = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
+						.file(upload)
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isBadRequest())
+				.andReturn();
+
+		assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+				.isEqualTo("ERR_BUSINESS_RULE");
+		assertThat(countFiles("mentorship-cover-images")).isEqualTo(before);
+		assertThat(tempRemnantLeft("mentorship-cover-images")).isFalse();
+	}
+
+	@ParameterizedTest(name = "EB-87: student avatar rejects disallowed format {0} with 400 ERR_BUSINESS_RULE")
+	@MethodSource("disallowedImageFixtures")
+	void studentAvatar_rejectsDisallowedFormats(String format, MockMultipartFile upload) throws Exception {
+		long before = countFiles("student");
+
+		MvcResult result = mockMvc.perform(multipart("/student/profile/image")
+						.file(upload)
+						.with(request -> { request.setMethod("PATCH"); return request; })
+						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
+				.andExpect(status().isBadRequest())
+				.andReturn();
+
+		assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+				.isEqualTo("ERR_BUSINESS_RULE");
+		assertThat(countFiles("student")).isEqualTo(before);
+		assertThat(tempRemnantLeft("student")).isFalse();
+	}
+
+	@Test
+	@DisplayName("EB-87: chat room endpoint accepts real JPEG/PNG but rejects WebP with 400 ERR_BUSINESS_RULE")
+	void chatRoomEndpoint_verdictOnWebpAndAllowedFormats() throws Exception {
+		long roomId = seedChatRoomForMentor();
+		long before = countFiles("chatroom");
+
+		// 1. WebP is rejected on chatroom surface (restricted to jpg/png per D-27/P1-22)
+		mockMvc.perform(multipart("/api/v1/chat-room/" + roomId + "/image")
+						.file(new MockMultipartFile("image", "photo.webp", "image/webp", EXTENDED_WEBP))
+						.with(request -> { request.setMethod("PUT"); return request; })
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+						.isEqualTo("ERR_BUSINESS_RULE"));
+		assertThat(countFiles("chatroom")).isEqualTo(before);
+
+		// 2. Real JPEG is accepted
+		MvcResult jpegResult = mockMvc.perform(multipart("/api/v1/chat-room/" + roomId + "/image")
+						.file(new MockMultipartFile("image", "photo.jpg", "image/jpeg", JPEG))
+						.with(request -> { request.setMethod("PUT"); return request; })
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isOk())
+				.andReturn();
+		String jpegUrl = JsonPath.read(jpegResult.getResponse().getContentAsString(), "$.apiResponse.imageUrl");
+		assertThat(jpegUrl).startsWith("/uploads/chatroom/").endsWith(".jpg");
+		Path jpegStored = Path.of(baseDir).resolve(jpegUrl.substring("/uploads/".length()));
+		writtenFiles.add(jpegStored);
+		assertThat(Files.readAllBytes(jpegStored)).isEqualTo(JPEG);
+
+		// 3. Real PNG replaces it successfully
+		MvcResult pngResult = mockMvc.perform(multipart("/api/v1/chat-room/" + roomId + "/image")
+						.file(new MockMultipartFile("image", "photo.png", "image/png", PNG))
+						.with(request -> { request.setMethod("PUT"); return request; })
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isOk())
+				.andReturn();
+		String pngUrl = JsonPath.read(pngResult.getResponse().getContentAsString(), "$.apiResponse.imageUrl");
+		assertThat(pngUrl).startsWith("/uploads/chatroom/").endsWith(".png");
+		Path pngStored = Path.of(baseDir).resolve(pngUrl.substring("/uploads/".length()));
+		writtenFiles.add(pngStored);
+		assertThat(Files.readAllBytes(pngStored)).isEqualTo(PNG);
+		assertThat(Files.exists(jpegStored)).as("old chatroom image was replaced and cleaned up").isFalse();
+	}
+
+	@Test
+	@DisplayName("EB-87: replace failure on chat room endpoint preserves old image file and DB reference")
+	void chatRoomEndpoint_replaceFailurePreservesExistingImage() throws Exception {
+		long roomId = seedChatRoomForMentor();
+		MvcResult initial = mockMvc.perform(multipart("/api/v1/chat-room/" + roomId + "/image")
+						.file(new MockMultipartFile("image", "photo.jpg", "image/jpeg", JPEG))
+						.with(request -> { request.setMethod("PUT"); return request; })
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isOk())
+				.andReturn();
+		String originalUrl = JsonPath.read(initial.getResponse().getContentAsString(), "$.apiResponse.imageUrl");
+		Path originalPath = Path.of(baseDir).resolve(originalUrl.substring("/uploads/".length()));
+		writtenFiles.add(originalPath);
+		assertThat(Files.exists(originalPath)).isTrue();
+		long filesBefore = countFiles("chatroom");
+
+		// Attempt replace with disallowed WebP
+		mockMvc.perform(multipart("/api/v1/chat-room/" + roomId + "/image")
+						.file(new MockMultipartFile("image", "photo.webp", "image/webp", EXTENDED_WEBP))
+						.with(request -> { request.setMethod("PUT"); return request; })
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+						.isEqualTo("ERR_BUSINESS_RULE"));
+
+		assertThat(Files.exists(originalPath)).as("original file must remain untouched").isTrue();
+		assertThat(Files.readAllBytes(originalPath)).isEqualTo(JPEG);
+		assertThat(countFiles("chatroom")).isEqualTo(filesBefore);
+		ChatRoom room = chatRooms.findById(roomId).orElseThrow();
+		assertThat(room.getImageUrl()).isEqualTo(originalUrl);
+	}
+
+	@Test
+	@DisplayName("EB-87: replace failure on cover endpoint preserves old cover file and DB reference")
+	void coverEndpoint_replaceFailurePreservesExistingCover() throws Exception {
+		long mentorshipId = seedMentorshipForCover();
+		MvcResult initial = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
+						.file(new MockMultipartFile("image", "photo.jpg", "image/jpeg", JPEG))
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isOk())
+				.andReturn();
+		String originalUrl = JsonPath.read(initial.getResponse().getContentAsString(), "$.apiResponse.Image_URL");
+		Path originalPath = Path.of(baseDir).resolve(originalUrl.substring("/uploads/".length()));
+		writtenFiles.add(originalPath);
+		assertThat(Files.exists(originalPath)).isTrue();
+		long filesBefore = countFiles("mentorship-cover-images");
+
+		// Attempt replace with disallowed GIF
+		mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
+						.file(new MockMultipartFile("image", "photo.gif", "image/gif", GIF))
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+						.isEqualTo("ERR_BUSINESS_RULE"));
+
+		assertThat(Files.exists(originalPath)).as("original cover file must remain on disk").isTrue();
+		assertThat(Files.readAllBytes(originalPath)).isEqualTo(JPEG);
+		assertThat(countFiles("mentorship-cover-images")).isEqualTo(filesBefore);
+		MentorShip ms = mentorshipRepo.findById(mentorshipId).orElseThrow();
+		assertThat(ms.getCoverImageUrl()).isEqualTo(originalUrl);
+	}
+
+	@Test
+	@DisplayName("EB-87: replace failure on student avatar endpoint preserves old avatar and DB reference")
+	void studentAvatar_replaceFailurePreservesExistingAvatar() throws Exception {
+		MvcResult initial = mockMvc.perform(multipart("/student/profile/image")
+						.file(new MockMultipartFile("image", "photo.jpg", "image/jpeg", JPEG))
+						.with(request -> { request.setMethod("PATCH"); return request; })
+						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
+				.andExpect(status().isOk())
+				.andReturn();
+		String originalUrl = JsonPath.read(initial.getResponse().getContentAsString(), "$.apiResponse.profileImageUrl");
+		Path originalPath = Path.of(baseDir).resolve(originalUrl.substring("/uploads/".length()));
+		writtenFiles.add(originalPath);
+		assertThat(Files.exists(originalPath)).isTrue();
+		long filesBefore = countFiles("student");
+
+		// Attempt replace with disallowed BMP
+		mockMvc.perform(multipart("/student/profile/image")
+						.file(new MockMultipartFile("image", "photo.bmp", "image/bmp", BMP))
+						.with(request -> { request.setMethod("PATCH"); return request; })
+						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
+				.andExpect(status().isBadRequest())
+				.andExpect(result -> assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+						.isEqualTo("ERR_BUSINESS_RULE"));
+
+		assertThat(Files.exists(originalPath)).as("original student avatar must remain on disk").isTrue();
+		assertThat(Files.readAllBytes(originalPath)).isEqualTo(JPEG);
+		assertThat(countFiles("student")).isEqualTo(filesBefore);
+		Student student = studentRepo.findByEmail(STUDENT).orElseThrow();
+		assertThat(student.getProfileImageUrl()).isEqualTo(originalUrl);
+	}
+
+	@Test
+	@DisplayName("EB-87: exact 5 MiB (5,242,880 bytes) image is accepted on cover endpoint")
+	void coverEndpoint_acceptsExact5MbImage() throws Exception {
+		long mentorshipId = seedMentorshipForCover();
+		long before = countFiles("mentorship-cover-images");
+
+		byte[] exact5Mb = exact5MbWebp();
+		assertThat(exact5Mb.length).isEqualTo((int) MAX_IMAGE_BYTES);
+
+		MockMultipartFile file = new MockMultipartFile("image", "photo.webp", "image/webp", exact5Mb);
+		MvcResult result = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
+						.file(file)
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		String url = JsonPath.read(result.getResponse().getContentAsString(), "$.apiResponse.Image_URL");
+		assertThat(url).startsWith("/uploads/mentorship-cover-images/").endsWith(".webp");
+		assertThat(countFiles("mentorship-cover-images")).isEqualTo(before + 1);
+
+		Path stored = Path.of(baseDir).resolve(url.substring("/uploads/".length()));
+		writtenFiles.add(stored);
+		assertThat(Files.size(stored)).isEqualTo(MAX_IMAGE_BYTES);
+		assertThat(Files.readAllBytes(stored)).isEqualTo(exact5Mb);
+	}
+
+	@Test
+	@DisplayName("EB-87: 5 MiB + 1 byte (5,242,881 bytes) image is rejected with 400 ERR_BUSINESS_RULE mentioning 5 MB cap")
+	void coverEndpoint_rejects5MbPlusOneByte() throws Exception {
+		long mentorshipId = seedMentorshipForCover();
+		long before = countFiles("mentorship-cover-images");
+
+		byte[] oversized = new byte[(int) MAX_IMAGE_BYTES + 1];
+		MockMultipartFile file = new MockMultipartFile("image", "oversized.jpg", "image/jpeg", oversized);
+
+		MvcResult result = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
+						.file(file)
+						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
+				.andExpect(status().isBadRequest())
+				.andReturn();
+
+		assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+				.isEqualTo("ERR_BUSINESS_RULE");
+		String errorMsg = JsonPath.read(result.getResponse().getContentAsString(), "$.message");
+		assertThat(errorMsg.toLowerCase(java.util.Locale.ROOT)).contains("5").contains("mb");
+
+		assertThat(countFiles("mentorship-cover-images")).isEqualTo(before);
+		assertThat(tempRemnantLeft("mentorship-cover-images")).isFalse();
+	}
+
+	@Test
+	@DisplayName("EB-87: 5 MiB + 1 byte rejected on student avatar endpoint with 400 ERR_BUSINESS_RULE")
+	void studentAvatar_rejects5MbPlusOneByte() throws Exception {
+		long before = countFiles("student");
+
+		byte[] oversized = new byte[(int) MAX_IMAGE_BYTES + 1];
+		MockMultipartFile file = new MockMultipartFile("image", "oversized.jpg", "image/jpeg", oversized);
+
+		MvcResult result = mockMvc.perform(multipart("/student/profile/image")
+						.file(file)
+						.with(request -> { request.setMethod("PATCH"); return request; })
+						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
+				.andExpect(status().isBadRequest())
+				.andReturn();
+
+		assertThat((String) JsonPath.read(result.getResponse().getContentAsString(), "$.errorCode"))
+				.isEqualTo("ERR_BUSINESS_RULE");
+		String errorMsg = JsonPath.read(result.getResponse().getContentAsString(), "$.message");
+		assertThat(errorMsg.toLowerCase(java.util.Locale.ROOT)).contains("5").contains("mb");
+
+		assertThat(countFiles("student")).isEqualTo(before);
+		assertThat(tempRemnantLeft("student")).isFalse();
+	}
+
+	@Test
+	@DisplayName("EB-87: 5 MiB cap strictly enforced across image services (admin, student, mentor, chatroom)")
+	void imageService_enforces5MbCapEverywhere() {
+		byte[] oversized = new byte[(int) MAX_IMAGE_BYTES + 1];
+		MockMultipartFile file = new MockMultipartFile("image", "oversized.jpg", "image/jpeg", oversized);
+
+		for (String folder : List.of("student", "mentor", "admin", "chatroom")) {
+			long before = countFiles(folder);
+			assertThatThrownBy(() -> images.saveImage(folder, 888L, file))
+					.isInstanceOf(globalLogicEx.class)
+					.hasMessageContaining("5 MB");
+			assertThat(countFiles(folder)).isEqualTo(before);
+			assertThat(tempRemnantLeft(folder)).isFalse();
+		}
+	}
+
+	@Test
+	@DisplayName("EB-87: service-level verdict rejects GIF, BMP, and SVG across all image folders")
+	void imageService_rejectsDisallowedFormatsEverywhere() {
+		for (String folder : List.of("student", "mentor", "admin", "chatroom")) {
+			for (Object[] f : new Object[][]{{GIF, "image/gif"}, {BMP, "image/bmp"}, {SVG, "image/svg+xml"}}) {
+				long before = countFiles(folder);
+				assertThatThrownBy(() -> images.saveImage(folder, 888L,
+						new MockMultipartFile("image", "test.img", (String) f[1], (byte[]) f[0])))
+						.isInstanceOf(globalLogicEx.class);
+				assertThat(countFiles(folder)).isEqualTo(before);
+				assertThat(tempRemnantLeft(folder)).isFalse();
+			}
+		}
+	}
+
+	@Test
+	@DisplayName("EB-87: size limit contrast — images capped at 5 MiB, file storage (submissions/attachments) allows up to 10 MiB")
+	void sizeLimitContrast_imageCappedAt5Mb_fileStorageAllowsAbove5Mb() {
+		assertThat(ImageStorageService.MAX_IMAGE_BYTES).isEqualTo(5L * 1024 * 1024);
+		// 11 MiB payload (> 10 MiB file cap) is rejected by FileStorageService
+		assertThatThrownBy(() -> files.saveFile("submissions", "task", 10L, 999L,
+				new MockMultipartFile("file", "oversized.zip", "application/zip", new byte[11 * 1024 * 1024])))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("10MB");
+
+		byte[] sixMbZip = genuineZipPaddedTo(6 * 1024 * 1024);
+
+		String storedFile = files.saveFile("submissions", "task", 10L, 999L,
+				new MockMultipartFile("file", "valid-6mb.zip", "application/zip", sixMbZip));
+		writtenFiles.add(Path.of(storedFile));
+		assertThat(Path.of(storedFile)).exists();
+
+		assertThatThrownBy(() -> images.saveImage("student", 999L,
+				new MockMultipartFile("image", "photo.jpg", "image/jpeg", new byte[6 * 1024 * 1024])))
+				.isInstanceOf(globalLogicEx.class)
+				.hasMessageContaining("5 MB");
 	}
 }
