@@ -187,3 +187,10 @@
 ### D-28 — Payment gateway (Stripe) *(decided 2026-11-02, user-approved)*
 - **Question:** Adopt a third-party payment gateway for enrollment payments (invoicing/refunds surface exists via `AdminPaymentsController` but no external processor)?
 - **Outcome:** **Stripe adopted.** Addendum **[ADD-06]** = ticket [P4-18] (Jira **EB-108**): server-created Stripe Checkout sessions for enrollment payments + signature-verified, idempotent webhooks (`checkout.session.completed` / `payment_intent.succeeded` + dispute/refund events) mutating the enrollment-payment state; amounts/currency taken **only** from server-side enrollment records, never client input; keys (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) via the P6-03 env store; dev/test mode first, live keys gated to P7 provisioning. Scope intentionally limited to one-time enrollment payments — subscriptions and payout/commission automation are deferred (new ISSUES rows if they surface). Execution lands after sprint 2 (backlog ticket; candidate for Sprint 3+).
+
+### D-29 — Zoom Basic plan & integration constraints *(decided 2026-11-02, user-approved)*
+- **Question:** How to reconcile Zoom integration (EB-66 / P4-17) with the free/Basic plan constraints (40-minute meeting limit, 100 participants) and zero additional payment at current time?
+- **Outcome:** **Basic plan accepted temporarily.** Server-to-Server OAuth app credentials (ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET) provisioned via [ADD-05] / EB-85. Architecture:
+  1. Meetings created via API are hard-capped at 40 minutes (pp.zoom.max-meeting-minutes: 40), with a warning logged if higher duration is requested.
+  2. Legacy Jitsi room link generation is retained as a zero-cost fallback when pp.zoom.enabled=false.
+  3. When upgraded in the future, only pp.zoom.* properties change with zero code refactoring required.

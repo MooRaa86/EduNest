@@ -15,5 +15,7 @@ public class SessionResponseDto {
     private LocalDateTime sessionStartDate;
     private SessionStatus sessionStatus;
     private String meetingUrl;
+    private String hostUrl;
+    private Long zoomMeetingId;
 
 }

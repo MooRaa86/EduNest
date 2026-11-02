@@ -16,6 +16,8 @@ import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResu
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.config.integrations.ZoomProperties;
+import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingClient;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.security.SecurityService;
@@ -75,10 +77,14 @@ class LiveSessionAttendanceMathTest {
         notificationService = mock(NotificationService.class);
         securityService = mock(SecurityService.class);
 
+        ZoomMeetingClient zoomMeetingClient = mock(ZoomMeetingClient.class);
+        ZoomProperties zoomProperties = new ZoomProperties();
+
         service = new LiveSessionServiceImp(
                 weekRepository, liveSessionRepository, enrollmentRepository,
                 studentRepository, attendanceRepository, sessionAttendanceResultRepository,
-                jitsiService, totalPointsService, notificationService, securityService);
+                jitsiService, totalPointsService, notificationService, securityService,
+                zoomMeetingClient, zoomProperties);
     }
 
     // ------------------------------------------------------------------

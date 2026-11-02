@@ -36,7 +36,16 @@ public class Session extends BaseEntity {
 
     private LocalDateTime actualEndTime;
 
+    /** Participant-facing join URL (Zoom join_url or Jitsi room link). */
+    @Column(length = 2048)
     private String meetingUrl;
+
+    /** Host-facing start URL (Zoom start_url containing ZAK host token). */
+    @Column(length = 2048)
+    private String hostUrl;
+
+    /** Zoom numeric meeting ID when created via Zoom API (nullable for Jitsi legacy sessions). */
+    private Long zoomMeetingId;
 
     @Enumerated(EnumType.STRING)
     private SessionStatus status = SessionStatus.SCHEDULED;

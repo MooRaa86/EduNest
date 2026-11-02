@@ -232,14 +232,15 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** contract suites updated accordingly (if implemented).
 
 <a id="p4-17"></a>
-### P4-17 — Jitsi JWT config hook (conditional)
+### P4-17 — Zoom meeting integration (EB-66 / replaces Jitsi per D-16 & D-29)
 
-**Priority:** P2 — LS-01's real fix is an *infrastructure decision* (D-16). This task only lands the *hook* if self-hosted JWT mode is chosen: optional JWT config wiring for room tokens.  **Size:** S
-**Owner role:** Backend Developer   **Reviewers:** DevOps
-**Issues:** LS-01 (D-16 conditional)   **Domain:** live-sessions / integrations
-**Components:** `JitsiService` (optional-JWT properties), room creation config switch
+**Priority:** P2 — Real Zoom Server-to-Server OAuth integration replaces public Jitsi links. Basic plan 40-min cap enforced per D-29; Jitsi retained as fallback when `app.zoom.enabled=false`.  **Size:** M
+**Owner role:** Backend Developer   **Reviewers:** Omar Medhat
+**Issues:** LS-01 (D-16 & D-29)   **Domain:** live-sessions / integrations
+**Components:** `HttpZoomMeetingClient`, `DisabledZoomMeetingClient`, `ZoomProperties`, `LiveSessionServiceImp`
 
-**Evidence:** ISSUES LS-01; [`mds/integrations/external-services.md`](../../../mds/integrations/external-services.md).
-**Expected outcome:** either docs+claims updated (default: stay public rooms) or JWT-mode feature flag wired (Undecided at decision — see D-16); 15-liner current service remains functional either way.
-**Depends on:** D-16.  **Blocks:** —
-**Tests:** config-mode probe if implemented.
+**Evidence:** ISSUES LS-01; decisions D-16 and D-29.
+**Expected outcome:** Real Zoom meeting client created with S2S OAuth credentials; session creation generates Zoom meeting URL and stores zoomMeetingId; 40-minute cap enforced; Jitsi fallback kept for disabled mode.
+**Depends on:** D-16, D-29, EB-85.  **Blocks:** P4-08 (EB-57).
+**Tests:** `HttpZoomMeetingClientTest`, `ZoomSessionLifecycleIntegrationTest`, `ZoomGroundworkTest`, `ZoomPropertiesBindingTest`.
+**Status:** ✅ **Verified** (2026-11-02) — `HttpZoomMeetingClient` implemented with S2S OAuth token caching & 60s skew refresh; meeting create with 40-min duration clamp; `Session` entity gains `zoomMeetingId`; tested and verified 100% green.
