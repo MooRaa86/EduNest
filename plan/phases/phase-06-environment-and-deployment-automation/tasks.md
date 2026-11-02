@@ -11,6 +11,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Components:** `ops/environments.md` (dev/test/staging/prod matrix), infra inventory doc, stakeholder approval record
 
 **Context:** Today's reality: local Dockerfile, no compose, no infra (audit DEP). The matrix defines each environment's: host, MySQL provisioning + credentials flow, TLS/domain, backups target, upload storage, and who owns what.
+**Amendment (2026-11-02, D-22):** hosting = **Vercel** with the app as a dockerized **GHCR** image (per [Vercel's Dockerfile blog](https://vercel.com/blog/dockerfile-on-vercel)). The matrix records Vercel project/env matrix, GHCR pull + registry auth, and Supabase/SMTP/Zoom env injection instead of VM provisioning; WS/STOMP + background scheduler behavior under Vercel must be verified here or flagged (risk **R14**).
 **Evidence:** DECISIONS D-22 block; [`mds/deployment/environment-configuration.md`](../../../mds/deployment/environment-configuration.md).
 **Expected outcome:** a ratification-ready matrix + chosen infra shape recorded against D-22 (recommended default: single VM + Docker Compose + off-site DB dumps) with explicit "revisit plan" triggers.
 **Approach:** draft → review → PO approval meeting; record decision note in DECISIONS file (status flip) with matrix link.
@@ -63,6 +64,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Evidence:** ISSUES DEP-01; P2-07 workflow foundation; D-22 matrix.
 **Expected outcome:** PR to `main` → checks; merge to `main` → image push with SHA tag; deploy-staging job runs migrations then new image (image-name/tag recorded in staging metadata file); prod deploy = same workflow invoked manually with approval gate (GitHub Environment protection) — *executed* at P7-06.
 **Approach:** reuse P2-07 workflow (extend, don't fork); artifact traceability via tag ↔ commit ↔ run links; failure path: deploy job aborts on any required-check red; migration step ordering documented (runbook consumes).
+**Amendment (2026-11-02, D-22):** registry = **GHCR** (confirmed acceptable); deploy target = **Vercel** — build job pushes the tested image to GHCR, deploy jobs trigger Vercel's deploy of that image (staging project on merge, prod project behind the manual gate); no VM deploy scripts.
 **Rollback consideration:** redeploy = previous tag re-run (tags immutable); documented at P6-09 runbook.
 **Depends on:** P2-07, P3-01 (migrations), P6-02 (target host).  **Blocks:** P7-01/06.
 **Tests:** pipeline green run + a deliberately-failing check blocks deploy (fail-path evidence).
@@ -83,6 +85,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Depends on:** P5-01, P6-02.  **Blocks:** P7-01.
 **Tests:** image inspection (no devtools, non-root uid); volume-persistence IT documented w/ capture.
 **Docs:** deployment/MDS.md; ISSUE-MAPPING FILE-07/DEP-03.
+**Amendment (2026-11-02, D-22):** uploads **volume is not applicable** on Vercel — object storage ([ADD-03]/D-25 outcome, Supabase Storage) is the only file persistence; hardening scope (non-root user, healthcheck, minimal expose, `.dockerignore`, devtools-absence A-9) unchanged and verified against the final GHCR/Vercel image.
 
 <a id="p6-06"></a>
 ### P6-06 — Repo hygiene + uploads history purge
