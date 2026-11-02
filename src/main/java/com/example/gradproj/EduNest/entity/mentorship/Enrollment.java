@@ -32,7 +32,9 @@ public class Enrollment extends BaseEntity {
 
     private Double price;
 
-    @Column(columnDefinition = "double default 0.0")
+    // [EB-81] PG compatibility: bare `double` is not a PostgreSQL type; `double precision`
+    // is portable across PostgreSQL / MySQL / H2 with identical type and default semantics.
+    @Column(columnDefinition = "double precision default 0.0")
     private Double platformProfit = 0.0;
 
     @Column(name = "joined_at", nullable = false)
