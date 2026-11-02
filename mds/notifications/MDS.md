@@ -29,11 +29,11 @@ Admin broadcast: **none** — no `/topic` broadcast exists; admin notifications 
 - Class-level `@Transactional` on the service; `convertAndSendToUser` executes **before the caller's commit** → rollback could leave already-delivered "ghost" notifications (inconsistent with `AdminBadgeService`, which defers the email post-commit but still pushes STOMP pre-commit).
 - Fan-out (`sendToMentorshipStudents`) is `@Async` — a single shared notification row + `saveAll` relations, then per-student pushes.
 
-### 2.4 Contact-admin reply EMAIL — template merge without escaping (SEL-15)
+### 2.4 Contact-admin reply EMAIL — template merge (SEL-15 — FIXED, EB-31 / P1-24)
 
-- `ContactMessageService#sendAdminReply` merges `{{name}}` and `{{reply}}` into `templates/emails/admin-reply.html` with plain `String.replace` — **no escaping** (contrast the badge flow: `AdminBadgeService:163-170` runs every merged value through `HtmlUtils.htmlEscape`).
-- `{{name}}` is **attacker-controlled**: `POST /api/v1/contact/save-message` is PUBLIC (PublicRoutesPolicy) and `ContactMessageRequestDto.name` validates `@NotBlank` only; the first ADMIN reply (ADMIN-only matrix row `/api/v1/contact/message/**`) sends the attacker's payload as live HTML to the visitor's mailbox.
-- **V-02 POC (P0-04/EB-2) CONFIRMED 2026-11-01** — prod-chain probes `ContactReplyInjectionPocTest` (2) capture the finished email at the `EmailService` boundary (test-profile sentinel inbox): hostile `<img src=x onerror=...>` and `<script>...` survive **verbatim** — zero `&lt;` escaping anywhere on the path. Fix scheduled as P1-24 (EB-31): escape at merge time (spec mandates fixing regardless of template reuse).
+- **FIXED 2026-11-02 (EB-31 / P1-24):** `ContactMessageService#sendAdminReply` now runs **both** merge slots through `HtmlUtils.htmlEscape` at merge time — the same pattern as the badge flow (`AdminBadgeService#sendBadgeAwardEmail`). Hostile `{{name}}` / `{{reply}}` values render inert in the HTML email.
+- History: `{{name}}` was **attacker-controlled** (`POST /api/v1/contact/save-message` is PUBLIC per PublicRoutesPolicy; `ContactMessageRequestDto.name` validates `@NotBlank` only), and both slots were merged with plain `String.replace` — the first ADMIN reply sent the payload as live HTML to the visitor's mailbox.
+- **V-02 POC (P0-04/EB-2) CONFIRMED 2026-11-01** — prod-chain probes `ContactReplyInjectionPocTest` (2) captured the finished email at the `EmailService` boundary (sentinel inbox): hostile `<img src=x onerror=...>` and `<script>...` survived **verbatim**. The same probes were **flipped by EB-31** to the escaped contract: payload now arrives `&lt;img ...&gt;` / `&lt;script&gt;` and never verbatim.
 
 ## 3. Interfaces & Contracts
 
@@ -53,7 +53,7 @@ Admin: `/api/v1/admin/notifications` — list/delete/`DELETE /delete-all`/`POST 
 
 ## 5. Testing
 
-First probes landed 2026-11-01 (EB-2 / P0-04): `ContactReplyInjectionPocTest` (2, prod-chain, `@Tag("critical")`) covers the contact-admin **reply email** path — public save → ADMIN reply → real `admin-reply.html` merge, captured at the `EmailService` boundary; SEL-15 verdict CONFIRMED (raw `{{name}}`/`{{reply}}` merge).
+First probes landed 2026-11-01 (EB-2 / P0-04): `ContactReplyInjectionPocTest` (2, prod-chain, `@Tag("critical")`) covers the contact-admin **reply email** path — public save → ADMIN reply → real `admin-reply.html` merge, captured at the `EmailService` boundary; SEL-15 verdict CONFIRMED (raw `{{name}}`/`{{reply}}` merge). **Flipped 2026-11-02 (EB-31 / P1-24):** the two probes now assert the escaped contract — payload arrives `&lt;`-escaped and never verbatim.
 
 Still zero tests for the in-app notification core. Recommended: unread math including mark-one/mark-all interplay; ownership checks on mark/delete; fan-out rollback ghosting behavior (post-fix).
 
