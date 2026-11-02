@@ -121,6 +121,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Depends on:** D-15.  **Blocks:** —
 **Tests:** IT with moved clock (mock bean): snapshots honored; scheduler closes; math unchanged (P2-02 suite asserts).
 **Docs:** live-sessions/MDS.md; ISSUE-MAPPING rows.
+**Status:** ✅ **Verified — EB-57** (2026-11-03) — Implemented `LiveSessionProperties` with dormant attendance strategy pattern (`SnapshotGridAttendancePolicy` + `DefaultLivePointsAwarder` when enforced=true; `NoEnforcementAttendancePolicy` + `DormantPointsAwarder` active default per D-15). Created `LiveSessionSweepService` with `@Scheduled` sweep every 5 minutes (adjusted per Omar's directive to optimize DB load), 10-minute grace window, and 40-minute duration cap (D-29 Basic plan). Added `CANCELLED` status to `SessionStatus`, transactional and batch persistence (`saveAll`) to `recordSnapshot`, lifecycle guards against cancelled sessions, and floating clock tests (`LiveSessionHousekeepingIntegrationTest`). SpotBugs passed with 0 warnings.
 
 <a id="p4-09"></a>
 ### P4-09 — API ergonomics: pagination caps & params

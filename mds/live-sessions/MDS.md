@@ -9,7 +9,7 @@ Mentors schedule sessions inside curriculum weeks; each session is a **public Ji
 ## 2. Current Implementation
 
 ### 2.1 Entities & enums
-- `entity/livesession/Session` (table `sessions`, index `idx_sessions_week_id`): `title`, `scheduledAt`, `actualStartTime`, `actualEndTime`, `meetingUrl`, `status` (`enums/livesession/SessionStatus`: `SCHEDULED, LIVE, ENDED`), `week` FK; `@OneToMany` `attendances`, `attendanceResults` (cascade ALL).
+- `entity/livesession/Session` (table `sessions`, index `idx_sessions_week_id`): `title`, `scheduledAt`, `actualStartTime`, `actualEndTime`, `meetingUrl`, `status` (`enums/livesession/SessionStatus`: `SCHEDULED, LIVE, ENDED, CANCELLED`), `week` FK; `@OneToMany` `attendances`, `attendanceResults` (cascade ALL).
 - `entity/livesession/SessionAttendance` (session_id, student_id, `snapshotTime`) — raw snapshots; **no unique constraint** on (session, student) — repeats by design.
 - `entity/livesession/SessionAttendanceResult` (`attended` boolean) — one final row per (session, student) written at end.
 - No status enum on lectures/others; sessions are the only content with a runtime state machine (manual).
@@ -86,11 +86,35 @@ Zero tests. Recommended: lifecycle transitions matrix; attendance math (snapshot
 
 [../integrations/MDS.md](../integrations/MDS.md) (external-settlement detail) · [../learning-content/my-learning-and-achievements.md](../learning-content/my-learning-and-achievements.md) (points) · [../ISSUES.md](../ISSUES.md)
 
-## 10. Decided platform change (2026-10-25) - planning note (NOT yet implemented)
+## 10. Implemented Platform Change — Zoom Integration (EB-66 / LS-01)
 
-Sections 1-8 describe the **current** implementation (Jitsi, LS-01). The decided target:
+- **Zoom replaces Jitsi** as primary live session platform (decisions D-16 & D-29).
+- Implemented via `HttpZoomMeetingClient` with Server-to-Server (S2S) OAuth token caching and 60-second expiration buffer.
+- Host URL vs Join URL separation: Mentors receive Zoom `start_url` with host ZAK credentials (`hostUrl`); students receive only sanitized `meetingUrl` (`join_url`).
+- 40-minute duration cap enforced on meeting creation per D-29 Basic plan constraints.
+- Jitsi retained as fallback when `app.zoom.enabled=false`.
 
-- **Zoom replaces Jitsi** for live sessions/meetings (decision D-16, recorded in `plan/DECISIONS-REQUIRED.md`).
-- Planned mechanics: meetings created via the Zoom API (Server-to-Server OAuth app recommended); the backend stores meeting id/passcode; participant access control leverages Zoom-native require-authentication/passcode instead of hand-distributed public `meet.jit.si` URLs - narrowing the LS-01 exposure at the source.
-- Task mapping: `P4-17` re-scoped to Zoom integration (Jira EB-66); provisioning addendum [ADD-05] (Jira EB-85); attendance math (2.4 / LS-02..05) unchanged.
-- Until [ADD-05]/P4-17 land, the Jitsi reality above remains the operating truth.
+## 11. Auto-Lifecycle Housekeeping & Dormant Attendance (EB-57 / LS-02, LS-03, LS-05, D-15)
+
+### 11.1 Auto-Close Scheduled Sweep
+- **Service:** `LiveSessionSweepService` annotated with `@Scheduled(fixedDelayString = "${app.livesession.auto-close.sweep-rate-ms:300000}")`.
+- **Sweep Rate:** Every 5 minutes (`300000ms`, user-adjusted to prevent DB overhead).
+- **Grace Window:** 10 minutes (`grace-minutes: 10`) after the 40-minute max duration (`max-duration-minutes: 40`).
+- **Expired LIVE sessions:** Any session in `LIVE` status where `now > actualStartTime + 50m` is transitioned to `ENDED`, setting `actualEndTime = now`, and signaling Zoom cloud via `endMeeting`.
+- **Abandoned SCHEDULED sessions:** Any session in `SCHEDULED` status where `now > scheduledAt + 50m` without starting is transitioned to `CANCELLED`, removing the meeting from Zoom cloud via `deleteMeeting`.
+- **Audience Guards:** Attempts to start, join, or update a `CANCELLED` session are rejected with clear error messages.
+- **Snapshot Batching & Transactions:** `recordSnapshot` and `startLiveSession` are protected by `@Transactional` (LS-05); attendee snapshots are persisted using `attendanceRepository.saveAll(...)` (LS-04).
+
+### 11.2 Dormant Attendance Strategy (Decision D-15)
+To prevent Zoom's 40-minute cloud truncation from corrupting student points under the Basic plan, attendance enforcement and gamification point awarding are **suspended/dormant** in the active production flow, while preserving the full snapshot grid strategy:
+
+| Component | Dormant State (`enforced=false`, default) | Active State (`enforced=true`) |
+| :--- | :--- | :--- |
+| **Attendance Policy** | `NoEnforcementAttendancePolicy` (logs notice, records no absence verdicts) | `SnapshotGridAttendancePolicy` (75% threshold, 5-min snapshot grid) |
+| **Points Awarder** | `DormantPointsAwarder` (no-op, zero leaderboard or gamification writes) | `DefaultLivePointsAwarder` (+5 points via `TotalPointsService`, sends notifications) |
+
+### 11.3 Activation Procedure (Zero Refactoring Required)
+When the organization upgrades the Zoom account or decides to enable attendance scoring:
+1. Set `APP_LIVESESSION_ATTENDANCE_ENFORCED=true` (or `app.livesession.attendance.enforced=true`).
+2. Spring Boot automatically switches bean injection from the dormant policies to `SnapshotGridAttendancePolicy` and `DefaultLivePointsAwarder`.
+3. All subsequent session completions will automatically calculate attendance percentages, persist `SessionAttendanceResult` rows, award +5 bonus points, and notify students.

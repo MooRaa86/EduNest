@@ -124,6 +124,10 @@
 ### D-15 — Live-session rules
 - **Question:** Approve attendance math constants (verify ≥75%→pass, snapshot 5-min grid, +5 bonus, absence→0) and auto-close scheduler (LS-02/03)?
 - **Default:** constants into config properties (values unchanged), scheduler closes ENDED-state after actualEnd + grace. Decide-by: before P4-08.
+- **Outcome (decided 2026-11-02 by Omar Medhat, user-approved):**
+  - **Auto-close sweep:** ACTIVATED via `LiveSessionSweepService` with `@Scheduled` sweep interval set to **every 5 minutes** (`app.livesession.auto-close.sweep-rate-ms: 300000`, adjusted from 60s per Omar's directive to optimize DB load). Enforces a 10-minute grace window (`grace-minutes: 10`) after the 40-minute duration cap (`max-duration-minutes: 40`, D-29 Basic plan). Automatically transitions expired LIVE sessions to `ENDED` (signaling Zoom to end the meeting) and stale un-started SCHEDULED sessions to `CANCELLED` (deleting Zoom meeting).
+  - **Attendance & Gamification:** Enforcement is **DORMANT** by default (`app.livesession.attendance.enforced=false`). Strategy Pattern implemented (`SnapshotGridAttendancePolicy` and `DefaultLivePointsAwarder` compiled and ready for activation; `NoEnforcementAttendancePolicy` and `DormantPointsAwarder` active by default). When dormant, session end records no absence verdicts, marks no absences, and executes zero gamification/leaderboard writes. Flipping `app.livesession.attendance.enforced=true` activates the full snapshot grid (75% threshold, 5-min grid, +5 bonus) without code changes.
+  - **Transactional Boundaries:** `@Transactional` added to `startLiveSession` and `recordSnapshot` (LS-05); snapshot persistence batched via `saveAll` (LS-04).
 
 ### D-16 — Live-video platform
 - **Question:** Keep public `meet.jit.si` rooms (update docs), self-host Jitsi with JWT-gated rooms, or evaluate Agora SDK (dependency present but **unused** — planning-phase discovery, see [RISKS §6](RISKS-AND-DEPENDENCIES.md#6-planning-assumptions-register))?
