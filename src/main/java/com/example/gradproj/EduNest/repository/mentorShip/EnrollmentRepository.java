@@ -398,16 +398,16 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
 
     @Query(value = """
         SELECT
-            (SELECT GROUP_CONCAT(s.id) FROM sessions s
+            (SELECT string_agg(CAST(s.id AS text), ',') FROM sessions s
              JOIN session_attendance_result sar ON sar.session_id = s.id
              WHERE s.week_id = :weekId AND sar.student_id = :studentId AND sar.attended = true) as attendedSessions,
-            (SELECT GROUP_CONCAT(ts.task_id) FROM task_submission ts
+            (SELECT string_agg(CAST(ts.task_id AS text), ',') FROM task_submission ts
              JOIN tasks t ON ts.task_id = t.id
              WHERE t.week_id = :weekId AND ts.student_id = :studentId) as submittedTasks,
-            (SELECT GROUP_CONCAT(qs.quiz_id) FROM quiz_submission qs
+            (SELECT string_agg(CAST(qs.quiz_id AS text), ',') FROM quiz_submission qs
              JOIN quiz q ON qs.quiz_id = q.id
              WHERE q.week_id = :weekId AND qs.student_id = :studentId) as submittedQuizzes,
-            (SELECT GROUP_CONCAT(ps.project_id) FROM project_submission ps
+            (SELECT string_agg(CAST(ps.project_id AS text), ',') FROM project_submission ps
              JOIN projects p ON ps.project_id = p.id
              WHERE p.week_id = :weekId AND ps.student_id = :studentId) as submittedProjects
         """, nativeQuery = true)
