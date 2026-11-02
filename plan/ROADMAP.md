@@ -132,3 +132,12 @@ Phase 1 carries the largest volume (27 tasks: ~4L, ~10M, ~9S, ~4XS-equivalent) a
 
 **Critical-path amendment:** readiness phase 6 is no longer decision-gated, but a new fork precedes `P3-01`:
 **[ADD-01]** adopt Supabase Postgres → **[ADD-02]** MySQL→Postgres migration → **P3-01** (Flyway baseline must now be captured on Postgres). Risk **R13** added for this chain. Task-level execution is tracked in Jira project **EB** (EB-1..EB-84; addenda EB-81..EB-84).
+
+### 2026-11-02 — deployment shape & payments amendment (user-approved)
+
+| Decision | Outcome | Effect on the roadmap |
+|---|---|---|
+| D-22 *(amendment)* | App container hosted on **Vercel**, image built/pushed to **GHCR** from GitHub Actions ([Vercel Dockerfile approach](https://vercel.com/blog/dockerfile-on-vercel)) | P6-02/04/05 re-scoped (Vercel project + GHCR pipeline; no VM provisioning; uploads via object storage only); risk **R14** added — WS/scheduler platform constraints validated before phase-06 exit |
+| D-28 | Payment gateway = **Stripe** (checkout + verified webhooks, enrollment payments only) | Addendum **[ADD-06]** created (Jira **EB-108**, task P4-18) — backlog ticket, lands post-sprint-2 |
+
+**Sprint/backlog amendment (2026-11-02):** the full phase-7 task family is ticketed — P7-01..08 → **EB-92..EB-99**, P8-01..08 → **EB-100..EB-107** — all labeled `backlog` (unassigned; candidate for Sprint 3+). Phase 7/8 remain gated on external provisioning (Vercel/projects, DNS/TLS, SMTP), not on developer hours.

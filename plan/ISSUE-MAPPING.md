@@ -10,7 +10,11 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 > - **D-22 decided → Supabase Postgres:** assumption **A-4 (MySQL 8) superseded**; addenda **[ADD-01]** (EB-81) and **[ADD-02]** (EB-82) precede `P3-01`; the Flyway baseline must be captured on Postgres. All DB-family rows keep their logical scope (constraints/transactions/soft-delete unchanged), only the migration medium changed.
 > - **D-14 decided → fix approved:** `WS-01` disposition unblocked; `P1-12` proceeds (Jira EB-19).
 > - **D-16 decided → Zoom replaces Jitsi:** `LS-01` disposition changes from "keep public + docs truth" to platform swap; `P4-17` re-scoped to Zoom integration (Jira EB-66) with addendum **[ADD-05]** (EB-85) provisioning the Zoom app. DOC-01 claims are corrected toward Zoom at P5-05 (EB-71).
+> - **Deployment shape amended 2026-11-02 — D-22:** app = dockerized image pushed to **GHCR** from GitHub Actions, hosted on **Vercel** (per [Vercel's Dockerfile approach](https://vercel.com/blog/dockerfile-on-vercel)); P6-02/04/05 re-scoped, risk **R14** added (WS/scheduler platform constraints validated before phase-06 exit).
+> - **D-28 decided 2026-11-02 → Stripe payments:** addendum **[ADD-06]** (Jira **EB-108**, task P4-18) — server-created checkout + signature-verified idempotent webhooks on the enrollment-payment surface; keys via env store; backlog ticket (post-sprint-2).
+> - **Phase-7/8 ticketed 2026-11-02:** P7-01..08 → **EB-92..99**, P8-01..08 → **EB-100..107** — all labeled `backlog`, unassigned (candidate for Sprint 3+). Sprint-2 mapping extended: EB-88/89/90 added to `sprint-2`.
 > Row-level `Status` cells below stay `Planned` until implementation + verification evidence exists (sync rule, TEAM-WORKFLOW §6).
+> - **Sprint mapping note (2026-11-02):** Phase-1/2 rows are all resolved and delivered (Jira sprint-1, Done). Every remaining **P3/P4/P5/P6 row below is ticketed in Jira sprint-2** — full coverage: P3-01..07 (EB-43..49), P4-01..17 (EB-50..66), P5-01..05 (EB-67..71), P6-01..09 (EB-72..80), addenda ADD-01..05 (EB-81..85). Update the row you close, same PR as the code.
 
 | Issue | Sev | Task(s) | Phase | Domain | Disposition | Status |
 |---|---|---|---|---|---|---|

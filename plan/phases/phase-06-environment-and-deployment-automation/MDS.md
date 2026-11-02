@@ -1,5 +1,7 @@
 # Phase 06 — Environments & Deployment Automation
 
+> **Deployment shape (amended 2026-11-02, D-22):** the app ships as a Docker image pushed to **GHCR** from GitHub Actions and is deployed/hosted on **Vercel** per [Vercel's Dockerfile support](https://vercel.com/blog/dockerfile-on-vercel); secrets arrive env-injected (Supabase DB, SMTP, Zoom; Stripe keys after [ADD-06]/D-28). WS/STOMP and background-scheduler behavior must be validated on the deployed staging shape (RISKS **R14**) before the phase exit.
+
 ## 1. Objective
 
 From "a Dockerfile on one laptop" to **repeatable, gated deployments**: decision D-22 picks the hosting shape; staging exists, mirrors prod closely; CI/CD extends the P2-07 workflow to build/push/deploy with tag traceability; the container carries persistent storage; secrets never sit in git.
