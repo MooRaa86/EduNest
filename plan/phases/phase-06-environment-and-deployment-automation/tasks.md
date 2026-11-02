@@ -12,6 +12,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 
 **Context:** Today's reality: local Dockerfile, no compose, no infra (audit DEP). The matrix defines each environment's: host, MySQL provisioning + credentials flow, TLS/domain, backups target, upload storage, and who owns what.
 **Amendment (2026-11-02, D-22):** hosting = **Vercel** with the app as a dockerized **GHCR** image (per [Vercel's Dockerfile blog](https://vercel.com/blog/dockerfile-on-vercel)). The matrix records Vercel project/env matrix, GHCR pull + registry auth, and Supabase/SMTP/Zoom env injection instead of VM provisioning; WS/STOMP + background scheduler behavior under Vercel must be verified here or flagged (risk **R14**).
+**Second amendment (2026-11-02, D-22 — team decision):** Vercel ruled a mismatch for WS + `@Scheduled` → **host = Railway** (fallback Render); matrix records a Railway project (Dockerfile deploy from GitHub or GHCR registry), env injection unchanged. Vercel row kept as the documented fallback. R14 validation task stays (Railway WS/scheduler behavior under staging load).
 **Evidence:** DECISIONS D-22 block; [`mds/deployment/environment-configuration.md`](../../../mds/deployment/environment-configuration.md).
 **Expected outcome:** a ratification-ready matrix + chosen infra shape recorded against D-22 (recommended default: single VM + Docker Compose + off-site DB dumps) with explicit "revisit plan" triggers.
 **Approach:** draft → review → PO approval meeting; record decision note in DECISIONS file (status flip) with matrix link.
@@ -65,6 +66,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Expected outcome:** PR to `main` → checks; merge to `main` → image push with SHA tag; deploy-staging job runs migrations then new image (image-name/tag recorded in staging metadata file); prod deploy = same workflow invoked manually with approval gate (GitHub Environment protection) — *executed* at P7-06.
 **Approach:** reuse P2-07 workflow (extend, don't fork); artifact traceability via tag ↔ commit ↔ run links; failure path: deploy job aborts on any required-check red; migration step ordering documented (runbook consumes).
 **Amendment (2026-11-02, D-22):** registry = **GHCR** (confirmed acceptable); deploy target = **Vercel** — build job pushes the tested image to GHCR, deploy jobs trigger Vercel's deploy of that image (staging project on merge, prod project behind the manual gate); no VM deploy scripts.
+**Second amendment (2026-11-02, D-22 — team decision):** deploy target = **Railway** (fallback Render) — Railway deploys the long-lived container (repo-connected Dockerfile or the same GHCR image); staging on merge, prod behind the manual gate; **the Vercel deploy-job definition above stays valid as the recorded fallback** since both consume the same GHCR image.
 **Rollback consideration:** redeploy = previous tag re-run (tags immutable); documented at P6-09 runbook.
 **Depends on:** P2-07, P3-01 (migrations), P6-02 (target host).  **Blocks:** P7-01/06.
 **Tests:** pipeline green run + a deliberately-failing check blocks deploy (fail-path evidence).
@@ -86,6 +88,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** image inspection (no devtools, non-root uid); volume-persistence IT documented w/ capture.
 **Docs:** deployment/MDS.md; ISSUE-MAPPING FILE-07/DEP-03.
 **Amendment (2026-11-02, D-22):** uploads **volume is not applicable** on Vercel — object storage ([ADD-03]/D-25 outcome, Supabase Storage) is the only file persistence; hardening scope (non-root user, healthcheck, minimal expose, `.dockerignore`, devtools-absence A-9) unchanged and verified against the final GHCR/Vercel image.
+**Second amendment (2026-11-02, D-22 — team decision):** Railway supports persistent volumes, so the volume question technically re-opens — but the D-25 outcome (object storage now) is unchanged: uploads stay on Supabase Storage regardless of host. Hardening scope verified against the final GHCR image on Railway (Vercel fallback retains the no-volume note above).
 
 <a id="p6-06"></a>
 ### P6-06 — Repo hygiene + uploads history purge

@@ -140,4 +140,11 @@ Phase 1 carries the largest volume (27 tasks: ~4L, ~10M, ~9S, ~4XS-equivalent) a
 | D-22 *(amendment)* | App container hosted on **Vercel**, image built/pushed to **GHCR** from GitHub Actions ([Vercel Dockerfile approach](https://vercel.com/blog/dockerfile-on-vercel)) | P6-02/04/05 re-scoped (Vercel project + GHCR pipeline; no VM provisioning; uploads via object storage only); risk **R14** added — WS/scheduler platform constraints validated before phase-06 exit |
 | D-28 | Payment gateway = **Stripe** (checkout + verified webhooks, enrollment payments only) | Addendum **[ADD-06]** created (Jira **EB-108**, task P4-18) — backlog ticket, lands post-sprint-2 |
 
-**Sprint/backlog amendment (2026-11-02):** the full phase-7 task family is ticketed — P7-01..08 → **EB-92..EB-99**, P8-01..08 → **EB-100..EB-107** — all labeled `backlog` (unassigned; candidate for Sprint 3+). Phase 7/8 remain gated on external provisioning (Vercel/projects, DNS/TLS, SMTP), not on developer hours.
+### 2026-11-02 — second round (user-approved, team review)
+
+| Decision | Outcome | Effect on the roadmap |
+|---|---|---|
+| D-22 *(second amendment)* | **Vercel → pivoted out; host = Railway** (fallback Render). Reason: R14 confirmed — serverless/container model mismatches STOMP WebSockets + `@Scheduled` tasks. Vercel amendment **retained as documented fallback**, GHCR image path kept either way | P6-02/04 re-scoped to Railway project config; P6-05 volume question re-opens but object storage stands (D-25); R14 re-worded as the launch-shape validation task |
+| D-01 *(override)* | **Refresh tokens + server-side session revocation adopted** (option (a) fully IN; "narrowed" row above superseded) | `P1-27`/SEL-06 disposal = fix; executing ticket **EB-91** pulled into **Sprint 2**; `/login-api/refresh` endpoint + short-lived access tokens; FE contract impact re-opens with FE liaison |
+
+**Sprint/backlog amendment (2026-11-02):** the full phase-7 task family is ticketed — P7-01..08 → **EB-92..EB-99**, P8-01..08 → **EB-100..EB-107** — all labeled `backlog` (unassigned; candidate for Sprint 3+). Phase 7/8 remain gated on external provisioning (Vercel Railway/projects, DNS/TLS, SMTP), not on developer hours.
