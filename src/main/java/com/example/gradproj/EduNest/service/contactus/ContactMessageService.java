@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 
@@ -110,9 +111,14 @@ public class ContactMessageService {
 
         String template = emailService.getEmailTemplate("admin-reply.html");
 
+        // P1-24 / EB-31 (SEL-15) — html-escape at merge time, the same pattern
+        // as AdminBadgeService#sendBadgeAwardEmail. {{name}} is fully
+        // attacker-controlled (PUBLIC /save-message, @NotBlank only) and the
+        // reply is admin text; either way it must render INERT in the HTML
+        // email (sendEmail uses setText(body, true) = HTML mode).
         String html = template
-                .replace("{{name}}", message.getName())
-                .replace("{{reply}}", reply);
+                .replace("{{name}}", HtmlUtils.htmlEscape(message.getName()))
+                .replace("{{reply}}", HtmlUtils.htmlEscape(reply));
 
         emailService.sendEmail(
                 message.getEmail(),

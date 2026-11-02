@@ -5,7 +5,7 @@
 | Finding | Issue | Evidence status | Verification task |
 |---|---|---|---|
 | ~~STOMP `String content` binding ambiguity~~ | CHAT-08 | ✅ RESOLVED by EB-1 (2026-10-29): DTO contract shipped — FE must send `{"content": "..."}` objects; raw strings rejected, nothing persists | P0-03 (closed) |
-| Contact-reply HTML injection | SEL-15 | ⚠️ needs runtime POC | P0-04 |
+| Contact-reply HTML injection | SEL-15 | ✅ resolved (V-02 CONFIRMED by P0-04; FIXED — EB-31 / P1-24 html-escape at merge time) | P0-04 |
 | `LIKE '%kw%'` wildcard abuse | MSH-12 | 🔴 CONFIRMED (EB-3, 2026-11-01): anonymous `%`/`_`-only keywords match the full ACTIVE candidate set from the PUBLIC route; `%`/`_` in literal keywords silently widen semantics — sized by result-set effect (H2 in-memory latency not representative) — [V-03 POC notes](../mds/mentorship-flow/explore-and-homepage.md) | P0-05 ✅ done; fix = P4-10 (LIKE `ESCAPE`, Small) |
 | Cover-image filename extension trust | FILE-03 | EB-4 confirmed arbitrary extension; traversal remained inconclusive ([matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) | P0-06; hardening P1-22 |
 | Zip MIME allowlist looseness (`octet-stream`) | FILE-04 | Confirmed on four upload surfaces in isolated EB-5 runs; see [verdict and limitations](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md) | P0-06/P0-07; hardening P1-22 |

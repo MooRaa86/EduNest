@@ -23,26 +23,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * P0-04 / EB-2 — V-02: contact-reply HTML-injection POC (SEL-15).
  *
- * Audit ({@code mds/ISSUES.md} SEL-15): {@code ContactMessageService#sendAdminReply}
- * merges {@code {{name}}} and {@code {{reply}}} into {@code admin-reply.html} with
- * plain {@code String.replace} — no {@code HtmlUtils.htmlEscape}-style escaping
- * (contrast {@code AdminBadgeService}, which escapes). {@code {{name}}} is
- * fully attacker-controlled:
- * {@code POST /api/v1/contact/save-message} is PUBLIC (PublicRoutesPolicy) and
- * the DTO validates {@code name} as {@code @NotBlank} only — a hostile name
- * lands in the DB, and the FIRST ADMIN REPLY turns it into executable HTML
- * inside a real email. {@code {{reply}}} (admin-controlled) is equally raw.
+ * FLIPPED 2026-11-02, EB-31 / P1-24: {@code ContactMessageService#sendAdminReply}
+ * now {@code HtmlUtils.htmlEscape}s both merge slots ({@code {{name}}} and
+ * {@code {{reply}}}) at merge time — the same pattern as {@code AdminBadgeService#sendBadgeAwardEmail}.
+ * Hostile payloads now arrive ESCAPED (inert) in the rendered email.
  *
- * POC mechanics (Option A doctrine — pinning TODAY's behavior, the verdict
- * flips when P1-24 applies the escaping fix): the real prod chain runs
- * end-to-end (public save → ADMIN-only reply → real template file → real
- * merge). The "sentinel inbox" recording bean is the capture at the {@code
- * EmailService} boundary (the app's SMTP hop is unreachable in tests per
- * application-test.properties), so the captured {@code htmlBody} is exactly
- * what a mail client would render.
+ * History (audit, {@code mds/ISSUES.md} SEL-15): both slots were merged with
+ * plain {@code String.replace} — no escaping anywhere on the path. {@code
+ * {{name}}} is fully attacker-controlled: {@code POST /api/v1/contact/save-message}
+ * is PUBLIC (PublicRoutesPolicy) and the DTO validates {@code name} as {@code
+ * @NotBlank} only — a hostile name lands in the DB, and the FIRST ADMIN REPLY
+ * turned it into executable HTML inside a real email (V-02 verdict: CONFIRMED,
+ * recorded by EB-2 / PR #56). These two probes pinned that verbatim-survival
+ * behavior exactly as documented below.
  *
- * Expected verdict: {@code <img src=x onerror=...>} / {@code <script>...}
- * survive VERBATIM (no {@code &lt;} escaping anywhere on the path).
+ * POC mechanics (unchanged): the real prod chain runs end-to-end (public save →
+ * ADMIN-only reply → real template file → real merge). The "sentinel inbox"
+ * recording bean is the capture at the {@code EmailService} boundary (the
+ * app's SMTP hop is unreachable in tests per application-test.properties),
+ * so the captured {@code htmlBody} is exactly what a mail client would render.
+ *
+ * Expected verdict NOW: the payload appears escaped ({@code &lt;img ...&gt;},
+ * {@code &lt;script&gt;}) and never verbatim.
  */
 @Tag("critical")
 class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
@@ -138,13 +140,13 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 	}
 
 	/**
-	 * V-02 CONFIRMED — the ATTACKER path: an attacker's hostile NAME (public
-	 * endpoint, no validation) is merged unescaped into the admin's reply
-	 * email. The payload survives verbatim — no HtmlUtils-style escaping
-	 * anywhere on the path (contrast AdminBadgeService).
+	 * V-02 CONFIRMED pre-fix, CLOSED by EB-31 — the ATTACKER path: an
+	 * attacker's hostile NAME (public endpoint, no validation past @NotBlank)
+	 * reaches the admin's reply email — but since P1-24 it is ESCAPED at merge
+	 * time (HtmlUtils), so it renders INERT instead of executing.
 	 */
 	@Test
-	@DisplayName("V-02: hostile PUBLIC name merged raw into the admin reply email → injection")
+	@DisplayName("V-02/confined: hostile PUBLIC name arrives ESCAPED in the admin reply email")
 	void v02_hostilePublicNameInjected() throws Exception {
 		resetInbox();
 		auth.admin("probe-eb2-v02-admin@example.org");
@@ -162,17 +164,18 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 				.as("reply flow ran to completion").isEqualTo(MessageStatus.COMPLETED);
 		String html = awaitCapturedHtml("probe-eb2-v02-name@example.org");
 
-		assertThat(html).contains(hostile); // payload VERBATIM — the injection
-		assertThat(html).doesNotContain("&lt;"); // zero escaping on the path
+		assertThat(html).contains("&lt;img src=x onerror=alert(EduNestV02)&gt;"); // escaped → inert
+		assertThat(html).doesNotContain(hostile); // payload NEVER verbatim
 	}
 
 	/**
-	 * V-02 — the REPLY slot is equally raw: admin's own text is merged
-	 * unescaped, so any HTML in replies is live too (matter of record; same
-	 * fix closes both).
+	 * V-02 — the REPLY slot is equally confined: admin's own text is escaped
+	 * too, so no live HTML can come through replies (defense in depth; the
+	 * admin is less likely to attack than the anonymous sender, but the same
+	 * escaping closes both).
 	 */
 	@Test
-	@DisplayName("V-02: admin reply text merged raw into the {{reply}} slot → injection")
+	@DisplayName("V-02/confined: admin reply text arrives ESCAPED in the {{reply}} slot")
 	void v02_replySlotInjected() throws Exception {
 		resetInbox();
 		auth.admin("probe-eb2-v02-admin2@example.org");
@@ -188,7 +191,7 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 
 		String html = awaitCapturedHtml("probe-eb2-v02-reply@example.org");
 
-		assertThat(html).contains(hostile);
-		assertThat(html).doesNotContain("&lt;script");
+		assertThat(html).contains("&lt;script&gt;alert(document.cookie)&lt;/script&gt;");
+		assertThat(html).doesNotContain(hostile);
 	}
 }
