@@ -13,6 +13,11 @@ Complete configuration surface (verified against `application.properties`, `appl
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | `spring.mail.*` | SMTP auth creds |
 | `JWT_SECRET` (**now required**) | `config/security/JwtSecretProvider` (single owner; constructed at startup) | **Implemented 2026-10-28 (P1-01/SEL-01):** the hardcoded fallback was deleted. Boot **fails fast** with `IllegalStateException` if `JWT_SECRET` is missing/blank, shorter than 32 bytes (HS256/256-bit), or equal to the retired default (matched by SHA-256 digest). The key is built once and shared; `LoginServiceI.getJwtRole` now delegates to the shared parser (rotation-safe). Minimum 32 bytes enforced |
 | `SPRING_PROFILES_ACTIVE` | profile selection | Defaulted to `prod` in the Dockerfile; absence locally runs the **wide-open `!prod` chain** (SEL-02) |
+| `ZOOM_ENABLED` (=false until provisioning) | `app.zoom.enabled` ([ADD-05]/EB-85 groundwork) | Integration master switch; while `false` the placeholder Zoom client is wired and no external call is made |
+| `ZOOM_ACCOUNT_ID` | `app.zoom.account-id` (Zoom S2S OAuth) | Marketplace Server-to-Server OAuth app → Account ID; credentials pending (Omar checklist on `ZoomProperties`) |
+| `ZOOM_CLIENT_ID` | `app.zoom.client-id` (Zoom S2S OAuth) | Scopes: `meeting:write:admin` + `meeting:read:admin`; no redirect URI needed |
+| `ZOOM_CLIENT_SECRET` | `app.zoom.client-secret` (Zoom S2S OAuth) | Env store only, never git; rotation per P6-03 |
+| `ZOOM_BASE_URL` (optional) | `app.zoom.base-url` | Defaults to `https://api.zoom.us/v2` |
 
 ## 2. Properties matrix (dev/default vs prod profile)
 
