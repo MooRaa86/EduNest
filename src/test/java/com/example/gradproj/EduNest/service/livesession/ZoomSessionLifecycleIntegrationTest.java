@@ -82,12 +82,19 @@ class ZoomSessionLifecycleIntegrationTest {
         securityService = mock(SecurityService.class);
         zoomMeetingClient = mock(ZoomMeetingClient.class);
         zoomProperties = new ZoomProperties();
+        com.example.gradproj.EduNest.service.livesession.policy.AttendancePolicy attendancePolicy =
+                new com.example.gradproj.EduNest.service.livesession.policy.NoEnforcementAttendancePolicy();
+        com.example.gradproj.EduNest.service.livesession.policy.PointsAwardingPolicy pointsAwardingPolicy =
+                new com.example.gradproj.EduNest.service.livesession.policy.DormantPointsAwarder();
+        com.example.gradproj.EduNest.config.livesession.LiveSessionProperties liveSessionProperties =
+                new com.example.gradproj.EduNest.config.livesession.LiveSessionProperties();
 
         service = new LiveSessionServiceImp(
                 weekRepository, liveSessionRepository, enrollmentRepository,
                 studentRepository, attendanceRepository, sessionAttendanceResultRepository,
                 jitsiService, totalPointsService, notificationService, securityService,
-                zoomMeetingClient, zoomProperties
+                zoomMeetingClient, zoomProperties,
+                attendancePolicy, pointsAwardingPolicy, liveSessionProperties
         );
     }
 

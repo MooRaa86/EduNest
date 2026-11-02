@@ -82,10 +82,10 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **GAME-04** | Low | P4-02 | 4 | gamification | T | Planned |
 | **GAME-05** | Low | P4-02 | 4 | gamification | T (doc-in-code) | Planned |
 | **LS-01** | High | P4-17, P5-05 | 4,5 | live-sess | D→T (D-16, D-29) | **Verified — EB-66** (2026-11-02): HttpZoomMeetingClient with S2S OAuth in-memory caching + 40-min cap (D-29) integrated into LiveSessionServiceImp; Jitsi retained as fallback when app.zoom.enabled=false. |
-| **LS-02** | Med | P4-08 | 4 | live-sess | D→T (D-15) | Planned |
-| **LS-03** | Med | P4-08 | 4 | live-sess | D→T (D-15) | Planned |
-| **LS-04** | Low | P4-12 | 4 | database | T | Planned |
-| **LS-05** | Low | P4-08 | 4 | live-sess | T | Planned |
+| **LS-02** | Med | P4-08 | 4 | live-sess | D→T (D-15) | **Verified — EB-57** (2026-11-03): Attendance constants extracted to LiveSessionProperties; dormant attendance strategy pattern implemented (SnapshotGridAttendancePolicy vs NoEnforcementAttendancePolicy; DefaultLivePointsAwarder vs DormantPointsAwarder); tested 100% green. |
+| **LS-03** | Med | P4-08 | 4 | live-sess | D→T (D-15) | **Verified — EB-57** (2026-11-03): LiveSessionSweepService auto-lifecycle scheduled sweep (every 5 min per directive) closes expired LIVE sessions (>50m) and cancels stale SCHEDULED sessions (>50m), syncing with Zoom cloud. |
+| **LS-04** | Low | P4-12 | 4 | database | T | **Verified — EB-57** (2026-11-03): recordSnapshot persists attendees in single saveAll batch instead of loop. |
+| **LS-05** | Low | P4-08 | 4 | live-sess | T | **Verified — EB-57** (2026-11-03): @Transactional added to recordSnapshot; CANCELLED status lifecycle guards added to joinSession, startLiveSession, updateSession. |
 | **CERT-01** | High | P5-05 (+optional feature) | 5 | certificates | D→T (D-11), DEF ok | Planned |
 | **CERT-02** | Med | P4-05 | 4 | certificates | T | Planned |
 | **CERT-03** | Low | P4-05 | 4 | certificates | T | Planned |

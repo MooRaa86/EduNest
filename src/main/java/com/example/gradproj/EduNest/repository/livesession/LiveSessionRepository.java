@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionRes
 import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
+import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import com.example.gradproj.EduNest.repository.livesession.projections.MonthlySessionsProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface LiveSessionRepository extends JpaRepository<Session,Long> {
+
+    List<Session> findByStatusAndActualStartTimeBefore(SessionStatus status, LocalDateTime cutoff);
+
+    List<Session> findByStatusAndScheduledAtBefore(SessionStatus status, LocalDateTime cutoff);
     List<Session> findByWeek_Id(Long weekId);
 
     List<Session> findByWeek_IdIn(List<Long> weekIds);

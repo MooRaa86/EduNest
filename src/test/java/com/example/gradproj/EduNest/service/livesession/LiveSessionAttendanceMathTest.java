@@ -80,11 +80,23 @@ class LiveSessionAttendanceMathTest {
         ZoomMeetingClient zoomMeetingClient = mock(ZoomMeetingClient.class);
         ZoomProperties zoomProperties = new ZoomProperties();
 
+        com.example.gradproj.EduNest.config.livesession.LiveSessionProperties liveSessionProperties =
+                new com.example.gradproj.EduNest.config.livesession.LiveSessionProperties();
+        liveSessionProperties.getAttendance().setEnforced(true);
+
+        com.example.gradproj.EduNest.service.livesession.policy.AttendancePolicy attendancePolicy =
+                new com.example.gradproj.EduNest.service.livesession.policy.SnapshotGridAttendancePolicy(liveSessionProperties);
+        com.example.gradproj.EduNest.service.livesession.policy.PointsAwardingPolicy pointsAwardingPolicy =
+                new com.example.gradproj.EduNest.service.livesession.policy.DefaultLivePointsAwarder(
+                        enrollmentRepository, sessionAttendanceResultRepository,
+                        totalPointsService, notificationService, liveSessionProperties);
+
         service = new LiveSessionServiceImp(
                 weekRepository, liveSessionRepository, enrollmentRepository,
                 studentRepository, attendanceRepository, sessionAttendanceResultRepository,
                 jitsiService, totalPointsService, notificationService, securityService,
-                zoomMeetingClient, zoomProperties);
+                zoomMeetingClient, zoomProperties,
+                attendancePolicy, pointsAwardingPolicy, liveSessionProperties);
     }
 
     // ------------------------------------------------------------------
@@ -231,6 +243,7 @@ class LiveSessionAttendanceMathTest {
     void recordSnapshot_savesOneRowPerStudent() {
         LocalDateTime base = LocalDateTime.now();
         Session session = session(1L, base, base.plusMinutes(60));
+        session.setStatus(SessionStatus.LIVE);
         // wire week -> mentorship path for both security and enrollment checks
         when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
         when(securityService.isMentorOwnLiveSession(1L, "mentor@test.com")).thenReturn(true);
@@ -242,7 +255,7 @@ class LiveSessionAttendanceMathTest {
 
         service.recordSnapshot(1L, List.of(2L, 3L));
 
-        verify(attendanceRepository, times(2)).save(any(SessionAttendance.class));
+        verify(attendanceRepository, times(1)).saveAll(any());
     }
 
     @Test
@@ -250,6 +263,7 @@ class LiveSessionAttendanceMathTest {
     void recordSnapshot_notEnrolled_throws() {
         LocalDateTime base = LocalDateTime.now();
         Session session = session(1L, base, base.plusMinutes(60));
+        session.setStatus(SessionStatus.LIVE);
         when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
         when(securityService.isMentorOwnLiveSession(1L, "mentor@test.com")).thenReturn(true);
         when(liveSessionRepository.findById(1L)).thenReturn(Optional.of(session));
@@ -310,5 +324,61 @@ class LiveSessionAttendanceMathTest {
         verify(notificationService).sendToUserByEmail(
                 eq("absent@test.com"), eq("Session Attendance Result"),
                 contains("is: Absent"), eq(NotificationType.LIVE_SESSION));
+    }
+    @Test
+    @DisplayName("calculateAttendancePoints: dormant policy produces zero gamification writes and zero result rows (D-15)")
+    void attendancePoints_dormant_producesNoWritesOrPoints() throws Exception {
+        LocalDateTime base = LocalDateTime.now();
+        Session session = session(1L, base, base.plusMinutes(50));
+        Student present = student(2L, "present@test.com");
+
+        List<SessionAttendance> snapshots_ = new ArrayList<>();
+        for (long i = 0; i < 8; i++) {
+            snapshots_.add(SessionAttendance.builder()
+                    .session(session).student(present)
+                    .snapshotTime(base.plusSeconds(i)).build());
+        }
+        when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
+        when(securityService.isMentorOwnLiveSession(1L, "mentor@test.com")).thenReturn(true);
+        when(liveSessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(attendanceRepository.findBySession_Id(1L)).thenReturn(snapshots_);
+        when(enrollmentRepository.findStudentsByMentorshipId(100L)).thenReturn(List.of(present));
+
+        com.example.gradproj.EduNest.config.livesession.LiveSessionProperties dormantProps =
+                new com.example.gradproj.EduNest.config.livesession.LiveSessionProperties();
+        dormantProps.getAttendance().setEnforced(false);
+
+        LiveSessionServiceImp dormantService = new LiveSessionServiceImp(
+                weekRepository, liveSessionRepository, enrollmentRepository,
+                studentRepository, attendanceRepository, sessionAttendanceResultRepository,
+                jitsiService, totalPointsService, notificationService, securityService,
+                mock(ZoomMeetingClient.class), new ZoomProperties(),
+                new com.example.gradproj.EduNest.service.livesession.policy.NoEnforcementAttendancePolicy(),
+                new com.example.gradproj.EduNest.service.livesession.policy.DormantPointsAwarder(),
+                dormantProps);
+
+        Method m = LiveSessionServiceImp.class.getDeclaredMethod("calculateAttendancePoints", Session.class);
+        m.setAccessible(true);
+        m.invoke(dormantService, session);
+
+        verify(totalPointsService, never()).applyDelta(any(), any(), anyInt());
+        verify(sessionAttendanceResultRepository, never()).save(any());
+        verify(notificationService, never()).sendToUserByEmail(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("recordSnapshot: session not LIVE is rejected (LS-05 guard)")
+    void recordSnapshot_notLive_throws() {
+        LocalDateTime base = LocalDateTime.now();
+        Session session = session(1L, base, base.plusMinutes(60));
+        session.setStatus(SessionStatus.SCHEDULED);
+
+        when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
+        when(securityService.isMentorOwnLiveSession(1L, "mentor@test.com")).thenReturn(true);
+        when(liveSessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service.recordSnapshot(1L, List.of(2L)))
+                .isInstanceOf(globalLogicEx.class)
+                .hasMessageContaining("Session must be live to record attendance");
     }
 }

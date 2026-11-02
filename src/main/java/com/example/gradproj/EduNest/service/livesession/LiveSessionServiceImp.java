@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.livesession;
 
 import com.example.gradproj.EduNest.config.integrations.ZoomProperties;
+import com.example.gradproj.EduNest.config.livesession.LiveSessionProperties;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
@@ -25,6 +26,8 @@ import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingClient;
 import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingCreateRequest;
 import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingResult;
+import com.example.gradproj.EduNest.service.livesession.policy.AttendancePolicy;
+import com.example.gradproj.EduNest.service.livesession.policy.PointsAwardingPolicy;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.security.SecurityService;
@@ -65,6 +68,9 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final SecurityService securityService;
     private final ZoomMeetingClient zoomMeetingClient;
     private final ZoomProperties zoomProperties;
+    private final AttendancePolicy attendancePolicy;
+    private final PointsAwardingPolicy pointsAwardingPolicy;
+    private final LiveSessionProperties liveSessionProperties;
 
     @Override
     @Transactional
@@ -142,6 +148,16 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
+
+        if (session.getStatus() == SessionStatus.LIVE) {
+            throw new globalLogicEx("Session already started and cannot be updated");
+        }
+        if (session.getStatus() == SessionStatus.ENDED) {
+            throw new globalLogicEx("Session already ended and cannot be updated");
+        }
+        if (session.getStatus() == SessionStatus.CANCELLED) {
+            throw new globalLogicEx("Session has been cancelled and cannot be updated");
+        }
 
         if (updateSessionDto.getScheduledAt() != null) {
             LocalDateTime newScheduledAt = updateSessionDto.getScheduledAt();
@@ -293,6 +309,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session already ended");
         }
 
+        if (session.getStatus() == SessionStatus.CANCELLED) {
+            throw new globalLogicEx("Session has been cancelled");
+        }
+
         if (session.getScheduledAt().isAfter(LocalDateTime.now())) {
             throw new globalLogicEx("Session cannot be started before scheduled time");
         }
@@ -346,6 +366,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session already ended");
         }
 
+        if (session.getStatus() == SessionStatus.CANCELLED) {
+            throw new globalLogicEx("Session has been cancelled");
+        }
+
         if (session.getMeetingUrl() == null) {
             throw new globalLogicEx("Meeting link not ready");
         }
@@ -396,6 +420,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
         return mapToDto(session);
     }
 
+    @Override
+    @Transactional
     public void recordSnapshot(Long sessionId, List<Long> studentIds) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
@@ -405,8 +431,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
+        if (session.getStatus() != SessionStatus.LIVE) {
+            throw new globalLogicEx("Session must be live to record attendance");
+        }
+
         Long mentorshipId = session.getWeek().getMentorship().getId();
 
+        List<SessionAttendance> attendances = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
         for (Long studentId : studentIds) {
             boolean isStudentExistInThisMentorship = enrollmentRepository.existsByMentorShip_IdAndStudent_Id(mentorshipId, studentId);
 
@@ -420,11 +452,12 @@ public class LiveSessionServiceImp implements LiveSessionService {
                     .builder()
                     .session(session)
                     .student(student)
-                    .snapshotTime(LocalDateTime.now())
+                    .snapshotTime(now)
                     .build();
 
-            attendanceRepository.save(sessionAttendance);
+            attendances.add(sessionAttendance);
         }
+        attendanceRepository.saveAll(attendances);
     }
 
     @Override
@@ -481,77 +514,15 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session not finished yet");
         }
 
-        Long sessionDuration = Duration.between(session.getActualStartTime(), session.getActualEndTime()).toMinutes();
-
         List<SessionAttendance> allSnapshots =
                 attendanceRepository.findBySession_Id(sessionId);
 
-        Map<Student, Long> studentAttendances = new HashMap<>();
-        for (SessionAttendance sessionAttendance : allSnapshots) {
-            Student student = sessionAttendance.getStudent();
-            studentAttendances.put(student, studentAttendances.getOrDefault(student, 0L) + 1);
-        }
-
-        long totalSnapshots = Math.max(1, sessionDuration / 5);
-
-        List<AttendanceResponse> attendanceReport = new ArrayList<>();
-        for (Map.Entry<Student, Long> studentAttendance : studentAttendances.entrySet()) {
-            Student student = studentAttendance.getKey();
-            Long studentSnapshots = studentAttendance.getValue();
-
-            double attendancePercentage = (studentSnapshots * 100.0) / totalSnapshots;
-
-            String status = attendancePercentage >= 75 ? "Present" : "Absent";
-            attendanceReport.add(
-                    AttendanceResponse.builder()
-                            .sessionId(session.getId())
-                            .studentId(student.getId())
-                            .attendancePercentage(attendancePercentage)
-                            .status(status)
-                            .build()
-            );
-        }
-
-        return attendanceReport;
+        return attendancePolicy.evaluateAttendance(session, allSnapshots);
     }
 
     private void calculateAttendancePoints(Session session) {
         List<AttendanceResponse> results = getSessionAttendance(session.getId());
-        Long mentorshipId = session.getWeek().getMentorship().getId();
-
-        Map<Long, String> attendanceMap = new HashMap<>();
-        for (AttendanceResponse result : results) {
-            attendanceMap.put(result.getStudentId(), result.getStatus());
-        }
-
-        List<Student> allStudents = enrollmentRepository.findStudentsByMentorshipId(mentorshipId);
-
-        for (Student student : allStudents) {
-            String status = attendanceMap.getOrDefault(student.getId(), "Absent");
-            boolean attended = "Present".equals(status);
-
-            SessionAttendanceResult attendanceResult = SessionAttendanceResult.builder()
-                    .session(session)
-                    .student(student)
-                    .attended(attended)
-                    .build();
-
-            sessionAttendanceResultRepository.save(attendanceResult);
-
-            int pointsEarned = 0;
-            if (attended) {
-                pointsEarned = 5;
-                totalPointsService.applyDelta(student, session.getWeek().getMentorship(), pointsEarned);
-            }
-
-            notificationService.sendToUserByEmail(
-                    student.getEmail(),
-                    "Session Attendance Result",
-                    "Your attendance for session " + session.getTitle() + " is: " + status +
-                            (attended ? ". You earned " + pointsEarned + " points!" : "."),
-                    NotificationType.LIVE_SESSION
-            );
-        }
+        pointsAwardingPolicy.awardPoints(session, results);
     }
 
     private SessionResponseDto mapToDto(Session session) {
