@@ -46,7 +46,7 @@ five producers, no drift (E6 pins this).
 | Bean validation (`MethodArgumentNotValid`) | 400 | `ERR_VALIDATION` (+ `fields` map) | `Please check the submitted fields.` |
 | Login / verify DTO or resend `email` parameter validation (EB-32) | 400 | `ERR_VALIDATION` (+ `fields.email`, `fields.password` or `fields.otp` as applicable) | `Please check the submitted fields.` |
 | Malformed JSON / type conversion | 400 | `ERR_MALFORMED_BODY` | `Malformed JSON request or invalid data type.` (enum hints under `fields`) |
-| Unknown JSON field (prod) | 400 | `ERR_UNKNOWN_FIELD` | `Field 'x' is not allowed.` (+ `fields`: invalidField, allowedFields) |
+| Unknown JSON field (prod) | 400 | `ERR_UNKNOWN_FIELD` | `Field 'x' is not allowed.` (+ `fields`: invalidField, allowedFields) — **dispatch reachable since EB-40/P2-06 (2026-11-02):** Spring wraps all Jackson failures into `HttpMessageNotReadableException`, so unknown fields previously answered the generic malformed shape; `handleJsonParseException` now recognizes that cause and delegates to this contract (was buried; pinned by `contract/JacksonProdUnknownFieldContractTest`, dev-ignore parity by `JacksonDevUnknownFieldContractTest`) |
 | `EmailAlreadyExists` | 409 | `ERR_EMAIL_IN_USE` | throw-site / `Email is already registered.` |
 | `InvalidOtp` / `OtpExpired` / `UserAlreadyVerified` | 400 / 410 / 400 | `ERR_INVALID_OTP` / `ERR_OTP_EXPIRED` / `ERR_ALREADY_VERIFIED` | friendly, fixed fallbacks |
 | `UserNotFound` / `UsernameNotFound` | 404 | `ERR_USER_NOT_FOUND` | fixed `User not found.` (email echo retired; enumeration wording unifies with EB-15) |
