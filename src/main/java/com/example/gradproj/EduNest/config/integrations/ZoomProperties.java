@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * ADD-05 / EB-85 groundwork — Zoom Server-to-Server OAuth configuration.
+ * ADD-05 / EB-85 groundwork & EB-66 live client — Zoom Server-to-Server OAuth configuration.
  *
  * Binds the {@code ZOOM_*} environment variables (drop-in ready: Omar provisions
  * the Marketplace app → keys land in the env store → flip {@code ZOOM_ENABLED}).
@@ -50,6 +50,15 @@ public class ZoomProperties {
 
     /** REST base URL; override target for tests/rehearsals if ever needed. */
     private String baseUrl = "https://api.zoom.us/v2";
+
+    /** Host user ID or email (Server-to-Server OAuth target, defaults to "me"). */
+    private String hostUserId = "me";
+
+    /** Max meeting duration in minutes (Basic plan caps at 40; D-29). */
+    private int maxMeetingMinutes = 40;
+
+    /** OAuth token endpoint for Server-to-Server app. */
+    private String oauthTokenUrl = "https://zoom.us/oauth/token";
 
     /** All three credentials present? */
     public boolean isConfigured() {

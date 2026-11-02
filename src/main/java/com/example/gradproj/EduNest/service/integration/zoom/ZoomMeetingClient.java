@@ -1,15 +1,17 @@
 package com.example.gradproj.EduNest.service.integration.zoom;
 
+import java.time.Instant;
+
 /**
  * Zoom meeting surface — the seam Zoom consumers (live-session service,
- * {@code P4-17}/EB-66) program against. Two operations cover the D-16 scope:
- * server-created meetings + details read for the attendance flows (LS-02..05).
+ * {@code P4-17}/EB-66) program against.
  *
- * <p><b>Groundwork status (EB-85):</b> implemented TODAY only by
- * {@link DisabledZoomMeetingClient} — a boot-safe placeholder that fails fast
- * with an actionable message if anything calls it before credentials are
- * provisioned and the real HTTP client lands. No Zoom REST wiring exists yet
- * by design; adding it must REUSE these records verbatim (call sites freeze).</p>
+ * Supports full meeting lifecycle:
+ * - createMeeting: creates/schedules meeting on Zoom cloud (capped at 40 min per D-29 Basic plan)
+ * - getMeetingDetails: reads meeting status/details from Zoom cloud
+ * - updateMeeting: updates meeting topic/startTime on Zoom cloud (e.g. mentor rescheduling)
+ * - deleteMeeting: deletes meeting from Zoom cloud (e.g. session cancellation)
+ * - endMeeting: ends live meeting on Zoom cloud (e.g. mentor ends session)
  */
 public interface ZoomMeetingClient {
 
@@ -18,4 +20,13 @@ public interface ZoomMeetingClient {
 
     /** Read back a meeting's details (attendance/snapshot flows). */
     ZoomMeetingDetails getMeetingDetails(long zoomMeetingId);
+
+    /** Update a scheduled Zoom meeting's title, start time, or duration. */
+    void updateMeeting(long zoomMeetingId, String topic, Instant startTime, Integer durationMinutes);
+
+    /** Delete a Zoom meeting from Zoom cloud (e.g. on session cancellation). */
+    void deleteMeeting(long zoomMeetingId);
+
+    /** End an active live Zoom meeting on Zoom cloud (e.g. on session end). */
+    void endMeeting(long zoomMeetingId);
 }

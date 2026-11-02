@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.livesession;
 
+import com.example.gradproj.EduNest.config.integrations.ZoomProperties;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.response.AttendanceResponse;
@@ -13,6 +14,7 @@ import com.example.gradproj.EduNest.entity.livesession.SessionAttendanceResult;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
+import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
@@ -20,11 +22,14 @@ import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResu
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
-import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
-import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingClient;
+import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingCreateRequest;
+import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingResult;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
+import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,12 +40,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LiveSessionServiceImp implements LiveSessionService {
@@ -55,6 +63,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final TotalPointsServiceImp totalPointsService;
     private final NotificationService notificationService;
     private final SecurityService securityService;
+    private final ZoomMeetingClient zoomMeetingClient;
+    private final ZoomProperties zoomProperties;
 
     @Override
     @Transactional
@@ -66,8 +76,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new AccessDeniedException("You are not authorized to create session for this week");
         }
 
-
-        LocalDateTime scheduledAt = LocalDateTime.of(createSessionDto.getDate(), createSessionDto.getTime());
+        LocalDateTime scheduledAt = createSessionDto.getScheduledAt();
+        if (scheduledAt == null) {
+            throw new globalLogicEx("Scheduled date/time cannot be null");
+        }
 
         if (scheduledAt.isBefore(LocalDateTime.now())) {
             throw new globalLogicEx("Scheduled date/time must be in the future");
@@ -76,11 +88,36 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Week week = weekRepository.findById(createSessionDto.getWeekId())
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
 
+        String meetingUrl = null;
+        String hostUrl = null;
+        Long zoomMeetingId = null;
+
+        if (zoomProperties.isEnabled()) {
+            Instant startInstant = scheduledAt.atZone(ZoneId.systemDefault()).toInstant();
+            int duration = zoomProperties.getMaxMeetingMinutes();
+            ZoomMeetingCreateRequest zoomReq = new ZoomMeetingCreateRequest(
+                    createSessionDto.getTitle(),
+                    startInstant,
+                    duration,
+                    ZoneId.systemDefault().getId(),
+                    null
+            );
+            ZoomMeetingResult zoomResult = zoomMeetingClient.createMeeting(zoomReq);
+            meetingUrl = zoomResult.joinUrl();
+            hostUrl = zoomResult.startUrl();
+            zoomMeetingId = zoomResult.zoomMeetingId();
+            log.info("Provisioned Zoom meeting {} (joinUrl: {}, hostUrl present) for session '{}'",
+                    zoomMeetingId, meetingUrl, createSessionDto.getTitle());
+        }
+
         Session session = Session.builder()
                 .scheduledAt(scheduledAt)
                 .title(createSessionDto.getTitle())
                 .week(week)
                 .status(SessionStatus.SCHEDULED)
+                .meetingUrl(meetingUrl)
+                .hostUrl(hostUrl)
+                .zoomMeetingId(zoomMeetingId)
                 .build();
 
         liveSessionRepository.save(session);
@@ -106,19 +143,31 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
-        if (updateSessionDto.getDate() != null && updateSessionDto.getTime() != null) {
-            LocalDateTime newScheduledAt = LocalDateTime.of(updateSessionDto.getDate(), updateSessionDto.getTime());
+        if (updateSessionDto.getScheduledAt() != null) {
+            LocalDateTime newScheduledAt = updateSessionDto.getScheduledAt();
 
             if (newScheduledAt.isBefore(LocalDateTime.now())) {
                 throw new globalLogicEx("Scheduled date/time must be in the future");
             }
             session.setScheduledAt(newScheduledAt);
-        } else if (updateSessionDto.getDate() != null || updateSessionDto.getTime() != null) {
-            throw new globalLogicEx("Both date and time must be provided to update scheduledAt");
         }
 
         if (updateSessionDto.getTitle() != null && !updateSessionDto.getTitle().isBlank()) {
             session.setTitle(updateSessionDto.getTitle());
+        }
+
+        if (zoomProperties.isEnabled() && session.getZoomMeetingId() != null) {
+            Instant newStart = (updateSessionDto.getScheduledAt() != null)
+                    ? session.getScheduledAt().atZone(ZoneId.systemDefault()).toInstant()
+                    : null;
+            String newTitle = (updateSessionDto.getTitle() != null && !updateSessionDto.getTitle().isBlank())
+                    ? updateSessionDto.getTitle()
+                    : null;
+            try {
+                zoomMeetingClient.updateMeeting(session.getZoomMeetingId(), newTitle, newStart, zoomProperties.getMaxMeetingMinutes());
+            } catch (Exception e) {
+                log.warn("Failed to sync session update to Zoom meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
+            }
         }
 
         liveSessionRepository.save(session);
@@ -147,8 +196,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
-
-        return mapToDto(session);
+        SessionResponseDto dto = mapToDto(session);
+        if (!isMentor) {
+            dto.setHostUrl(null);
+        }
+        return dto;
     }
 
     @Override
@@ -158,7 +210,6 @@ public class LiveSessionServiceImp implements LiveSessionService {
             int page,
             int size
     ) {
-
         String email = securityService.getCurrentUserEmail();
 
         boolean isMentor =
@@ -205,6 +256,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session already started and cannot be deleted");
         }
 
+        if (zoomProperties.isEnabled() && session.getZoomMeetingId() != null) {
+            try {
+                zoomMeetingClient.deleteMeeting(session.getZoomMeetingId());
+            } catch (Exception e) {
+                log.warn("Failed to delete Zoom meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
+            }
+        }
+
         notificationService.sendToMentorshipStudents(
                 session.getWeek().getMentorship().getId(),
                 "Session Cancelled",
@@ -216,6 +275,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     @Override
+    @Transactional
     public SessionResponseDto startLiveSession(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
@@ -237,8 +297,13 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Session cannot be started before scheduled time");
         }
 
-        String meetingUrl = jitsiService.createRoomLink(sessionId);
-        session.setMeetingUrl(meetingUrl);
+        if (!zoomProperties.isEnabled()) {
+            String meetingUrl = jitsiService.createRoomLink(sessionId);
+            session.setMeetingUrl(meetingUrl);
+        } else if (session.getMeetingUrl() == null) {
+            throw new globalLogicEx("Zoom meeting link not initialized");
+        }
+
         session.setStatus(SessionStatus.LIVE);
         session.setActualStartTime(LocalDateTime.now());
 
@@ -285,7 +350,12 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Meeting link not ready");
         }
 
-        return mapToDto(session);
+        SessionResponseDto dto = mapToDto(session);
+        // Only the mentor/host is permitted to see the hostUrl (start_url with ZAK token)
+        if (!isMentor) {
+            dto.setHostUrl(null);
+        }
+        return dto;
     }
 
     @Override
@@ -306,6 +376,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
         session.setStatus(SessionStatus.ENDED);
         session.setActualEndTime(LocalDateTime.now());
         liveSessionRepository.save(session);
+
+        if (zoomProperties.isEnabled() && session.getZoomMeetingId() != null) {
+            try {
+                zoomMeetingClient.endMeeting(session.getZoomMeetingId());
+            } catch (Exception e) {
+                log.debug("Notice on Zoom end meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
+            }
+        }
 
         notificationService.sendToMentorshipStudents(
                 session.getWeek().getMentorship().getId(),
@@ -377,6 +455,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public List<AttendanceResponse> getAttendanceResult(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
+
         if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to view attendance for this session");
         }
@@ -395,10 +474,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Session session = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
-
         if (session.getActualStartTime() == null) {
             throw new globalLogicEx("Session not started yet");
-
         }
         if (session.getActualEndTime() == null) {
             throw new globalLogicEx("Session not finished yet");
@@ -433,12 +510,9 @@ public class LiveSessionServiceImp implements LiveSessionService {
                             .status(status)
                             .build()
             );
-
-
         }
 
         return attendanceReport;
-
     }
 
     private void calculateAttendancePoints(Session session) {
@@ -486,7 +560,9 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 .sessionTitle(session.getTitle())
                 .sessionStartDate(session.getScheduledAt())
                 .meetingUrl(session.getMeetingUrl())
+                .hostUrl(session.getHostUrl())
                 .sessionStatus(session.getStatus())
+                .zoomMeetingId(session.getZoomMeetingId())
                 .build();
     }
 

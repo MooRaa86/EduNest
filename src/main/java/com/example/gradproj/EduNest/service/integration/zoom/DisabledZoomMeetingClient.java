@@ -2,11 +2,14 @@ package com.example.gradproj.EduNest.service.integration.zoom;
 
 import com.example.gradproj.EduNest.config.integrations.ZoomProperties;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+
+import java.time.Instant;
 
 /**
  * ADD-05 / EB-85 groundwork placeholder — the default {@link ZoomMeetingClient}
- * bean until the real HTTP client lands with the credentials provisioning.
+ * bean until the real HTTP client lands with credentials provisioning (EB-66).
  *
  * Boot-safety contract: constructing this bean NEVER fails and performs ZERO
  * network calls (the app builds with {@code ZOOM_ENABLED} absent entirely).
@@ -18,12 +21,12 @@ import org.springframework.stereotype.Component;
  *       {@link ZoomProperties}).</li>
  *   <li>enabled but not live-ready → credentials partially/fully missing; put
  *       them in the env store before use.</li>
- *   <li>enabled + configured → impossible in this placeholder (the bean swap
- *       happens at EB-85/EB-66 merge); if a call ever reaches the placeholder
- *       in that state, the wiring regressed — fail loudly.</li>
+ *   <li>enabled + configured → swapped out for {@link HttpZoomMeetingClient} when
+ *       {@code app.zoom.enabled=true}.</li>
  * </ul>
  */
 @Component
+@ConditionalOnProperty(prefix = "app.zoom", name = "enabled", havingValue = "false", matchIfMissing = true)
 public class DisabledZoomMeetingClient implements ZoomMeetingClient {
 
     private final ZoomProperties props;
@@ -41,6 +44,21 @@ public class DisabledZoomMeetingClient implements ZoomMeetingClient {
     @Override
     public ZoomMeetingDetails getMeetingDetails(long zoomMeetingId) {
         throw guard("read");
+    }
+
+    @Override
+    public void updateMeeting(long zoomMeetingId, String topic, Instant startTime, Integer durationMinutes) {
+        throw guard("update");
+    }
+
+    @Override
+    public void deleteMeeting(long zoomMeetingId) {
+        throw guard("delete");
+    }
+
+    @Override
+    public void endMeeting(long zoomMeetingId) {
+        throw guard("end");
     }
 
     private IllegalStateException guard(String operation) {
