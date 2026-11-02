@@ -101,11 +101,23 @@ class AuthRequestValidationTest extends ProdChainIntegrationTestBase {
 
     @Test
     void malformedAndUnknownJsonRetainExistingParseContract() throws Exception {
-        for (String body : new String[]{"{", "{\"unexpected\":true}"}) {
+        for (String body : new String[]{"{"}) {
             mockMvc.perform(post("/login-api").contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_MALFORMED_BODY"));
             mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_MALFORMED_BODY"));
+        }
+        // FLIPPED by EB-40 / P2-06 (API-05 reconciliation): unknown fields were
+        // previously pinned as ERR_MALFORMED_BODY (the advice saw the wrapped
+        // HttpMessageNotReadableException only); the JSON-parse handler now
+        // dispatches UnrecognizedPropertyException causes to the documented
+        // ERR_UNKNOWN_FIELD contract (error-responses.md), so the dedicated
+        // handler is reachable. The malformed-JSON row is unchanged.
+        for (String body : new String[]{"{\"unexpected\":true}"}) {
+            mockMvc.perform(post("/login-api").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_UNKNOWN_FIELD"));
+            mockMvc.perform(post("/api/v1/register/verify-user").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorCode").value("ERR_UNKNOWN_FIELD"));
         }
         verifyNoInteractions(registration);
     }

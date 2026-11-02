@@ -15,7 +15,7 @@
 | P2-03 | G1–G15 probes + security matrix green; red-run note exists | suite run + matrix file | Security Reviewer |
 | P2-04 | 6 business-flow suites green (or rows explicitly dependency-marked) | 6 suites / 19 tests green, 0 skips (`mvnw test "-Dtest=*FlowIntegrationTest"`) | QA / Omar Medhat |
 | P2-05 | WS auth matrix + drop + `/queue/errors` contract green (wire-real, real-socket suite) | suite run | WS implementer |
-| P2-06 | Contract suites green; API docs reconciled | suite run | Eng Lead |
+| P2-06 | Contract suites green; API docs reconciled | suite run | Eng Lead — **delivered (EB-40)**: `contract/PaginationContractTest` (6, API-02 pins incl. as-coded quirk docs), `JacksonProdUnknownFieldContractTest` + `JacksonDevUnknownFieldContractTest` (API-05 parity pair), `BeanValidationContractTest` (6, SEL-07 widened beyond auth); `AuthRequestValidationTest` unknown-field row flipped; advice dispatch fix makes `ERR_UNKNOWN_FIELD` reachable; API docs reconciled — pending review |
 | P2-07 | CI green on `main`; **red run** proven; branch protection on | run links + protection config | Eng Lead |
 | P2-08 | Scan advisory green triaged; suppressions justified | SpotBugs 0 bugs / 0 errors (`spotbugs-exclude.xml` + CI step in `tests.yml`) | Eng Lead / Omar Medhat |
 
