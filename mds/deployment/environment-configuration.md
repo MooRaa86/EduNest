@@ -58,15 +58,20 @@ Additional prod-profile-only hardcoding: none for JWT (see §1).
 - DEP-07: no compose/k8s manifest tracked; no `.env.example`.
 - SEL-01/SEL-02 cross-references; DB-01 (`ddl-auto`), DEP-04 (show-sql), API-05 (Jackson strictness delta).
 
-## 7. Supabase PostgreSQL — implemented state ([ADD-01]/EB-81, `feat/add-01-supabase-pg`, uncommitted)
+## 7. Supabase PostgreSQL — implemented state ([ADD-01]/EB-81, `feat/add-01-supabase-pg`, PR #68)
 
-Implemented in code so far: `postgresql` JDBC driver (Spring Boot-managed version) replaces `mysql-connector-j` in `pom.xml`; `org.postgresql.Driver` + `org.hibernate.dialect.PostgreSQLDialect` set in **both** `application.properties` and `application-prod.properties`; `DATABASE_URL`/`DATABASE_NAME`/`DATABASE_PASSWORD` env contract unchanged. **EB-81 is NOT complete** — its DoD ("app boots against Supabase staging under the prod profile") is still open.
+Implemented in code: `postgresql` JDBC driver (Spring Boot-managed version) replaces `mysql-connector-j` in `pom.xml`; `org.postgresql.Driver` + `org.hibernate.dialect.PostgreSQLDialect` set in **both** `application.properties` and `application-prod.properties`; `DATABASE_URL`/`DATABASE_NAME`/`DATABASE_PASSWORD` env contract unchanged. The changes are **committed and pushed on `feat/add-01-supabase-pg` and under review via PR #68** — EB-81 closes only after that review/merge.
 
-**Status (verified, 2026-11-02):**
-- Supabase project exists; connection identifiers obtained (below). ✅
-- Staging status **confirmed for disposable use: NO** — the project is not yet approved as a disposable staging target.
-- Database authentication: **NOT tested**. Application startup against Supabase: **NOT validated**. **No remote DB operation is authorized yet.**
-- Schema/data migration belongs to **EB-82**; the Flyway schema lifecycle belongs to **EB-43** (which will also correct `ddl-auto=update` — do not boot the `prod` profile against any real database until then).
+**Verified evidence (development integration test, 2026-11-02) — against the Hazem-approved DEVELOPMENT Supabase project (`ciogysvcykzxrjuskxmk`):**
+- ✅ PostgreSQL Session Pooler connection successful: authentication ok via `aws-0-eu-west-1.pooler.supabase.com:5432` (`sslmode=require`; TLS terminates at the Supavisor edge — `pg_stat_ssl` reports `ssl=f` server-side, standard pooler behavior).
+- ✅ Spring Boot **prod-profile startup successful**: `Started EduNestApplication in 27.31s` (Hibernate 6.6.33; HikariPool-1 obtained `org.postgresql.jdbc.PgConnection`; Tomcat on 8080).
+- ✅ Hibernate (`ddl-auto=update`, dev-test only) created **42 tables** in the previously **empty** development database — no failed statements, nothing pre-existing touched.
+- ✅ `enrollments.platform_profit` mapped to **`double precision` default `0.0`** in the real database (the Enrollment.java portability fix verified live).
+- ✅ Controlled SQL **insert/read/delete smoke successful** (disposable `roles` probe row: 1/1/1; removed afterwards; no stray rows).
+- ✅ HTTP authentication smoke returned the **expected 401** (`POST /login-api/login` with unknown credentials — full prod security chain + user-table read).
+- ✅ Full Maven H2 suite: **511 tests, 0 failures, 0 errors, 2 skipped** (D-27 intact); GitHub Actions `tests` workflow green on both PR heads.
+
+**Not covered by the above — do not overstate:** production deployment was **NOT tested**; a separately provisioned **staging** environment was **NOT tested** (the Jira DoD wording says "staging" — the boot evidence was obtained on the approved development project; formal staging sign-off belongs to Omar per D-22). Schema/data migration remains owned by **EB-82** (note: the dev DB now holds the 42 Hibernate-generated tables — see the EB-82 handoff notes). Flyway and the removal of `ddl-auto=update` remain owned by **EB-43**. PR **#68 still requires code review and merge**.
 
 **Connection structure (non-secret identifiers):**
 | Item | Value |
@@ -98,10 +103,10 @@ Implemented in code so far: `postgresql` JDBC driver (Spring Boot-managed versio
 | `MAIL_*` | local SMTP/dev values | staging SMTP env | prod SMTP env |
 | `SPRING_PROFILES_ACTIVE` | `prod` required locally to exercise the hardened chain (Dockerfile always sets `prod`) | `prod` | `prod` |
 
-> The staging and production values must point at **different Supabase projects** (D-22). **The existing single project must NOT automatically serve both development and staging:** until a dedicated staging arrangement is confirmed, the `Development` column above is design-only, not an approved target. **Production requires an independently approved Supabase project/configuration** — never the development or staging project. Staging provisioning state has not been confirmed; until then `DATABASE_URL` above describes the connection *design*, not an approved target.
+> The staging and production values must point at **different Supabase projects** (D-22). The existing single project is **authorized for development + integration testing only** (Hazem, 2026-11-02) — it must **not** serve staging or production, and production requires an independently approved Supabase project/configuration. Staging/prod provisioning remains unconfirmed; the rows describe the connection *design* per environment.
 
-**Pooling note (not added to `application-prod.properties`):** for Session Pooler, a modest Hikari sync (`maximum-pool-size` ≤ 10, `minimum-idle` low) is reasonable once connectivity is verified; no speculative pool tuning was added under EB-81 — pool sizing is a deliberate decision after a successful connectivity/boot test.
+**Pooling note (not added to `application-prod.properties`):** for Session Pooler, connectivity and a full prod-profile boot were verified **with default Hikari settings**; a modest intentional pool sync (`maximum-pool-size` ≤ 10, `minimum-idle` low) remains a deliberate follow-up decision — no speculative pool tuning was added under EB-81.
 
-**Migration-era caveat (carried from the plan):** `entity/mentorship/Enrollment.java` uses `columnDefinition = "double default 0.0"` — a literal DDL fragment PostgreSQL will reject for a clean schema (`double` is not a PG type) — masking currently invisible because H2 MODE=MySQL accepts it. Owned by EB-82 (full compatibility sweep) unless explicitly pre-approved under EB-81. This means a prod-profile boot against Supabase will currently fail during DDL.
+**Migration-era note (updated):** the PostgreSQL boot blocker was **resolved**: `entity/mentorship/Enrollment.java` now uses `columnDefinition = "double precision default 0.0"` (portable across PostgreSQL / MySQL / H2; verified live in the development database). The **broader** schema-compatibility sweep (`@Lob` field wire-format, MySQL-dialect native queries, constraint-naming deltas for the converted dump) remains owned by **EB-82**.
 
 **File storage:** unchanged — still `uploads/` local path ([ADD-03]/Supabase Storage decision recorded in D-25, **NOT yet implemented**). §1–§6 remain the operating contract except where §7 overrides the database rows.
