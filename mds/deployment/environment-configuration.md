@@ -6,7 +6,7 @@ Complete configuration surface (verified against `application.properties`, `appl
 
 | Variable | Used by | Notes |
 |---|---|---|
-| `DATABASE_URL` | `spring.datasource.url` | Full JDBC URL expected by the naming convention (e.g. `jdbc:mysql://host:3306/db`) |
+| `DATABASE_URL` | `spring.datasource.url` | Full JDBC URL expected by the naming convention (e.g. `jdbc:postgresql://<host>:5432/<db>?sslmode=require` — see §7) |
 | `DATABASE_NAME` | `spring.datasource.username` | (name holds the *user*) |
 | `DATABASE_PASSWORD` | `spring.datasource.password` | – |
 | `MAIL_HOST`, `MAIL_PORT` | `spring.mail.*` | SMTP |
@@ -58,11 +58,50 @@ Additional prod-profile-only hardcoding: none for JWT (see §1).
 - DEP-07: no compose/k8s manifest tracked; no `.env.example`.
 - SEL-01/SEL-02 cross-references; DB-01 (`ddl-auto`), DEP-04 (show-sql), API-05 (Jackson strictness delta).
 
-## 7. Decided target environment addendum (2026-10-25) — planning note (NOT yet implemented)
+## 7. Supabase PostgreSQL — implemented state ([ADD-01]/EB-81, `feat/add-01-supabase-pg`, uncommitted)
 
-Sections 1–6 describe the **current** configuration contract. The following is the **decided target** (recorded in `plan/DECISIONS-REQUIRED.md`, D-22/D-25 outcomes; not yet in code):
+Implemented in code so far: `postgresql` JDBC driver (Spring Boot-managed version) replaces `mysql-connector-j` in `pom.xml`; `org.postgresql.Driver` + `org.hibernate.dialect.PostgreSQLDialect` set in **both** `application.properties` and `application-prod.properties`; `DATABASE_URL`/`DATABASE_NAME`/`DATABASE_PASSWORD` env contract unchanged. **EB-81 is NOT complete** — its DoD ("app boots against Supabase staging under the prod profile") is still open.
 
-- **Database:** Supabase (PostgreSQL). The `DATABASE_URL` contract stays env-driven, but the JDBC URL becomes `jdbc:postgresql://...` with Supavisor pooling; driver changes from `mysql-connector-j`. Staging and prod are separate Supabase projects (distinct credentials). Supersedes MySQL 8 (plan assumption A-4) — migration precedes the Flyway baseline.
-- **File storage:** Supabase Storage (S3). New expected secrets/env keys for bucket access (service key / public bucket base URL), replacing the `uploads/` local-path contract in §3.
-- **App secrets:** unchanged in nature (`JWT_SECRET` etc. as container env) but now must be split from DB credentials (which Supabase manages).
-- Until the addendum tasks ([ADD-01]/[ADD-02], storage [ADD-03]) land, everything in §1–§6 remains the operating truth.
+**Status (verified, 2026-11-02):**
+- Supabase project exists; connection identifiers obtained (below). ✅
+- Staging status **confirmed for disposable use: NO** — the project is not yet approved as a disposable staging target.
+- Database authentication: **NOT tested**. Application startup against Supabase: **NOT validated**. **No remote DB operation is authorized yet.**
+- Schema/data migration belongs to **EB-82**; the Flyway schema lifecycle belongs to **EB-43** (which will also correct `ddl-auto=update` — do not boot the `prod` profile against any real database until then).
+
+**Connection structure (non-secret identifiers):**
+| Item | Value |
+|---|---|
+| Project ref | `ciogysvcykzxrjuskxmk` |
+| Connection method | Supavisor **Session Pooler** |
+| Host | `aws-0-eu-west-1.pooler.supabase.com` |
+| Port | `5432` (session-mode pooler) |
+| Database | `postgres` |
+| Username | `postgres.ciogysvcykzxrjuskxmk` |
+| SSL | required (`sslmode=require` in JDBC URL params) |
+| Password | environment-injected only (`DATABASE_PASSWORD`) — never committed, never logged |
+
+**Connection-variant glossary (do not mix these up):**
+- **PostgreSQL URI** (`postgresql://user:pw@host:port/db`) — the URI form used by `psql`/tools; **invalid** as `spring.datasource.url`. Prepend `jdbc:`.
+- **JDBC URL** (`jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require`) — what `spring.datasource.url` (`DATABASE_URL`) must contain. The driver also supports single-prefixed `jdbc:postgresql://`; anything without the `jdbc:` prefix fails driver detection.
+- **Direct connection** — `db.<project-ref>.supabase.co:5432`, hits the database server directly; fine for long-lived services (IPv6-note per plan RISK register; IPv4 on paid add-on).
+- **Session Pooler** (current choice, port `5432` via pooler host) — Supavisor session mode: one real PostgreSQL session per client connection; server-prepared/managed statements and per-connection state work as expected → **suitable for HikariCP + Hibernate**; also minimizes IPv4 issues since the pooler is reachable over IPv4.
+- **Transaction Pooler** (`6543` via pooler host) — statement-level multiplexing: a transaction may land on a different physical session each time; breaks persistent session state and can corrupt server-prepared statements. **Not appropriate** for this app today. Ports 5432/6543 are **not** interchangeable per mode.
+
+**Environment variable matrix:**
+
+| Variable | Development (local run) | Staging (container) | Production (container) |
+|---|---|---|---|
+| `DATABASE_URL` | `jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require` | same shape; secrets stored in GitHub Actions environment secret (`stg`) | same shape (separate Supabase project expected — distinct host/user/password); secret in GitHub Actions environment secret (`prod`) |
+| `DATABASE_NAME` | `postgres.ciogysvcykzxrjuskxmk` (holds the **user**) | separates per environment | separates per environment |
+| `DATABASE_PASSWORD` | local process environment / secret store — **never in a file** | GH environment secret | GH environment secret |
+| `JWT_SECRET` | ≥32 bytes local value | GH environment secret | GH environment secret |
+| `MAIL_*` | local SMTP/dev values | staging SMTP env | prod SMTP env |
+| `SPRING_PROFILES_ACTIVE` | `prod` required locally to exercise the hardened chain (Dockerfile always sets `prod`) | `prod` | `prod` |
+
+> The staging and production values must point at **different Supabase projects** (D-22). **The existing single project must NOT automatically serve both development and staging:** until a dedicated staging arrangement is confirmed, the `Development` column above is design-only, not an approved target. **Production requires an independently approved Supabase project/configuration** — never the development or staging project. Staging provisioning state has not been confirmed; until then `DATABASE_URL` above describes the connection *design*, not an approved target.
+
+**Pooling note (not added to `application-prod.properties`):** for Session Pooler, a modest Hikari sync (`maximum-pool-size` ≤ 10, `minimum-idle` low) is reasonable once connectivity is verified; no speculative pool tuning was added under EB-81 — pool sizing is a deliberate decision after a successful connectivity/boot test.
+
+**Migration-era caveat (carried from the plan):** `entity/mentorship/Enrollment.java` uses `columnDefinition = "double default 0.0"` — a literal DDL fragment PostgreSQL will reject for a clean schema (`double` is not a PG type) — masking currently invisible because H2 MODE=MySQL accepts it. Owned by EB-82 (full compatibility sweep) unless explicitly pre-approved under EB-81. This means a prod-profile boot against Supabase will currently fail during DDL.
+
+**File storage:** unchanged — still `uploads/` local path ([ADD-03]/Supabase Storage decision recorded in D-25, **NOT yet implemented**). §1–§6 remain the operating contract except where §7 overrides the database rows.
