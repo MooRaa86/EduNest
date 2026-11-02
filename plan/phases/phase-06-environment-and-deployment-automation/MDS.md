@@ -1,6 +1,6 @@
 # Phase 06 — Environments & Deployment Automation
 
-> **Deployment shape (amended 2026-11-02, D-22):** the app ships as a Docker image pushed to **GHCR** from GitHub Actions and is deployed/hosted on **Vercel** per [Vercel's Dockerfile support](https://vercel.com/blog/dockerfile-on-vercel); secrets arrive env-injected (Supabase DB, SMTP, Zoom; Stripe keys after [ADD-06]/D-28). WS/STOMP and background-scheduler behavior must be validated on the deployed staging shape (RISKS **R14**) before the phase exit.
+> **Deployment shape (amended 2026-11-02, D-22):** the app ships as a Docker image pushed to **GHCR** from GitHub Actions. Host timeline: Vercel amendment recorded first, then (same day, team decision) **pivoted to Railway** (fallback Render) — Vercel's model was ruled an architectural mismatch for STOMP WebSockets + `@Scheduled` background tasks (RISKS **R14**); the Vercel amendment remains the documented fallback "until another decision" per the PO. Secrets arrive env-injected (Supabase DB, SMTP, Zoom; Stripe keys after [ADD-06]/D-28). WS/STOMP and scheduler behavior must be validated on the deployed staging shape before the phase exit, whichever host finally serves it.
 
 ## 1. Objective
 
