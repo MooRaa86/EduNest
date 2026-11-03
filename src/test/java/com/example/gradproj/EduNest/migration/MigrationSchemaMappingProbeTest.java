@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.migration;
 
 import com.example.gradproj.EduNest.entity.contactus.ContactMessageEntity;
+import com.example.gradproj.EduNest.entity.mentorship.Enrollment;
 import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.tasks.Task;
@@ -68,6 +69,15 @@ class MigrationSchemaMappingProbeTest {
         assertThat(tsCol).isNotNull();
         assertThat(tsCol.name()).isEqualTo("task_feedback");
         assertThat(tsCol.columnDefinition()).isEqualTo("TEXT");
+    }
+
+    @Test
+    @DisplayName("Verify Enrollment.platformProfit uses portable double precision definition")
+    void verifyEnrollmentPlatformProfitDefinition() throws NoSuchFieldException {
+        Field profitField = Enrollment.class.getDeclaredField("platformProfit");
+        Column profitCol = profitField.getAnnotation(Column.class);
+        assertThat(profitCol).isNotNull();
+        assertThat(profitCol.columnDefinition()).contains("double precision");
     }
 
     @Test
