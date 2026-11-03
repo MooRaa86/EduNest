@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -37,6 +38,7 @@ public class Mentor extends UserEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY)
+    @Builder.Default
     private List<MentorShip> mentorships = new ArrayList<>();
 
 }

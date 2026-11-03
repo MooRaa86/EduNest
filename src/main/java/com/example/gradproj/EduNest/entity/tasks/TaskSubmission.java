@@ -38,6 +38,7 @@ public class TaskSubmission extends BaseEntity {
     @Column(name = "task_feedback", columnDefinition = "TEXT")
     private String feedBack;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "submission_status")
     private SubmissionStatus status=SubmissionStatus.SUBMITTED;
@@ -48,6 +49,7 @@ public class TaskSubmission extends BaseEntity {
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
 
+    @Builder.Default
     @Column(name = "is_late")
     private Boolean isLate=false;
 

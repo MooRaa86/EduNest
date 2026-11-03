@@ -28,6 +28,7 @@ public class TotalPoints extends BaseEntity {
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorship;
 
+    @Builder.Default
     @Column(name = "total_points", nullable = false)
     private Integer totalPoints = 0;
 }

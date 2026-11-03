@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -41,6 +42,7 @@ public class ProjectSubmission extends BaseEntity {
     @Column(name = "project_feedback", columnDefinition = "TEXT")
     private String feedBack;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "submission_status")
     private SubmissionStatus status=SubmissionStatus.SUBMITTED;
@@ -51,6 +53,7 @@ public class ProjectSubmission extends BaseEntity {
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
 
+    @Builder.Default
     @Column(name = "is_late")
     private Boolean isLate=false;
 

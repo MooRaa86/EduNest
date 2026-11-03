@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.enums.register.EducationalLevel;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -47,6 +48,7 @@ public class Student extends UserEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @Builder.Default
     private List<Enrollment> enrollments = new ArrayList<>();
 
 
@@ -56,6 +58,7 @@ public class Student extends UserEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @Builder.Default
     private List<MentorShipReviews> reviews = new ArrayList<>();
 
     @OneToMany(
@@ -64,6 +67,7 @@ public class Student extends UserEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @Builder.Default
     private List<BadgeAward> badgeAwards = new ArrayList<>();
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)

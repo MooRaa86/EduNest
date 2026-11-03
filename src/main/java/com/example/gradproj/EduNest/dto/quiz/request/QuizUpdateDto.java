@@ -24,5 +24,6 @@ public class QuizUpdateDto {
     @Min(value = 1, message = "Duration must be at least 1 minute")
     private Integer durationMinutes;
 
+    @Builder.Default
     private QuizStatus status = QuizStatus.DRAFT;
 }

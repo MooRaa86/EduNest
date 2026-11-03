@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.entity.users.UserEntity;
 import com.example.gradproj.EduNest.enums.register.OtpType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,6 +33,7 @@ public class OTP extends BaseEntity {
     @JoinColumn(name = "admin_id")
     private Admin admin;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "otp_type")
     private OtpType otpType = OtpType.DEFAULT;

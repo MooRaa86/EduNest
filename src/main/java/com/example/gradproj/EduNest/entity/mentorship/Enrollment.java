@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.Student;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -34,6 +35,7 @@ public class Enrollment extends BaseEntity {
 
     // [EB-81] PG compatibility: bare `double` is not a PostgreSQL type; `double precision`
     // is portable across PostgreSQL / MySQL / H2 with identical type and default semantics.
+    @Builder.Default
     @Column(columnDefinition = "double precision default 0.0")
     private Double platformProfit = 0.0;
 

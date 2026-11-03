@@ -40,6 +40,7 @@ public class ChatRoom extends BaseEntity {
             fetch = FetchType.LAZY
     )
     @JsonIgnore
+    @Builder.Default
     private List<ChatMessage> messages = new ArrayList<>();
 
     @OneToMany(
@@ -49,5 +50,6 @@ public class ChatRoom extends BaseEntity {
             fetch = FetchType.LAZY
     )
     @JsonIgnore
+    @Builder.Default
     private List<ChatRoomMember> members = new ArrayList<>();
 }

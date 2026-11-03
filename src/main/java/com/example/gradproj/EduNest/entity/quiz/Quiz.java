@@ -33,6 +33,7 @@ public class Quiz extends BaseEntity {
     @Column(nullable = false)
     private Integer durationMinutes;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private QuizStatus status = QuizStatus.DRAFT;
 
