@@ -6,6 +6,8 @@ import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.enums.project.ProjectStatus;
+import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Lob;
 import org.junit.jupiter.api.DisplayName;
@@ -109,5 +111,31 @@ class MigrationSchemaMappingProbeTest {
     void verifyImplicitNamingStrategyResolvable() throws ClassNotFoundException {
         Class<?> clazz = Class.forName("org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy");
         assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Verify Project and Task builders preserve default status DRAFT and initialized collections")
+    void verifyEntityBuilderDefaults() {
+        // Project defaults
+        Project projectDefault = Project.builder().build();
+        assertThat(projectDefault.getStatus()).isEqualTo(ProjectStatus.DRAFT);
+        assertThat(projectDefault.getSubmissions()).isNotNull().isEmpty();
+
+        // Project explicit overrides
+        Project projectExplicit = Project.builder()
+                .status(ProjectStatus.PUBLISHED)
+                .build();
+        assertThat(projectExplicit.getStatus()).isEqualTo(ProjectStatus.PUBLISHED);
+
+        // Task defaults
+        Task taskDefault = Task.builder().build();
+        assertThat(taskDefault.getStatus()).isEqualTo(TaskStatus.DRAFT);
+        assertThat(taskDefault.getSubmissions()).isNotNull().isEmpty();
+
+        // Task explicit overrides
+        Task taskExplicit = Task.builder()
+                .status(TaskStatus.CLOSED)
+                .build();
+        assertThat(taskExplicit.getStatus()).isEqualTo(TaskStatus.CLOSED);
     }
 }
