@@ -43,9 +43,10 @@ public class FlywayPropertyHygieneTest {
                 .as("Flyway must be enabled in production")
                 .isEqualTo("true");
 
+        // Production safety: baseline-on-migrate must be false by default to prevent silent baselining of drifted DBs
         assertThat(props.getProperty("spring.flyway.baseline-on-migrate"))
-                .as("Flyway baseline-on-migrate must be 'true' for existing Supabase DB")
-                .isEqualTo("true");
+                .as("Flyway baseline-on-migrate must be 'false' in production by default")
+                .isEqualTo("false");
 
         assertThat(props.getProperty("spring.flyway.baseline-version"))
                 .as("Flyway baseline-version must be '1'")
@@ -75,6 +76,10 @@ public class FlywayPropertyHygieneTest {
         assertThat(props.getProperty("spring.flyway.clean-disabled"))
                 .as("Flyway clean-disabled must be 'true' in base properties")
                 .isEqualTo("true");
+
+        assertThat(props.getProperty("spring.flyway.baseline-on-migrate"))
+                .as("Flyway baseline-on-migrate must be 'false' in base properties")
+                .isEqualTo("false");
     }
 
     @Test

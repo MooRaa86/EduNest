@@ -1,0 +1,411 @@
+package com.example.gradproj.EduNest.migration;
+
+import jakarta.persistence.EntityManagerFactory;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
+import org.flywaydb.core.api.MigrationInfo;
+import org.flywaydb.core.api.output.MigrateResult;
+import org.hibernate.jpa.HibernatePersistenceProvider;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PropertiesLoaderUtils;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+/**
+ * EB-43: Real PostgreSQL Integration Test Suite.
+ * Covers all 10 migration lifecycle and production database hygiene requirements against PostgreSQL 17.
+ * Uses Testcontainers with graceful skip when Docker is unavailable in the environment.
+ */
+@Testcontainers(disabledWithoutDocker = true)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@DisplayName("EB-43: PostgreSQL Migration Lifecycle & Production Hygiene Integration Tests")
+public class PostgreSqlMigrationIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+
+    private static Flyway primaryFlyway;
+
+    @BeforeAll
+    static void checkDockerAndInit() {
+        try {
+            Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
+                    "Docker daemon is not available; skipping Testcontainers PostgreSQL integration suite");
+        } catch (Exception e) {
+            Assumptions.abort("Docker check threw exception; skipping Testcontainers suite: " + e.getMessage());
+        }
+
+        if (postgres.isRunning()) {
+            primaryFlyway = Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(false)
+                    .cleanDisabled(true)
+                    .load();
+        }
+    }
+
+    @Test
+    @Order(1)
+    @DisplayName("1. Fresh database migration: empty schema migrates to latest version")
+    void testFreshDatabaseMigration() {
+        assertThat(primaryFlyway).isNotNull();
+
+        MigrateResult result = primaryFlyway.migrate();
+        assertThat(result.success)
+                .as("Fresh migration against empty schema must succeed")
+                .isTrue();
+        assertThat(result.migrationsExecuted)
+                .as("Initial migration must execute exactly 2 scripts (V1, V2)")
+                .isEqualTo(2);
+    }
+
+    @Test
+    @Order(2)
+    @DisplayName("2. Migration history: exactly 2 applied migrations (V1, V2), SUCCESS, non-null checksums")
+    void testMigrationHistoryVerification() {
+        MigrationInfo[] applied = primaryFlyway.info().applied();
+        assertThat(applied)
+                .as("Exactly 2 migrations must be registered in flyway_schema_history")
+                .hasSize(2);
+
+        MigrationInfo v1 = applied[0];
+        assertThat(v1.getVersion().getVersion()).isEqualTo("1");
+        assertThat(v1.getDescription()).isEqualTo("initial schema");
+        assertThat(v1.getType().name()).isEqualTo("SQL");
+        assertThat(v1.getState().isApplied()).isTrue();
+        assertThat(v1.getChecksum()).isNotNull();
+
+        MigrationInfo v2 = applied[1];
+        assertThat(v2.getVersion().getVersion()).isEqualTo("2");
+        assertThat(v2.getDescription()).isEqualTo("mentorship explore trigram index");
+        assertThat(v2.getType().name()).isEqualTo("SQL");
+        assertThat(v2.getState().isApplied()).isTrue();
+        assertThat(v2.getChecksum()).isNotNull();
+    }
+
+    @Test
+    @Order(3)
+    @DisplayName("3. Schema verification: 42 tables, 5 TEXT columns, trgm extension & indexes, seeded roles")
+    void testSchemaVerification() throws Exception {
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            // A. Verify exactly 42 application tables in public schema
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT table_name
+                     FROM information_schema.tables
+                     WHERE table_schema = 'public'
+                       AND table_type = 'BASE TABLE'
+                       AND table_name != 'flyway_schema_history'
+                     ORDER BY table_name
+                 """)) {
+                List<String> tables = new ArrayList<>();
+                while (rs.next()) {
+                    tables.add(rs.getString("table_name"));
+                }
+                assertThat(tables)
+                        .as("Schema must contain exactly 42 application entity tables matching EB-82 reconciliation")
+                        .hasSize(42);
+            }
+
+            // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
+            Map<String, String> textColumns = Map.of(
+                    "contact_message", "message",
+                    "project", "project_brief",
+                    "project_submission", "project_feedback",
+                    "task", "task_description",
+                    "task_submission", "task_feedback"
+            );
+
+            for (Map.Entry<String, String> entry : textColumns.entrySet()) {
+                String table = entry.getKey();
+                String column = entry.getValue();
+                try (PreparedStatement ps = conn.prepareStatement("""
+                    SELECT data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = ? AND column_name = ?
+                """)) {
+                    ps.setString(1, table);
+                    ps.setString(2, column);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        assertThat(rs.next())
+                                .as("Column " + table + "." + column + " must exist in database")
+                                .isTrue();
+                        String dataType = rs.getString("data_type");
+                        assertThat(dataType)
+                                .as(table + "." + column + " data_type must be 'text' (not oid or bytea)")
+                                .isEqualTo("text");
+                    }
+                }
+            }
+
+            // C. Verify pg_trgm extension and indexes exist
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT extname FROM pg_extension WHERE extname = 'pg_trgm'")) {
+                assertThat(rs.next())
+                        .as("pg_trgm extension must be installed in PostgreSQL by V2")
+                        .isTrue();
+            }
+
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT indexname FROM pg_indexes
+                     WHERE schemaname = 'public'
+                       AND indexname IN ('idx_mentorship_explore_trgm', 'idx_mentorship_active_price', 'idx_users_mentor_name_trgm')
+                 """)) {
+                List<String> indexes = new ArrayList<>();
+                while (rs.next()) {
+                    indexes.add(rs.getString("indexname"));
+                }
+                assertThat(indexes)
+                        .as("All 3 performance and trigram indexes defined in V2 must exist")
+                        .contains("idx_mentorship_explore_trgm", "idx_mentorship_active_price", "idx_users_mentor_name_trgm");
+            }
+
+            // D. Verify initial reference roles seeded by V1
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT name FROM roles ORDER BY name")) {
+                List<String> roles = new ArrayList<>();
+                while (rs.next()) {
+                    roles.add(rs.getString("name"));
+                }
+                assertThat(roles)
+                        .as("Initial reference roles (ADMIN, MENTOR, STUDENT) must be seeded idempotently")
+                        .contains("ADMIN", "MENTOR", "STUDENT");
+            }
+        }
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("4. Hibernate validation: EntityManagerFactory boots with ddl-auto=validate without exception")
+    void testHibernateValidationAgainstMigratedSchema() {
+        LocalContainerEntityManagerFactoryBean emfBean = new LocalContainerEntityManagerFactoryBean();
+        emfBean.setPersistenceProviderClass(HibernatePersistenceProvider.class);
+        emfBean.setPackagesToScan("com.example.gradproj.EduNest.entity");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        vendorAdapter.setDatabasePlatform("org.hibernate.dialect.PostgreSQLDialect");
+        emfBean.setJpaVendorAdapter(vendorAdapter);
+
+        Map<String, Object> jpaProperties = new HashMap<>();
+        jpaProperties.put("jakarta.persistence.jdbc.driver", "org.postgresql.Driver");
+        jpaProperties.put("jakarta.persistence.jdbc.url", postgres.getJdbcUrl());
+        jpaProperties.put("jakarta.persistence.jdbc.user", postgres.getUsername());
+        jpaProperties.put("jakarta.persistence.jdbc.password", postgres.getPassword());
+        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+        jpaProperties.put("hibernate.hbm2ddl.auto", "validate"); // STRICT VALIDATE MODE
+        jpaProperties.put("hibernate.show_sql", "false");
+        jpaProperties.put("hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
+        jpaProperties.put("hibernate.implicit_naming_strategy", "org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy");
+
+        emfBean.setJpaPropertyMap(jpaProperties);
+
+        assertDoesNotThrow(() -> {
+            emfBean.afterPropertiesSet();
+            EntityManagerFactory emf = emfBean.getObject();
+            assertThat(emf).isNotNull();
+            assertThat(emf.isOpen()).isTrue();
+            emf.close();
+        }, "JPA EntityManagerFactory with ddl-auto=validate must succeed without SchemaManagementException");
+    }
+
+    @Test
+    @Order(5)
+    @DisplayName("5. Migration idempotency: running migrate again results in 0 migrations executed")
+    void testMigrationIdempotency() {
+        MigrateResult repeatResult = primaryFlyway.migrate();
+        assertThat(repeatResult.success).isTrue();
+        assertThat(repeatResult.migrationsExecuted)
+                .as("Subsequent migrate() invocation must be idempotent and execute 0 migrations")
+                .isEqualTo(0);
+    }
+
+    @Test
+    @Order(6)
+    @DisplayName("6. Migration immutability: tampering with applied checksum causes Flyway validation failure")
+    void testMigrationImmutabilityTampering() throws Exception {
+        String testSchema = "immutability_test";
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS " + testSchema);
+        }
+
+        try {
+            Flyway isolatedFlyway = Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas(testSchema)
+                    .defaultSchema(testSchema)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(false)
+                    .cleanDisabled(true)
+                    .load();
+
+            isolatedFlyway.migrate();
+
+            // Tamper with checksum of V1 in this isolated schema
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("UPDATE " + testSchema + ".flyway_schema_history SET checksum = 99999999 WHERE version = '1'");
+            }
+
+            // Flyway validation must detect checksum mutation and reject it
+            assertThatThrownBy(isolatedFlyway::validate)
+                    .as("Flyway validate() must fail when applied checksum does not match classpath script")
+                    .isInstanceOf(FlywayException.class);
+        } finally {
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP SCHEMA IF EXISTS " + testSchema + " CASCADE");
+            }
+        }
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("7. Partial migration failure recovery: PostgreSQL transactional DDL rolls back cleanly on error")
+    void testTransactionalRollbackOnFailure() throws Exception {
+        String testSchema = "rollback_test";
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS " + testSchema);
+
+            // Execute transaction with valid DDL followed by deliberate runtime failure (division by zero)
+            conn.setAutoCommit(false);
+            try (Statement txStmt = conn.createStatement()) {
+                txStmt.execute("CREATE TABLE " + testSchema + ".temp_rollback_table (id INT PRIMARY KEY);");
+                // Intentionally fail
+                txStmt.execute("SELECT 1 / 0;");
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+            // Verify that the table was cleanly rolled back and does not exist
+            try (Statement checkStmt = conn.createStatement();
+                 ResultSet rs = checkStmt.executeQuery("""
+                     SELECT table_name
+                     FROM information_schema.tables
+                     WHERE table_schema = 'rollback_test' AND table_name = 'temp_rollback_table'
+                 """)) {
+                assertThat(rs.next())
+                        .as("Table created in failed transaction must have been rolled back completely")
+                        .isFalse();
+            }
+        } finally {
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP SCHEMA IF EXISTS " + testSchema + " CASCADE");
+            }
+        }
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("8. Existing unmanaged database behavior: baseline-on-migrate=false rejects unmanaged schema, manual baseline succeeds")
+    void testExistingUnmanagedDatabaseBehavior() throws Exception {
+        String testSchema = "unmanaged_test";
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS " + testSchema);
+            stmt.execute("CREATE TABLE " + testSchema + ".unmanaged_table (id INT PRIMARY KEY);");
+        }
+
+        try {
+            Flyway unmanagedFlyway = Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas(testSchema)
+                    .defaultSchema(testSchema)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(false) // Must be false
+                    .baselineVersion("1")
+                    .cleanDisabled(true)
+                    .load();
+
+            // 1. With baselineOnMigrate=false, migrate() must refuse to run against non-empty unmanaged schema
+            assertThatThrownBy(unmanagedFlyway::migrate)
+                    .as("baseline-on-migrate=false must refuse to run against populated unmanaged database")
+                    .isInstanceOf(FlywayException.class)
+                    .hasMessageContaining("non-empty schema");
+
+            // 2. Explicit manual baseline establishes baseline version 1
+            unmanagedFlyway.baseline();
+
+            assertThat(unmanagedFlyway.info().current().getVersion().getVersion())
+                    .as("Manual baseline must record version 1 in flyway_schema_history")
+                    .isEqualTo("1");
+
+            // 3. Subsequent migrate applies pending migrations above baseline (V2)
+            MigrateResult postBaselineResult = unmanagedFlyway.migrate();
+            assertThat(postBaselineResult.success).isTrue();
+            assertThat(postBaselineResult.migrationsExecuted)
+                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2)")
+                    .isEqualTo(1);
+        } finally {
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP SCHEMA IF EXISTS " + testSchema + " CASCADE");
+            }
+        }
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("9. Show-sql disabled verification: production and base properties enforce show-sql=false")
+    void testShowSqlDisabledVerification() throws IOException {
+        Resource prodResource = new ClassPathResource("application-prod.properties");
+        Properties prodProps = PropertiesLoaderUtils.loadProperties(prodResource);
+        assertThat(prodProps.getProperty("spring.jpa.show-sql"))
+                .as("application-prod.properties must enforce spring.jpa.show-sql=false")
+                .isEqualTo("false");
+
+        Resource baseResource = new ClassPathResource("application.properties");
+        Properties baseProps = PropertiesLoaderUtils.loadProperties(baseResource);
+        assertThat(baseProps.getProperty("spring.jpa.show-sql"))
+                .as("application.properties must enforce spring.jpa.show-sql=false")
+                .isEqualTo("false");
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("10. Clean-disabled verification: attempting flyway.clean() throws FlywayException")
+    void testCleanDisabledVerification() {
+        assertThat(primaryFlyway).isNotNull();
+
+        assertThatThrownBy(primaryFlyway::clean)
+                .as("flyway.clean() must throw FlywayException when cleanDisabled=true")
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("cleanDisabled");
+    }
+}
