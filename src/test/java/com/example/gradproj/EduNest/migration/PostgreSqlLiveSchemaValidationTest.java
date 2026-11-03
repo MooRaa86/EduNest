@@ -37,11 +37,29 @@ public class PostgreSqlLiveSchemaValidationTest {
         Assumptions.assumeTrue(dbUrl != null && !dbUrl.isBlank(),
                 "DATABASE_URL not set in process environment; skipping live PostgreSQL test");
 
-        // 1. Verify Project Identity
-        boolean projectMatches = dbUrl.contains(EXPECTED_PROJECT_REF) || 
+        // 1. Verify Project Identity and SSL Configuration
+        boolean projectMatches = (dbUrl != null && dbUrl.contains(EXPECTED_PROJECT_REF)) || 
                                 (dbUser != null && dbUser.contains(EXPECTED_PROJECT_REF));
         assertThat(projectMatches)
                 .as("DATABASE_URL or DATABASE_NAME must match authorized project ref: " + EXPECTED_PROJECT_REF)
+                .isTrue();
+
+        assertThat(dbUrl)
+                .as("DATABASE_URL must be a PostgreSQL JDBC URL")
+                .startsWith("jdbc:postgresql://");
+
+        assertThat(dbUrl)
+                .as("Insecure sslmode detected; sslmode=disable/allow/prefer is forbidden")
+                .doesNotContain("sslmode=disable")
+                .doesNotContain("sslmode=allow")
+                .doesNotContain("sslmode=prefer");
+
+        boolean hasSslParam = dbUrl.contains("sslmode=require") || 
+                              dbUrl.contains("sslmode=verify-ca") || 
+                              dbUrl.contains("sslmode=verify-full") ||
+                              dbUrl.contains("ssl=true");
+        assertThat(hasSslParam)
+                .as("DATABASE_URL must enforce SSL encryption (e.g. sslmode=require)")
                 .isTrue();
 
         // 2. Perform direct JDBC read-only pre-assertion
@@ -55,6 +73,29 @@ public class PostgreSqlLiveSchemaValidationTest {
                         assertThat(rs.getString(1)).isEqualTo("postgres");
                         assertThat(rs.getString(2)).isEqualTo("public");
                         assertThat(rs.getString(3)).isEqualTo("on");
+                    }
+
+                    // Query actual metadata of public.admin to verify column naming in database
+                    try (ResultSet rs = st.executeQuery("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_schema = 'public' AND table_name = 'admin' AND column_name = 'created_at'
+                    """)) {
+                        assertThat(rs.next())
+                                .as("public.admin table must have created_at column in PostgreSQL")
+                                .isTrue();
+                    }
+
+                    // Verify active session SSL encryption via pg_stat_ssl if available
+                    try (ResultSet rs = st.executeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()")) {
+                        if (rs.next()) {
+                            assertThat(rs.getBoolean("ssl"))
+                                    .as("PostgreSQL session connection must be SSL-encrypted")
+                                    .isTrue();
+                        }
+                    } catch (Exception ignored) {
+                        // pg_stat_ssl view queries may be restricted in certain Supabase pooler configurations;
+                        // sslmode=require on JDBC driver level already enforces TLS negotiation.
                     }
                 }
             }
@@ -79,6 +120,10 @@ public class PostgreSqlLiveSchemaValidationTest {
         jpaProperties.put("hibernate.hbm2ddl.auto", "validate"); // STRICT VALIDATE MODE - NEVER UPDATE OR CREATE
         jpaProperties.put("hibernate.connection.read_only", "true"); // ENFORCE READ-ONLY ON JDBC LEVEL
         jpaProperties.put("hibernate.connection.init_sql", "SET default_transaction_read_only = on;"); // SESSION-LEVEL READ-ONLY
+
+        // Align with Spring Boot production naming strategy defaults
+        jpaProperties.put("hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
+        jpaProperties.put("hibernate.implicit_naming_strategy", "org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy");
 
         emfBean.setJpaPropertyMap(jpaProperties);
         emfBean.afterPropertiesSet();
