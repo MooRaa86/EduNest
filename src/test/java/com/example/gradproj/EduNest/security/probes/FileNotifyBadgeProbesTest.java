@@ -96,6 +96,22 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 	}
 
 	/**
+	 * ADD-04 / EB-84 (Decision D-05 inventory completion): Deleted test endpoint
+	 * POST /api/v1/admin/notifications/send ("for testing purposes").
+	 * Now returns 404 Not Found.
+	 */
+	@Test
+	@DisplayName("ADD-04/enforced: test admin notification send endpoint deleted → 404")
+	void add04_adminNotificationSendEndpointDeleted() throws Exception {
+		auth.admin("probe-admin-notify@example.org");
+		mockMvc.perform(post("/api/v1/admin/notifications/send")
+						.header("Authorization", auth.authToken("probe-admin-notify@example.org", AuthFixture.ADMIN))
+						.contentType("application/json")
+						.content("{\"title\":\"probe\",\"content\":\"test notification\",\"type\":\"ANNOUNCEMENT\"}"))
+				.andExpect(status().isNotFound());
+	}
+
+	/**
 	 * G11 — badge-award read scoping (FLIPPED 2026-11-01, EB-26 / P1-19).
 	 * Was (Option A pin): 200 — any authenticated user could enumerate any
 	 * student's badge awards by id (BadgeAwardService.getAwardsByStudent had

@@ -43,7 +43,7 @@ Session invalidation (SEL-06 / D-01, documented 2026-11-01 — Jira EB-34/P1-27)
 | ⟡ GET `/api/v1/admin/dashboard/cards` · `/sessions-chart` · `/top-mentors` · `/full` | Platform KPIs, monthly chart, top mentors (gross revenue) |
 | ⟡ GET `/api/v1/admin/dashboard/notifications` | Admin notification inbox page |
 | ⟡ GET `/api/v1/admin/payments/sales-chart` · `/enrollments` · `/full` | Monthly gross chart, paged payments (with `platformProfit`), combined page |
-| ⟡ GET `/api/v1/admin/notifications` · POST `/send` · DELETE `/{id}` · `/delete-all` | Admin notification CRUD & test-send |
+| ⟡ GET `/api/v1/admin/notifications` · DELETE `/{id}` · `/delete-all` (❌ ~~POST `/send`~~ deleted via EB-84 / ADD-04) | Admin notification CRUD |
 | ⟡ POST/PATCH/DELETE `/api/admin/badges(/{badgeId}|/delete/{badgeId}|/assign|/{userBadgeId})` | Platform badge CRUD + assign (paths lack base prefix) |
 | 🔐 GET `/api/users/{userId}/badges` · GET `/api/admin/badges` | Badge views — authenticated by URL rule only (SEL-09) |
 | ⟡ GET/PATCH `/admin/profile`, PATCH `/admin/profile/image` | Admin own profile |
@@ -156,7 +156,7 @@ Base `/api/v1/chat-room` and `/api/v1/conversation` — full table with auth sem
 | 🔐 DELETE `/delete/{id}` · `/delete-for-user` | Deletions (ownership-checked) |
 | ❌ ~~POST `/send`~~ | **DELETED (EB-18 / D-05)**: Any-user → any-email test push completely deleted; returns 404 (NOTIF-01 / SEL-10 closed) |
 
-Admin mirror: `/api/v1/admin/notifications` (⟡ list/delete/delete-all/send).
+Admin mirror: `/api/v1/admin/notifications` (⟡ list/delete/delete-all; test `POST /send` deleted via EB-84 / ADD-04).
 
 ## 12. Profiles & skills
 
