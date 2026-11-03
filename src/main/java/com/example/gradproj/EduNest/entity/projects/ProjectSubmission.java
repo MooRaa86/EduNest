@@ -38,8 +38,7 @@ public class ProjectSubmission extends BaseEntity {
 
     @Column(name = "final_score")
     private Integer finalScore;
-    @Column(name = "project_feedback")
-    @Lob
+    @Column(name = "project_feedback", columnDefinition = "TEXT")
     private String feedBack;
 
     @Enumerated(EnumType.STRING)

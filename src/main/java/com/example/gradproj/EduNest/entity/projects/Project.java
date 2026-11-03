@@ -28,9 +28,8 @@ public class Project extends BaseEntity {
         @Column(name = "project_title", nullable = false, length = 150)
         private String title;
 
-        @Lob
-        @Size(max = 10000,message = "Brief must be less than 10000 characters")
-        @Column(name = "project_brief", nullable = false)
+        @Size(max = 10000, message = "Brief must be less than 10000 characters")
+        @Column(name = "project_brief", nullable = false, columnDefinition = "TEXT")
         private String brief;
 
         @Column(name = "project_goal", nullable = false, length = 255)

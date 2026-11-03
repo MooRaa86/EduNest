@@ -27,9 +27,8 @@ import java.util.List;
 public class Task extends BaseEntity {
     @Column(name = "task_title",nullable = false)
     private String title;
-    @Lob
-    @Size(max = 10000,message = "Description must be less than 10000 characters")
-    @Column(name = "task_description",nullable = false)
+    @Size(max = 10000, message = "Description must be less than 10000 characters")
+    @Column(name = "task_description", nullable = false, columnDefinition = "TEXT")
     private  String description;
 
     @Column(name = "task_points",nullable = false)
