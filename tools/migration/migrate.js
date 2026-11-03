@@ -1,9 +1,9 @@
 /**
  * EduNest EB-82 Schema Reconciliation & DDL Specification Tool
- * 
+ *
  * Defines the authoritative 42-table public application schema for PostgreSQL,
  * the 5 TEXT column conversions (eliminating OID), and the Hibernate schema validation settings.
- * 
+ *
  * Note: Per Project Owner directive (2026-11-03), all MySQL data transfer has been
  * cancelled. This tool is strictly for schema reconciliation and verification.
  */

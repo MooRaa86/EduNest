@@ -38,7 +38,7 @@ public class PostgreSqlLiveSchemaValidationTest {
                 "DATABASE_URL not set in process environment; skipping live PostgreSQL test");
 
         // 1. Verify Project Identity and SSL Configuration
-        boolean projectMatches = (dbUrl != null && dbUrl.contains(EXPECTED_PROJECT_REF)) || 
+        boolean projectMatches = (dbUrl != null && dbUrl.contains(EXPECTED_PROJECT_REF)) ||
                                 (dbUser != null && dbUser.contains(EXPECTED_PROJECT_REF));
         assertThat(projectMatches)
                 .as("DATABASE_URL or DATABASE_NAME must match authorized project ref: " + EXPECTED_PROJECT_REF)
@@ -54,8 +54,8 @@ public class PostgreSqlLiveSchemaValidationTest {
                 .doesNotContain("sslmode=allow")
                 .doesNotContain("sslmode=prefer");
 
-        boolean hasSslParam = dbUrl.contains("sslmode=require") || 
-                              dbUrl.contains("sslmode=verify-ca") || 
+        boolean hasSslParam = dbUrl.contains("sslmode=require") ||
+                              dbUrl.contains("sslmode=verify-ca") ||
                               dbUrl.contains("sslmode=verify-full") ||
                               dbUrl.contains("ssl=true");
         assertThat(hasSslParam)
@@ -77,8 +77,8 @@ public class PostgreSqlLiveSchemaValidationTest {
 
                     // Query actual metadata of public.admin to verify column naming in database
                     try (ResultSet rs = st.executeQuery("""
-                        SELECT column_name 
-                        FROM information_schema.columns 
+                        SELECT column_name
+                        FROM information_schema.columns
                         WHERE table_schema = 'public' AND table_name = 'admin' AND column_name = 'created_at'
                     """)) {
                         assertThat(rs.next())

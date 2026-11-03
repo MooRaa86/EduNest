@@ -26,12 +26,12 @@ BEGIN
 END $$;
 
 -- 3. Acquire table locks to guarantee zero concurrent inserts during alteration
-LOCK TABLE 
-    public.contact_message, 
-    public.projects, 
-    public.project_submission, 
-    public.tasks, 
-    public.task_submission 
+LOCK TABLE
+    public.contact_message,
+    public.projects,
+    public.project_submission,
+    public.tasks,
+    public.task_submission
 IN ACCESS EXCLUSIVE MODE;
 
 -- 4. Assert all 5 tables are strictly EMPTY while locks are held
@@ -49,20 +49,20 @@ BEGIN
     SELECT count(*) INTO c_tsk FROM public.tasks;
     SELECT count(*) INTO c_ts FROM public.task_submission;
 
-    IF c_cm > 0 THEN 
-        RAISE EXCEPTION 'Precondition Failed: public.contact_message contains % rows (expected 0). Aborting.', c_cm; 
+    IF c_cm > 0 THEN
+        RAISE EXCEPTION 'Precondition Failed: public.contact_message contains % rows (expected 0). Aborting.', c_cm;
     END IF;
-    IF c_prj > 0 THEN 
-        RAISE EXCEPTION 'Precondition Failed: public.projects contains % rows (expected 0). Aborting.', c_prj; 
+    IF c_prj > 0 THEN
+        RAISE EXCEPTION 'Precondition Failed: public.projects contains % rows (expected 0). Aborting.', c_prj;
     END IF;
-    IF c_ps > 0 THEN 
-        RAISE EXCEPTION 'Precondition Failed: public.project_submission contains % rows (expected 0). Aborting.', c_ps; 
+    IF c_ps > 0 THEN
+        RAISE EXCEPTION 'Precondition Failed: public.project_submission contains % rows (expected 0). Aborting.', c_ps;
     END IF;
-    IF c_tsk > 0 THEN 
-        RAISE EXCEPTION 'Precondition Failed: public.tasks contains % rows (expected 0). Aborting.', c_tsk; 
+    IF c_tsk > 0 THEN
+        RAISE EXCEPTION 'Precondition Failed: public.tasks contains % rows (expected 0). Aborting.', c_tsk;
     END IF;
-    IF c_ts > 0 THEN 
-        RAISE EXCEPTION 'Precondition Failed: public.task_submission contains % rows (expected 0). Aborting.', c_ts; 
+    IF c_ts > 0 THEN
+        RAISE EXCEPTION 'Precondition Failed: public.task_submission contains % rows (expected 0). Aborting.', c_ts;
     END IF;
 END $$;
 
@@ -72,10 +72,10 @@ DECLARE
     rec RECORD;
     found_count integer := 0;
 BEGIN
-    FOR rec IN 
-        SELECT table_name, column_name, udt_name 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public' 
+    FOR rec IN
+        SELECT table_name, column_name, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
           AND (
             (table_name = 'contact_message' AND column_name = 'message') OR
             (table_name = 'projects' AND column_name = 'project_brief') OR
@@ -99,26 +99,26 @@ END $$;
 -- Preserves NOT NULL constraints where defined in JPA entity specifications
 
 -- Table 1: contact_message (message: NOT NULL)
-ALTER TABLE public.contact_message 
+ALTER TABLE public.contact_message
     ALTER COLUMN message TYPE TEXT USING NULL::text,
     ALTER COLUMN message SET NOT NULL;
 
 -- Table 2: projects (project_brief: NOT NULL)
-ALTER TABLE public.projects 
+ALTER TABLE public.projects
     ALTER COLUMN project_brief TYPE TEXT USING NULL::text,
     ALTER COLUMN project_brief SET NOT NULL;
 
 -- Table 3: project_submission (project_feedback: nullable)
-ALTER TABLE public.project_submission 
+ALTER TABLE public.project_submission
     ALTER COLUMN project_feedback TYPE TEXT USING NULL::text;
 
 -- Table 4: tasks (task_description: NOT NULL)
-ALTER TABLE public.tasks 
+ALTER TABLE public.tasks
     ALTER COLUMN task_description TYPE TEXT USING NULL::text,
     ALTER COLUMN task_description SET NOT NULL;
 
 -- Table 5: task_submission (task_feedback: nullable)
-ALTER TABLE public.task_submission 
+ALTER TABLE public.task_submission
     ALTER COLUMN task_feedback TYPE TEXT USING NULL::text;
 
 -- 7. Post-Conversion Assertions: Verify types are text and tables remain empty
@@ -162,10 +162,10 @@ BEGIN
     END IF;
 
     -- Verify all 5 columns are now 'text'
-    FOR rec IN 
-        SELECT table_name, column_name, udt_name 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public' 
+    FOR rec IN
+        SELECT table_name, column_name, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
           AND (
             (table_name = 'contact_message' AND column_name = 'message') OR
             (table_name = 'projects' AND column_name = 'project_brief') OR
