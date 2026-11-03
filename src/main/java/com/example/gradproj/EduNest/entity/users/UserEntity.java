@@ -40,6 +40,7 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
     @JoinColumn(name = "role_id", nullable = false)
     private Roles role;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean enabled = false;
 
@@ -49,6 +50,7 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @Builder.Default
     private List<SocialMedia> socialMediaLinks = new ArrayList<>();
 
     @OneToMany(
@@ -56,6 +58,7 @@ public abstract class UserEntity extends BaseEntity { // Abstract عشان مح�
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY)
+    @Builder.Default
     private List<ChatRoom> rooms = new ArrayList<>();
 
     @Column(nullable = false)

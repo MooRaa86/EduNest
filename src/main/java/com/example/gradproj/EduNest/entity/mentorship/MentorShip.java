@@ -60,14 +60,17 @@ public class MentorShip extends BaseEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @Builder.Default
     private List<WhatWillLearn> whatWillLearn = new ArrayList<>();
 
+    @Builder.Default
     @Column(name = "cover_image_url")
     private String coverImageUrl = "";
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "mentorShip",
             cascade = CascadeType.ALL,
             orphanRemoval = true)
+    @Builder.Default
     private List<Tags> tags = new ArrayList<>();
 
     private double duration;
@@ -81,6 +84,7 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @Builder.Default
     private List<Enrollment> enrollments = new ArrayList<>();
 
     @JsonManagedReference
@@ -89,10 +93,12 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @Builder.Default
     private List<MentorShipReviews> reviews = new ArrayList<>();
 
 
     @OneToMany(mappedBy = "mentorship", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Week> weeks = new ArrayList<>();
 
     @OneToMany(
@@ -100,6 +106,7 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @Builder.Default
     private List<ChatRoom> chatRooms = new ArrayList<>();
 
     @OneToMany(
@@ -107,6 +114,7 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @Builder.Default
     private List<TotalPoints> totalPoints = new ArrayList<>();
 
     @OneToMany(
@@ -114,6 +122,7 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @Builder.Default
     private List<Badge> badges = new ArrayList<>();
 
     @OneToMany(
@@ -122,6 +131,7 @@ public class MentorShip extends BaseEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
+    @Builder.Default
     private List<Certificate> certificates = new ArrayList<>();
 
     //ToDo StartDate

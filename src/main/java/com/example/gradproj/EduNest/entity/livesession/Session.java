@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -47,6 +48,7 @@ public class Session extends BaseEntity {
     /** Zoom numeric meeting ID when created via Zoom API (nullable for Jitsi legacy sessions). */
     private Long zoomMeetingId;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private SessionStatus status = SessionStatus.SCHEDULED;
 
@@ -55,9 +57,11 @@ public class Session extends BaseEntity {
     private Week week;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<SessionAttendance> attendances = new ArrayList<>();
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<SessionAttendanceResult> attendanceResults = new ArrayList<>();
 
 }

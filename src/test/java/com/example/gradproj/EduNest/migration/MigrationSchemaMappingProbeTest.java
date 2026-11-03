@@ -8,6 +8,8 @@ import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.enums.message.MessageStatus;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Lob;
 import org.junit.jupiter.api.DisplayName;
@@ -114,28 +116,42 @@ class MigrationSchemaMappingProbeTest {
     }
 
     @Test
-    @DisplayName("Verify Project and Task builders preserve default status DRAFT and initialized collections")
+    @DisplayName("Verify entity builders preserve default statuses and initialized collections")
     void verifyEntityBuilderDefaults() {
-        // Project defaults
+        // ContactMessageEntity defaults & overrides
+        ContactMessageEntity contactDefault = ContactMessageEntity.builder().build();
+        assertThat(contactDefault.getStatus()).isEqualTo(MessageStatus.PENDING);
+        ContactMessageEntity contactExplicit = ContactMessageEntity.builder()
+                .status(MessageStatus.COMPLETED)
+                .build();
+        assertThat(contactExplicit.getStatus()).isEqualTo(MessageStatus.COMPLETED);
+
+        // Project defaults & overrides
         Project projectDefault = Project.builder().build();
         assertThat(projectDefault.getStatus()).isEqualTo(ProjectStatus.DRAFT);
         assertThat(projectDefault.getSubmissions()).isNotNull().isEmpty();
-
-        // Project explicit overrides
         Project projectExplicit = Project.builder()
                 .status(ProjectStatus.PUBLISHED)
                 .build();
         assertThat(projectExplicit.getStatus()).isEqualTo(ProjectStatus.PUBLISHED);
 
-        // Task defaults
+        // Task defaults & overrides
         Task taskDefault = Task.builder().build();
         assertThat(taskDefault.getStatus()).isEqualTo(TaskStatus.DRAFT);
         assertThat(taskDefault.getSubmissions()).isNotNull().isEmpty();
-
-        // Task explicit overrides
         Task taskExplicit = Task.builder()
                 .status(TaskStatus.CLOSED)
                 .build();
         assertThat(taskExplicit.getStatus()).isEqualTo(TaskStatus.CLOSED);
+
+        // TaskSubmission defaults
+        TaskSubmission taskSubDefault = TaskSubmission.builder().build();
+        assertThat(taskSubDefault.getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
+        assertThat(taskSubDefault.getIsLate()).isFalse();
+
+        // ProjectSubmission defaults
+        ProjectSubmission projSubDefault = ProjectSubmission.builder().build();
+        assertThat(projSubDefault.getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
+        assertThat(projSubDefault.getIsLate()).isFalse();
     }
 }

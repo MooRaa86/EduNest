@@ -40,6 +40,7 @@ public class mentorShipCreateDTO {
 
     @NotEmpty(message = "What will learn list cannot be empty")
     @Size(max = 12, message = "Maximum 12 items allowed")
+    @Builder.Default
     private List<
             @NotBlank
             @Size(min = 2, max = 100)
@@ -47,6 +48,7 @@ public class mentorShipCreateDTO {
             > whatWillLearn = new ArrayList<>();
 
     @Size(max = 10, message = "Maximum 10 tags allowed")
+    @Builder.Default
     private List<
             @NotBlank(message = "tag connot be null")
             @Size(min = 2, max = 20)

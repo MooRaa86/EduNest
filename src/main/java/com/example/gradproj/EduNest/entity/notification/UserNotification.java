@@ -31,6 +31,7 @@ public class UserNotification extends BaseEntity {
     @JoinColumn(name = "notification_id")
     private Notification notification;
 
+    @Builder.Default
     @Column(name = "is_read")
     private boolean isRead = false;
 }
