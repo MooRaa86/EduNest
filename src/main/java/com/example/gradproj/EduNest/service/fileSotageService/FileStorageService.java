@@ -5,7 +5,10 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.service.storage.SupabaseStorageService;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.PostConstruct;
@@ -14,6 +17,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +26,8 @@ import java.util.regex.Pattern;
 
 /**
  * File storage service handling submissions, task attachments, and project attachments - [ADD-03]/EB-83.
- * Supports Supabase S3 private storage (edunest-private) with local disk fallback when unconfigured.
+ * Supports Supabase S3 private storage (edunest-private) with fail-closed production protection
+ * and automated transaction rollback cleanup.
  */
 @Service
 @Slf4j
@@ -93,11 +99,20 @@ public class FileStorageService {
     private final Tika tika = new Tika();
     private final UploadContentValidator contentValidator;
     private final SupabaseStorageService supabaseStorageService;
+    private final Environment environment;
 
     public FileStorageService(UploadContentValidator contentValidator,
-                              SupabaseStorageService supabaseStorageService) {
+                              SupabaseStorageService supabaseStorageService,
+                              Environment environment) {
         this.contentValidator = contentValidator;
         this.supabaseStorageService = supabaseStorageService;
+        this.environment = environment;
+    }
+
+    private boolean isProduction() {
+        if (environment == null) return false;
+        List<String> active = Arrays.asList(environment.getActiveProfiles());
+        return active.contains("prod") && !active.contains("test");
     }
 
     @PostConstruct
@@ -125,6 +140,12 @@ public class FileStorageService {
 
         String safeFileName = generateSafeFileName(type, id, secondaryId, extension);
 
+        // Fail-closed guard: production must never silently fall back to local disk
+        if (isProduction() && !supabaseStorageService.isConfigured()) {
+            log.error("FAIL-CLOSED: Production file upload blocked - Supabase S3 storage is not configured!");
+            throw new IllegalStateException("Production file storage is unconfigured. Local storage fallback is prohibited in production.");
+        }
+
         if (supabaseStorageService.isConfigured()) {
             if ("zip".equals(extension)) {
                 Path tempZip = null;
@@ -144,7 +165,25 @@ public class FileStorageService {
 
             try {
                 byte[] bytes = file.getBytes();
-                supabaseStorageService.uploadPrivate(subFolder, safeFileName, bytes, detectedMimeType);
+                String s3Key = supabaseStorageService.uploadPrivate(subFolder, safeFileName, bytes, detectedMimeType);
+
+                // Register compensating transaction rollback hook to delete orphaned S3 object if DB tx rolls back
+                if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCompletion(int status) {
+                            if (status == STATUS_ROLLED_BACK) {
+                                log.warn("Transaction rolled back - executing compensating cleanup of uploaded S3 object: {}", s3Key);
+                                try {
+                                    supabaseStorageService.deletePrivate(s3Key);
+                                } catch (Exception ex) {
+                                    log.error("Failed to clean up orphaned S3 object after rollback: {}", s3Key, ex);
+                                }
+                            }
+                        }
+                    });
+                }
+
                 return Paths.get(baseDir)
                         .resolve(subFolder)
                         .resolve(safeFileName)
@@ -395,7 +434,7 @@ public class FileStorageService {
             if (deleted) {
                 log.info("Deleted file: {}", targetPath);
             } else {
-                log.debug("Local file not found for deletion: {}", targetPath);
+                log.debug("Local file not found for deletion (may be in S3): {}", targetPath);
             }
         } catch (IOException e) {
             log.error("Failed to delete file: {}", targetPath, e);
