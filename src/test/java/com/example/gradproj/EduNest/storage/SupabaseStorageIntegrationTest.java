@@ -17,7 +17,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.AbortableInputStream;
@@ -49,6 +53,7 @@ class SupabaseStorageIntegrationTest {
     private ImageStorageService imageStorageService;
     private FileAccessService fileAccessService;
     private FileController fileController;
+    private MockEnvironment environment;
 
     @TempDir
     Path tempUploadDir;
@@ -83,15 +88,17 @@ class SupabaseStorageIntegrationTest {
         properties.setEnabled(true);
         properties.setSupabaseUrl("https://ciogysvcykzxrjuskxmk.supabase.co");
 
+        environment = new MockEnvironment();
+        environment.setActiveProfiles("test");
+
         supabaseStorageService = new SupabaseStorageServiceImpl(s3Client, properties);
         contentValidator = new UploadContentValidator();
 
-        fileStorageService = new FileStorageService(contentValidator, supabaseStorageService);
-        // Set baseDir to tempUploadDir for isolation
+        fileStorageService = new FileStorageService(contentValidator, supabaseStorageService, environment);
         org.springframework.test.util.ReflectionTestUtils.setField(fileStorageService, "baseDir", tempUploadDir.toString());
         fileStorageService.init();
 
-        imageStorageService = new ImageStorageService(tempUploadDir.toString(), contentValidator, supabaseStorageService);
+        imageStorageService = new ImageStorageService(tempUploadDir.toString(), contentValidator, supabaseStorageService, environment);
 
         fileAccessService = mock(FileAccessService.class);
         fileController = new FileController(fileAccessService, supabaseStorageService);
@@ -183,7 +190,6 @@ class SupabaseStorageIntegrationTest {
     @Test
     @DisplayName("FileStorageService rejects corrupt ZIP before S3 upload")
     void testFileStorageService_RejectsCorruptZip() {
-        // Corrupt ZIP with just PK header
         byte[] corruptZip = new byte[]{'P', 'K', 0x03, 0x04, 0x00, 0x00, 0x00, 0x00};
 
         MockMultipartFile file = new MockMultipartFile(
@@ -255,7 +261,77 @@ class SupabaseStorageIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
 
-        // s3Client should NOT be called because the file existed on local disk
         verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Unauthorized cross-user access is denied by FileAccessService and never reaches S3")
+    void testCrossUserAccessDenied_NeverInvokesS3() {
+        when(fileAccessService.authorizeTaskSubmission(999L))
+                .thenThrow(new AccessDeniedException("Not authorized to view this submission"));
+
+        assertThatThrownBy(() -> fileController.serveTaskSubmission(999L, false))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Not authorized");
+
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Fail-closed: production cannot silently fall back to local disk when S3 is unconfigured")
+    void testProductionFailClosed_LocalFallbackProhibited() {
+        MockEnvironment prodEnv = new MockEnvironment();
+        prodEnv.setActiveProfiles("prod");
+
+        SupabaseStorageProperties disabledProps = new SupabaseStorageProperties();
+        disabledProps.setEnabled(false);
+        SupabaseStorageService unconfiguredService = new SupabaseStorageServiceImpl(s3Client, disabledProps);
+
+        FileStorageService prodFileStorage = new FileStorageService(contentValidator, unconfiguredService, prodEnv);
+        ImageStorageService prodImageStorage = new ImageStorageService(tempUploadDir.toString(), contentValidator, unconfiguredService, prodEnv);
+
+        MockMultipartFile pdf = new MockMultipartFile("file", "sub.pdf", "application/pdf", VALID_PDF);
+        MockMultipartFile png = new MockMultipartFile("file", "cover.png", "image/png", VALID_PNG);
+
+        assertThatThrownBy(() -> prodFileStorage.saveFile("submissions", "task", 1L, 1L, pdf))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Production file storage is unconfigured");
+
+        assertThatThrownBy(() -> prodImageStorage.saveCoverImage(1L, png))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Production image storage is unconfigured");
+
+        verifyNoInteractions(s3Client);
+    }
+
+    @Test
+    @DisplayName("Transaction rollback compensating action purges newly uploaded S3 object")
+    void testTransactionRollback_CompensatingPurge() {
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            MockMultipartFile file = new MockMultipartFile("file", "sub.pdf", "application/pdf", VALID_PDF);
+            fileStorageService.saveFile("submissions", "task", 10L, 20L, file);
+
+            // Verify upload succeeded
+            verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+            // Simulate transaction rollback
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+
+            // Verify compensating deleteObject was invoked on the uploaded key
+            ArgumentCaptor<DeleteObjectRequest> delCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+            verify(s3Client, times(1)).deleteObject(delCaptor.capture());
+            assertThat(delCaptor.getValue().bucket()).isEqualTo("edunest-private");
+            assertThat(delCaptor.getValue().key()).startsWith("submissions/task-10-20-");
+        } finally {
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }
