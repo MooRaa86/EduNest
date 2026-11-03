@@ -3,11 +3,9 @@ package com.example.gradproj.EduNest.controller.admin;
 import com.example.gradproj.EduNest.dto.SimpleResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.notification.AdminNotificationResponse;
-import com.example.gradproj.EduNest.dto.notification.AdminNotificationSendRequest;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,7 +30,7 @@ public class AdminNotificationController {
         return ResponseEntity.ok(notifications);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete admin notification by id", description = "Delete a specific admin notification by its ID")
     public ResponseEntity<SimpleResponse> deleteAdminNotification(@PathVariable Long id) {
@@ -49,16 +47,6 @@ public class AdminNotificationController {
         notificationService.deleteAllAdminNotifications();
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "All admin notifications deleted successfully");
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/send")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Send notification to admin", description = "Send a notification to the admin (for testing purposes)")
-    public ResponseEntity<SimpleResponse> sendToAdmin(@RequestBody @Valid AdminNotificationSendRequest request) {
-        notificationService.sendToAdmin(request.getTitle(), request.getContent(), request.getType());
-        SimpleResponse response = new SimpleResponse();
-        response.addMessage("status", "Notification sent to admin successfully");
         return ResponseEntity.ok(response);
     }
 }
