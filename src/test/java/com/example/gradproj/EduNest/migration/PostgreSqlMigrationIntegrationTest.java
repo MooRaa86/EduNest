@@ -140,9 +140,9 @@ public class PostgreSqlMigrationIntegrationTest {
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
             Map<String, String> textColumns = Map.of(
                     "contact_message", "message",
-                    "project", "project_brief",
+                    "projects", "project_brief",
                     "project_submission", "project_feedback",
-                    "task", "task_description",
+                    "tasks", "task_description",
                     "task_submission", "task_feedback"
             );
 
