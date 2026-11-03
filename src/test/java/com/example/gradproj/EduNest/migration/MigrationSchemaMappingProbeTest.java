@@ -91,4 +91,23 @@ class MigrationSchemaMappingProbeTest {
         }
         assertThat(classFound).as("UserSettings entity must not exist").isFalse();
     }
+
+    @Test
+    @DisplayName("Verify Spring Boot default physical naming strategy maps createdAt to created_at")
+    void verifyNamingStrategyTransformation() {
+        org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy strategy =
+                new org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy();
+        org.hibernate.boot.model.naming.Identifier physical = strategy.toPhysicalColumnName(
+                org.hibernate.boot.model.naming.Identifier.toIdentifier("createdAt"),
+                null
+        );
+        assertThat(physical.getText()).isEqualTo("created_at");
+    }
+
+    @Test
+    @DisplayName("Verify SpringImplicitNamingStrategy class is resolvable on classpath")
+    void verifyImplicitNamingStrategyResolvable() throws ClassNotFoundException {
+        Class<?> clazz = Class.forName("org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy");
+        assertThat(clazz).isNotNull();
+    }
 }
