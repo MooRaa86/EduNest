@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.controller.file;
 
 import com.example.gradproj.EduNest.service.fileSotageService.FileAccessService;
+import com.example.gradproj.EduNest.service.storage.SupabaseStorageService;
 import com.example.gradproj.EduNest.utils.FileResponseBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,10 +12,17 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,6 +43,7 @@ public class FileController {
     private Path resolvedBaseDir;
 
     private final FileAccessService fileAccessService;
+    private final SupabaseStorageService supabaseStorageService;
 
     @PostConstruct
     public void init() {
@@ -109,8 +118,6 @@ public class FileController {
         return resolveAndServeFile(filePath, download);
     }
 
-
-
     @GetMapping(produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<Resource> serveFile(
             @RequestParam String filePath,
@@ -157,6 +164,47 @@ public class FileController {
             }
 
             if (!Files.exists(targetPath) || !Files.isReadable(targetPath)) {
+                if (supabaseStorageService.isConfigured()) {
+                    String s3Key = SupabaseStorageService.normalizeKey(filePath);
+                    log.debug("Attempting to serve file from S3: bucket={}, key={}", supabaseStorageService.getPrivateBucket(), s3Key);
+                    try {
+                        ResponseInputStream<GetObjectResponse> s3Stream = supabaseStorageService.downloadPrivate(s3Key);
+                        GetObjectResponse s3Meta = s3Stream.response();
+
+                        String fileName = Path.of(s3Key).getFileName().toString();
+                        String contentType = s3Meta.contentType();
+                        if (contentType == null || contentType.isBlank()) {
+                            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+                        }
+
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.setContentType(MediaType.parseMediaType(contentType));
+                        if (s3Meta.contentLength() != null) {
+                            headers.setContentLength(s3Meta.contentLength());
+                        }
+                        headers.setContentDisposition(
+                                ContentDisposition.builder(download ? "attachment" : "inline")
+                                        .filename(fileName)
+                                        .build()
+                        );
+
+                        return ResponseEntity.ok()
+                                .headers(headers)
+                                .body(new InputStreamResource(s3Stream));
+
+                    } catch (NoSuchKeyException e) {
+                        log.warn("S3 object not found for key: {}", s3Key);
+                        return ResponseEntity.notFound().build();
+                    } catch (S3Exception e) {
+                        if (e.statusCode() == 404) {
+                            log.warn("S3 object not found (404) for key: {}", s3Key);
+                            return ResponseEntity.notFound().build();
+                        }
+                        log.error("S3 error serving file: {}", s3Key, e);
+                        return ResponseEntity.internalServerError().build();
+                    }
+                }
+
                 log.warn("File not found or unreadable: {}", targetPath);
                 return ResponseEntity.notFound().build();
             }

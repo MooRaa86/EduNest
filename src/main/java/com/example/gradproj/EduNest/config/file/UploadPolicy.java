@@ -50,6 +50,14 @@ public final class UploadPolicy {
 			.map(folder -> "/uploads/" + folder + "/**")
 			.toList();
 
+	public static boolean isPublicFolder(String folder) {
+		return folder != null && PUBLIC_FOLDERS.contains(folder);
+	}
+
+	public static boolean isPrivateFolder(String folder) {
+		return folder != null && PRIVATE_FOLDERS.contains(folder);
+	}
+
 	private UploadPolicy() {
 	}
 }
