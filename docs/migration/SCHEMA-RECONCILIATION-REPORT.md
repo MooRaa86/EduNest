@@ -1,18 +1,18 @@
 # EduNest Database Schema Reconciliation Report (Schema-Only Scope)
 
-**Task:** EB-82 — MySQL to PostgreSQL Schema Reconciliation & Compatibility  
-**Authoritative Scope:** **SCHEMA-ONLY RECONCILIATION** (Project Owner Decision)  
-**Target Database:** Supabase PostgreSQL 17.11 (`postgres`, `public` schema)  
-**Historical Reference Database:** MySQL 8.0.41 (`edunest`)  
-**Target Application Tables:** 42 active public tables  
-**Legacy Excluded Tables:** 1 (`user_settings`)  
+**Task:** EB-82 — MySQL to PostgreSQL Schema Reconciliation & Compatibility
+**Authoritative Scope:** **SCHEMA-ONLY RECONCILIATION** (Project Owner Decision)
+**Target Database:** Supabase PostgreSQL 17.11 (`postgres`, `public` schema)
+**Historical Reference Database:** MySQL 8.0.41 (`edunest`)
+**Target Application Tables:** 42 active public tables
+**Legacy Excluded Tables:** 1 (`user_settings`)
 **Data Migration Status:** **CANCELLED & EXCLUDED** — All 396 legacy MySQL records are confirmed obsolete development data and discarded. No data export or transfer is performed.
 
 ---
 
 ## 1. Project Owner Scope Change Directive
 
-> **Official Decision (November 3, 2026):**  
+> **Official Decision (November 3, 2026):**
 > *"Existing MySQL records are obsolete development data. EB-82 is intentionally limited to PostgreSQL schema reconciliation and compatibility. No MySQL data export or import is required."*
 
 ### Impact on Scope:
@@ -108,28 +108,28 @@ Because all 5 tables currently contain **0 records**, the type alteration execut
 BEGIN;
 
 -- 1. contact_message.message: convert from oid to text
-ALTER TABLE public.contact_message 
-    ALTER COLUMN message TYPE TEXT 
+ALTER TABLE public.contact_message
+    ALTER COLUMN message TYPE TEXT
     USING (CASE WHEN message IS NOT NULL THEN convert_from(lo_get(message), 'UTF8') ELSE NULL END);
 
 -- 2. projects.project_brief: convert from oid to text
-ALTER TABLE public.projects 
-    ALTER COLUMN project_brief TYPE TEXT 
+ALTER TABLE public.projects
+    ALTER COLUMN project_brief TYPE TEXT
     USING (CASE WHEN project_brief IS NOT NULL THEN convert_from(lo_get(project_brief), 'UTF8') ELSE NULL END);
 
 -- 3. project_submission.project_feedback: convert from oid to text
-ALTER TABLE public.project_submission 
-    ALTER COLUMN project_feedback TYPE TEXT 
+ALTER TABLE public.project_submission
+    ALTER COLUMN project_feedback TYPE TEXT
     USING (CASE WHEN project_feedback IS NOT NULL THEN convert_from(lo_get(project_feedback), 'UTF8') ELSE NULL END);
 
 -- 4. tasks.task_description: convert from oid to text
-ALTER TABLE public.tasks 
-    ALTER COLUMN task_description TYPE TEXT 
+ALTER TABLE public.tasks
+    ALTER COLUMN task_description TYPE TEXT
     USING (CASE WHEN task_description IS NOT NULL THEN convert_from(lo_get(task_description), 'UTF8') ELSE NULL END);
 
 -- 5. task_submission.task_feedback: convert from oid to text
-ALTER TABLE public.task_submission 
-    ALTER COLUMN task_feedback TYPE TEXT 
+ALTER TABLE public.task_submission
+    ALTER COLUMN task_feedback TYPE TEXT
     USING (CASE WHEN task_feedback IS NOT NULL THEN convert_from(lo_get(task_feedback), 'UTF8') ELSE NULL END);
 
 COMMIT;

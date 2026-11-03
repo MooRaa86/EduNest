@@ -1,16 +1,16 @@
 # EduNest EB-82: Schema-Only Reconciliation & Compatibility Runbook
 
-**Jira Task:** `EB-82` — `[ADD-02] MySQL to PostgreSQL Schema & Data Migration`  
-**Engineer:** Senior PostgreSQL Migration Engineer & Spring Boot Specialist  
-**Execution Scope:** **SCHEMA-ONLY RECONCILIATION** (Per Project Owner Scope Directive)  
-**Target Environment:** Supabase PostgreSQL Development Project (`postgres`, schema `public`)  
+**Jira Task:** `EB-82` — `[ADD-02] MySQL to PostgreSQL Schema & Data Migration`
+**Engineer:** Senior PostgreSQL Migration Engineer & Spring Boot Specialist
+**Execution Scope:** **SCHEMA-ONLY RECONCILIATION** (Per Project Owner Scope Directive)
+**Target Environment:** Supabase PostgreSQL Development Project (`postgres`, schema `public`)
 **Status:** **SCHEMA-ONLY MIGRATION READY FOR CONTROLLED EXECUTION** (Awaiting Operator DDL Approval)
 
 ---
 
 ## 1. Project Owner Scope Change Directive
 
-> **Authoritative Decision (November 3, 2026):**  
+> **Authoritative Decision (November 3, 2026):**
 > *"Existing MySQL records are obsolete development data. EB-82 is intentionally limited to PostgreSQL schema reconciliation and compatibility. No MySQL data export or import is required."*
 
 ### What Has Changed:
@@ -153,7 +153,7 @@ To validate the live Supabase development database safely without starting the f
 
 ## 6. Flyway Baseline Handoff Specification (EB-82 → EB-43)
 
-Task **EB-43** owns introducing Flyway runtime dependencies and migration management.  
+Task **EB-43** owns introducing Flyway runtime dependencies and migration management.
 EB-82 provides the clean, verified PostgreSQL schema baseline:
 
 1. **Populated Database Baselining (Supabase Development):**

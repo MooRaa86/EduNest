@@ -1,6 +1,6 @@
 /**
  * Synthetic Test Suite for EB-82 Schema Reconciliation & DDL Specification
- * 
+ *
  * Verifies the 42 application tables, the exclusion of user_settings,
  * and the correctness of the generated corrective DDL for the 5 TEXT columns.
  */
