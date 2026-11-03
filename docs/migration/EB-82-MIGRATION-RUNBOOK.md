@@ -130,6 +130,25 @@ When `ddl-auto=validate` is active:
 ### 5.2 Query Compatibility
 - The `EnrollmentRepository.getWeekCompletions` query utilizes `string_agg(CAST(s.id AS text), ',')`, which is verified compatible with PostgreSQL 17.11 and H2.
 
+### 5.3 Standalone Live Hibernate Validation Runner
+To validate the live Supabase development database safely without starting the full Spring Boot application (preventing any automatic seeders, schedulers, or background tasks from executing):
+
+- Test: `src/test/java/com/example/gradproj/EduNest/migration/PostgreSqlLiveSchemaValidationTest.java`
+  - Enforces authorized project ref check (`ciogysvcykzxrjuskxmk`)
+  - Configures session-level read-only mode (`SET default_transaction_read_only = on`)
+  - Configures `hibernate.connection.read_only=true` and `hibernate.hbm2ddl.auto=validate`
+  - Validates all 42 JPA entities against PostgreSQL schema
+  - Validates PostgreSQL native `string_agg` query syntax
+- Runner script: `tools/migration/Invoke-LiveSchemaValidation.ps1`
+  - Securely prompts for process-scoped credentials (never stored to disk or printed)
+  - Fails with exit code 1 if credentials are missing or the test is skipped
+  - Fails with exit code 1 if any validation error or failure occurs
+  - Exits with 0 ONLY when the test executes and passes live against Supabase
+  - Operator execution command:
+    ```powershell
+    powershell -ExecutionPolicy Bypass -File tools/migration/Invoke-LiveSchemaValidation.ps1
+    ```
+
 ---
 
 ## 6. Flyway Baseline Handoff Specification (EB-82 → EB-43)

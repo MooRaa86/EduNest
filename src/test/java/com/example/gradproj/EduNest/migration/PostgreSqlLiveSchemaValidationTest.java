@@ -48,14 +48,17 @@ public class PostgreSqlLiveSchemaValidationTest {
         assertDoesNotThrow(() -> {
             try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass)) {
                 conn.setReadOnly(true);
-                try (Statement st = conn.createStatement();
-                     ResultSet rs = st.executeQuery("SELECT current_database(), current_schema()")) {
-                    assertThat(rs.next()).isTrue();
-                    assertThat(rs.getString(1)).isEqualTo("postgres");
-                    assertThat(rs.getString(2)).isEqualTo("public");
+                try (Statement st = conn.createStatement()) {
+                    st.execute("SET default_transaction_read_only = on");
+                    try (ResultSet rs = st.executeQuery("SELECT current_database(), current_schema(), current_setting('transaction_read_only')")) {
+                        assertThat(rs.next()).isTrue();
+                        assertThat(rs.getString(1)).isEqualTo("postgres");
+                        assertThat(rs.getString(2)).isEqualTo("public");
+                        assertThat(rs.getString(3)).isEqualTo("on");
+                    }
                 }
             }
-        }, "JDBC connection and project sanity check must succeed");
+        }, "JDBC connection, session read-only setting, and project sanity check must succeed");
 
         // 3. Programmatically bootstrap JPA EntityManagerFactory with ddl-auto=validate
         // Strictly isolates JPA schema validation: No web server, no RolesSeeder, no OtpCleanupService, no scheduled tasks
@@ -74,7 +77,8 @@ public class PostgreSqlLiveSchemaValidationTest {
         jpaProperties.put("jakarta.persistence.jdbc.password", dbPass);
         jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         jpaProperties.put("hibernate.hbm2ddl.auto", "validate"); // STRICT VALIDATE MODE - NEVER UPDATE OR CREATE
-        jpaProperties.put("hibernate.connection.read_only", "true"); // ENFORCE READ-ONLY
+        jpaProperties.put("hibernate.connection.read_only", "true"); // ENFORCE READ-ONLY ON JDBC LEVEL
+        jpaProperties.put("hibernate.connection.init_sql", "SET default_transaction_read_only = on;"); // SESSION-LEVEL READ-ONLY
 
         emfBean.setJpaPropertyMap(jpaProperties);
         emfBean.afterPropertiesSet();
