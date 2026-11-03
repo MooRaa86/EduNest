@@ -39,8 +39,7 @@ public class ContactMessageEntity extends BaseEntity {
     private String phone;
 
     @NotBlank(message = "Message is required")
-    @Lob
-    @Column(name = "message")
+    @Column(name = "message", columnDefinition = "TEXT")
     private String message;
 
     @Enumerated(EnumType.STRING)
