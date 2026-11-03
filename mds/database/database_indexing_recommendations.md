@@ -24,6 +24,25 @@
 - **`difficulty_level`**: لو الطالب بيقدر يفلتر الكورسات حسب الصعوبة.
 - **`rating` & `price`**: لو فيه ترتيب (Sorting) للكورسات من الأعلى تقييماً أو الأقل سعراً.
 - **`title`**: لو فيه شريط بحث باسم الكورس (يفضل **Full-Text Index** أو B-Tree حسب الاحتياج).
+- **🚀 استعلام الـ Explore في Supabase PostgreSQL (`pg_trgm` GIN Index) - EB-59**:
+  استعلام الـ Explore (`searchMentorShips`) يبحث باستخدام `LIKE '%keyword%'` عبر 4 أعمدة رئيسية (`title`, `subtitle`, `description`, `category`). في PostgreSQL الفهارس التقليدية (B-Tree) لا تدعم البحث بـ Leading Wildcard وستقوم بمسح كامل للجدول (`Seq Scan`). الحل الأمثل في بيئة Supabase هو استخدام Trigram GIN Index:
+  ```sql
+  -- تفعيل إضافة Trigram
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+  -- فهرس GIN لتسريع البحث بالكلمات المفتاحية في الكورسات
+  CREATE INDEX IF NOT EXISTS idx_mentorship_explore_trgm
+  ON mentorship USING gin (
+      title gin_trgm_ops,
+      subtitle gin_trgm_ops,
+      description gin_trgm_ops,
+      category gin_trgm_ops
+  );
+
+  -- فهرس مركب لدعم فلترة الحالة النشطة ونطاق السعر الفعلي (MSH-07)
+  CREATE INDEX IF NOT EXISTS idx_mentorship_active_price
+  ON mentorship (status, price, discount_percentage);
+  ```
 
 ## 3. 🎓 جدول الاشتراكات (`enrollments` / `Enrollment`)
 - **`student_id`**: عشان تجيب كل الكورسات اللي الطالب مشترك فيها.

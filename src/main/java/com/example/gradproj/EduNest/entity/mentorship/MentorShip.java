@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +62,7 @@ public class MentorShip extends BaseEntity {
             fetch = FetchType.LAZY
     )
     @Builder.Default
+    @BatchSize(size = 25)
     private List<WhatWillLearn> whatWillLearn = new ArrayList<>();
 
     @Builder.Default
@@ -71,6 +73,7 @@ public class MentorShip extends BaseEntity {
             cascade = CascadeType.ALL,
             orphanRemoval = true)
     @Builder.Default
+    @BatchSize(size = 25)
     private List<Tags> tags = new ArrayList<>();
 
     private double duration;

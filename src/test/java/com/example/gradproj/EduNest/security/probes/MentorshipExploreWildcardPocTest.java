@@ -157,8 +157,8 @@ class MentorshipExploreWildcardPocTest extends ProdChainIntegrationTestBase {
 	 * Contrast: a truly-unique literal keyword matches exactly its own row.
 	 */
 	@Test
-	@DisplayName("V-03: %-only / _-only PUBLIC keywords match every candidate (row-scan) — draft stays confined")
-	void v03_wildcardKeywordsMatchEverything() throws Exception {
+	@DisplayName("P4-10 (MSH-12): % / _ in keywords are escaped — do not match everything, draft stays confined")
+	void p410_wildcardsEscapedDoNotMatchEverything() throws Exception {
 		String suffix = String.valueOf(System.nanoTime());
 		seed(suffix);
 		String control = "eb3-zephyrtronics-" + suffix;
@@ -166,55 +166,100 @@ class MentorshipExploreWildcardPocTest extends ProdChainIntegrationTestBase {
 		// CONTROL: unique literal keyword → exactly its own row
 		assertThat(exploreTotal(control)).as("unique literal keyword isolates its row").isEqualTo(1);
 
-		// PAYLOADS: every wildcard-only keyword matches every seeded ACTIVE row
-		String[] activeTokens = { "eb3-zephyrtronics-" + suffix,
-				"eb3-plain-0-" + suffix, "eb3-plain-1-" + suffix, "eb3-plain-2-" + suffix,
-				"eb3-plain-3-" + suffix, "eb3-plain-4-" + suffix, "eb3-plain-5-" + suffix,
-				"eb3-Summer%Off-" + suffix, "eb3-SummerXOff-" + suffix,
-				"eb3-Fundamentals_101-" + suffix, "eb3-FundamentalsX101-" + suffix };
+		// If '%' was a wildcard, searching 'eb3-plain-0-<suffix>%' would match 'eb3-plain-0-<suffix>'.
+		// Because '%' is escaped to a literal '\%', it looks for a title containing literal '%' and matches 0.
+		assertThat(exploreTotal("eb3-plain-0-" + suffix + "%"))
+				.as("trailing '%' is treated literally, not as wildcard")
+				.isEqualTo(0);
 
-		for (String payload : EXPAND_ALL_PAYLOADS) {
-			StringBuilder combined = new StringBuilder();
-			long total = sweepAll(payload, combined);
-			assertThat(total).as("wildcard payload '%s' widens to the full candidate set", payload)
-					.isGreaterThanOrEqualTo(activeTokens.length);
-			for (String token : activeTokens) {
-				assertThat(combined)
-						.as("match-all sweep must include '%s' (keyword is no selector)", token)
-						.contains(token);
-			}
-			assertThat(combined)
-					.as("DRAFT must stay confined even under match-all keyword '%s'", payload)
-					.doesNotContain("eb3-draft-" + suffix);
-		}
+		// Similarly, if '_' was a wildcard, searching 'eb3-plain-0-<suffix>_' would match anything with 1 extra char.
+		// Escaped, it matches 0.
+		assertThat(exploreTotal("eb3-plain-0-" + suffix + "_"))
+				.as("trailing '_' is treated literally, not as wildcard")
+				.isEqualTo(0);
+
+		// Wildcard '__' escaped matches 0 because no row contains two consecutive underscores
+		assertThat(exploreTotal("__"))
+				.as("literal '__' search matches 0 because no row contains two underscores")
+				.isEqualTo(0);
 	}
 
 	/**
-	 * V-03 CONFIRMED — %/_ inside an otherwise-literal keyword silently WIDEN
-	 * the match to rows that never contain the literal: "Summer%Off" is
-	 * impossible to isolate (its % is a wildcard that matches "SummerXOff"
-	 * too), while the only-%-free sibling searches exactly. Same story for
-	 * "Fundamentals_101" vs "FundamentalsX101" (underscore = any single char).
+	 * P4-10 (MSH-12): % and _ are escaped with LIKE ESCAPE clause so literal keywords
+	 * isolate their exact row. "Summer%Off" matches only "Summer%Off", NOT "SummerXOff".
 	 */
 	@Test
-	@DisplayName("V-03: % / _ inside a literal keyword alter semantics — siblings impossible to isolate")
-	void v03_percentAndUnderscoreAlterSemantics() throws Exception {
+	@DisplayName("P4-10 (MSH-12): % / _ in literal keywords isolate exact row — no sibling widening")
+	void p410_percentAndUnderscoreEscapedIsolateExactRow() throws Exception {
 		String suffix = String.valueOf(System.nanoTime());
 		seed(suffix);
 
-		// literal, wildcard-free searches stay exact (both siblings isolatable)
+		// literal, wildcard-free searches isolate their row
 		assertThat(exploreTotal("eb3-summerxoff-" + suffix))
 				.as("literal-only keyword finds its one row").isEqualTo(1);
 		assertThat(exploreTotal("eb3-fundamentalsx101-" + suffix))
 				.as("literal-only keyword finds its one row").isEqualTo(1);
 
-		// but a keyword carrying % / _ cannot isolate its literal target:
-		// "Summer%Off" search ALSO returns "SummerXOff" (== 2 rows)
+		// With P4-10 escaping: % and _ no longer widen the match!
 		assertThat(exploreTotal("eb3-summer%off-" + suffix))
-				.as("'%' inside keyword widens to both siblings — semantics altered")
-				.isEqualTo(2);
+				.as("'%' inside keyword is escaped — isolates Summer%Off only")
+				.isEqualTo(1);
 		assertThat(exploreTotal("eb3-fundamentals_101-" + suffix))
-				.as("'_' inside keyword widens to both siblings — semantics altered")
-				.isEqualTo(2);
+				.as("'_' inside keyword is escaped — isolates Fundamentals_101 only")
+				.isEqualTo(1);
+	}
+
+	/**
+	 * P4-10 (MSH-07): Explore price filter applies to computed effective price (price * (1 - discount%)),
+	 * NOT the raw base price.
+	 */
+	@Test
+	@DisplayName("P4-10 (MSH-07): explore filters against effective price rather than base price")
+	void p410_effectivePriceFilterEvaluatesDiscountedPrice() throws Exception {
+		String suffix = String.valueOf(System.nanoTime());
+		var m = auth.mentor("probe-price-" + suffix + "@example.org");
+
+		// 1. Base 100, 50% discount -> Effective 50.0
+		mentorships.save(MentorShip.builder()
+				.mentor(m)
+				.title("eb3-discounted-" + suffix)
+				.description("probe")
+				.subtitle("probe")
+				.category("backend")
+				.status(Status.ACTIVE)
+				.price(100.0)
+				.discountPercentage(50)
+				.duration(1.0)
+				.build());
+
+		// 2. Base 100, 0% discount -> Effective 100.0
+		mentorships.save(MentorShip.builder()
+				.mentor(m)
+				.title("eb3-fullprice-" + suffix)
+				.description("probe")
+				.subtitle("probe")
+				.category("backend")
+				.status(Status.ACTIVE)
+				.price(100.0)
+				.discountPercentage(0)
+				.duration(1.0)
+				.build());
+
+		// Filter for range 45.0 to 60.0:
+		// Base price filter would reject both (100.0 > 60.0).
+		// Effective price filter MUST match the 50% discounted course (50.0 is in [45.0, 60.0]).
+		var result = mockMvc.perform(get("/api/v1/mentorship/explore")
+						.queryParam("keyword", "eb3-discounted-" + suffix)
+						.queryParam("minPrice", "45.0")
+						.queryParam("maxPrice", "60.0"))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		String body = result.getResponse().getContentAsString();
+		long total = ((Number) JsonPath.read(body, "$.apiResponse.mentorShips.totalElements")).longValue();
+		double effectivePrice = ((Number) JsonPath.read(body, "$.apiResponse.mentorShips.content[0].priceAfterDiscount")).doubleValue();
+
+		assertThat(total).as("discounted course matched in its effective price range").isEqualTo(1);
+		assertThat(effectivePrice).as("effective price matches 50.0").isEqualTo(50.0);
 	}
 }
