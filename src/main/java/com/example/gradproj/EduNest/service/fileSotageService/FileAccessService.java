@@ -42,6 +42,7 @@ public class FileAccessService {
     private final ProjectRepository projectRepository;
     private final CurrentUserProvider currentUserProvider;
     private final EntityManager entityManager;
+    private final com.example.gradproj.EduNest.service.storage.SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.base-dir:uploads}")
     private String baseDir;
@@ -128,10 +129,16 @@ public class FileAccessService {
                 if (!candidates.contains(stored)) throw unavailable();
             } else throw unavailable();
 
-            Path realRoot = root.toRealPath();
-            Path realTarget = target.toRealPath();
-            if (!realTarget.equals(realRoot.resolve(relative).normalize()) || !Files.isRegularFile(realTarget)) throw unavailable();
-            return realTarget.toString();
+            if (Files.exists(target)) {
+                Path realRoot = root.toRealPath();
+                Path realTarget = target.toRealPath();
+                if (!realTarget.equals(realRoot.resolve(relative).normalize()) || !Files.isRegularFile(realTarget)) throw unavailable();
+                return realTarget.toString();
+            } else if (supabaseStorageService.isConfigured()) {
+                return relative.toString().replace('\\', '/');
+            } else {
+                throw unavailable();
+            }
         } catch (InvalidPathException | IOException | AccessDeniedException ex) {
             throw unavailable();
         }

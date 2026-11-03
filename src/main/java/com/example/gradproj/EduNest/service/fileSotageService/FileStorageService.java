@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.fileSotageService;
 
 import lombok.extern.slf4j.Slf4j;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.service.storage.SupabaseStorageService;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+/**
+ * File storage service handling submissions, task attachments, and project attachments - [ADD-03]/EB-83.
+ * Supports Supabase S3 private storage (edunest-private) with local disk fallback when unconfigured.
+ */
 @Service
 @Slf4j
 public class FileStorageService {
@@ -71,7 +76,6 @@ public class FileStorageService {
             "html", "htm", "js", "jar", "war", "py", "rb", "pl", "cgi"
     );
 
-
     private static final Set<String> BLOCKED_MIME_TYPES = Set.of(
             "application/x-msdownload",
             "application/x-executable",
@@ -83,15 +87,17 @@ public class FileStorageService {
     );
 
     private static final Pattern SAFE_FOLDER_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]+$");
-
     private static final Pattern SAFE_FILENAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.-]+$");
 
     private Path resolvedBaseDir;
     private final Tika tika = new Tika();
     private final UploadContentValidator contentValidator;
+    private final SupabaseStorageService supabaseStorageService;
 
-    public FileStorageService(UploadContentValidator contentValidator) {
+    public FileStorageService(UploadContentValidator contentValidator,
+                              SupabaseStorageService supabaseStorageService) {
         this.contentValidator = contentValidator;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
     @PostConstruct
@@ -117,8 +123,40 @@ public class FileStorageService {
         validateMimeTypeCompatibility(extension, detectedMimeType);
         validateNotBlockedType(extension, detectedMimeType);
 
-        Path uploadPath = constructSecurePath(subFolder);
         String safeFileName = generateSafeFileName(type, id, secondaryId, extension);
+
+        if (supabaseStorageService.isConfigured()) {
+            if ("zip".equals(extension)) {
+                Path tempZip = null;
+                try {
+                    tempZip = Files.createTempFile("edunest-zip-", ".tmp");
+                    file.transferTo(tempZip);
+                    contentValidator.verifyZipIntegrity(tempZip);
+                } catch (IOException e) {
+                    log.error("Failed to verify ZIP integrity for S3 upload", e);
+                    throw new globalLogicEx("Failed to validate ZIP file");
+                } finally {
+                    if (tempZip != null) {
+                        try { Files.deleteIfExists(tempZip); } catch (IOException ignored) {}
+                    }
+                }
+            }
+
+            try {
+                byte[] bytes = file.getBytes();
+                supabaseStorageService.uploadPrivate(subFolder, safeFileName, bytes, detectedMimeType);
+                return Paths.get(baseDir)
+                        .resolve(subFolder)
+                        .resolve(safeFileName)
+                        .toString()
+                        .replace("\\", "/");
+            } catch (IOException e) {
+                log.error("Failed to read file bytes for S3 upload: {}", safeFileName, e);
+                throw new RuntimeException("Failed to upload file to storage", e);
+            }
+        }
+
+        Path uploadPath = constructSecurePath(subFolder);
         Path filePath = uploadPath.resolve(safeFileName).normalize();
 
         if (!filePath.startsWith(uploadPath)) {
@@ -175,9 +213,7 @@ public class FileStorageService {
         }
 
         String basename = Paths.get(filename).getFileName().toString();
-
         basename = basename.replaceAll("[\\x00-\\x1f\\x7f]", "");
-
         basename = basename.replaceAll("\\.{2,}", ".");
         basename = basename.replace(" ", "_");
         if (basename.isBlank() || basename.equals(".") || basename.equals("..")) {
@@ -215,16 +251,12 @@ public class FileStorageService {
 
     private String detectMimeType(MultipartFile file) {
         try (InputStream is = file.getInputStream()) {
-
             String mimeType = tika.detect(is);
-
             if (mimeType == null || mimeType.isBlank()) {
                 throw new IllegalArgumentException("Could not determine file type from content");
             }
-
             log.debug("Detected MIME type: {} for file: {}", mimeType, file.getOriginalFilename());
             return mimeType;
-
         } catch (IOException e) {
             log.error("Failed to read file for MIME detection", e);
             throw new RuntimeException("Failed to validate file content", e);
@@ -232,23 +264,17 @@ public class FileStorageService {
     }
 
     private void validateMimeTypeCompatibility(String extension, String detectedMimeType) {
-
         Set<String> allowedMimes = ALLOWED_FILE_TYPES.get(extension);
-
         boolean valid = allowedMimes != null &&
                 allowedMimes.stream()
                         .anyMatch(detectedMimeType::startsWith);
 
         if (!valid) {
-
             log.warn(
                     "MIME mismatch: extension .{} but detected {}. Possible spoofing attempt.",
                     extension,
                     detectedMimeType
             );
-
-            // P1-22: mislabeled uploads answer 400 through the EB-12 envelope,
-            // not the sanitized catch-all 500.
             throw new globalLogicEx("File content does not match its file extension.");
         }
     }
@@ -262,7 +288,6 @@ public class FileStorageService {
 
     private Path constructSecurePath(String subFolder) {
         Path uploadPath = resolvedBaseDir.resolve(subFolder).normalize();
-
 
         if (!uploadPath.startsWith(resolvedBaseDir)) {
             throw new SecurityException("Subfolder path traversal detected");
@@ -278,7 +303,6 @@ public class FileStorageService {
     }
 
     private String generateSafeFileName(String type, Long id, Long secondaryId, String extension) {
-
         return String.format("%s-%d-%d-%s.%s",
                 type, id, secondaryId, UUID.randomUUID(), extension);
     }
@@ -298,10 +322,6 @@ public class FileStorageService {
                 throw new IOException("File size mismatch after write");
             }
 
-            // EB-29 [P1-22]: a stored .zip must be a structurally complete ZIP
-            // archive (central directory parses) — bytes that merely carry the
-            // PK magic, or arbitrary content named .zip, are rejected before
-            // the target file is ever created.
             if ("zip".equals(extension)) {
                 try {
                     contentValidator.verifyZipIntegrity(tempPath);
@@ -327,7 +347,6 @@ public class FileStorageService {
         }
     }
 
-
     public void validateOnly(MultipartFile file) {
         validateFileStructure(file);
         String originalFilename = sanitizeFilename(file.getOriginalFilename());
@@ -337,12 +356,17 @@ public class FileStorageService {
         validateNotBlockedType(extension, detectedMimeType);
     }
 
-
     public void deleteFile(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) {
             log.debug("Delete called with null or blank path, skipping");
             return;
         }
+
+        if (supabaseStorageService.isConfigured()) {
+            String key = SupabaseStorageService.normalizeKey(relativePath);
+            supabaseStorageService.deletePrivate(key);
+        }
+
         String cleanPath = relativePath;
         if (cleanPath.startsWith(baseDir + "/") || cleanPath.startsWith(baseDir + "\\")) {
             cleanPath = cleanPath.substring(baseDir.length() + 1);
@@ -371,7 +395,7 @@ public class FileStorageService {
             if (deleted) {
                 log.info("Deleted file: {}", targetPath);
             } else {
-                log.warn("File not found for deletion: {}", targetPath);
+                log.debug("Local file not found for deletion: {}", targetPath);
             }
         } catch (IOException e) {
             log.error("Failed to delete file: {}", targetPath, e);
