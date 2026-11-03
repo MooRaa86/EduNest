@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -40,6 +41,7 @@ public class Task extends BaseEntity {
     @Column(name="task_estimated_minutes",nullable = false)
     private Integer estimatedMinutes;
 
+    @Builder.Default
     @Column(name = "task_status",nullable = false)
     @Enumerated(EnumType.STRING)
     private TaskStatus status=TaskStatus.DRAFT;
@@ -53,6 +55,7 @@ public class Task extends BaseEntity {
     @Column(name = "uploaded_attachment_path")
     private String uploadedAttachmentPath;
 
+    @Builder.Default
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TaskSubmission> submissions = new ArrayList<>();
 

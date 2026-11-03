@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -50,10 +51,12 @@ public class Project extends BaseEntity {
         @Column(name = "project_points", nullable = false)
         private Integer points;
 
+        @Builder.Default
         @Enumerated(EnumType.STRING)
         @Column(name = "project_status", nullable = false)
         private ProjectStatus status = ProjectStatus.DRAFT;
 
+        @Builder.Default
         @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
         private List<ProjectSubmission> submissions = new ArrayList<>();
 
