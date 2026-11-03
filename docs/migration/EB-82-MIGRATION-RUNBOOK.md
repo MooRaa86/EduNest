@@ -55,9 +55,11 @@ Per Engineering Lead / Project Owner directive (2026-11-03):
 ### 3.1 Target Database: Supabase PostgreSQL 17.11 (`postgres`)
 - **Schema:** `public`
 - **Application Tables:** 42 tables present
-- **Existing Records:**
+- **Existing Records (5 total rows):**
   - `roles`: 3 records (`ADMIN`, `MENTOR`, `STUDENT`)
-  - All other 41 tables: **0 rows**
+  - `users`: 1 record (verified valid development student account)
+  - `students`: 1 record (verified valid development student profile linked to `users.id=1`)
+  - All other 39 tables: **0 rows**
 - **Legacy Table `user_settings`:** Does **NOT** exist in PostgreSQL (and will NOT be created, as it is unmapped in JPA and dead legacy code).
 
 ### 3.2 Current Incompatible Columns
@@ -72,49 +74,42 @@ Due to previous Hibernate 6 `@Lob` mappings on `String` fields, five columns exi
 
 ## 4. Corrective DDL for Supabase Execution
 
-Because all 5 corresponding tables currently contain **0 rows**, the type conversion does not require heavy data migration or `pg_largeobject` cleanup. However, PostgreSQL requires an explicit `USING` clause when altering from `oid` to `text`.
+Because all 5 corresponding tables currently contain **0 rows**, the conversion uses `USING NULL::text` wrapped in exclusive locks and pre/post-assertions.
 
-The following DDL is reviewed, non-destructive, and idempotent.
+The canonical SQL file is located at:
+`docs/migration/reconcile_oid_to_text.sql`
+
+Key safety controls implemented:
+- Local statement and lock timeouts (`lock_timeout = '5s'`, `statement_timeout = '15s'`)
+- `ACCESS EXCLUSIVE` table locking on all 5 tables
+- Precondition assertion: all 5 tables must be strictly 0 rows while locks are held
+- Precondition assertion: all 5 target columns must currently be type `oid`
+- Conversion with `USING NULL::text` and preservation of `NOT NULL` constraints
+- Post-condition assertions: all 5 columns verified as `text`, 5 affected tables verified 0 rows, and existing `roles` (3), `users` (1), and `students` (1) rows verified unchanged
+- Automatic `ROLLBACK` on any assertion failure
 
 ```sql
--- ====================================================================
--- EduNest EB-82: Non-Destructive OID to TEXT Schema Alignment
--- Target: Supabase PostgreSQL (schema: public)
--- Execution: Requires explicit operator authorization
--- ====================================================================
-
-BEGIN;
-
--- 1. Table: contact_message
-ALTER TABLE public.contact_message 
-    ALTER COLUMN message TYPE TEXT 
-    USING (CASE WHEN message IS NOT NULL THEN convert_from(lo_get(message), 'UTF8') ELSE NULL END);
-
--- 2. Table: projects
-ALTER TABLE public.projects 
-    ALTER COLUMN project_brief TYPE TEXT 
-    USING (CASE WHEN project_brief IS NOT NULL THEN convert_from(lo_get(project_brief), 'UTF8') ELSE NULL END);
-
--- 3. Table: project_submission (actual DB column name: project_feedback)
-ALTER TABLE public.project_submission 
-    ALTER COLUMN project_feedback TYPE TEXT 
-    USING (CASE WHEN project_feedback IS NOT NULL THEN convert_from(lo_get(project_feedback), 'UTF8') ELSE NULL END);
-
--- 4. Table: tasks
-ALTER TABLE public.tasks 
-    ALTER COLUMN task_description TYPE TEXT 
-    USING (CASE WHEN task_description IS NOT NULL THEN convert_from(lo_get(task_description), 'UTF8') ELSE NULL END);
-
--- 5. Table: task_submission (actual DB column name: task_feedback)
-ALTER TABLE public.task_submission 
-    ALTER COLUMN task_feedback TYPE TEXT 
-    USING (CASE WHEN task_feedback IS NOT NULL THEN convert_from(lo_get(task_feedback), 'UTF8') ELSE NULL END);
-
-COMMIT;
+-- See full script: docs/migration/reconcile_oid_to_text.sql
 ```
 
 > [!NOTE]
-> The `convert_from(lo_get(...), 'UTF8')` clause provides defensive data preservation: for 0 rows it executes instantaneously; if any row exists, it decodes the actual text rather than casting the numeric OID identifier to text.
+> `USING NULL::text` is strictly appropriate and safe ONLY because the tables are locked and verified empty. If any rows are detected, the transaction aborts before mutation.
+
+### 4.1 Rollback Plan
+If the schema needs to be rolled back to `oid` while tables are empty:
+```sql
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+LOCK TABLE public.contact_message, public.projects, public.project_submission, public.tasks, public.task_submission IN ACCESS EXCLUSIVE MODE;
+
+ALTER TABLE public.contact_message ALTER COLUMN message TYPE oid USING NULL::oid;
+ALTER TABLE public.projects ALTER COLUMN project_brief TYPE oid USING NULL::oid;
+ALTER TABLE public.project_submission ALTER COLUMN project_feedback TYPE oid USING NULL::oid;
+ALTER TABLE public.tasks ALTER COLUMN task_description TYPE oid USING NULL::oid;
+ALTER TABLE public.task_submission ALTER COLUMN task_feedback TYPE oid USING NULL::oid;
+
+COMMIT;
+```
 
 ---
 
