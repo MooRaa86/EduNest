@@ -520,7 +520,9 @@ public class mentorShipServiceI implements mentorShipService{
     @Override
     public PageResponse<MentorshipExploreDto> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<MentorshipExploreDto> result = MentorShipRepository.searchMentorShips(keyword, category, minPrice, maxPrice, pageable);
+        String cleanKeyword = sanitizeKeyword(keyword);
+        String cleanCategory = (category != null && !category.isBlank()) ? category.trim() : null;
+        Page<MentorshipExploreDto> result = MentorShipRepository.searchMentorShips(cleanKeyword, cleanCategory, minPrice, maxPrice, pageable);
         return PageResponse.<MentorshipExploreDto>builder()
                 .content(result.getContent())
                 .page(result.getNumber())
@@ -528,6 +530,21 @@ public class mentorShipServiceI implements mentorShipService{
                 .totalElements(result.getTotalElements())
                 .totalPages(result.getTotalPages())
                 .build();
+    }
+
+    /**
+     * MSH-12: Sanitize explore search keyword.
+     * Trims, lowercases, and escapes SQL LIKE wildcard characters (\, %, _)
+     * so user input is matched literally rather than acting as a SQL regex.
+     */
+    private String sanitizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim().toLowerCase()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     @Override

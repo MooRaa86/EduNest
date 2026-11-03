@@ -99,7 +99,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.price,
         m.discountPercentage,
-        m.price * (1.0 - m.discountPercentage / 100.0),
+        m.price * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0),
         m.duration, m.coverImageUrl,m.rating
     )
     FROM MentorShip m
@@ -107,15 +107,15 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     AND m.mentor.deleted = false
     AND (
         :keyword IS NULL
-        OR LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(m.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(m.subtitle) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(m.category) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(m.title) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
+        OR LOWER(m.description) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
+        OR LOWER(m.subtitle) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
+        OR LOWER(m.category) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
+        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
     )
     AND (:category IS NULL OR LOWER(m.category) = LOWER(:category))
-    AND (:minPrice IS NULL OR m.price >= :minPrice)
-    AND (:maxPrice IS NULL OR m.price <= :maxPrice)
+    AND (:minPrice IS NULL OR (m.price * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) >= :minPrice)
+    AND (:maxPrice IS NULL OR (m.price * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) <= :maxPrice)
 """)
     Page<MentorshipExploreDto> searchMentorShips(
             @Param("keyword") String keyword,

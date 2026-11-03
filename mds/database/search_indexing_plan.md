@@ -18,6 +18,21 @@ This is the primary search component on the platform. The following fields must 
 - `difficulty_level`: As a filtering tool.
 - `mentor_id / mentor_name`: To search for courses provided by a specific mentor.
 
+#### ⚡ PostgreSQL / Supabase Exploration Engine (`EB-59` / `MSH-12`)
+For in-database search on Supabase PostgreSQL without external search clusters (Elasticsearch/Typesense), the `searchMentorShips` query uses ANSI JPQL `ESCAPE '\'` with leading & trailing wildcards. To avoid sequential scans (`Seq Scan`) across large course catalogs:
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS idx_mentorship_explore_trgm
+ON mentorship USING gin (
+    title gin_trgm_ops,
+    subtitle gin_trgm_ops,
+    description gin_trgm_ops,
+    category gin_trgm_ops
+);
+```
+This GIN trigram index allows PostgreSQL to use index scans for `%keyword%` queries, improving search latency significantly.
+
 ### 👤 B. Users and Mentors (`UserEntity`, `Mentor`, `StudentSkill`)
 To allow students to search for specific mentors or skills:
 - `first_name` & `last_name`: For searching by name.
