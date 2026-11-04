@@ -4,6 +4,14 @@
 **Migration:** `V3__uniqueness_constraints_and_dedupe.sql` (PostgreSQL 17.x / Supabase, schema `public`)
 **Status in origin/main after merge:** migration file EXISTS but Flyway **has not applied it to production** — it is applied on the next real app boot of the migrated instance, or manually via the steps below. The registry (`db/migration/README.md`) intentionally keeps `V3` as **RESERVED (BUILD COMPLETE — pending production adoption)**.
 
+**Milestones — keep all three separate at all times (merging proves none of the others):**
+
+| # | Milestone | Evidence |
+|---|-----------|----------|
+| M1 | **Code merged to `main`** | merge commit + green CI, including the two dedicated EB-44 PostgreSQL suites |
+| M2 | **V3 executed on a disposable PostgreSQL instance** | EB-44 suites passing on throwaway containers (dedupe + conflict UX proven on real PostgreSQL) — proves the CODE PATH only, changes nothing real |
+| M3 | **V3 applied to the production database** | `flyway_schema_history` row `(3, 'uniqueness constraints and dedupe', true)` + the §5 post-adopt checks on the live database |
+
 ---
 
 ## 1. What V3 does (and what it never does)
@@ -14,6 +22,7 @@ Ordered phases inside the single transaction Flyway manages:
 2. **Enrollments dedupe** — duplicate `(student_id, mentorship_id)` rows: every row that has an earlier sibling is copied verbatim into `eb44_archive_enrollments`, then deleted. Winner = smallest `id` (carries the original `joined_at`).
 3. **Reviews dedupe** — duplicate `(mentorship_id, student_id)` pairs (`IS NOT DISTINCT FROM`, so identical NULL/NULL degenerate rows collapse too): losers archived, then deleted.
 4. **Conversation hygiene** — rows with a NULL participant (invalid data; `ConversationService` is the only creation path and always writes both) and **every message belonging to them** are archived, then removed; after which `conversations.user1_id` / `user2_id` become `NOT NULL`.
+   **Archival ≠ availability:** after V3, that archived conversation history is **NOT visible in the live application** — chat endpoints only read the live tables, there is no archive-browsing UI, and no automatic restore path exists. The data survives in `eb44_archive_*` for a DBA-driven manual restore only (approval gate G2).
 5. **Conversation pair dedupe (CHAT-05)** — identity is the unordered pair `(LEAST(user1_id,user2_id), GREATEST(user1_id,user2_id))`. Loser conversations first hand **all their messages** to the winner (ids, timestamps, seen flags untouched), then are archived and deleted.
 6. **DDL** —
    - `CREATE UNIQUE INDEX IF NOT EXISTS uk_enrollment_student_mentorship ON enrollments (student_id, mentorship_id)`
@@ -92,8 +101,23 @@ Because archives live in real production tables (not backups only), removal is r
 
 ---
 
+## 7. Approval gates — REQUIRED because V3 mutates live production data
+
+Nothing in V3 is auto-approved. Each gate below must be signed (approver name + date) BEFORE the production boot/manual migrate; an unfilled table means **do not adopt**.
+
+| Gate | What V3 will do to production data | Risk the approver accepts | Approver | Date |
+|------|-----------------------------------|---------------------------|----------|------|
+| G1 | NULL-participant conversations will be moved to `eb44_archive_conversations` and removed from the live table | Those conversations stop being reachable in the app (archival is not availability) | | |
+| G2 | All messages of the conversations in G1 will be moved to `eb44_archive_messages` and removed from the live table | Users lose in-app access to that history; restoring requires a manual DBA action from the archive | | |
+| G3 | Duplicate enrollment/review rows will be archived (`eb44_archive_enrollments` / `eb44_archive_mentorship_reviews`) and removed from the live tables | Duplicate history (double enrollments / double reviews) disappears from the FE | | |
+| G4 | The winner rule is deterministic and fixed: smallest `id` (earliest `joined_at`, first review). Losing rows go to the archive. | Re-picking a different winner later means a manual archive restore; the rule cannot be changed retroactively | | |
+
+The migration itself refuses half-states: the §1.7 verification block fails the WHOLE migration (Flyway transaction) if any duplicate or NULL count survives.
+
+---
+
 > [!CAUTION]
-> **V3 performs a data remediation.** It changes four live application tables by design (`dedupe=true, rows archived-not-destroyed`). This was reviewed and approved in the build plan and is encoded by the test matrix (T1–T5 migration/verification, U1–U5 app-on-PostgreSQL behavior). Keep the backup from step 3 untouched until the post-adopt checklist has passed twice (two consecutive app boots) plus one week of production traffic.
+> **V3 performs a data remediation against four live application tables.** It is NOT silently approved: every destructive surface in §7 (G1–G4) requires a named approval entry before production adoption. The test matrix (T1–T5 migration/verification, U1–U8 app-on-PostgreSQL behavior) proves the code path on disposable databases only — passing suites are code evidence, not production approval. Keep the backup from step 3 untouched until the post-adopt checklist has passed twice (two consecutive app boots) plus one week of production traffic.
 
 ---
 

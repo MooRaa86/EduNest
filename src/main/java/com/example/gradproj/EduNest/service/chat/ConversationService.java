@@ -12,6 +12,7 @@ import com.example.gradproj.EduNest.repository.chat.MessageRepository;
 import com.example.gradproj.EduNest.repository.chat.projection.ConversationMessageProjection;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -37,7 +40,26 @@ public class ConversationService {
     // uk_conversation_unordered_pair constraint; TransactionTemplate keeps the
     // insert in its own short transaction so a constraint-race never poisons
     // the caller's transaction.
-    private final TransactionTemplate transactionTemplate;
+    private final PlatformTransactionManager transactionManager;
+
+    /**
+     * [EB-44][P3-02] The recovery mechanism REQUIRES an independent transaction:
+     * {@code PROPAGATION_REQUIRES_NEW} guarantees the conversation get-or-create
+     * always runs in its own short transaction even if a future/websocket caller
+     * wraps {@link #sendMessage} in an outer {@code @Transactional} scope. With
+     * the default {@code REQUIRED} propagation the inner tx would JOIN the outer
+     * one; a unique violation would then poison the outer tx and the recovery's
+     * refetch/commit path would explode with {@code UnexpectedRollbackException}
+     * at the outer boundary. REQUIRES_NEW confines the rollback to the failed
+     * insert; the outer transaction stays healthy.
+     */
+    private TransactionTemplate requiresNewConversationTx;
+
+    @PostConstruct
+    void initConversationTemplate() {
+        requiresNewConversationTx = new TransactionTemplate(transactionManager);
+        requiresNewConversationTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     public ConversationMessageResponse mapToResponse(Message msg) {
         Conversation c = msg.getConversation();
@@ -92,7 +114,7 @@ public class ConversationService {
         // persisting the message.
         Conversation conversation;
         try {
-            conversation = transactionTemplate.execute(status ->
+            conversation = requiresNewConversationTx.execute(status ->
                     conversationRepo
                             .findBetweenUsers(senderEmail, request.getRecipientEmail())
                             .orElseGet(() -> createConversation(sender, receiver)));
