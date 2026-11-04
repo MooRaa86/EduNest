@@ -85,18 +85,18 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute exactly 2 scripts (V1, V2)")
-                .isEqualTo(2);
+                .as("Initial migration must execute exactly 3 scripts (V1, V2, V3 — EB-44/P3-02 flipped baseline)")
+                .isEqualTo(3);
     }
 
     @Test
     @Order(2)
-    @DisplayName("2. Migration history: exactly 2 applied migrations (V1, V2), SUCCESS, non-null checksums")
+    @DisplayName("2. Migration history: exactly 3 applied migrations (V1, V2, V3), SUCCESS, non-null checksums")
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Exactly 2 migrations must be registered in flyway_schema_history")
-                .hasSize(2);
+                .as("Exactly 3 migrations must be registered in flyway_schema_history")
+                .hasSize(3);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -111,14 +111,24 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v2.getType().name()).isEqualTo("SQL");
         assertThat(v2.getState().isApplied()).isTrue();
         assertThat(v2.getChecksum()).isNotNull();
+
+        // [EB-44][P3-02] V3 baseline commitment
+        MigrationInfo v3 = applied[2];
+        assertThat(v3.getVersion().getVersion()).isEqualTo("3");
+        assertThat(v3.getDescription()).isEqualTo("uniqueness constraints and dedupe");
+        assertThat(v3.getType().name()).isEqualTo("SQL");
+        assertThat(v3.getState().isApplied()).isTrue();
+        assertThat(v3.getChecksum()).isNotNull();
     }
 
     @Test
     @Order(3)
-    @DisplayName("3. Schema verification: 42 tables, 5 TEXT columns, trgm extension & indexes, seeded roles")
+    @DisplayName("3. Schema verification: 46 tables (42 entity + 4 EB-44 archive), 5 TEXT columns, trgm extension & indexes, seeded roles")
     void testSchemaVerification() throws Exception {
         try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
-            // A. Verify exactly 42 application tables in public schema
+            // A. Verify exactly 46 application tables in public schema
+            // [EB-44][P3-02] 42 EB-82-reconciled entity tables + 4 one-time
+            // dedupe archive surfaces (eb44_archive_*), flipped baseline
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery("""
                      SELECT table_name
@@ -133,8 +143,12 @@ public class PostgreSqlMigrationIntegrationTest {
                     tables.add(rs.getString("table_name"));
                 }
                 assertThat(tables)
-                        .as("Schema must contain exactly 42 application entity tables matching EB-82 reconciliation")
-                        .hasSize(42);
+                        .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
+                        .hasSize(46);
+                assertThat(tables)
+                        .as("All four EB-44 archive surfaces must exist")
+                        .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
+                                "eb44_archive_conversations", "eb44_archive_messages");
             }
 
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
@@ -189,6 +203,28 @@ public class PostgreSqlMigrationIntegrationTest {
                 assertThat(indexes)
                         .as("All 3 performance and trigram indexes defined in V2 must exist")
                         .contains("idx_mentorship_explore_trgm", "idx_mentorship_active_price", "idx_users_mentor_name_trgm");
+            }
+
+            // C2. [EB-44][P3-02] uniqueness DDL committed + redundant indexes retired
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT indexname FROM pg_indexes
+                     WHERE schemaname = 'public'
+                       AND indexname IN ('uk_enrollment_student_mentorship', 'uk_mentorship_review_student',
+                                         'uk_conversation_unordered_pair', 'idx_enrollments_mentorship',
+                                         'idx_enrollments_student_mentorship', 'idx_mentorship_student')
+                 """)) {
+                List<String> indexes44 = new ArrayList<>();
+                while (rs.next()) {
+                    indexes44.add(rs.getString("indexname"));
+                }
+                assertThat(indexes44)
+                        .as("All EB-44 uniqueness/covering indexes must exist (P3-02)")
+                        .contains("uk_enrollment_student_mentorship", "uk_mentorship_review_student",
+                                "uk_conversation_unordered_pair", "idx_enrollments_mentorship");
+                assertThat(indexes44)
+                        .as("Redundant pair indexes retired by V3 must be gone")
+                        .doesNotContain("idx_enrollments_student_mentorship", "idx_mentorship_student");
             }
 
             // D. Verify initial reference roles seeded by V1
@@ -366,12 +402,12 @@ public class PostgreSqlMigrationIntegrationTest {
                     .as("Manual baseline must record version 1 in flyway_schema_history")
                     .isEqualTo("1");
 
-            // 3. Subsequent migrate applies pending migrations above baseline (V2)
+            // 3. Subsequent migrate applies pending migrations above baseline (V2, V3)
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2)")
-                    .isEqualTo(1);
+                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3 — EB-44/P3-02 flipped baseline)")
+                    .isEqualTo(2);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {

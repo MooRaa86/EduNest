@@ -15,10 +15,12 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +33,11 @@ public class ConversationService {
     private final MessageRepository messageRepo;
     private final UserRepository userRepo;
     private final com.example.gradproj.EduNest.service.chat.ChatAuthorization chatAuthorization;
+    // [EB-44][P3-02] CHAT-05 — idempotent get-or-create guarded by the
+    // uk_conversation_unordered_pair constraint; TransactionTemplate keeps the
+    // insert in its own short transaction so a constraint-race never poisons
+    // the caller's transaction.
+    private final TransactionTemplate transactionTemplate;
 
     public ConversationMessageResponse mapToResponse(Message msg) {
         Conversation c = msg.getConversation();
@@ -77,11 +84,24 @@ public class ConversationService {
                         () -> new UsernameNotFoundException("Receiver not found")
                 );
 
-        // get or create conversation
-        Conversation conversation =
-                conversationRepo
-                        .findBetweenUsers(senderEmail, request.getRecipientEmail())
-                        .orElseGet(() -> createConversation(sender, receiver));
+        // get or create conversation — write side runs in an isolated short
+        // transaction (EB-44/P3-02): if two first messages for the same user
+        // pair race past the read, the loser receives a unique violation
+        // (uk_conversation_unordered_pair), the failed transaction is allowed
+        // to roll back, and we simply adopt the winner's conversation before
+        // persisting the message.
+        Conversation conversation;
+        try {
+            conversation = transactionTemplate.execute(status ->
+                    conversationRepo
+                            .findBetweenUsers(senderEmail, request.getRecipientEmail())
+                            .orElseGet(() -> createConversation(sender, receiver)));
+        } catch (DataIntegrityViolationException dive) {
+            // constraint race: refetch the winning conversation in a fresh transaction
+            conversation = conversationRepo
+                    .findBetweenUsers(senderEmail, request.getRecipientEmail())
+                    .orElseThrow(() -> dive);
+        }
 
         Message msg = Message.builder()
                 .conversation(conversation)

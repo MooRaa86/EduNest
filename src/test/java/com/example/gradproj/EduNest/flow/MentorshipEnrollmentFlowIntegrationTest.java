@@ -125,7 +125,7 @@ public class MentorshipEnrollmentFlowIntegrationTest extends ProdChainIntegratio
 	}
 
 	@Test
-	@DisplayName("Flow 1 Failure Path: Duplicate join returns 400 Bad Request (MSH-04/DB-04)")
+	@DisplayName("Flow 1 Failure Path: Duplicate join returns 409 Conflict (EB-44/P3-02 flip of MSH-04/DB-04)")
 	void enrollmentFlow_cannotJoinTwice() throws Exception {
 		String unique = UUID.randomUUID().toString().substring(0, 8);
 		String mentorEmail = "flow-m1-dup-mentor-" + unique + "@example.org";
@@ -142,11 +142,11 @@ public class MentorshipEnrollmentFlowIntegrationTest extends ProdChainIntegratio
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk());
 
-		// Second join must fail with business rule violation
+		// Second join must fail with a conflict (EB-44/P3-02: uniqueness -> 409)
 		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
 						.header("Authorization", studentToken))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.errorCode").value("ERR_BUSINESS_RULE"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.errorCode").value("ERR_DUPLICATE_RESOURCE"))
 				.andExpect(jsonPath("$.message").value("You are already enrolled in this mentorship"));
 
 		// Observable effect: exactly one enrollment exists

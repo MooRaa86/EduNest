@@ -219,17 +219,72 @@ public class GlobalExceptionHandler {
                 "The requested item was not found.");
     }
 
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiError> handleDuplicateResource(HttpServletRequest req, DuplicateResourceException ex) {
+        String message = (ex.getMessage() == null || ex.getMessage().isBlank())
+                ? "This record already exists." : ex.getMessage();
+        return build(req, HttpStatus.CONFLICT, ApiErrorCode.ERR_DUPLICATE_RESOURCE, message);
+    }
+
+    /** [EB-44][P3-02] constraint name -> clean FE message for uniqueness conflicts. */
+    private String duplicateMessageForConstraint(String constraintName) {
+        if (constraintName == null) {
+            return null;
+        }
+        if (constraintName.contains("uk_enrollment_student_mentorship")) {
+            return "You are already enrolled in this mentorship.";
+        }
+        if (constraintName.contains("uk_mentorship_review_student")) {
+            return "You have already reviewed this mentorship.";
+        }
+        if (constraintName.contains("uk_conversation_unordered_pair")) {
+            return "A conversation with this recipient already exists.";
+        }
+        return null;
+    }
+
+    /** [EB-44][P3-02] SQLSTATE 23505 recognition (PostgreSQL + H2) -> 409 CONFLICT; MySQL wording kept as legacy fallback text only. */
+    private boolean isUniqueViolation(DataIntegrityViolationException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
+            org.hibernate.exception.ConstraintViolationException hce =
+                    (org.hibernate.exception.ConstraintViolationException) cause;
+            String constraint = hce.getConstraintName();
+            return constraint != null && constraint.contains("uk_");
+        }
+        if (cause instanceof org.postgresql.util.PSQLException) {
+            String sqlState = ((org.postgresql.util.PSQLException) cause).getSQLState();
+            return "23505".equals(sqlState);
+        }
+        // legacy H2 path (TranslatorException may arrive without typed cause here)
+        String raw = cause.getMessage();
+        return raw != null && raw.toLowerCase().contains("unique");
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrityViolation(HttpServletRequest req, DataIntegrityViolationException ex) {
         String message = "The submitted data conflicts with an existing record.";
         try {
             String raw = ex.getMostSpecificCause().getMessage();
-            log.warn("Data integrity violation (400, friendly text): {}", raw);
+            log.warn("Data integrity violation (friendly text): {}", raw);
+            // [EB-44][P3-02] 23505 uniqueness -> 409 CONFLICT, message authored per constraint
+            if (isUniqueViolation(ex)) {
+                String constraint = null;
+                Throwable cause = ex.getMostSpecificCause();
+                if (cause instanceof org.postgresql.util.PSQLException
+                        && ((org.postgresql.util.PSQLException) cause).getServerErrorMessage() != null) {
+                    constraint = ((org.postgresql.util.PSQLException) cause)
+                            .getServerErrorMessage().getConstraint();
+                } else if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
+                    constraint = ((org.hibernate.exception.ConstraintViolationException) cause).getConstraintName();
+                }
+                String friendly = duplicateMessageForConstraint(constraint);
+                return build(req, HttpStatus.CONFLICT, ApiErrorCode.ERR_DUPLICATE_RESOURCE,
+                        friendly != null ? friendly : "This record already exists.");
+            }
             if (raw != null) {
                 String lower = raw.toLowerCase();
-                if (lower.contains("duplicate entry")) {
-                    message = "This value is already in use.";
-                } else if (lower.contains("data too long")) {
+                if (lower.contains("data too long")) {
                     message = "One of the submitted values is too long.";
                 } else if (lower.contains("cannot be null")) {
                     message = "Some required information is missing.";

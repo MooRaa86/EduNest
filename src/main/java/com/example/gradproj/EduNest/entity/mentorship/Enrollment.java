@@ -13,8 +13,13 @@ import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "enrollments", indexes = {
-        @Index(name = "idx_enrollments_student_mentorship", columnList = "student_id, mentorship_id")
+// [EB-44][P3-02] one enrollment per student per mentorship; the pair index
+// idx_enrollments_student_mentorship is replaced by this unique constraint
+// (V3 drops the redundant non-unique pair index and adds a mentor-side
+// single-column index).
+@Table(name = "enrollments", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_enrollment_student_mentorship",
+                columnNames = {"student_id", "mentorship_id"})
 })
 @Getter
 @Setter
