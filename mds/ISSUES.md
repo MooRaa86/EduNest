@@ -122,7 +122,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | USR-02 | SECURITY | Low | ✅ | User-identifying surfaces (leaderboards, listings) expose emails beyond necessary scope — *(mostly via MSH-03/09; this row tracks read-surface breadth under prod rules)* | projections incl. emails |
 | USR-03 | BUG | Low | ✅ | Dashboard projection quirks: `MentorStatsProjection.totalBadges` hardcoded 0; admin "students" counts enrollments (double counts repeat students) | `repository/users/*`; dashboard queries |
 | USR-04 | TECHNICAL DEBT | Low | ✅ | Profile compositions hardcode `PageRequest.of(0,10)` caps (data silently cut off) | StudentProfileController internals |
-| USR-05 *(xref)* | SECURITY | Medium | ✅ | = NOTIF-04 (single "newest admin" targeting) | – |
+| USR-05 *(xref)* | SECURITY | Medium | ✅ | **FIXED (EB-50 / P4-01):** = NOTIF-04 (broadcast to all admins per D-12) | – |
 
 ---
 
@@ -166,10 +166,10 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
 | NOTIF-01 | SECURITY | High | ✅ | **DELETED (EB-18 / P1-11):** Open `/api/v1/notifications/send` deleted per Decision D-05 (returns 404) | `NotificationController` |
-| NOTIF-02 | BUG | Medium | ✅ | Contact reply/notification path throws 404 for unregistered (guest) sender emails | `NotificationService.sendToUserByEmail` + `ContactMessageService` |
-| NOTIF-03 | RELIABILITY | Medium | ✅ | STOMP pushes execute **pre-commit** (ghost notifications on rollback); inconsistent with admin-badge flow's afterCommit email | `NotificationService:94-98` vs `AdminBadgeService:65-76` |
-| NOTIF-04 | SECURITY | Medium | ✅ | All admin-targeted pushes route to only the **newest** admin (`findTopByOrderByCreatedAtDesc`); no true broadcast | `NotificationService#sendToAdmin:149` |
-| NOTIF-05 | TECHNICAL DEBT | Low | ✅ | Unused `NotificationProjection`; no email/push channel; unbounded page sizes | repo/service grep |
+| NOTIF-02 | BUG | Medium | ✅ | **FIXED (EB-50 / P4-01):** Contact in-app notification uses `sendToUserByEmailIfExists`, gracefully skipping in-app push for guest emails without 404 | `ContactMessageService`, `ContactMessageController`; probes `NotificationPipelineProbesTest` |
+| NOTIF-03 | RELIABILITY | Medium | ✅ | **FIXED (EB-50 / P4-01):** STOMP pushes execute **afterCommit** via `TransactionSynchronizationManager`, preventing ghost notifications on rollback | `NotificationService#sendAfterCommit`; probes `NotificationPipelineProbesTest` |
+| NOTIF-04 | SECURITY | Medium | ✅ | **FIXED (EB-50 / P4-01):** Admin notifications broadcast to all `Admin` accounts (`adminRepo.findAll()`) per D-12 | `NotificationService#sendToAdmin`; probes `NotificationPipelineProbesTest` |
+| NOTIF-05 | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-50 / P4-01):** Bounded notification page sizes (max 100); confirmed clean removal of legacy `NotificationProjection` | `NotificationService#clampPageSize`; probes `NotificationPipelineProbesTest` |
 | MAIL-01 | SECURITY | High | ✅ | **DELETED (EB-18 / P1-11):** `POST /send` (`PlatformMailController` & `MailRequest`) deleted per Decision D-05 (returns 404) | `FileNotifyBadgeProbesTest.g10_platformMailSendEndpointDeleted` |
 
 ---

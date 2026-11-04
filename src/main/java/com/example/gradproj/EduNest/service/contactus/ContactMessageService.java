@@ -131,12 +131,12 @@ public class ContactMessageService {
     }
 
     @Transactional
-    public void sendNotificationToMessageSender(Long messageId, String title, String content) {
+    public boolean sendNotificationToMessageSender(Long messageId, String title, String content) {
 
         ContactMessageEntity message = contactMessageRepository.findById(messageId)
                 .orElseThrow(() -> new globalLogicEx("Message not found"));
 
-        notificationService.sendToUserByEmail(
+        return notificationService.sendToUserByEmailIfExists(
                 message.getEmail(),
                 title,
                 content,
