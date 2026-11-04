@@ -19,7 +19,7 @@ Verified mechanics of joining a mentorship and where money-like values are compu
 ## 2. Commission model (`service/mentorShip/CommissionService`)
 
 - **Rate source:** latest row of `entity/mentorship/Commission{rate}` ordered by `createdAt` (`findTopByOrderByCreatedAtDesc`). **Append-only history**; `setCommissionRate` (ADMIN) creates a new row; range check 0–100.
-- **No default:** on a fresh deployment the `commission` table is empty → `calculatePlatformCut` throws `globalLogicEx("Commission rate not set")` → **enrollment is impossible until an admin sets a rate** (MSH-05).
+- **Day-1 Default Seeding (MSH-05, Decision D-17, EB-47 / P3-05):** Flyway migration `V4__seed_default_commission.sql` seeds default 10.0% (`${defaultCommissionRate}`) on fresh database deployments via idempotent `INSERT ... SELECT ... WHERE NOT EXISTS`. Overridable via `APP_COMMISSION_DEFAULT` environment variable. Dynamic updates by ADMIN via `setCommissionRate` append new records and always override the Day-1 seed. If the table is wiped or corrupted, `CommissionService` throws `globalLogicEx("Commission rate not set")`.
 - Money math uses `Double` (no currency field; rounding only happens in a few report queries via SQL `ROUND(...,2)`).
 
 ## 3. Where revenue numbers come from (reporting)
