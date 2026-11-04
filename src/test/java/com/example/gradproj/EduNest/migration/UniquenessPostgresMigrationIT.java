@@ -4,15 +4,12 @@ import jakarta.persistence.EntityManagerFactory;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.hibernate.jpa.HibernatePersistenceProvider;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.postgresql.util.PSQLException;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -67,11 +64,17 @@ public class UniquenessPostgresMigrationIT {
 
 	@BeforeAll
 	static void initContainer() {
+		// [EB-44] Docker is REQUIRED for this verification: a missing daemon must
+		// FAIL hard (never assumption-skip) so dedicated CI runs cannot silently pass.
+		String dockerState;
 		try {
-			Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
-					"Docker daemon is not available; skipping EB-44 PostgreSQL dedupe suite");
+			dockerState = DockerClientFactory.instance().isDockerAvailable() ? "available" : "unavailable";
 		} catch (Exception e) {
-			Assumptions.abort("Docker check threw exception; skipping EB-44 suite: " + e.getMessage());
+			dockerState = "unavailable (" + e.getMessage() + ")";
+		}
+		if (!"available".equals(dockerState)) {
+			throw new IllegalStateException("Docker daemon unavailable — EB-44 PostgreSQL dedupe suite cannot "
+					+ "execute (failed at: " + dockerState + "). This suite must never silently skip.");
 		}
 		POSTGRES.start();
 

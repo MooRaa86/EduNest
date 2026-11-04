@@ -39,6 +39,49 @@ jobs:
       - name: Build, test, package — skipping forbidden
         run: ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
 
+      # EB-44 [P3-02]: the two Uniqueness*IT classes (PostgreSQL Testcontainers) are
+      # OUTSIDE surefire's default includes (Test*, *Test, *Tests, *TestCase) and were
+      # therefore never executed by the package step above. Run them explicitly.
+      # Docker is REQUIRED for this verification: a missing daemon must FAIL the
+      # pipeline, not silently skip (assumption-based skips are not acceptable here).
+      - name: Docker availability gate (EB-44 PostgreSQL integration verification REQUIRED)
+        run: |
+          if ! docker info > /dev/null 2>&1; then
+            echo "::error::Docker daemon unavailable — the required EB-44 PostgreSQL integration verification (Uniqueness*IT, 10 tests) cannot run."
+            exit 1
+          fi
+
+      - name: EB-44 PostgreSQL integration tests (Testcontainers — all 10 must execute)
+        run: >
+          ./mvnw -B test
+          "-Dtest=UniquenessPostgresMigrationIT,UniquenessHttpPostgresIT"
+          "-Dsurefire.failIfNoSpecifiedTests=true"
+          "-DskipTests=false"
+          "-Dmaven.test.failure.ignore=false"
+
+      - name: Assert EB-44 integration tests actually executed (no silent skip)
+        if: always()
+        run: |
+          if [ ! -d target/surefire-reports ]; then echo "::error::no surefire reports produced"; exit 1; fi
+          for cls in UniquenessPostgresMigrationIT UniquenessHttpPostgresIT; do
+            report="target/surefire-reports/com.example.gradproj.EduNest.migration.${cls}.txt"
+            if [ ! -f "$report" ]; then echo "::error::missing report for ${cls}"; exit 1; fi
+            counts=$(grep -E 'Tests run: [0-9]+' "$report" | head -n 1)
+            echo "${cls}: ${counts}"
+            if ! echo "$counts" | grep -E 'Tests run: 5, Failures: 0, Errors: 0, Skipped: 0'; then
+              echo "::error::${cls} did not execute cleanly (expected Tests run: 5, Failures: 0, Errors: 0, Skipped: 0)"
+              exit 1
+            fi
+          done
+
+      - name: Upload EB-44 integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eb44-integration-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+
       - name: Upload test reports (kept even when red)
         if: always()
         uses: actions/upload-artifact@v4
