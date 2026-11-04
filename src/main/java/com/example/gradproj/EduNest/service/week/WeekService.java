@@ -74,6 +74,7 @@ public class WeekService {
     }
 
 
+    @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public WeekResponse createWeek(CreateWeekrequest createWeekrequest) {
         validateMentorOwnership(createWeekrequest.getMentorshipId());
@@ -88,6 +89,7 @@ public class WeekService {
 
     }
 
+    @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public void deleteWeek(Long weekId) {
         validateMentorOwnsWeek(weekId);

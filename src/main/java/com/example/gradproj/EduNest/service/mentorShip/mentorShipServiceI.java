@@ -205,7 +205,7 @@ public class mentorShipServiceI implements mentorShipService{
         }
 
         mentorShip.getEnrollments().clear();
-        imageService.deleteOldCoverImage(mentorShip.getCoverImageUrl());
+        imageService.deleteOldCoverImageAfterCommit(mentorShip.getCoverImageUrl());
         mentorShip.setCoverImageUrl(null);
         MentorShipRepository.save(mentorShip);
         MentorShipRepository.delete(mentorShip);
@@ -380,7 +380,7 @@ public class mentorShipServiceI implements mentorShipService{
         String imageUrl =
                 imageService.saveCoverImage(mentorshipId, image);
 
-        imageService.deleteOldCoverImage(oldImageUrl);
+        imageService.deleteOldCoverImageAfterCommit(oldImageUrl);
 
         mentorship.setCoverImageUrl(imageUrl);
 
@@ -399,7 +399,7 @@ public class mentorShipServiceI implements mentorShipService{
             throw new globalLogicEx("You are not allowed for this request");
         }
 
-        imageService.deleteOldCoverImage(mentorship.getCoverImageUrl());
+        imageService.deleteOldCoverImageAfterCommit(mentorship.getCoverImageUrl());
         mentorship.setCoverImageUrl(null);
     }
 

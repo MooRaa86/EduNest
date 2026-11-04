@@ -164,6 +164,7 @@ public class StudentProfileService {
         studentRepository.save(student);
     }
 
+    @Transactional
     public String updateProfileImage(MultipartFile image) {
         Student student = getCurrentStudent();
 
@@ -171,7 +172,7 @@ public class StudentProfileService {
             String oldImageUrl = student.getProfileImageUrl();
             String newImageUrl = imageStorageService.saveImage(STUDENT_IMAGE_FOLDER, student.getId(), image);
             if (oldImageUrl != null && !oldImageUrl.isBlank()) {
-                imageStorageService.deleteImage(STUDENT_IMAGE_FOLDER, oldImageUrl);
+                imageStorageService.deleteImageAfterCommit(STUDENT_IMAGE_FOLDER, oldImageUrl);
             }
             student.setProfileImageUrl(newImageUrl);
             studentRepository.save(student);

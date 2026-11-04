@@ -99,7 +99,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
             }
             uploadedPath = fileStorageService.saveFile("submissions", "project", projectId, studentId, file);
             if (oldPath != null && !oldPath.isBlank()) {
-                fileStorageService.deleteFile(oldPath);
+                fileStorageService.deleteFileAfterCommit(oldPath);
             }
         }
 

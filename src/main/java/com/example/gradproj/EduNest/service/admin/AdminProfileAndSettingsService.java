@@ -69,6 +69,7 @@ public class AdminProfileAndSettingsService {
     }
 
 
+    @Transactional
     public String updateProfileImage(MultipartFile image) {
         Admin admin = getCurrentadmin();
 
@@ -76,7 +77,7 @@ public class AdminProfileAndSettingsService {
             String oldImageUrl = admin.getProfilePicture();
             String newImageUrl = imageStorageService.saveImage(admin_IMAGE_FOLDER, admin.getId(), image);
             if (oldImageUrl != null && !oldImageUrl.isBlank()) {
-                imageStorageService.deleteImage(admin_IMAGE_FOLDER, oldImageUrl);
+                imageStorageService.deleteImageAfterCommit(admin_IMAGE_FOLDER, oldImageUrl);
             }
             admin.setProfilePicture(newImageUrl);
             adminRepository.save(admin);

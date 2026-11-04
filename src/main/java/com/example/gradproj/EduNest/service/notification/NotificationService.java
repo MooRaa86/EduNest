@@ -27,8 +27,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.example.gradproj.EduNest.config.transaction.AfterCommitExecutor;
+
 
 import java.util.List;
 
@@ -45,6 +45,7 @@ public class NotificationService {
     private final AdminRepository adminRepo;
     private final AdminNotificationRepository adminNotificationRepo;
     private final SecurityService securityService;
+    private final AfterCommitExecutor afterCommitExecutor;
 
 
     private NotificationDto mapToDto(UserNotification u){
@@ -62,16 +63,7 @@ public class NotificationService {
     }
 
     private void sendAfterCommit(Runnable sendAction) {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    sendAction.run();
-                }
-            });
-        } else {
-            sendAction.run();
-        }
+        afterCommitExecutor.execute(sendAction);
     }
 
     private int clampPageSize(int size) {

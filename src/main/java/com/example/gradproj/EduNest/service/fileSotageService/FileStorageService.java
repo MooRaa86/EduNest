@@ -4,9 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.service.storage.SupabaseStorageService;
 import org.apache.tika.Tika;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
+import com.example.gradproj.EduNest.config.transaction.AfterCommitExecutor;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
@@ -100,13 +102,23 @@ public class FileStorageService {
     private final UploadContentValidator contentValidator;
     private final SupabaseStorageService supabaseStorageService;
     private final Environment environment;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     public FileStorageService(UploadContentValidator contentValidator,
                               SupabaseStorageService supabaseStorageService,
                               Environment environment) {
+        this(contentValidator, supabaseStorageService, environment, new AfterCommitExecutor());
+    }
+
+    @Autowired
+    public FileStorageService(UploadContentValidator contentValidator,
+                              SupabaseStorageService supabaseStorageService,
+                              Environment environment,
+                              AfterCommitExecutor afterCommitExecutor) {
         this.contentValidator = contentValidator;
         this.supabaseStorageService = supabaseStorageService;
         this.environment = environment;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     private boolean isProduction() {
@@ -440,5 +452,13 @@ public class FileStorageService {
             log.error("Failed to delete file: {}", targetPath, e);
             throw new RuntimeException("Failed to delete file: " + relativePath, e);
         }
+    }
+
+    public void deleteFileAfterCommit(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            log.debug("deleteFileAfterCommit called with null or blank path, skipping");
+            return;
+        }
+        afterCommitExecutor.execute(() -> deleteFile(relativePath));
     }
 }
