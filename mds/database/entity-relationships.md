@@ -19,8 +19,8 @@ Verified from `src/main/java/com/example/gradproj/EduNest/entity/**`. Convention
 | Entity | Table | Key fields | Relations |
 |---|---|---|---|
 | `MentorShip` `[audit]` | `mentorship` | title/subtitle/description(2000), category (free text, lowercased), `rating` (denormalized avg), difficultyLevel enum, `status` (DRAFT/ACTIVE/COMPLETED), price, discountPercentage, coverImageUrl, duration | `@ManyToOne(LAZY) mentor → Mentor`; `@OneToMany` cascade ALL: whatWillLearn, tags, enrollments, reviews (`@JsonManagedReference`), weeks, chatRooms, totalPoints, badges, certificates; **no start-date field** (`//ToDo StartDate`) |
-| `Enrollment` `[audit]` | `enrollments` | price, `platformProfit` (default 0.0), `joinedAt` (NOT NULL) | student FK (LAZY, NOT NULL), mentorShip FK (NOT NULL); **index (student_id, mentorship_id) NOT unique** |
-| `MentorShipReviews` `[audit]` | `mentorship_reviews` | feedBack(≤500), rating (primitive long) | mentorShip (`@JsonBackReference`) + student; **no unique (mentorship, student)** |
+| `Enrollment` `[audit]` | `enrollments` | price, `platformProfit` (default 0.0), `joinedAt` (NOT NULL) | student FK (LAZY, NOT NULL), mentorShip FK (NOT NULL); [EB-44][P3-02] **unique `uk_enrollment_student_mentorship` (student_id, mentorship_id)** — replaces the former NOT-unique pair index; covering `idx_enrollments_mentorship` added for FK probes |
+| `MentorShipReviews` `[audit]` | `mentorship_reviews` | feedBack(≤500), rating (primitive long) | mentorShip (`@JsonBackReference`) + student; [EB-44][P3-02] **unique `uk_mentorship_review_student` (student_id, mentorship_id)** — rateMentorship is an upsert; single-column `idx_mentorship_only` kept |
 | `Week` `[audit]` | `weeks` | title (NOT NULL) | `@ManyToOne mentorship` NOT NULL; `@OneToMany` cascade ALL: tasks, quizzes, projects, liveSessions, lectures; **no order/position column** |
 | `Commission` `[audit]` | `commission` | rate double NOT NULL | append-only rate history; "current" = latest by createdAt |
 | `Tags` `[audit]` | — | tag NOT NULL (lowercased) | mentorship FK LAZY (nullable!) |
@@ -65,7 +65,7 @@ Verified from `src/main/java/com/example/gradproj/EduNest/entity/**`. Convention
 | `chat/ChatRoom` `[audit]` | — | name, cover image, `creator` | mentorship FK (`mentorship.chatRooms` inverse); `@OneToMany members` |
 | `chat/ChatRoomMember` *(no audit)* | — | joinedAt (LocalDateTime) | room FK + user FK |
 | `chat/ChatMessage` `[audit]` | — | content (≤10k), **sender_id + denormalized senderEmail + senderName** | chatRoom FK; **no read/unread flag** |
-| `chat/Conversation` *(no audit, has `@CreationTimestamp createdAt`)* | — | ordered/unordered user pair (user1/user2) | **no unique constraint**; `@OneToMany messages` |
+| `chat/Conversation` *(no audit, has `@CreationTimestamp createdAt`)* | — | ordered/unordered user pair (user1/user2) | [EB-44][P3-02] **unique `uk_conversation_unordered_pair` (LEAST, GREATEST) + both participant FKs NOT NULL**; `@OneToMany messages` |
 | `chat/Message` *(no audit)* | — | content, sentAt, `seen` boolean (never set true), `updated` boolean (no timestamp) | conversation FK + sender FK |
 
 ## 7. Notifications, certificates, auth-support, contact

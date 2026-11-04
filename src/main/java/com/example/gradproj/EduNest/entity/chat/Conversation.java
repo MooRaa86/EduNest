@@ -20,12 +20,12 @@ public class Conversation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // participant 1
-    @ManyToOne
+    // participant 1 — [EB-44][P3-02] non-null invariant (V3 adds SET NOT NULL)
+    @ManyToOne(optional = false)
     private UserEntity user1;
 
-    // participant 2
-    @ManyToOne
+    // participant 2 — [EB-44][P3-02] non-null invariant (V3 adds SET NOT NULL)
+    @ManyToOne(optional = false)
     private UserEntity user2;
 
     @CreationTimestamp

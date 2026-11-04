@@ -14,7 +14,9 @@ import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.exception.DuplicateResourceException;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
@@ -422,7 +424,8 @@ public class mentorShipServiceI implements mentorShipService{
                 mentorshipId,
                 student.getId()
         )) {
-            throw new globalLogicEx("You are already enrolled in this mentorship");
+            // [EB-44][P3-02] MSH-04 uniqueness -> 409 ERR_DUPLICATE_RESOURCE
+            throw new DuplicateResourceException("You are already enrolled in this mentorship");
         }
 
         Double priceAfterDiscount = mentorShip.getPrice() - (mentorShip.getPrice() * mentorShip.getDiscountPercentage()/100);
@@ -453,7 +456,13 @@ public class mentorShipServiceI implements mentorShipService{
                 ", you earn " + mentorEarning + "$",
                 NotificationType.MENTORSHIP);
 
-        enrollmentRepository.save(enrollment);
+        try {
+            // [EB-44][P3-02] racing join on the same (student, mentorship) pair
+            // hits uk_enrollment_student_mentorship -> translate to 409
+            enrollmentRepository.save(enrollment);
+        } catch (DataIntegrityViolationException dive) {
+            throw new DuplicateResourceException("You are already enrolled in this mentorship");
+        }
         totalPointsRepository.save(tp);
     }
 
@@ -496,10 +505,15 @@ public class mentorShipServiceI implements mentorShipService{
                     .feedBack(request.getFeedback())
                     .build();
 
-            reviewsRepository.save(review);
+            try {
+                // [EB-44][P3-02] rating race on (student, mentorship) resolves via
+                // uk_mentorship_review_student -> translate to 409
+                reviewsRepository.save(review);
+                reviewsRepository.flush();
+            } catch (DataIntegrityViolationException dive) {
+                throw new DuplicateResourceException("You have already reviewed this mentorship.");
+            }
         }
-
-        reviewsRepository.flush();
 
         Double avgRating = reviewsRepository.calculateAverageRating(mentorshipId);
 

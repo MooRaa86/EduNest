@@ -20,9 +20,15 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @Table(
         name = "mentorship_reviews",
+        // [EB-44][P3-02] unique per student per mentorship; the redundant
+        // non-unique pair index idx_mentorship_student was removed (V3),
+        // single-column mentorship index kept for FK/mentor-scoped queries.
         indexes = {
-                @Index(name = "idx_mentorship_only", columnList = "mentorship_id"),
-                @Index( name = "idx_mentorship_student", columnList = "mentorship_id, student_id")
+                @Index(name = "idx_mentorship_only", columnList = "mentorship_id")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_mentorship_review_student",
+                        columnNames = {"student_id", "mentorship_id"})
         }
 )
 public class MentorShipReviews extends BaseEntity {

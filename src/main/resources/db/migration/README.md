@@ -32,7 +32,7 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | :--- | :--- | :--- | :--- | :--- |
 | **`V1`** | **APPLIED** | `EB-43` / `P3-01` | `V1__initial_schema.sql` | Canonical baseline schema (42 entity tables, primary identities, constraints, indexes, and initial roles). |
 | **`V2`** | **APPLIED** | `EB-59` / `P4-10` | `V2__mentorship_explore_trigram_index.sql` | `pg_trgm` extension activation and specialized GIN search indexes on mentorship and user full names. |
-| **`V3`** | **RESERVED** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Deduplication cleanup and unique constraints across enrollments, reviews, and conversations join tables. |
+| **`V3`** | **RESERVED (BUILD COMPLETE — pending production adoption)** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Uniqueness guarantees with deterministic dedupe (`earliest id wins`): one enrollment per (student, mentorship), one review per student per mentorship, unordered `(LEAST, GREATEST)` pair-unique conversations + `NOT NULL` participant invariant. All removed rows archived verbatim into the one-time `eb44_archive_*` surfaces; loser-conversation messages are reassigned, never dropped. Adopt only via `docs/migration/EB-44-PRODUCTION-ADOPTION-RUNBOOK.md`. |
 | **`V4`** | **RESERVED** | `EB-45` / `P3-03` | `V4__transactional_consistency_hardening.sql` | Transactional integrity constraints and file-operation reference consistency. |
 | **`V5`** | **RESERVED** | `EB-50` / `P3-05` | `V5__seed_commission_default.sql` | Default commission rate idempotent initialization (`app.commission.default`). |
 
@@ -78,6 +78,7 @@ When spinning up a new development environment, staging environment, or test con
    - Creates the metadata table `flyway_schema_history`.
    - Executes `V1__initial_schema.sql` (creating all 42 tables and initial roles).
    - Executes `V2__mentorship_explore_trigram_index.sql` (creating trigram indexes).
+   - Executes `V3__uniqueness_constraints_and_dedupe.sql` (creating the uniqueness indexes/constraints and the four one-time `eb44_archive_*` dedupe surfaces; on an empty database these are no-op data steps).
 4. Hibernate's `ddl-auto=validate` executes, verifying zero schema drift between entities and database.
 
 ---
