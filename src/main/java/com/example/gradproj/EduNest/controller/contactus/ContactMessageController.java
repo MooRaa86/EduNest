@@ -97,9 +97,13 @@ public class ContactMessageController {
             @PathVariable Long id,
             @RequestParam String title,
             @RequestBody String content) {
-        contactMessageService.sendNotificationToMessageSender(id, title, content);
+        boolean sent = contactMessageService.sendNotificationToMessageSender(id, title, content);
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("Status", "Notification sent successfully");
+        if (sent) {
+            response.addMessage("Status", "Notification sent successfully");
+        } else {
+            response.addMessage("Status", "Message sender is a guest; in-app notification skipped (use email reply)");
+        }
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

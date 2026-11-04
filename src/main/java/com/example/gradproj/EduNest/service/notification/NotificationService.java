@@ -27,6 +27,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -59,19 +61,36 @@ public class NotificationService {
                 .build();
     }
 
-    public void sendToUserByEmail(
+    private void sendAfterCommit(Runnable sendAction) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sendAction.run();
+                }
+            });
+        } else {
+            sendAction.run();
+        }
+    }
+
+    private int clampPageSize(int size) {
+        return Math.max(1, Math.min(size, 100));
+    }
+
+
+    public boolean sendToUserByEmailIfExists(
             String email,
             String title,
             String content,
             NotificationType type
-    ){
+    ) {
+        var userIdOpt = userRepo.findIdByEmail(email);
+        if (userIdOpt.isEmpty()) {
+            return false;
+        }
 
-        UserEntity user =
-                userRepo.getReferenceById(
-                        userRepo.findIdByEmail(email)
-                                .orElseThrow(() ->
-                                        new UsernameNotFoundException("User not found"))
-                );
+        UserEntity user = userRepo.getReferenceById(userIdOpt.get());
 
         Notification notification =
                 Notification.builder()
@@ -91,11 +110,25 @@ public class NotificationService {
 
         userNotificationRepo.save(relation);
 
-        messagingTemplate.convertAndSendToUser(
+        NotificationDto dto = mapToDto(relation);
+        sendAfterCommit(() -> messagingTemplate.convertAndSendToUser(
                 email,
                 "/queue/notifications",
-                mapToDto(relation)
-        );
+                dto
+        ));
+        return true;
+    }
+
+    public void sendToUserByEmail(
+            String email,
+            String title,
+            String content,
+            NotificationType type
+    ){
+        boolean sent = sendToUserByEmailIfExists(email, title, content, type);
+        if (!sent) {
+            throw new UsernameNotFoundException("User not found with email: " + email);
+        }
     }
 
     @Transactional
@@ -134,51 +167,58 @@ public class NotificationService {
         userNotificationRepo.saveAll(relations);
 
         for (UserNotification relation : relations) {
-
-            messagingTemplate.convertAndSendToUser(
-                    relation.getUser().getEmail(),
+            NotificationDto dto = mapToDto(relation);
+            String studentEmail = relation.getUser().getEmail();
+            sendAfterCommit(() -> messagingTemplate.convertAndSendToUser(
+                    studentEmail,
                     "/queue/notifications",
-                    mapToDto(relation)
-            );
+                    dto
+            ));
         }
     }
 
     @Transactional
     @Async
     public void sendToAdmin(String title, String content, NotificationType type){
-        Admin admin = adminRepo.findTopByOrderByCreatedAtDesc().orElse(null);
-        if(admin == null){
+        List<Admin> admins = adminRepo.findAll();
+        if (admins == null || admins.isEmpty()) {
             return;
         }
 
-        AdminNotification adminNotification = AdminNotification.builder()
-                .title(title)
-                .content(content)
-                .type(type)
-                .admin(admin)
-                .build();
+        List<AdminNotification> adminNotifications = new java.util.ArrayList<>();
+        for (Admin admin : admins) {
+            adminNotifications.add(AdminNotification.builder()
+                    .title(title)
+                    .content(content)
+                    .type(type)
+                    .admin(admin)
+                    .build());
+        }
 
-        var saved = adminNotificationRepo.save(adminNotification);
+        List<AdminNotification> saved = adminNotificationRepo.saveAll(adminNotifications);
 
-        var notification = AdminNotificationResponse.builder()
-                .id(saved.getId())
-                .title(saved.getTitle())
-                .content(saved.getContent())
-                .type(saved.getType())
-                .createdAt(saved.getCreatedAt())
-                .build();
+        for (int i = 0; i < admins.size(); i++) {
+            Admin admin = admins.get(i);
+            AdminNotification record = saved.get(i);
+            AdminNotificationResponse payload = AdminNotificationResponse.builder()
+                    .id(record.getId())
+                    .title(record.getTitle())
+                    .content(record.getContent())
+                    .type(record.getType())
+                    .createdAt(record.getCreatedAt())
+                    .build();
 
-        messagingTemplate.convertAndSendToUser(
-                admin.getEmail(),
-                "/queue/notifications",
-                notification
-        );
-
+            sendAfterCommit(() -> messagingTemplate.convertAndSendToUser(
+                    admin.getEmail(),
+                    "/queue/notifications",
+                    payload
+            ));
+        }
     }
 
     public PageResponse<AdminNotificationResponse> getAdminNotifications(int size, int page){
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, clampPageSize(size));
 
         Page<AdminNotification> response =
                 adminNotificationRepo.findAllByOrderByCreatedAtDesc(pageable);
@@ -216,7 +256,7 @@ public class NotificationService {
             int page
     ){
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, clampPageSize(size));
 
         Page<UserNotification> response =
                 userNotificationRepo
@@ -251,7 +291,7 @@ public class NotificationService {
             int page
     ){
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, clampPageSize(size));
 
         Page<UserNotification> response =
                 userNotificationRepo

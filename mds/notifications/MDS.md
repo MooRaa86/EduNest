@@ -22,12 +22,12 @@ The in-app notification system: shared notification rows fan out to user relatio
 | read-side (`getUserNotifications`, `getUnreadCount`, `getUnread…`, `markAllAsRead`, `markOneAsRead`, `deleteNotification`, `deleteAll…`) | relation-scoped CRUD | `NotificationController` (`/api/v1/notifications/**`), `DashboardService` |
 | admin read-side (`getAdminNotifications`, deletes) | single-admin row management | `AdminNotificationController`, `Dashboard` (admin) |
 
-Admin broadcast: **none** — no `/topic` broadcast exists; admin notifications target exactly one stored admin (the newest).
+Admin broadcast: **Broadcast to all admins (EB-50 / D-12)** — `sendToAdmin` retrieves all active `Admin` accounts via `adminRepo.findAll()`, creates individual `AdminNotification` rows, and pushes to each admin's user queue.
 
 ### 2.3 Push mechanics & transaction interplay
 
-- Class-level `@Transactional` on the service; `convertAndSendToUser` executes **before the caller's commit** → rollback could leave already-delivered "ghost" notifications (inconsistent with `AdminBadgeService`, which defers the email post-commit but still pushes STOMP pre-commit).
-- Fan-out (`sendToMentorshipStudents`) is `@Async` — a single shared notification row + `saveAll` relations, then per-student pushes.
+- **FIXED (EB-50 / P4-01):** `convertAndSendToUser` executes **after transaction commit** via `sendAfterCommit` (`TransactionSynchronizationManager.registerSynchronization`). If a transaction rolls back, STOMP messages are never sent, completely eliminating ghost notifications.
+- Fan-out (`sendToMentorshipStudents`) is `@Async` — a single shared notification row + `saveAll` relations, then per-student pushes queued after commit.
 
 ### 2.4 Contact-admin reply EMAIL — template merge (SEL-15 — FIXED, EB-31 / P1-24)
 

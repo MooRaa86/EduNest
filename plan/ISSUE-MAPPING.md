@@ -75,7 +75,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **USR-02** | Low | P1-16 | 1 | auth | D→T (D-04) | EB-23 addresses leaderboard and public review reviewer fields; broader public-profile/project surfaces require separate verification |
 | **USR-03** | Low | P4-05 | 4 | users | T | Planned |
 | **USR-04** | Low | P4-09 | 4 | users | T | Planned |
-| **USR-05** | Med | P4-01 | 4 | notifications | = NOTIF-04 | Planned |
+| **USR-05** | Med | P4-01 | 4 | notifications | = NOTIF-04 | **Implemented — EB-50**: See NOTIF-04 row (broadcast to all admins per D-12) |
 | **GAME-01** | High | P1-16 / P1-19 | 1 | gamification | = MSH-03+G11 | Leaderboard portion in EB-23; G11 badge-award portion **delivered in EB-26** (both now closed) |
 | **GAME-02** | Med | P1-19 | 1 | gamification | T | **Implemented — EB-26**: `/badge-awards/student/{id}` (the unguarded surface — any authenticated user enumerated any student's awards by id) now confined to self/ADMIN/mentor-of-enrollment; `/mentorship/{id}` + `/badge/{id}` award reads already owner-mentor-only; badge catalog GETs stay open by plan (no personal data); probes `BadgeAwardScopingProbesTest` (8) + G11 flip — pending review |
 | **GAME-03** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
@@ -91,10 +91,10 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **CERT-03** | Low | P4-05 | 4 | certificates | T | Planned |
 | **CERT-04** | Med | P4-02 | 4 | gamification | D→T (D-09) | Planned |
 | **NOTIF-01** | High | P1-11 | 1 | notifications | D→T (D-05) | **Implemented (Deleted) — EB-18** (same scope as SEL-10 above). |
-| **NOTIF-02** | Med | P4-01 | 4 | notifications | T | Planned |
-| **NOTIF-03** | Med | P4-01 | 4 | notifications | T | Planned |
-| **NOTIF-04** | Med | P4-01 | 4 | notifications | D→T (D-12) | Planned |
-| **NOTIF-05** | Low | P4-01 | 4 | notifications | T | Planned |
+| **NOTIF-02** | Med | P4-01 | 4 | notifications | T | **Implemented — EB-50**: `ContactMessageService#sendNotificationToMessageSender` checks user existence via `sendToUserByEmailIfExists`; gracefully skips in-app push for unregistered guest senders (HTTP 200, no 404); probe in `NotificationPipelineProbesTest` |
+| **NOTIF-03** | Med | P4-01 | 4 | notifications | T | **Implemented — EB-50**: Encapsulated STOMP delivery in `sendAfterCommit` hook via `TransactionSynchronizationManager.registerSynchronization` (`afterCommit`); transaction rollback suppresses pushes with zero ghost notifications; probes in `NotificationPipelineProbesTest` |
+| **NOTIF-04** | Med | P4-01 | 4 | notifications | D→T (D-12) | **Implemented — EB-50**: `NotificationService#sendToAdmin` broadcasts to all `Admin` accounts (`adminRepo.findAll()`) per Decision D-12 and pushes to each admin queue after commit; probe in `NotificationPipelineProbesTest` |
+| **NOTIF-05** | Low | P4-01 | 4 | notifications | T | **Implemented — EB-50**: Clamped notification pagination requests to max 100 (`clampPageSize`); confirmed absence of legacy `NotificationProjection`; probe in `NotificationPipelineProbesTest` |
 | **MAIL-01** | High | P1-11 | 1 | notifications | D→T (D-05) | **Implemented (Deleted) — EB-18** (2026-11-01): `PlatformMailController` (POST `/send`), `MailRequest`, and `general-mail.html` deleted per Decision D-05; `FileNotifyBadgeProbesTest.g10_platformMailSendEndpointDeleted` verifies 404 Not Found. |
 | **FILE-01** | Crit | P1-21 + P1-20 | 1 | file-storage | D→T (D-07/D-06) | **In Progress** — EB-28 local-disk restrictions merged via [PR #23](https://github.com/MooRaa86/EduNest/pull/23), `171c6a1`; [JDK 21 CI](https://github.com/MooRaa86/EduNest/actions/runs/40956840871) passed 177 tests. One owner approval is recorded; distinct Security review, frontend and deployment acceptance are not evidenced. EB-27 and Supabase Storage EB-83 remain open; Lead/Security must clarify the D-07 acceptance boundary. |
 | **FILE-02** | High | P1-22 | 1 | file-storage | T | **Hardened - EB-29 / EB-87 (implementation + probe suite)**: image surfaces no longer trust the client Content-Type — shared `UploadContentValidator` proves the bytes (magic + structural + JDK decode for jpg/png; structural webp), per-surface allowlists (covers/avatars jpg/png/webp, chatroom jpg/png), 5 MB limit, declared-MIME cross-check ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)); EB-87 locks verdict: standard formats (JPEG, PNG, WebP) supported normally, GIF/BMP rejected with 400 ERR_BUSINESS_RULE, SVG prohibited, 5 MiB cap strictly verified everywhere vs 10 MiB files, replace safety regression-pinned across all surfaces |
