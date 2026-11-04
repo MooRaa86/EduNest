@@ -25,6 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
+import java.util.UUID;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -70,6 +71,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
         }
     }
@@ -85,8 +87,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute exactly 3 scripts (V1, V2, V3 — EB-44/P3-02 flipped baseline)")
-                .isEqualTo(3);
+                .as("Initial migration must execute exactly 4 scripts (V1, V2, V3, V4 — EB-47/P3-05 commission seed)")
+                .isEqualTo(4);
     }
 
     @Test
@@ -95,8 +97,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Exactly 3 migrations must be registered in flyway_schema_history")
-                .hasSize(3);
+                .as("Exactly 4 migrations must be registered in flyway_schema_history")
+                .hasSize(4);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -119,6 +121,14 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v3.getType().name()).isEqualTo("SQL");
         assertThat(v3.getState().isApplied()).isTrue();
         assertThat(v3.getChecksum()).isNotNull();
+
+        // [EB-47][P3-05] V4 commission default seeding
+        MigrationInfo v4 = applied[3];
+        assertThat(v4.getVersion().getVersion()).isEqualTo("4");
+        assertThat(v4.getDescription()).isEqualTo("seed default commission");
+        assertThat(v4.getType().name()).isEqualTo("SQL");
+        assertThat(v4.getState().isApplied()).isTrue();
+        assertThat(v4.getChecksum()).isNotNull();
     }
 
     @Test
@@ -238,6 +248,20 @@ public class PostgreSqlMigrationIntegrationTest {
                         .as("Initial reference roles (ADMIN, MENTOR, STUDENT) must be seeded idempotently")
                         .contains("ADMIN", "MENTOR", "STUDENT");
             }
+
+            // E. [EB-47][P3-05] Verify default commission seeded at 10.0
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT rate, created_by, updated_by FROM commission")) {
+                assertThat(rs.next())
+                        .as("Default commission record must be seeded on fresh deployment")
+                        .isTrue();
+                assertThat(rs.getDouble("rate")).isEqualTo(10.0);
+                assertThat(rs.getString("created_by")).isEqualTo("SYSTEM");
+                assertThat(rs.getString("updated_by")).isEqualTo("SYSTEM");
+                assertThat(rs.next())
+                        .as("Exactly one default commission row should be seeded initially")
+                        .isFalse();
+            }
         }
     }
 
@@ -304,6 +328,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
             isolatedFlyway.migrate();
@@ -387,6 +412,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .baselineOnMigrate(false) // Must be false
                     .baselineVersion("1")
                     .cleanDisabled(true)
+                    .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
             // 1. With baselineOnMigrate=false, migrate() must refuse to run against non-empty unmanaged schema
@@ -406,8 +432,8 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3 — EB-44/P3-02 flipped baseline)")
-                    .isEqualTo(2);
+                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3, V4 — EB-47/P3-05)")
+                    .isEqualTo(3);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {
@@ -443,5 +469,85 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("flyway.clean() must throw FlywayException when cleanDisabled=true")
                 .isInstanceOf(FlywayException.class)
                 .hasMessageContaining("cleanDisabled");
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("11. Default commission seeding: seeds initial 10% rate and respects placeholder override")
+    void testDefaultCommissionSeedingAndPlaceholderOverride() throws Exception {
+        // 1. Verify default 10.0% was seeded into primaryFlyway's public schema
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT rate, created_by, updated_by FROM commission ORDER BY created_at DESC")) {
+            assertThat(rs.next())
+                    .as("Default commission record must exist after V4 migration")
+                    .isTrue();
+            assertThat(rs.getDouble("rate")).isEqualTo(10.0);
+            assertThat(rs.getString("created_by")).isEqualTo("SYSTEM");
+            assertThat(rs.getString("updated_by")).isEqualTo("SYSTEM");
+            assertThat(rs.next())
+                    .as("Exactly one commission record should be seeded initially")
+                    .isFalse();
+        }
+
+        // 2. Verify placeholder override with custom rate (e.g. 15.5) in an isolated schema
+        String testSchema = "flyway_test_override_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS " + testSchema);
+        }
+
+        try {
+            Flyway customFlyway = Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas(testSchema)
+                    .defaultSchema(testSchema)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(false)
+                    .cleanDisabled(true)
+                    .placeholders(Map.of("defaultCommissionRate", "15.5"))
+                    .load();
+
+            MigrateResult result = customFlyway.migrate();
+            assertThat(result.success).isTrue();
+
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT rate, created_by, updated_by FROM " + testSchema + ".commission")) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getDouble("rate")).isEqualTo(15.5);
+                assertThat(rs.getString("created_by")).isEqualTo("SYSTEM");
+            }
+        } finally {
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP SCHEMA IF EXISTS " + testSchema + " CASCADE");
+            }
+        }
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("12. Admin dynamic commission update overrides Day-1 seed (MSH-05 / D-17)")
+    void testAdminDynamicCommissionUpdateOverridesSeed() throws Exception {
+        // Simulates an Admin updating the commission rate in DB (as via setCommissionRate)
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("""
+                    INSERT INTO commission (rate, created_at, updated_at, created_by, updated_by)
+                    VALUES (25.0, NOW() + INTERVAL '1 second', NOW() + INTERVAL '1 second', 'admin@example.com', 'admin@example.com')
+                """);
+            }
+
+            // Query latest by created_at DESC matching CommissionRepository.findTopByOrderByCreatedAtDesc
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT rate, created_by FROM commission ORDER BY created_at DESC LIMIT 1")) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getDouble("rate"))
+                        .as("Admin dynamic update must take precedence over Day-1 10% seed")
+                        .isEqualTo(25.0);
+                assertThat(rs.getString("created_by")).isEqualTo("admin@example.com");
+            }
+        }
     }
 }

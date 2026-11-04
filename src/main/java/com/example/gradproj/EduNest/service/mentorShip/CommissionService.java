@@ -17,14 +17,16 @@ public class CommissionService {
     public Double getCommissionRate() {
         return commissionRepository.findTopByOrderByCreatedAtDesc()
                 .map(Commission::getRate)
+                .filter(rate -> rate != null && rate >= 0.0 && rate <= 100.0)
                 .orElseThrow(() -> new globalLogicEx("Commission rate not set"));
     }
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public void setCommissionRate(Double rate) {
-        if (rate < 0 || rate > 100)
+        if (rate == null || rate < 0 || rate > 100) {
             throw new globalLogicEx("Commission rate must be between 0 and 100");
+        }
 
         Commission commission = Commission.builder()
                 .rate(rate)
@@ -35,10 +37,16 @@ public class CommissionService {
 
     public Double calculatePlatformCut(Double price) {
         Double rate = getCommissionRate();
+        if (price == null || price <= 0.0) {
+            return 0.0;
+        }
         return price * (rate / 100.0);
     }
 
     public Double calculateMentorPayout(Double price) {
+        if (price == null || price <= 0.0) {
+            return 0.0;
+        }
         return price - calculatePlatformCut(price);
     }
 }

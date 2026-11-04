@@ -12,11 +12,11 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("EB-43: Flyway & Production Database Hygiene Test")
+@DisplayName("EB-43 / EB-47: Flyway & Production Database Hygiene Test")
 public class FlywayPropertyHygieneTest {
 
     @Test
-    @DisplayName("Verify application-prod.properties enforces strict validation and Flyway hardening")
+    @DisplayName("Verify application-prod.properties enforces strict validation, Flyway hardening, and commission seed placeholder")
     void verifyProdPropertiesHygiene() throws IOException {
         Resource resource = new ClassPathResource("application-prod.properties");
         assertThat(resource.exists()).as("application-prod.properties must exist").isTrue();
@@ -51,10 +51,18 @@ public class FlywayPropertyHygieneTest {
         assertThat(props.getProperty("spring.flyway.baseline-version"))
                 .as("Flyway baseline-version must be '1'")
                 .isEqualTo("1");
+
+        // EB-47 / P3-05: Commission seed configuration and placeholder
+        assertThat(props.getProperty("app.commission.default"))
+                .as("app.commission.default must be set in production")
+                .isNotNull();
+        assertThat(props.getProperty("spring.flyway.placeholders.defaultCommissionRate"))
+                .as("spring.flyway.placeholders.defaultCommissionRate must be set in production")
+                .isEqualTo("${app.commission.default}");
     }
 
     @Test
-    @DisplayName("Verify base application.properties enforces validation and Flyway defaults")
+    @DisplayName("Verify base application.properties enforces validation, Flyway defaults, and commission seed placeholder")
     void verifyBasePropertiesHygiene() throws IOException {
         Resource resource = new ClassPathResource("application.properties");
         assertThat(resource.exists()).as("application.properties must exist").isTrue();
@@ -80,6 +88,14 @@ public class FlywayPropertyHygieneTest {
         assertThat(props.getProperty("spring.flyway.baseline-on-migrate"))
                 .as("Flyway baseline-on-migrate must be 'false' in base properties")
                 .isEqualTo("false");
+
+        // EB-47 / P3-05: Commission seed configuration and placeholder
+        assertThat(props.getProperty("app.commission.default"))
+                .as("app.commission.default must be set in base properties")
+                .isNotNull();
+        assertThat(props.getProperty("spring.flyway.placeholders.defaultCommissionRate"))
+                .as("spring.flyway.placeholders.defaultCommissionRate must be set in base properties")
+                .isEqualTo("${app.commission.default}");
     }
 
     @Test
@@ -97,6 +113,10 @@ public class FlywayPropertyHygieneTest {
         assertThat(props.getProperty("spring.jpa.hibernate.ddl-auto"))
                 .as("H2 test profile must use create-drop for clean isolated test runs")
                 .isEqualTo("create-drop");
+
+        assertThat(props.getProperty("app.commission.default"))
+                .as("app.commission.default must be set in test profile")
+                .isEqualTo("10.0");
     }
 
     @Test
@@ -107,6 +127,12 @@ public class FlywayPropertyHygieneTest {
 
         Resource v2 = new ClassPathResource("db/migration/V2__mentorship_explore_trigram_index.sql");
         assertThat(v2.exists()).as("V2__mentorship_explore_trigram_index.sql must exist on classpath").isTrue();
+
+        Resource v3 = new ClassPathResource("db/migration/V3__uniqueness_constraints_and_dedupe.sql");
+        assertThat(v3.exists()).as("V3__uniqueness_constraints_and_dedupe.sql must exist on classpath").isTrue();
+
+        Resource v4 = new ClassPathResource("db/migration/V4__seed_default_commission.sql");
+        assertThat(v4.exists()).as("V4__seed_default_commission.sql must exist on classpath").isTrue();
 
         // DB-02: verify inert script.sql has been removed from source tree and runtime classpath
         File sourceScript = new File("src/main/resources/scripts/script.sql");

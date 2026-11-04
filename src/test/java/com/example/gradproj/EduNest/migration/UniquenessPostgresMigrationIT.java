@@ -95,6 +95,7 @@ public class UniquenessPostgresMigrationIT {
 				.locations("classpath:db/migration")
 				.baselineOnMigrate(false)
 				.cleanDisabled(true)
+				.placeholders(java.util.Map.of("defaultCommissionRate", "10.0"))
 				.load();
 	}
 
@@ -215,7 +216,7 @@ public class UniquenessPostgresMigrationIT {
 		assertThat(result.success)
 				.as("V3 dedupe migration (including the in-file verification block) must succeed")
 				.isTrue();
-		assertThat(result.migrationsExecuted).isEqualTo(1);
+		assertThat(result.migrationsExecuted).isEqualTo(2);
 
 		// --- enrollments: winner kept, loser archived verbatim with archive metadata ---
 		assertThat(query("SELECT id FROM enrollments ORDER BY id"))
