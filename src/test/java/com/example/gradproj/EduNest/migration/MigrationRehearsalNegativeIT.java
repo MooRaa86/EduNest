@@ -39,6 +39,18 @@ class MigrationRehearsalNegativeIT {
             MigrationRehearsalIT.migrate(db, MigrationRehearsalIT.SOURCE, id, "2", 2);
             try (var connection = MigrationRehearsalIT.connect(db, MigrationRehearsalIT.SOURCE, id); var statement = connection.createStatement()) {
                 assertThrows(IllegalStateException.class, () -> MigrationRehearsalIT.validateMigrated(connection));
+                var originalFingerprint = MigrationRehearsalIT.fingerprint(connection);
+                statement.execute("alter table public.students drop constraint students_educational_level_check");
+                statement.execute("alter table public.students add constraint students_educational_level_check check (educational_level in ('FRESH', 'JUNIOR', 'SENIOR', 'EXTRA'))");
+                var modifiedFingerprint = MigrationRehearsalIT.fingerprint(connection);
+                assertThrows(IllegalStateException.class, () -> MigrationRehearsalIT.compareFingerprints(originalFingerprint, modifiedFingerprint, "Recovery"));
+                statement.execute("create table public.eb49_fingerprint_probe (value text, a boolean, b boolean, c boolean)");
+                assertChecksDiffer(connection, "CHECK (value = 'a b')", "CHECK (value = 'ab')");
+                assertChecksDiffer(connection, "CHECK (value = 'a(b)')", "CHECK (value = 'ab')");
+                assertChecksDiffer(connection, "CHECK ((a OR b) AND c)", "CHECK (a OR (b AND c))");
+                assertChecksDiffer(connection, "CHECK (value::varchar(1) = 'ab')", "CHECK (value::text = 'ab')");
+                assertChecksDiffer(connection, "CHECK (value = 'left::text')", "CHECK (value = 'left')");
+                statement.execute("drop table public.eb49_fingerprint_probe");
                 // Failure injection only inside this disposable, owned database.
                 statement.execute("alter table public.conversations drop column user1_id cascade");
             }
@@ -47,6 +59,14 @@ class MigrationRehearsalNegativeIT {
             db.stop();
         }
         assertFalse(db.isRunning(), "Disposable failure-injection container must be removed");
+    }
+
+    private static void assertChecksDiffer(java.sql.Connection connection, String first, String second) throws Exception {
+        String left = MigrationRehearsalIT.reparseCheck(connection, "eb49_fingerprint_probe", first);
+        String right = MigrationRehearsalIT.reparseCheck(connection, "eb49_fingerprint_probe", second);
+        assertNotEquals(left, right, "Distinct CHECK definitions must not collapse");
+        assertThrows(IllegalStateException.class, () -> MigrationRehearsalIT.compareFingerprints(
+                Map.of("constraint_probe", left), Map.of("constraint_probe", right), "Recovery"));
     }
 
     @Test

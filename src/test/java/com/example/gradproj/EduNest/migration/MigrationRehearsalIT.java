@@ -150,7 +150,7 @@ class MigrationRehearsalIT {
             evidence.add("cleanup=" + (cleanupOk ? "PASS" : "FAIL"));
             evidence.add("elapsed_ms=" + (System.nanoTime() - startedNs) / 1_000_000);
             if (failure == null && cleanupOk) evidence.add("result=PASS");
-            evidence.add("limitations=synthetic_fixture; selected_schema_metadata; check_cast_normalization; no_external_object_storage; no_post_backup_writes; no_flyway_undo");
+            evidence.add("limitations=synthetic_fixture; selected_schema_metadata; check_reparse_not_semantic_proof; no_external_object_storage; no_post_backup_writes; no_flyway_undo");
             Path directory = Path.of("target", "rehearsal-evidence");
             Files.createDirectories(directory);
             Path report = directory.resolve("EB-49-" + runId + ".txt");
@@ -279,7 +279,7 @@ class MigrationRehearsalIT {
         }
     }
 
-    private static Map<String, String> fingerprint(Connection c) throws Exception {
+    static Map<String, String> fingerprint(Connection c) throws Exception {
         Map<String, String> fingerprints = new LinkedHashMap<>();
         List<String> tables = new ArrayList<>();
         try (var s = c.createStatement(); var r = s.executeQuery("select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' order by table_name")) {
@@ -287,15 +287,15 @@ class MigrationRehearsalIT {
         }
         check(tables.size() == 43, "Unexpected pre-migration table count");
         fingerprints.put("columns", queryHash(c, "select table_name,column_name,data_type,is_nullable,coalesce(column_default,''),is_identity,coalesce(identity_generation,'') from information_schema.columns where table_schema='public' order by table_name,ordinal_position"));
-        try (var s = c.createStatement(); var r = s.executeQuery("select cls.relname, con.conname, con.contype, pg_get_constraintdef(con.oid) from pg_constraint con join pg_class cls on cls.oid=con.conrelid where con.connamespace='public'::regnamespace order by 1,2")) {
+        try (var s = c.createStatement(); var r = s.executeQuery("select cls.relname, con.conname, con.contype, pg_get_constraintdef(con.oid), con.convalidated, con.condeferrable, con.condeferred from pg_constraint con join pg_class cls on cls.oid=con.conrelid where con.connamespace='public'::regnamespace order by 1,2")) {
             while (r.next()) {
                 String key = "constraint_" + r.getString(1) + "_" + r.getString(2);
                 MessageDigest item = MessageDigest.getInstance("SHA-256");
-                // PostgreSQL may re-deparse equivalent varchar/text array casts
-                // differently after dump/restore. Normalize only that spelling;
-                // check behavior remains covered by the migration integration suite.
-                String definition = r.getString(4).replaceAll("::(character varying|text)(\\[\\])?", "").replaceAll("[\\s()]", "");
-                item.update((r.getString(3) + ":" + definition).getBytes(StandardCharsets.UTF_8));
+                // Reparse CHECKs on matching temporary columns, exactly as a restore
+                // reparses DDL. Never remove casts, grouping or literal characters.
+                String definition = r.getString(4);
+                if ("c".equals(r.getString(3))) definition = reparseCheck(c, r.getString(1), definition);
+                item.update((r.getString(3) + ":" + definition + ":" + r.getBoolean(5) + ":" + r.getBoolean(6) + ":" + r.getBoolean(7)).getBytes(StandardCharsets.UTF_8));
                 fingerprints.put(key, HexFormat.of().formatHex(item.digest()));
             }
         }
@@ -307,6 +307,25 @@ class MigrationRehearsalIT {
             fingerprints.put("table_" + table, queryHash(c, "select count(*), md5(coalesce(string_agg(row_to_json(t)::text, E'\\n' order by row_to_json(t)::text),'')) from public.\"" + table + "\" t"));
         }
         return fingerprints;
+    }
+
+    static String reparseCheck(Connection c, String table, String definition) throws Exception {
+        check(table.matches("[a-z0-9_]+"), "Unexpected table identifier");
+        check(definition.startsWith("CHECK ("), "Unexpected check definition");
+        try (var s = c.createStatement()) {
+            s.execute("CREATE TEMP TABLE eb49_check_reparse (LIKE public.\"" + table + "\") ON COMMIT PRESERVE ROWS");
+            try {
+                s.execute("ALTER TABLE pg_temp.eb49_check_reparse ADD CONSTRAINT eb49_check " + definition);
+                try (var r = s.executeQuery("select pg_get_constraintdef(oid) from pg_constraint where conrelid='pg_temp.eb49_check_reparse'::regclass and conname='eb49_check'")) {
+                    check(r.next(), "Reparsed check missing");
+                    String result = r.getString(1);
+                    check(!r.next(), "Multiple reparsed checks");
+                    return result;
+                }
+            } finally {
+                s.execute("DROP TABLE pg_temp.eb49_check_reparse");
+            }
+        }
     }
 
     private static String queryHash(Connection c, String query) throws Exception {
