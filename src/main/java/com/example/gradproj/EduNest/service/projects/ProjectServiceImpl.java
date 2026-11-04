@@ -173,7 +173,7 @@ public class ProjectServiceImpl implements ProjectService{
             String uploadedPath = fileStorageService.saveFile("project-attachment", "project", mentorshipId, mentorId, file);
             project.setUploadedAttachmentPath(uploadedPath);
             if (oldPath != null && !oldPath.isBlank()) {
-                fileStorageService.deleteFile(oldPath);
+                fileStorageService.deleteFileAfterCommit(oldPath);
             }
         }
 
@@ -196,7 +196,7 @@ public class ProjectServiceImpl implements ProjectService{
 
         String filePath = project.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {
-            fileStorageService.deleteFile(filePath);
+            fileStorageService.deleteFileAfterCommit(filePath);
         }
 
         projectRepository.deleteById(projectId);

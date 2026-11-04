@@ -182,7 +182,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | FILE-02 | SECURITY | High | ✅ | Image uploads (covers/avatars/chatroom) trust the client `Content-Type` header — no Tika/magic bytes (contrast: submission path) | `ImageStorageService`; contrast `FileStorageService:211-254` |
 | FILE-03 | SECURITY | Medium | ⚠️ | `saveCoverImage` takes extension substring from multipart filename without sanitization/whitelist (traversal-suspect if separators sneak in; needs runtime confirmation) | `ImageStorageService.saveCoverImage:29-39` |
 | FILE-04 | SECURITY | Medium | ✅ | Zip allowlist accepts generic `application/octet-stream` (Tika match loosens for zip → extension spoof possible for archives) | `FileStorageService` MIME map |
-| FILE-05 | RELIABILITY | Medium | ✅ | Old-file-deleted-before-new-committed in replace flows (covers/profile) → broken URLs on failure | `uploadCoverImage:361`; profile image paths |
+| FILE-05 | RELIABILITY | Medium | ✅ | **Resolved - EB-45 [P3-03]**: Extracted centralized `AfterCommitExecutor`; old files deleted only after commit via `deleteFileAfterCommit` / `deleteImageAfterCommit` in replace & delete flows; rollback preserves existing files on disk | `AfterCommitExecutor`; `FileStorageService`; `ImageStorageService`; probes in `TransactionalCoverageAndFileAtomicityProbesTest` |
 | FILE-06 | TECHNICAL DEBT | Medium | ✅ | Real uploaded user files committed to the repo under `uploads/` (privacy + hygiene) | `uploads/` contents in git |
 | FILE-07 | RELIABILITY | Medium | ✅ | No Docker volume for uploads → files lost on redeploy | `Dockerfile:11`; no compose/volumes |
 
@@ -196,7 +196,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | DB-02 | TECHNICAL DEBT | Medium | ✅ | `scripts/script.sql` is inert (no `spring.sql.init`/Docker wiring); no schema source of truth beyond entities | resources dir; grep config refs = 0 |
 | DB-03 | DATA INTEGRITY | Medium | ✅ | Soft-delete (`deleted`) not applied in read queries (leaderboards/reviews/chat can surface deleted users) | query layers across repos |
 | DB-04 | DATA INTEGRITY | Medium | ✅ | Missing unique constraints: enrollments, mentorship reviews, conversations, session-attendance pairs | entity definitions (§ indexing doc) |
-| DB-05 | RELIABILITY | Medium | ✅ | `@Transactional` omissions on multi-step flows (`WeekService.deleteWeek`, `startLiveSession`, `recordSnapshot`) | cited methods |
+| DB-05 | RELIABILITY | Medium | ✅ | **Resolved - EB-45 [P3-03]**: Added `@Transactional` to `WeekService.deleteWeek` and `createWeek` for atomic cascade rollback; probes in `TransactionalCoverageAndFileAtomicityProbesTest` | `WeekService.deleteWeek`, `WeekService.createWeek` |
 | DB-06 | TECHNICAL DEBT | Low | ✅ | OSIV reliance for lazy navigation (breaks if disabled; sources several N+1s) | quiz/dashboard read paths |
 | DB-07 | PERFORMANCE | Low | ✅ | Row-by-row persistence loops (attendance snapshots, per-student fans) instead of batching | cited services |
 

@@ -123,7 +123,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             }
             uploadedPath = fileStorageService.saveFile("submissions", "task", taskId, studentId, file);
             if (oldPath != null && !oldPath.isBlank()) {
-                fileStorageService.deleteFile(oldPath);
+                fileStorageService.deleteFileAfterCommit(oldPath);
             }
         }
 

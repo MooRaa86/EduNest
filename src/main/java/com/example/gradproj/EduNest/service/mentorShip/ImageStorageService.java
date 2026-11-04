@@ -3,12 +3,14 @@ package com.example.gradproj.EduNest.service.mentorShip;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.service.fileSotageService.UploadContentValidator;
 import com.example.gradproj.EduNest.service.storage.SupabaseStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import com.example.gradproj.EduNest.config.transaction.AfterCommitExecutor;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -39,15 +41,26 @@ public class ImageStorageService {
     private final UploadContentValidator contentValidator;
     private final SupabaseStorageService supabaseStorageService;
     private final Environment environment;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     public ImageStorageService(@Value("${app.upload.base-dir:uploads}") String baseUploadDir,
                                UploadContentValidator contentValidator,
                                SupabaseStorageService supabaseStorageService,
                                Environment environment) {
+        this(baseUploadDir, contentValidator, supabaseStorageService, environment, new AfterCommitExecutor());
+    }
+
+    @Autowired
+    public ImageStorageService(@Value("${app.upload.base-dir:uploads}") String baseUploadDir,
+                               UploadContentValidator contentValidator,
+                               SupabaseStorageService supabaseStorageService,
+                               Environment environment,
+                               AfterCommitExecutor afterCommitExecutor) {
         this.baseUploadDir = Paths.get(baseUploadDir);
         this.contentValidator = contentValidator;
         this.supabaseStorageService = supabaseStorageService;
         this.environment = environment;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     private boolean isProduction() {
@@ -165,5 +178,19 @@ public class ImageStorageService {
         } catch (IOException e) {
             throw new globalLogicEx("Failed to delete image");
         }
+    }
+
+    public void deleteImageAfterCommit(String folderName, String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        afterCommitExecutor.execute(() -> deleteImage(folderName, imageUrl));
+    }
+
+    public void deleteOldCoverImageAfterCommit(String oldImageUrl) {
+        if (oldImageUrl == null || oldImageUrl.isBlank()) {
+            return;
+        }
+        afterCommitExecutor.execute(() -> deleteOldCoverImage(oldImageUrl));
     }
 }

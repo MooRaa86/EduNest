@@ -10,7 +10,7 @@ Verified transactional behavior, race conditions, and rollback/visibility quirks
 | Method-level `@Transactional` | most mutation methods (grading, status transitions, enrollment, quiz submit) | jakarta or spring annotation mixed |
 | `@Transactional @Async` | `NotificationService#sendToMentorshipStudents`, `#sendToAdmin` | async fan-outs still transactional via proxy |
 | `@Transactional(readOnly=true)` | read aggregations | present in some; **absent** in several quiz/mentorship dashboard reads (OSIV covers) |
-| **Missing entirely** | `WeekService.deleteWeek`, `LiveSessionServiceImp#startLiveSession`/`#recordSnapshot` | works via repository-level implied transactions today; multi-write steps are not atomic by design (DB-05) |
+| **Resolved (EB-45)** | `WeekService.deleteWeek`, `WeekService.createWeek` | Decorated with `@Transactional` (EB-45); child cascade deletions/creates roll back atomically |
 
 ## 2. Write flows with known consistency characteristics
 

@@ -137,7 +137,7 @@ public class TaskServiceImpl implements TaskService {
             String oldPath = task.getUploadedAttachmentPath();
             task.setUploadedAttachmentPath(StorageService.saveFile("task-attachment","task", mentorshipId, mentorshipId, file));
             if (oldPath != null && !oldPath.isBlank()) {
-                StorageService.deleteFile(oldPath);
+                StorageService.deleteFileAfterCommit(oldPath);
             }
         }
         if (task.getPassPoints() > task.getPoints()) {
@@ -164,7 +164,7 @@ public class TaskServiceImpl implements TaskService {
 
         String filePath = task.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {
-            StorageService.deleteFile(filePath);
+            StorageService.deleteFileAfterCommit(filePath);
         }
 
         taskRepository.deleteById(taskId);
