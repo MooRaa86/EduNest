@@ -32,7 +32,7 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | :--- | :--- | :--- | :--- | :--- |
 | **`V1`** | **APPLIED** | `EB-43` / `P3-01` | `V1__initial_schema.sql` | Canonical baseline schema (42 entity tables, primary identities, constraints, indexes, and initial roles). |
 | **`V2`** | **APPLIED** | `EB-59` / `P4-10` | `V2__mentorship_explore_trigram_index.sql` | `pg_trgm` extension activation and specialized GIN search indexes on mentorship and user full names. |
-| **`V3`** | **RESERVED (BUILD COMPLETE — pending production adoption)** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Uniqueness guarantees with deterministic dedupe (`earliest id wins`): one enrollment per (student, mentorship), one review per student per mentorship, unordered `(LEAST, GREATEST)` pair-unique conversations + `NOT NULL` participant invariant. All removed rows archived verbatim into the one-time `eb44_archive_*` surfaces; loser-conversation messages are reassigned, never dropped. Adopt only via `docs/migration/EB-44-PRODUCTION-ADOPTION-RUNBOOK.md`. |
+| **`V3`** | **BUILD COMPLETE — applied to Supabase; merge pending** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Uniqueness guarantees with deterministic dedupe (`earliest id wins`): one enrollment per (student, mentorship), one review per student per mentorship, unordered `(LEAST, GREATEST)` pair-unique conversations + `NOT NULL` participant invariant. All removed rows archived verbatim into the one-time `eb44_archive_*` surfaces; loser-conversation messages are reassigned, never dropped. See `docs/migration/EB-44-PRODUCTION-ADOPTION-RUNBOOK.md` for adoption evidence and requirements for other environments. |
 | **`V4`** | **RESERVED** | `EB-45` / `P3-03` | `V4__transactional_consistency_hardening.sql` | Transactional integrity constraints and file-operation reference consistency. |
 | **`V5`** | **RESERVED** | `EB-50` / `P3-05` | `V5__seed_commission_default.sql` | Default commission rate idempotent initialization (`app.commission.default`). |
 
@@ -73,7 +73,7 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 
 When spinning up a new development environment, staging environment, or test container against an empty PostgreSQL database:
 1. Ensure the target PostgreSQL database and schema (`public`) are provisioned.
-2. Boot the Spring Boot application (or run `mvn flyway:migrate`).
+2. Boot the Spring Boot application with the intended database configuration. The repository does not configure a Flyway Maven plugin.
 3. Because the schema is empty (0 tables), Flyway automatically:
    - Creates the metadata table `flyway_schema_history`.
    - Executes `V1__initial_schema.sql` (creating all 42 tables and initial roles).

@@ -2,15 +2,15 @@
 
 **Task:** EB-44 `[P3-02] Uniqueness constraints with dedupe + conflict UX` (closes DB-04, +MSH-04, +CHAT-05)
 **Migration:** `V3__uniqueness_constraints_and_dedupe.sql` (PostgreSQL 17.x / Supabase, schema `public`)
-**Status in origin/main after merge:** migration file EXISTS but Flyway **has not applied it to production** — it is applied on the next real app boot of the migrated instance, or manually via the steps below. The registry (`db/migration/README.md`) intentionally keeps `V3` as **RESERVED (BUILD COMPLETE — pending production adoption)**.
+**Supabase adoption status (2026-11-04):** V1 was recorded as a successful Flyway baseline; V2 and V3 were subsequently applied successfully using the standalone Flyway 11.7.2 API. Post-migration checks found successful V1/V2/V3 history entries, the expected indexes and NOT NULL participant columns, zero duplicate groups, and the existing account preserved. A controlled Spring Boot startup reached port 8080 and passed Hibernate schema validation with scheduled maintenance disabled. This database adoption is separate from merging the code to `main`.
 
 **Milestones — keep all three separate at all times (merging proves none of the others):**
 
 | # | Milestone | Evidence |
 |---|-----------|----------|
-| M1 | **Code merged to `main`** | merge commit + green CI, including the two dedicated EB-44 PostgreSQL suites |
-| M2 | **V3 executed on a disposable PostgreSQL instance** | EB-44 suites passing on throwaway containers (dedupe + conflict UX proven on real PostgreSQL) — proves the CODE PATH only, changes nothing real |
-| M3 | **V3 applied to the production database** | `flyway_schema_history` row `(3, 'uniqueness constraints and dedupe', true)` + the §5 post-adopt checks on the live database |
+| M1 | **Code merged to `main`** | Pending merge; verify the merge commit and CI separately. |
+| M2 | **V3 executed on a disposable PostgreSQL instance** | Completed on throwaway PostgreSQL, including the standalone V2/V3 rehearsal. |
+| M3 | **V3 applied to the production database** | Completed 2026-11-04; successful V1 BASELINE, V2 SQL and V3 SQL history entries and §5 checks. |
 
 ---
 
@@ -43,7 +43,7 @@ Ordered phases inside the single transaction Flyway manages:
 - Duplicate detection at the handler is **SQLSTATE 23505-aware** (PostgreSQL and H2) and maps constraint names to messages; all other integrity violations remain 400 `ERR_CONSTRAINT_VIOLATION`.
 - Entities updated accordingly: `Enrollment` / `MentorShipReviews` declare the unique constraints; `Conversation.user1/user2` are `@ManyToOne(optional = false)`.
 
-## 3. Pre-adopt checklist (read-only)
+## 3. Pre-adopt checklist for other environments (read-only)
 
 1. Confirm old schema state and counts (Supabase SQL editor):
    ```sql
@@ -59,23 +59,20 @@ Ordered phases inside the single transaction Flyway manages:
        HAVING count(*) > 1) cv;
    ```
    These numbers must match what the archive tables will receive in step 5 ( losers `count` per pair minus the winner per pair ).
-2. Database context sanity (same as EB-43 runbook): `git pull` the latest `main` into production build; Flyway `spring.flyway.enabled=true` stays on.
+2. Verify the intended database and migration version. Flyway `spring.flyway.enabled=true` remains configured for normal application startup.
 3. **Backup first** (PITR or `pg_dump` pattern from `db/migration/README.md` §5.3).
 
-## 4. Adopt
+## 4. Adoption record
 
-Option A (default): boot the app normally — Flyway applies V3 automatically under its advisory lock before Hibernate `validate()` runs.
+The approved Supabase adoption is complete; do not re-run V1, V2 or V3 manually. V2 and V3 were applied using Flyway's standalone Java API, without starting Spring Boot. A subsequent controlled prod-profile startup used `app.scheduling.enabled=false` and a Flyway target of `3`; it reached Tomcat startup on port 8080 with Hibernate validation enabled. The controlled verification process is no longer running. Scheduling remains enabled by default unless explicitly disabled.
 
-Option B (manual, explicit):
-```powershell
-.\mvnw.cmd flyway:migrate
-```
+For any other environment, follow that environment's approved migration and backup process and verify its Flyway history first. The project does not configure a Flyway Maven plugin, so `mvnw flyway:migrate` is not an adoption procedure for this repository. Do not use Flyway clean or repair as an automatic recovery step.
 
 ## 5. Post-adopt verification (one-shot, safe to re-run)
 
 ```sql
-SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;
--- expect a final row: (3, 'uniqueness constraints and dedupe', true) after V1 baseline + V2
+SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;
+-- Supabase adoption evidence: V1 BASELINE, V2 SQL and V3 SQL, each successful.
 
 SELECT count(*) FROM eb44_archive_enrollments;        -- removed duplicate enrollment rows
 SELECT count(*) FROM eb44_archive_mentorship_reviews; -- removed duplicate review rows
@@ -103,22 +100,22 @@ Because archives live in real production tables (not backups only), removal is r
 
 ## 7. Approval gates — REQUIRED because V3 mutates live production data
 
-Nothing in V3 is auto-approved. Each gate below must be signed (approver name + date) BEFORE the production boot/manual migrate; an unfilled table means **do not adopt**.
+Each gate required an approver name and date before production migration. The entries below record the project owner's explicit approval for the completed Supabase adoption; other environments require their own applicable approvals.
 
 | Gate | What V3 will do to production data | Risk the approver accepts | Approver | Date |
 |------|-----------------------------------|---------------------------|----------|------|
-| G1 | NULL-participant conversations will be moved to `eb44_archive_conversations` and removed from the live table | Those conversations stop being reachable in the app (archival is not availability) | | |
-| G2 | All messages of the conversations in G1 will be moved to `eb44_archive_messages` and removed from the live table | Users lose in-app access to that history; restoring requires a manual DBA action from the archive | | |
-| G3 | Duplicate enrollment/review rows will be archived (`eb44_archive_enrollments` / `eb44_archive_mentorship_reviews`) and removed from the live tables | Duplicate history (double enrollments / double reviews) disappears from the FE | | |
-| G4 | The winner rule is deterministic and fixed: smallest `id` (earliest `joined_at`, first review). Losing rows go to the archive. | Re-picking a different winner later means a manual archive restore; the rule cannot be changed retroactively | | |
+| G1 | NULL-participant conversations will be moved to `eb44_archive_conversations` and removed from the live table | Those conversations stop being reachable in the app (archival is not availability) | EduNest Project Owner | 2026-11-04 |
+| G2 | All messages of the conversations in G1 will be moved to `eb44_archive_messages` and removed from the live table | Users lose in-app access to that history; restoring requires a manual DBA action from the archive | EduNest Project Owner | 2026-11-04 |
+| G3 | Duplicate enrollment/review rows will be archived (`eb44_archive_enrollments` / `eb44_archive_mentorship_reviews`) and removed from the live tables | Duplicate history (double enrollments / double reviews) disappears from the FE | EduNest Project Owner | 2026-11-04 |
+| G4 | The winner rule is deterministic and fixed: smallest `id` (earliest `joined_at`, first review). Losing rows go to the archive. | Re-picking a different winner later means a manual archive restore; the rule cannot be changed retroactively | EduNest Project Owner | 2026-11-04 |
 
 The migration itself refuses half-states: the §1.7 verification block fails the WHOLE migration (Flyway transaction) if any duplicate or NULL count survives.
 
 ---
 
 > [!CAUTION]
-> **V3 performs a data remediation against four live application tables.** It is NOT silently approved: every destructive surface in §7 (G1–G4) requires a named approval entry before production adoption. The test matrix (T1–T5 migration/verification, U1–U8 app-on-PostgreSQL behavior) proves the code path on disposable databases only — passing suites are code evidence, not production approval. Keep the backup from step 3 untouched until the post-adopt checklist has passed twice (two consecutive app boots) plus one week of production traffic.
+> **V3 performs data remediation against four live application tables.** For other production environments, the destructive surfaces in §7 require the appropriate approvals before adoption. The test matrix proves the code path on disposable databases only; passing suites are not production approval. Retain the Supabase backup until the post-adopt checklist has passed twice (two consecutive app boots) plus one week of production traffic; only one controlled boot has been verified so far.
 
 ---
 
-*Keep this runbook immutable together with the migration itself; adjustments go into a follow-up task.*
+*Keep the applied migration SQL immutable; record subsequent operational changes separately.*
