@@ -33,3 +33,6 @@ build/
 .vscode/
 .uploads/
 **/uploads/
+
+# Supabase migration snapshots/backups (contains account data; stored outside the repo)
+tools/migration/snapshots/
