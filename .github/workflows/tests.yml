@@ -47,11 +47,11 @@ jobs:
       - name: Docker availability gate (EB-44 PostgreSQL integration verification REQUIRED)
         run: |
           if ! docker info > /dev/null 2>&1; then
-            echo "::error::Docker daemon unavailable — the required EB-44 PostgreSQL integration verification (Uniqueness*IT, 10 tests) cannot run."
+            echo "::error::Docker daemon unavailable — the required EB-44 PostgreSQL integration verification (Uniqueness*IT, 16 tests) cannot run."
             exit 1
           fi
 
-      - name: EB-44 PostgreSQL integration tests (Testcontainers — all 10 must execute)
+      - name: EB-44 PostgreSQL integration tests (Testcontainers — all 16 must execute)
         run: >
           ./mvnw -B test
           "-Dtest=UniquenessPostgresMigrationIT,UniquenessHttpPostgresIT"
@@ -63,13 +63,17 @@ jobs:
         if: always()
         run: |
           if [ ! -d target/surefire-reports ]; then echo "::error::no surefire reports produced"; exit 1; fi
-          for cls in UniquenessPostgresMigrationIT UniquenessHttpPostgresIT; do
+          expect_migration='Tests run: 5, Failures: 0, Errors: 0, Skipped: 0'
+          expect_http='Tests run: 11, Failures: 0, Errors: 0, Skipped: 0'
+          for pair in "UniquenessPostgresMigrationIT:${expect_migration}" "UniquenessHttpPostgresIT:${expect_http}"; do
+            cls="${pair%%:*}"
+            expected="${pair#*:}"
             report="target/surefire-reports/com.example.gradproj.EduNest.migration.${cls}.txt"
             if [ ! -f "$report" ]; then echo "::error::missing report for ${cls}"; exit 1; fi
             counts=$(grep -E 'Tests run: [0-9]+' "$report" | head -n 1)
             echo "${cls}: ${counts}"
-            if ! echo "$counts" | grep -E 'Tests run: 5, Failures: 0, Errors: 0, Skipped: 0'; then
-              echo "::error::${cls} did not execute cleanly (expected Tests run: 5, Failures: 0, Errors: 0, Skipped: 0)"
+            if ! echo "$counts" | grep -F "$expected"; then
+              echo "::error::${cls} did not execute cleanly (expected '${expected}' in its surefire report)"
               exit 1
             fi
           done
