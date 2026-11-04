@@ -78,6 +78,15 @@ jobs:
             fi
           done
 
+      - name: EB-45 PostgreSQL transaction and file rollback tests
+        run: |
+          ./mvnw -B test "-Dtest=TransactionalFileReplacementPostgresIT" "-Dsurefire.failIfNoSpecifiedTests=true" "-DskipTests=false" "-Dmaven.test.failure.ignore=false"
+          report="target/surefire-reports/com.example.gradproj.EduNest.service.fileSotageService.TransactionalFileReplacementPostgresIT.txt"
+          if [ ! -f "$report" ] || ! grep -F 'Tests run: 5, Failures: 0, Errors: 0, Skipped: 0' "$report"; then
+            echo "::error::EB-45 PostgreSQL tests did not all execute successfully"
+            exit 1
+          fi
+
       - name: Upload EB-44 integration test reports
         if: always()
         uses: actions/upload-artifact@v4

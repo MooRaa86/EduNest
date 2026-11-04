@@ -164,6 +164,7 @@ public class StudentProfileService {
         studentRepository.save(student);
     }
 
+    @Transactional
     public String updateProfileImage(MultipartFile image) {
         Student student = getCurrentStudent();
 

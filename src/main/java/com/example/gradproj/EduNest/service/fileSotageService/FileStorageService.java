@@ -205,6 +205,14 @@ public class FileStorageService {
 
         saveFileAtomically(file, filePath, extension);
 
+        TransactionFileActions.deleteOnRollback(() -> {
+            try {
+                Files.deleteIfExists(filePath);
+            } catch (IOException ex) {
+                throw new IllegalStateException("Failed to clean up rolled-back file", ex);
+            }
+        });
+
         return Paths.get(baseDir)
                 .resolve(subFolder)
                 .resolve(filePath.getFileName().toString())
@@ -352,6 +360,7 @@ public class FileStorageService {
         }
 
         Path tempPath = targetPath.resolveSibling(targetPath.getFileName() + ".tmp");
+        boolean moved = false;
 
         try {
             Files.copy(file.getInputStream(), tempPath);
@@ -371,6 +380,7 @@ public class FileStorageService {
             }
 
             Files.move(tempPath, targetPath);
+            moved = true;
 
             try {
                 Files.setPosixFilePermissions(targetPath,
@@ -381,6 +391,11 @@ public class FileStorageService {
 
         } catch (IOException e) {
             try { Files.deleteIfExists(tempPath); } catch (IOException ignored) {}
+            if (moved) {
+                try { Files.deleteIfExists(targetPath); } catch (IOException cleanupError) {
+                    e.addSuppressed(cleanupError);
+                }
+            }
             log.error("Failed to save file to {}", targetPath, e);
             throw new RuntimeException("Failed to save file", e);
         }
@@ -399,11 +414,6 @@ public class FileStorageService {
         if (relativePath == null || relativePath.isBlank()) {
             log.debug("Delete called with null or blank path, skipping");
             return;
-        }
-
-        if (supabaseStorageService.isConfigured()) {
-            String key = SupabaseStorageService.normalizeKey(relativePath);
-            supabaseStorageService.deletePrivate(key);
         }
 
         String cleanPath = relativePath;
@@ -427,6 +437,15 @@ public class FileStorageService {
         if (targetPath.equals(resolvedBaseDir)) {
             log.warn("Attempted to delete base directory blocked");
             throw new SecurityException("Cannot delete base directory");
+        }
+
+        TransactionFileActions.deleteAfterCommit(() -> deleteFileNow(relativePath, targetPath));
+    }
+
+    private void deleteFileNow(String relativePath, Path targetPath) {
+        if (supabaseStorageService.isConfigured()) {
+            String key = SupabaseStorageService.normalizeKey(relativePath);
+            supabaseStorageService.deletePrivate(key);
         }
 
         try {

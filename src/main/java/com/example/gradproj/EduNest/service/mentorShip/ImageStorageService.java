@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.mentorShip;
 
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.service.fileSotageService.UploadContentValidator;
+import com.example.gradproj.EduNest.service.fileSotageService.TransactionFileActions;
 import com.example.gradproj.EduNest.service.storage.SupabaseStorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -65,6 +66,10 @@ public class ImageStorageService {
         if (oldImageUrl == null || oldImageUrl.isBlank()) {
             return;
         }
+        TransactionFileActions.deleteAfterCommit(() -> deleteOldCoverImageNow(oldImageUrl));
+    }
+
+    private void deleteOldCoverImageNow(String oldImageUrl) {
         if (supabaseStorageService.isConfigured() && (oldImageUrl.startsWith("http://") || oldImageUrl.startsWith("https://"))) {
             supabaseStorageService.deletePublicByUrl(oldImageUrl);
             return;
@@ -143,6 +148,14 @@ public class ImageStorageService {
                     StandardCopyOption.REPLACE_EXISTING
             );
 
+            TransactionFileActions.deleteOnRollback(() -> {
+                try {
+                    Files.deleteIfExists(filePath);
+                } catch (IOException ex) {
+                    throw new IllegalStateException("Failed to clean up rolled-back image", ex);
+                }
+            });
+
             return "/uploads/" + folderName + "/" + fileName;
 
         } catch (IOException e) {
@@ -154,6 +167,10 @@ public class ImageStorageService {
         if (imageUrl == null || imageUrl.isBlank()) {
             return;
         }
+        TransactionFileActions.deleteAfterCommit(() -> deleteImageNow(folderName, imageUrl));
+    }
+
+    private void deleteImageNow(String folderName, String imageUrl) {
         if (supabaseStorageService.isConfigured() && (imageUrl.startsWith("http://") || imageUrl.startsWith("https://"))) {
             supabaseStorageService.deletePublicByUrl(imageUrl);
             return;

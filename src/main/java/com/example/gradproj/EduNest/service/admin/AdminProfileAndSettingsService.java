@@ -69,6 +69,7 @@ public class AdminProfileAndSettingsService {
     }
 
 
+    @Transactional
     public String updateProfileImage(MultipartFile image) {
         Admin admin = getCurrentadmin();
 

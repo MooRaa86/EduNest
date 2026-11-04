@@ -100,14 +100,14 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **FILE-02** | High | P1-22 | 1 | file-storage | T | **Hardened - EB-29 / EB-87 (implementation + probe suite)**: image surfaces no longer trust the client Content-Type — shared `UploadContentValidator` proves the bytes (magic + structural + JDK decode for jpg/png; structural webp), per-surface allowlists (covers/avatars jpg/png/webp, chatroom jpg/png), 5 MB limit, declared-MIME cross-check ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)); EB-87 locks verdict: standard formats (JPEG, PNG, WebP) supported normally, GIF/BMP rejected with 400 ERR_BUSINESS_RULE, SVG prohibited, 5 MiB cap strictly verified everywhere vs 10 MiB files, replace safety regression-pinned across all surfaces |
 | **FILE-03** | Med | P0-06 → P1-22 | 0,1 | file-storage | V→T | **Hardened - EB-29 (implementation + probe suite)**: stored extension is derived from the detected format — the client filename no longer reaches the path (`photo.jpg.exe` with real JPEG bytes normalizes to `{id}-EduNest-{uuid}.jpg`); double-extension/garbage payloads rejected ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); baseline [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md)) |
 | **FILE-04** | Med | P0-06/P0-07 → P1-22 | 0,1 | file-storage | V→T | **Hardened - EB-29 [P1-22] (implementation + probe suite)**: the `.zip` allowlist entry `application/octet-stream` is removed — only `application/zip` / `application/x-zip-compressed` remain — and a stored `.zip` must additionally pass a structural central-directory parse (`UploadContentValidator#verifyZipIntegrity` on the temp file before it is moved); mislabeled/MIME-blocked attachments now answer **400 `ERR_BUSINESS_RULE`** (EB-12 envelope) instead of the sanitized 500. Rejections leave no file/`.tmp`/metadata behind; genuine-zip-named-`.pdf` and local-header-only archives rejected. Evidence basis: EB-5 endpoint verdict ([EB-5-ZIP-VERDICT](phases/phase-00-planning-baseline/EB-5-ZIP-VERDICT.md)), [EB-4 matrix](phases/phase-00-planning-baseline/EB-4-UPLOAD-MATRIX.md), probe suite `UploadValidationHardeningProbeTest` ([PR #33](https://github.com/MooRaa86/EduNest/pull/33); full-suite run 221/221 green on the PR branch). |
-| **FILE-05** | Med | P3-03 | 3 | file-storage | T | Planned |
+| **FILE-05** | Med | P3-03 | 3 | file-storage | T | In progress — transaction-aware replacement and rollback cleanup |
 | **FILE-06** | Med | P6-06 | 6 | deployment | D→T (D-19) | Planned |
 | **FILE-07** | Med | P6-05 (+P6-07 cond.) | 6 | deployment | T | Planned |
 | **DB-01** | High | P3-01 | 3 | database | T (+DEP-04) | Planned |
 | **DB-02** | Med | P3-01 | 3 | database | T | Planned |
 | **DB-03** | Med | P3-04 | 3 | database | D→T (D-18) | Planned |
 | **DB-04** | Med | P3-02 | 3 | database | T | Planned |
-| **DB-05** | Med | P3-03 | 3 | database | T | Planned |
+| **DB-05** | Med | P3-03 | 3 | database | T | In progress — week deletion transaction and rollback coverage |
 | **DB-06** | Low | P3-06 → P4-11 | 3,4 | database | T (+D-24) | Planned |
 | **DB-07** | Low | P4-12 | 4 | database | T | Planned |
 | **API-01** | Low | P4-16 (cond.) | 4 | api | D→T (D-20), DEF expected | Planned |

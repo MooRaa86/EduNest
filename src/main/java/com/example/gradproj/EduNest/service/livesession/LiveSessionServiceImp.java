@@ -41,6 +41,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -71,6 +73,55 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final AttendancePolicy attendancePolicy;
     private final PointsAwardingPolicy pointsAwardingPolicy;
     private final LiveSessionProperties liveSessionProperties;
+
+    private void compensateCreatedMeetingOnRollback(long meetingId) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            return;
+        }
+        try {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) {
+                        deleteCreatedMeetingForRollback(meetingId);
+                    } else if (status == STATUS_UNKNOWN) {
+                        log.error("Database outcome unknown for newly created Zoom meeting {}; manual reconciliation required", meetingId);
+                    }
+                }
+            });
+        } catch (RuntimeException registrationFailure) {
+            deleteCreatedMeetingForRollback(meetingId);
+            throw registrationFailure;
+        }
+    }
+
+    private void deleteCreatedMeetingForRollback(long meetingId) {
+        try {
+            zoomMeetingClient.deleteMeeting(meetingId);
+        } catch (Exception ex) {
+            log.error("Rollback compensation failed for newly created Zoom meeting {}; manual reconciliation required", meetingId, ex);
+        }
+    }
+
+    private void afterCommitZoom(String operation, long meetingId, Runnable action) {
+        Runnable guarded = () -> {
+            try {
+                action.run();
+            } catch (Exception ex) {
+                log.error("Post-commit Zoom {} failed for meeting {}; manual reconciliation required", operation, meetingId, ex);
+            }
+        };
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            guarded.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                guarded.run();
+            }
+        });
+    }
 
     @Override
     @Transactional
@@ -109,6 +160,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
                     null
             );
             ZoomMeetingResult zoomResult = zoomMeetingClient.createMeeting(zoomReq);
+            compensateCreatedMeetingOnRollback(zoomResult.zoomMeetingId());
             meetingUrl = zoomResult.joinUrl();
             hostUrl = zoomResult.startUrl();
             zoomMeetingId = zoomResult.zoomMeetingId();
@@ -179,11 +231,9 @@ public class LiveSessionServiceImp implements LiveSessionService {
             String newTitle = (updateSessionDto.getTitle() != null && !updateSessionDto.getTitle().isBlank())
                     ? updateSessionDto.getTitle()
                     : null;
-            try {
-                zoomMeetingClient.updateMeeting(session.getZoomMeetingId(), newTitle, newStart, zoomProperties.getMaxMeetingMinutes());
-            } catch (Exception e) {
-                log.warn("Failed to sync session update to Zoom meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
-            }
+            long meetingId = session.getZoomMeetingId();
+            int duration = zoomProperties.getMaxMeetingMinutes();
+            afterCommitZoom("update", meetingId, () -> zoomMeetingClient.updateMeeting(meetingId, newTitle, newStart, duration));
         }
 
         liveSessionRepository.save(session);
@@ -273,11 +323,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
         }
 
         if (zoomProperties.isEnabled() && session.getZoomMeetingId() != null) {
-            try {
-                zoomMeetingClient.deleteMeeting(session.getZoomMeetingId());
-            } catch (Exception e) {
-                log.warn("Failed to delete Zoom meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
-            }
+            long meetingId = session.getZoomMeetingId();
+            afterCommitZoom("delete", meetingId, () -> zoomMeetingClient.deleteMeeting(meetingId));
         }
 
         notificationService.sendToMentorshipStudents(
@@ -402,11 +449,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
         liveSessionRepository.save(session);
 
         if (zoomProperties.isEnabled() && session.getZoomMeetingId() != null) {
-            try {
-                zoomMeetingClient.endMeeting(session.getZoomMeetingId());
-            } catch (Exception e) {
-                log.debug("Notice on Zoom end meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
-            }
+            long meetingId = session.getZoomMeetingId();
+            afterCommitZoom("end", meetingId, () -> zoomMeetingClient.endMeeting(meetingId));
         }
 
         notificationService.sendToMentorshipStudents(

@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,6 +41,7 @@ public class WeekService {
     private final LiveSessionRepository sessionRepository;
     private final LectureRepository lectureRepository;
     private final MentorRepository mentorRepository;
+    private final FileStorageService fileStorageService;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -88,10 +90,19 @@ public class WeekService {
 
     }
 
+    @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public void deleteWeek(Long weekId) {
-        validateMentorOwnsWeek(weekId);
-        weekRepository.deleteById(weekId);
+        Week week = validateMentorOwnsWeek(weekId);
+        for (Task task : week.getTasks()) {
+            fileStorageService.deleteFile(task.getUploadedAttachmentPath());
+            task.getSubmissions().forEach(submission -> fileStorageService.deleteFile(submission.getUploadedFilePath()));
+        }
+        for (Project project : week.getProjects()) {
+            fileStorageService.deleteFile(project.getUploadedAttachmentPath());
+            project.getSubmissions().forEach(submission -> fileStorageService.deleteFile(submission.getUploadedFilePath()));
+        }
+        weekRepository.delete(week);
     }
 
     @Transactional

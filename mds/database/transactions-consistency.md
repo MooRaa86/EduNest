@@ -10,7 +10,7 @@ Verified transactional behavior, race conditions, and rollback/visibility quirks
 | Method-level `@Transactional` | most mutation methods (grading, status transitions, enrollment, quiz submit) | jakarta or spring annotation mixed |
 | `@Transactional @Async` | `NotificationService#sendToMentorshipStudents`, `#sendToAdmin` | async fan-outs still transactional via proxy |
 | `@Transactional(readOnly=true)` | read aggregations | present in some; **absent** in several quiz/mentorship dashboard reads (OSIV covers) |
-| **Missing entirely** | `WeekService.deleteWeek`, `LiveSessionServiceImp#startLiveSession`/`#recordSnapshot` | works via repository-level implied transactions today; multi-write steps are not atomic by design (DB-05) |
+| Method-level write boundaries | `WeekService.deleteWeek`, `LiveSessionServiceImp#startLiveSession`/`#recordSnapshot` | Week deletion is transactional; the live-session paths were already transactional when P3-03 was implemented. |
 
 ## 2. Write flows with known consistency characteristics
 
@@ -51,10 +51,18 @@ Implication: build a **no-OSIV test profile** before attempting transactional re
 
 | Operation | Steps | Risk |
 |---|---|---|
-| `WeekService.deleteWeek` | cascade-delete contents (DB) + delete attachment files | files deleted even if DB op fails (or vice versa); with no outer TX, a partial failure can orphan file references — no reconciliation job exists |
-| `updateCoverImage` mentorship | delete old file → save new → update entity URL | failure between steps leaves URL→missing file (FILE-05) |
-| `recordSnapshot` | validate ids + N×`save()` in loop | slow/failed midway leaves partial snapshot sets (attendance math is snapshot-count based) |
-| Image profile replace | delete old + save new | same failure-window pattern as cover images |
+| `WeekService.deleteWeek` | transactionally cascade-delete contents; schedule task/project attachment and submission-file deletion after commit | rollback retains records and files; a post-commit storage failure can leave an orphan requiring reconciliation |
+| Mentorship cover and profile/chat image replacement | save new → update reference → delete old after commit | transaction rollback removes the new local/S3 object; post-commit cleanup is best effort |
+| `recordSnapshot` | validate ids, collect attendance rows, then `saveAll()` in a transaction | invalid or failed writes roll back together |
+| Task/project attachments and submissions | save new → update reference → delete old after commit | rollback preserves the old reference and file; new local/S3 uploads receive rollback cleanup |
+
+File synchronization requires an active Spring transaction. Outside one, deletions remain immediate. Cleanup is best effort, not a distributed transaction: process failure, an unknown commit outcome, or a storage error can leave orphaned files, so operators must monitor cleanup errors and reconcile manually. The old file is deliberately not removed on rollback.
+
+### 4.1 Zoom meeting lifecycle (EB-45)
+
+`LiveSessionServiceImp.createSession` must create the Zoom meeting before the database commit to obtain the meeting ID and URLs. A known database rollback triggers best-effort deletion of the newly created meeting; compensation failures are logged with the meeting ID and never replace the original error. An unknown transaction outcome is logged for reconciliation rather than risking deletion of a meeting belonging to a committed session.
+
+Updates, deletes, and endings initiated by `LiveSessionServiceImp` are sent to Zoom after a successful database commit. Zoom failures are logged for manual reconciliation and do not change the already-committed API result, matching the previous best-effort failure contract. These in-process callbacks are not durable: a process crash after commit, a Zoom timeout with an unknown remote outcome, or a failed compensation can leave the systems inconsistent. No automatic retry or outbox is provided. The separate scheduled `LiveSessionSweepService` also calls Zoom inside its transaction and remains outside this change; its remote side effects can survive a database rollback.
 
 ## 5. Repair recommendations (priority order)
 

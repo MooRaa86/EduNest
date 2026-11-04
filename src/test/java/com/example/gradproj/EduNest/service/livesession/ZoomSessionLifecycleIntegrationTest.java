@@ -26,17 +26,27 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.support.TransactionTemplate;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 /**
  * P4-17 / EB-66 — Zoom Live-Session Lifecycle Unit & Contract Test.
@@ -107,6 +117,149 @@ class ZoomSessionLifecycleIntegrationTest {
         when(securityService.isMentorOwnWeek(eq(weekId), eq("mentor@test.com"))).thenReturn(true);
         when(securityService.isMentorOwnLiveSession(any(), eq("mentor@test.com"))).thenReturn(true);
         return week;
+    }
+
+    private TransactionTemplate transaction() {
+        var dataSource = new DriverManagerDataSource("jdbc:h2:mem:zoom-" + java.util.UUID.randomUUID(), "sa", "");
+        return new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+    }
+
+    private CreateSessionDto prepareZoomCreation() {
+        zoomProperties.setEnabled(true);
+        mockWeek(15L);
+        when(zoomMeetingClient.createMeeting(any())).thenReturn(new ZoomMeetingResult(12345L, "Test", "join", "host", null));
+        return CreateSessionDto.builder().title("Test").scheduledAt(LocalDateTime.now().plusDays(1)).weekId(15L).build();
+    }
+
+    @Test
+    void createdZoomMeetingIsKeptOnCommit() {
+        var dto = prepareZoomCreation();
+        transaction().executeWithoutResult(status -> service.createSession(dto));
+        verify(zoomMeetingClient).createMeeting(any());
+        verify(zoomMeetingClient, never()).deleteMeeting(12345L);
+    }
+
+    @Test
+    void databaseFailureDeletesCreatedZoomMeetingOnRollback() {
+        var dto = prepareZoomCreation();
+        var failure = new IllegalStateException("database failure");
+        when(liveSessionRepository.save(any(Session.class))).thenThrow(failure);
+        assertThatThrownBy(() -> transaction().executeWithoutResult(status -> service.createSession(dto))).isSameAs(failure);
+        verify(zoomMeetingClient).deleteMeeting(12345L);
+    }
+
+    @Test
+    void zoomCreateFailureDoesNotSaveOrAttemptCompensation() {
+        var dto = prepareZoomCreation();
+        var failure = new IllegalStateException("zoom unavailable");
+        when(zoomMeetingClient.createMeeting(any())).thenThrow(failure);
+        assertThatThrownBy(() -> transaction().executeWithoutResult(status -> service.createSession(dto))).isSameAs(failure);
+        verify(liveSessionRepository, never()).save(any(Session.class));
+        verify(zoomMeetingClient, never()).deleteMeeting(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void compensationFailureIsLoggedWithoutMaskingDatabaseFailure() {
+        var dto = prepareZoomCreation();
+        var failure = new IllegalStateException("database failure");
+        when(liveSessionRepository.save(any(Session.class))).thenThrow(failure);
+        doThrow(new IllegalStateException("cleanup failed")).when(zoomMeetingClient).deleteMeeting(12345L);
+        Logger logger = (Logger) LoggerFactory.getLogger(LiveSessionServiceImp.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            assertThatThrownBy(() -> transaction().executeWithoutResult(status -> service.createSession(dto))).isSameAs(failure);
+            assertThat(appender.list).anyMatch(event -> event.getFormattedMessage().contains("Rollback compensation failed for newly created Zoom meeting 12345"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void zoomUpdateRunsAfterCommitButNotOnRollback() {
+        zoomProperties.setEnabled(true);
+        mockWeek(15L);
+        Session session = Session.builder().id(10L).title("Old").status(SessionStatus.SCHEDULED)
+                .scheduledAt(LocalDateTime.now().plusDays(1)).zoomMeetingId(109988L)
+                .week(weekRepository.findById(15L).orElseThrow()).build();
+        when(liveSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        var dto = UpdateSessionDto.builder().title("New").build();
+        transaction().executeWithoutResult(status -> {
+            service.updateSession(10L, dto);
+            verify(zoomMeetingClient, never()).updateMeeting(anyLong(), any(), any(), any());
+        });
+        verify(zoomMeetingClient).updateMeeting(eq(109988L), eq("New"), org.mockito.ArgumentMatchers.isNull(), any());
+        org.mockito.Mockito.clearInvocations(zoomMeetingClient);
+        var failure = new IllegalStateException("database failure");
+        when(liveSessionRepository.save(any(Session.class))).thenThrow(failure);
+        assertThatThrownBy(() -> transaction().executeWithoutResult(status -> service.updateSession(10L, dto))).isSameAs(failure);
+        verify(zoomMeetingClient, never()).updateMeeting(anyLong(), any(), any(), any());
+    }
+
+    @Test
+    void zoomDeleteRunsOnlyAfterCommit() {
+        zoomProperties.setEnabled(true);
+        mockWeek(15L);
+        Session session = Session.builder().id(20L).title("Delete").status(SessionStatus.SCHEDULED)
+                .scheduledAt(LocalDateTime.now().plusDays(1)).zoomMeetingId(209988L)
+                .week(weekRepository.findById(15L).orElseThrow()).build();
+        when(liveSessionRepository.findById(20L)).thenReturn(Optional.of(session));
+        var failure = new IllegalStateException("database failure");
+        doThrow(failure).when(liveSessionRepository).delete(session);
+        assertThatThrownBy(() -> transaction().executeWithoutResult(status -> service.deleteSession(20L))).isSameAs(failure);
+        verify(zoomMeetingClient, never()).deleteMeeting(209988L);
+        org.mockito.Mockito.doNothing().when(liveSessionRepository).delete(session);
+        transaction().executeWithoutResult(status -> {
+            service.deleteSession(20L);
+            verify(zoomMeetingClient, never()).deleteMeeting(209988L);
+        });
+        verify(zoomMeetingClient).deleteMeeting(209988L);
+    }
+
+    @Test
+    void zoomEndRunsOnlyAfterCommit() {
+        zoomProperties.setEnabled(true);
+        mockWeek(15L);
+        Session session = Session.builder().id(30L).title("Live").status(SessionStatus.LIVE)
+                .scheduledAt(LocalDateTime.now().minusHours(1)).actualStartTime(LocalDateTime.now().minusMinutes(30))
+                .zoomMeetingId(309988L).week(weekRepository.findById(15L).orElseThrow()).build();
+        when(liveSessionRepository.findById(30L)).thenReturn(Optional.of(session));
+        var failure = new IllegalStateException("database failure");
+        when(liveSessionRepository.save(any(Session.class))).thenThrow(failure);
+        assertThatThrownBy(() -> transaction().executeWithoutResult(status -> service.endSession(30L))).isSameAs(failure);
+        verify(zoomMeetingClient, never()).endMeeting(309988L);
+        session.setStatus(SessionStatus.LIVE);
+        when(liveSessionRepository.save(any(Session.class))).thenReturn(session);
+        transaction().executeWithoutResult(status -> {
+            service.endSession(30L);
+            verify(zoomMeetingClient, never()).endMeeting(309988L);
+        });
+        verify(zoomMeetingClient).endMeeting(309988L);
+    }
+
+    @Test
+    void postCommitZoomFailureIsLoggedWithoutFailingCommittedOperation() {
+        zoomProperties.setEnabled(true);
+        mockWeek(15L);
+        Session session = Session.builder().id(10L).title("Old").status(SessionStatus.SCHEDULED)
+                .scheduledAt(LocalDateTime.now().plusDays(1)).zoomMeetingId(109988L)
+                .week(weekRepository.findById(15L).orElseThrow()).build();
+        when(liveSessionRepository.findById(10L)).thenReturn(Optional.of(session));
+        doThrow(new IllegalStateException("zoom unavailable")).when(zoomMeetingClient)
+                .updateMeeting(eq(109988L), eq("New"), org.mockito.ArgumentMatchers.isNull(), any());
+        Logger logger = (Logger) LoggerFactory.getLogger(LiveSessionServiceImp.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            transaction().executeWithoutResult(status -> service.updateSession(10L, UpdateSessionDto.builder().title("New").build()));
+            assertThat(appender.list).anyMatch(event -> event.getFormattedMessage().contains("Post-commit Zoom update failed for meeting 109988"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test
