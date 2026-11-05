@@ -1,5 +1,7 @@
 # Deployment & Operations — Primary Domain Document
 
+> **EB-67 working-tree update:** The Actuator contract in §2.4 supersedes older health statements below. Other historical audit statements in this document may also be stale and are not verified by EB-67.
+
 ## 1. Overview
 
 A single Spring Boot fat-jar served in Docker (prod profile forced), MySQL and SMTP as external dependencies, file uploads on the container's local filesystem. **There is no CI/CD** (`.github/` is empty — verified), no health checks, no observability, and no separation of artifacts from runtime data.
@@ -34,6 +36,22 @@ Supporting docs: [environment-configuration.md](environment-configuration.md) (e
 | Swagger UI | `/swagger-ui/**` — public **in prod** |
 | Static uploads | `/uploads/**` — public (ToDo comment in code) |
 | STOMP | `/ws` (SockJS) — permitAll at HTTP layer |
+
+### 2.4 Actuator health contract (EB-67 / P5-01)
+
+On the application HTTP port, anonymous GET/HEAD requests can reach exactly:
+
+| Path | Signal |
+|---|---|
+| `/actuator/health` | Overall health; Boot's configured indicators can include database, disk and mail dependencies. |
+| `/actuator/health/liveness` | Spring application liveness state only; no external dependencies. |
+| `/actuator/health/readiness` | Spring application readiness state only; no database or external dependency check. |
+
+Healthy signals return HTTP 200 and `status: UP`; DOWN or OUT_OF_SERVICE return HTTP 503. Responses omit indicator components and details, including errors and connection information. The overall health response also lists the `liveness` and `readiness` group names. Unknown statuses follow Spring Boot's status-to-HTTP mapping. Malformed or expired JWTs on these public probes are ignored, consistent with the public-route policy.
+
+The only other exposed endpoint is `/actuator/info`, restricted to `ROLE_ADMIN`; no custom info is configured. All other actuator paths, including component paths, are denied by the security chain and other management endpoints are disabled by default. Probe methods other than GET/HEAD are denied. Do not enable diagnostic endpoints or detailed health output via deployment overrides without a security review.
+
+For the planned Railway/container healthcheck, configure an HTTP GET to `/actuator/health/readiness` on the application's assigned port and treat HTTP 200 as ready; an unavailable or 503 response is not ready. This documents the integration contract only: EB-67 does not configure Railway or a Docker HEALTHCHECK. Confirm platform timeout, startup and routing behavior during EB-76/staging. Readiness does not establish PostgreSQL, Supabase, mail, or business-flow availability; adding dependency checks requires a separate routing-impact review. No production deployment was tested by EB-67.
 
 ## 3. Known Operational Risks (IDs in ../ISSUES.md)
 

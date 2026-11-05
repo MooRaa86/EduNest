@@ -119,7 +119,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **INT-02** | Med | P4-13 | 4 | integrations | T | Planned |
 | **INT-03** | Low | P1-26 | 1 | integrations | T | **Resolved / Documented — EB-33** (2026-11-01): `certificate-template.html` preserved intentionally for Decision D-11 (PDF certificate generation); documented in `external-services.md`. |
 | **DEP-01** | High | P2-07 → P6-04 | 2,6 | deployment | T | **P2-07 Verified** (workflow merged & green on main `0cd3464`; branch protection ON per Omar 2026-10-28; P6-04 extension of this workflow still open) |
-| **DEP-02** | High | P5-01, P5-02 | 5 | deployment | T | Planned |
+| **DEP-02** | High | P5-01, P5-02 | 5 | deployment | T | **P5-01 implemented in EB-67 working tree:** status-only Actuator probes and restricted info; pending review/merge. P5-02 logging/MDC remains planned. |
 | **DEP-03** | High | P6-05 | 6 | deployment | T | Planned |
 | **DEP-04** | Med | P3-01 | 3 | database | = DB-01 part | Planned |
 | **DEP-05** | Med | P1-01 → P6-03 | 1,6 | auth | = SEL-01 + infra | Planned |

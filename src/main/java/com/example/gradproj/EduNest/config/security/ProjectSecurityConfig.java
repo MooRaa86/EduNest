@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -103,7 +104,7 @@ public class ProjectSecurityConfig {
             log.warn(String.format(
                     "%n%n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%n"
                             + "!! EDUNEST IS RUNNING IN INSECURE DEV MODE (EDUNEST_UNSAFE_DEV)   !!%n"
-                            + "!! - every endpoint is public, CSRF off, sessions + basic auth on !!%n"
+                            + "!! - most endpoints public; CSRF off; sessions + basic auth on  !!%n"
                             + "!! NEVER run this mode in staging/production.                     !!%n"
                             + "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%n"
             ));
@@ -152,7 +153,12 @@ public class ProjectSecurityConfig {
                 .addFilterBefore(jwtTokenValidatorFilter, BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         // ========== Public APIs & Uploads (Single source of truth: PublicRoutesPolicy) ==========
+                        .requestMatchers(HttpMethod.GET, PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers(HttpMethod.HEAD, PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers(PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).denyAll()
                         .requestMatchers(PublicRoutesPolicy.ALL_PUBLIC_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers("/actuator/info").hasRole("ADMIN")
+                        .requestMatchers("/actuator", "/actuator/**").denyAll()
                         // EVERYTHING ELSE under /uploads/** is non-public (fail-closed):
                         // submissions/task-attachment/project-attachment, admin, unknown
                         // categories, future additions — never served via /uploads/**,
@@ -191,13 +197,18 @@ public class ProjectSecurityConfig {
 
     /**
      * DEV branch (EDUNEST_UNSAFE_DEV=true only) — permissive for local development,
-     * except for the explicit upload policy below.
+     * except for the explicit management and upload policies below.
      */
     private SecurityFilterChain devChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers(HttpMethod.HEAD, PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers(PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).denyAll()
+                        .requestMatchers("/actuator/info").hasRole("ADMIN")
+                        .requestMatchers("/actuator", "/actuator/**").denyAll()
                         .requestMatchers(UploadPolicy.PUBLIC_UPLOAD_PATTERNS.toArray(new String[0])).permitAll()
                         .requestMatchers("/uploads/**").denyAll()
                         .requestMatchers(
