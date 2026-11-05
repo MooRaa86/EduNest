@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <conversionRule conversionWord="safeMessage" class="com.example.gradproj.EduNest.config.logging.SafeMessageConverter"/>
+    <conversionRule conversionWord="safeThrowable" class="com.example.gradproj.EduNest.config.logging.SafeThrowableConverter"/>
+    <springProperty scope="context" name="LOG_LEVEL" source="app.logging.level" defaultValue="INFO"/>
+    <property name="PATTERN" value="timestamp=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%level thread=&quot;%replace(%thread){'[\r\n\t&quot;]','_'}&quot; logger=%logger requestId=%X{requestId:--} message=&quot;%safeMessage&quot;%safeThrowable%n%nopex"/>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder><pattern>${PATTERN}</pattern></encoder>
+    </appender>
+
+    <!-- Explicitly activate the logging-file Spring profile to enable disk writes. -->
+    <springProfile name="logging-file">
+        <springProperty scope="context" name="FILE_PATH" source="app.logging.file.path" defaultValue="logs/edunest.log"/>
+        <springProperty scope="context" name="FILE_MAX_SIZE" source="app.logging.file.max-size" defaultValue="10MB"/>
+        <springProperty scope="context" name="FILE_MAX_HISTORY" source="app.logging.file.max-history" defaultValue="7"/>
+        <springProperty scope="context" name="FILE_TOTAL_CAP" source="app.logging.file.total-size-cap" defaultValue="100MB"/>
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${FILE_PATH}</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${FILE_PATH}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+                <maxFileSize>${FILE_MAX_SIZE}</maxFileSize>
+                <maxHistory>${FILE_MAX_HISTORY}</maxHistory>
+                <totalSizeCap>${FILE_TOTAL_CAP}</totalSizeCap>
+            </rollingPolicy>
+            <encoder><pattern>${PATTERN}</pattern></encoder>
+        </appender>
+        <root level="${LOG_LEVEL}"><appender-ref ref="CONSOLE"/><appender-ref ref="FILE"/></root>
+    </springProfile>
+    <springProfile name="!logging-file">
+        <root level="${LOG_LEVEL}"><appender-ref ref="CONSOLE"/></root>
+    </springProfile>
+</configuration>

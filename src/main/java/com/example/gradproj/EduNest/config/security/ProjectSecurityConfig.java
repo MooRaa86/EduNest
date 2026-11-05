@@ -142,7 +142,7 @@ public class ProjectSecurityConfig {
                         config.setAllowedMethods(Collections.singletonList("*"));
                         config.setAllowCredentials(false);
                         config.setAllowedHeaders(Collections.singletonList("*"));
-                        config.setExposedHeaders(Arrays.asList("Authorization"));
+                        config.setExposedHeaders(Arrays.asList("Authorization", "X-Correlation-ID"));
                         config.setMaxAge(3600L);
                         return config;
                     }
@@ -264,7 +264,7 @@ public class ProjectSecurityConfig {
         config.setAllowedOrigins(List.of("*"));
         config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization"));
+        config.setExposedHeaders(List.of("Authorization", "X-Correlation-ID"));
         config.setAllowCredentials(false);
 
         config.setMaxAge(3600L);

@@ -170,11 +170,11 @@ public class HttpZoomMeetingClient implements ZoomMeetingClient {
                         .toBodilessEntity();
                 return null;
             });
-            log.info("Zoom meeting {} updated successfully with {}", zoomMeetingId, body);
+            log.info("Zoom meeting {} updated successfully", zoomMeetingId);
         } catch (HttpClientErrorException.NotFound notFound) {
             log.warn("Zoom meeting {} not found on cloud during update. Proceeding without error.", zoomMeetingId);
         } catch (Exception e) {
-            log.error("Failed to update Zoom meeting {}: {}", zoomMeetingId, e.getMessage(), e);
+            log.error("Failed to update Zoom meeting {}", zoomMeetingId, e);
             throw new IllegalStateException("Failed to update Zoom meeting: " + e.getMessage(), e);
         }
     }
@@ -197,7 +197,7 @@ public class HttpZoomMeetingClient implements ZoomMeetingClient {
         } catch (HttpClientErrorException.NotFound notFound) {
             log.info("Zoom meeting {} was already deleted or not found on cloud.", zoomMeetingId);
         } catch (Exception e) {
-            log.error("Failed to delete Zoom meeting {}: {}", zoomMeetingId, e.getMessage(), e);
+            log.error("Failed to delete Zoom meeting {}", zoomMeetingId, e);
             throw new IllegalStateException("Failed to delete Zoom meeting: " + e.getMessage(), e);
         }
     }
@@ -221,9 +221,9 @@ public class HttpZoomMeetingClient implements ZoomMeetingClient {
             });
             log.info("Zoom live meeting {} ended successfully.", zoomMeetingId);
         } catch (HttpClientErrorException.NotFound | HttpClientErrorException.BadRequest e) {
-            log.debug("Notice ending Zoom meeting {}: {} (may not have been started in Zoom)", zoomMeetingId, e.getMessage());
+            log.debug("Notice ending Zoom meeting {} (may not have been started in Zoom)", zoomMeetingId, e);
         } catch (Exception e) {
-            log.warn("Non-fatal warning ending Zoom meeting {}: {}", zoomMeetingId, e.getMessage());
+            log.warn("Non-fatal warning ending Zoom meeting {}", zoomMeetingId, e);
         }
     }
 
@@ -277,7 +277,7 @@ public class HttpZoomMeetingClient implements ZoomMeetingClient {
                     })
                     .body(new ParameterizedTypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
-            log.error("Failed to acquire Zoom S2S OAuth token: {}", e.getMessage(), e);
+            log.error("Failed to acquire Zoom S2S OAuth token", e);
             throw new IllegalStateException("Failed to acquire Zoom OAuth token: " + e.getMessage(), e);
         }
 

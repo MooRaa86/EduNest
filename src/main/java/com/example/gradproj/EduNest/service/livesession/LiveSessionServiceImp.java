@@ -112,8 +112,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             meetingUrl = zoomResult.joinUrl();
             hostUrl = zoomResult.startUrl();
             zoomMeetingId = zoomResult.zoomMeetingId();
-            log.info("Provisioned Zoom meeting {} (joinUrl: {}, hostUrl present) for session '{}'",
-                    zoomMeetingId, meetingUrl, createSessionDto.getTitle());
+            log.info("Provisioned Zoom meeting {} for a session", zoomMeetingId);
         }
 
         Session session = Session.builder()
@@ -182,7 +181,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             try {
                 zoomMeetingClient.updateMeeting(session.getZoomMeetingId(), newTitle, newStart, zoomProperties.getMaxMeetingMinutes());
             } catch (Exception e) {
-                log.warn("Failed to sync session update to Zoom meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
+                log.warn("Failed to sync session update to Zoom meeting {}", session.getZoomMeetingId(), e);
             }
         }
 
@@ -276,7 +275,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             try {
                 zoomMeetingClient.deleteMeeting(session.getZoomMeetingId());
             } catch (Exception e) {
-                log.warn("Failed to delete Zoom meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
+                log.warn("Failed to delete Zoom meeting {}", session.getZoomMeetingId(), e);
             }
         }
 
@@ -405,7 +404,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             try {
                 zoomMeetingClient.endMeeting(session.getZoomMeetingId());
             } catch (Exception e) {
-                log.debug("Notice on Zoom end meeting {}: {}", session.getZoomMeetingId(), e.getMessage());
+                log.debug("Notice on Zoom end meeting {}", session.getZoomMeetingId(), e);
             }
         }
 
