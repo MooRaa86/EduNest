@@ -100,7 +100,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RoleNotFoundException.class)
     public ResponseEntity<ApiError> handleRoleNotFound(HttpServletRequest req, RoleNotFoundException ex) {
         // server-side misconfiguration — do NOT reflect the missing role name to the client
-        log.error("Role misconfiguration detected (500): {}", ex.getMessage());
+        log.error("Role misconfiguration detected (500)");
         return build(req, HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.ERR_INTERNAL_SYSTEM, MSG_INTERNAL);
     }
 
@@ -266,7 +266,8 @@ public class GlobalExceptionHandler {
         String message = "The submitted data conflicts with an existing record.";
         try {
             String raw = ex.getMostSpecificCause().getMessage();
-            log.warn("Data integrity violation (friendly text): {}", raw);
+            // Database error text can contain submitted values; do not emit it.
+            log.warn("Data integrity violation");
             // [EB-44][P3-02] 23505 uniqueness -> 409 CONFLICT, message authored per constraint
             if (isUniqueViolation(ex)) {
                 String constraint = null;
@@ -315,7 +316,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleCatchAll(HttpServletRequest req, Exception exception) {
         String refId = UUID.randomUUID().toString().substring(0, 8);
-        log.error("Unhandled exception [refId={}] on {} {}", refId, req.getMethod(), req.getRequestURI(), exception);
+        // The configured log pattern includes the HTTP requestId from MDC.
+        // Do not log the URI: path segments can contain sensitive input.
+        log.error("Unhandled exception [refId={}] on {}", refId, req.getMethod(), exception);
         ApiError body = ApiError.of(HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                 ApiErrorCode.ERR_INTERNAL_SYSTEM, MSG_INTERNAL, req.getRequestURI());
