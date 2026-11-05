@@ -14,7 +14,8 @@ import java.util.stream.Stream;
  * Both the production security chain (ProjectSecurityConfig#prodChain) and the
  * JWT validation filter (JwtTokenValidatorFilter) MUST reference these constants.
  *
- * Any route in {@code ALL_PUBLIC_PATTERNS} is accessible anonymously. If a client
+ * The probe paths in {@code ALL_PUBLIC_PATTERNS} are public for GET/HEAD only;
+ * the security chain applies their method restriction. If a client
  * mistakenly sends a stale, expired, or malformed Authorization header to a public
  * route, the JWT validator gracefully ignores the invalid token instead of failing
  * fast with 401, allowing the request to proceed to the public endpoint.
@@ -22,8 +23,14 @@ import java.util.stream.Stream;
 public final class PublicRoutesPolicy {
 
     /**
-     * Public API & documentation endpoints.
+     * Exact paths for anonymous health probes (GET/HEAD only).
      */
+    public static final List<String> PUBLIC_PROBE_PATTERNS = List.of(
+            "/actuator/health",
+            "/actuator/health/liveness",
+            "/actuator/health/readiness");
+
+    /** Public API and documentation endpoints. */
     public static final List<String> PUBLIC_API_PATTERNS = List.of(
             "/swagger-ui/**",
             "/v3/api-docs",
@@ -47,7 +54,7 @@ public final class PublicRoutesPolicy {
      * Complete allowlist of all anonymous-public routes (APIs + public upload folders).
      */
     public static final List<String> ALL_PUBLIC_PATTERNS = Stream.concat(
-            PUBLIC_API_PATTERNS.stream(),
+            Stream.concat(PUBLIC_API_PATTERNS.stream(), PUBLIC_PROBE_PATTERNS.stream()),
             UploadPolicy.PUBLIC_UPLOAD_PATTERNS.stream()
     ).toList();
 
