@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.SocialMediaRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,9 +26,32 @@ public class MentorProfileForStudentService {
     private final ReviewsRepository reviewsRepository;
     private final SocialMediaRepository socialMediaRepository;
 
-    public MentorProfileforStudentDto getMentorProfile(String mentorEmail) {
-        MentorProfileforStudentDto mentorProfile = mentorRepository.findMentorProfileByEmail(mentorEmail);
-        List<SocialMedia> socialMedia = socialMediaRepository.findByUserEmail(mentorEmail);
+    private boolean isNumeric(String str) {
+        if (str == null || str.isBlank()) {
+            return false;
+        }
+        return str.chars().allMatch(Character::isDigit);
+    }
+
+    public MentorProfileforStudentDto getMentorProfile(String identifier) {
+        MentorProfileforStudentDto mentorProfile;
+        List<SocialMedia> socialMedia;
+
+        if (isNumeric(identifier)) {
+            Long mentorId = Long.parseLong(identifier);
+            mentorProfile = mentorRepository.findMentorProfileById(mentorId);
+            if (mentorProfile == null) {
+                throw new EntityNotFoundException("Mentor not found with ID: " + mentorId);
+            }
+            socialMedia = socialMediaRepository.findByUserId(mentorId);
+        } else {
+            mentorProfile = mentorRepository.findMentorProfileByEmail(identifier);
+            if (mentorProfile == null) {
+                throw new EntityNotFoundException("Mentor not found with email: " + identifier);
+            }
+            socialMedia = socialMediaRepository.findByUserEmail(identifier);
+        }
+
         List<SocialMediaLinksDto> socialMediaLinks = socialMedia.stream()
                 .map(s -> SocialMediaLinksDto.builder()
                         .media(s.getName())
@@ -38,11 +62,22 @@ public class MentorProfileForStudentService {
         return mentorProfile;
     }
 
-    public PageResponse<MentorProfileMentorshipsDto> getMentorMentorships(String mentorEmail, int size,int Page) {
-        Pageable pageable = Pageable.ofSize(size).withPage(Page);
+    public PageResponse<MentorProfileMentorshipsDto> getMentorMentorships(String identifier, int size, int page) {
+        Pageable pageable = Pageable.ofSize(size).withPage(page);
+        Page<MentorProfileMentorshipsDto> mentorshipsPage;
 
-        Page<MentorProfileMentorshipsDto> mentorshipsPage =
-                mentorShipRepository.findMentorshipsByMentorEmail(mentorEmail, pageable);
+        if (isNumeric(identifier)) {
+            Long mentorId = Long.parseLong(identifier);
+            if (!mentorRepository.existsById(mentorId)) {
+                throw new EntityNotFoundException("Mentor not found with ID: " + mentorId);
+            }
+            mentorshipsPage = mentorShipRepository.findMentorshipsByMentorId(mentorId, pageable);
+        } else {
+            if (!mentorRepository.existsByEmail(identifier)) {
+                throw new EntityNotFoundException("Mentor not found with email: " + identifier);
+            }
+            mentorshipsPage = mentorShipRepository.findMentorshipsByMentorEmail(identifier, pageable);
+        }
 
         return PageResponse.<MentorProfileMentorshipsDto>builder()
                 .content(mentorshipsPage.getContent())
@@ -53,11 +88,22 @@ public class MentorProfileForStudentService {
                 .build();
     }
 
-    public PageResponse<MentorProfileReviews> getMentorReviews(String mentorEmail, int size,int Page) {
-        Pageable pageable = Pageable.ofSize(size).withPage(Page);
+    public PageResponse<MentorProfileReviews> getMentorReviews(String identifier, int size, int page) {
+        Pageable pageable = Pageable.ofSize(size).withPage(page);
+        Page<MentorProfileReviews> reviewsPage;
 
-        Page<MentorProfileReviews> reviewsPage =
-                reviewsRepository.findReviewsByMentorEmail(mentorEmail, pageable);
+        if (isNumeric(identifier)) {
+            Long mentorId = Long.parseLong(identifier);
+            if (!mentorRepository.existsById(mentorId)) {
+                throw new EntityNotFoundException("Mentor not found with ID: " + mentorId);
+            }
+            reviewsPage = reviewsRepository.findReviewsByMentorId(mentorId, pageable);
+        } else {
+            if (!mentorRepository.existsByEmail(identifier)) {
+                throw new EntityNotFoundException("Mentor not found with email: " + identifier);
+            }
+            reviewsPage = reviewsRepository.findReviewsByMentorEmail(identifier, pageable);
+        }
 
         return PageResponse.<MentorProfileReviews>builder()
                 .content(reviewsPage.getContent())
@@ -68,13 +114,12 @@ public class MentorProfileForStudentService {
                 .build();
     }
 
-    public MentorProfileCompleteDto getMentorFullProfile(String email,
-                                                         int msSize,int msPage,
-                                                         int reviewsSize,int reviewsPage
-    ){
-        var mentorProfile = getMentorProfile(email);
-        var mentorships = getMentorMentorships(email, msSize,msPage);
-        var reviews = getMentorReviews(email, reviewsSize, reviewsPage);
+    public MentorProfileCompleteDto getMentorFullProfile(String identifier,
+                                                         int msSize, int msPage,
+                                                         int reviewsSize, int reviewsPage) {
+        var mentorProfile = getMentorProfile(identifier);
+        var mentorships = getMentorMentorships(identifier, msSize, msPage);
+        var reviews = getMentorReviews(identifier, reviewsSize, reviewsPage);
         return MentorProfileCompleteDto.builder()
                 .mentorProfile(mentorProfile)
                 .mentorships(mentorships)

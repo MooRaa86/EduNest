@@ -16,6 +16,7 @@ public interface MentorshipDetailsProjection {
     String getCoverImageUrl();
     Status getStatus();
     Double getRating();
+    Long getMentorId();
     String getMentorName();
     String getMentorEmail();
     String getMentorProfileImageUrl();

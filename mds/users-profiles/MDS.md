@@ -35,7 +35,7 @@ Repository read-models (verified list): `AuthUserProjection` (logins), `UserRole
 |---|---|---|---|
 | Student self-view/update, image | `StudentProfileController` (`/student/profile`) | class STUDENT | compose: badges, 10 latest graded projects (hardcoded `PageRequest.of(0,10)`), skills, certificates (first page of 10); social links upsert; skill-set diff-sync; image saved to `uploads/student/` via `ImageStorageService.saveImage("student", ...)` |
 | Mentor self-view/update, image | `MentorProfileInfoController` (`/mentor/profile`) | class MENTOR (+ service-level) | strict `UpdateMentorProfileRequest` (`ignoreUnknown=false`); touches UserEntity + Mentor; image → `uploads/mentor/` |
-| Mentor **public** profile | `MentorProfileForStudent` (`/api/v1/profile/mentor/**`) | **none (public)** | constructor-projection query (counts + AVG rating + bio), paginated mentorships/reviews; exposes mentor **email** as identifier (privacy note) |
+| Mentor **public** profile | `MentorProfileForStudent` (`/api/v1/profile/mentor/**`) | **none (public)** | constructor-projection query (counts + AVG rating + bio), paginated mentorships/reviews; supports dual identifier (`{mentorIdentifier}` by ID or email); mentor email redacted per D-04 (EB-88) |
 | Mentor views **student** | `MentorViewStudentProfileController` (`/profile/students/**`) | class MENTOR + `ProfileService#validateMentorHasAccessToStudent` (must have ≥1 enrollment of that student) | KPIs (active/completed), progress list, projects, full-profile composition; `status` filter param **ignored** (param dropped — suspected bug) |
 | Admin self-profile/settings | `AdminProfileAndSettingsController` (`/admin/**`) | URL + class ADMIN | name/email/password/image, OTP email change; commission read/set |
 
@@ -49,7 +49,7 @@ Repository read-models (verified list): `AuthUserProjection` (logins), `UserRole
 ## 5. Known Issues (IDs in ../ISSUES.md)
 
 - **USR-01 (Medium):** `ProfileService#getStudentProjects` ignores the `status` request param (dropped — filter silently broken).
-- **USR-02 (Low):** user list/leaderboard surfaces expose emails to broader audiences than necessary (admin directory admin-gated ✓; mentorship leaderboard guard disabled — MSH-03).
+- **USR-02 (Low):** user list/leaderboard surfaces expose emails to broader audiences than necessary (resolved on public profiles via EB-88 / D-04, leaderboards via EB-23).
 - **USR-03 (Low):** `MentorStatsProjection.totalBadges` hard-coded `0`; admin "students count" counts enrollments (double-counts repeat students; `TopMentorProjection` uses DISTINCT — inconsistent).
 - **USR-04 (Low):** Student/KPI compositions hardcode page 0 size 10 caps (profile cutting off data arbitrarily).
 - **USR-05 (Medium, xref = NOTIF-04):** `AdminRepository#findTopByOrderByCreatedAtDesc` — all admin-targeted notifications go to the **newest** admin only (`NotificationService#sendToAdmin`).

@@ -16,8 +16,9 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     boolean existsByEmail(String email);
     Optional<Mentor> findByEmail(String email);
 
-    @Query("""
+        @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto(
+        m.id,
         m.profileImageUrl,
         m.firstName,
         m.lastName,
@@ -26,7 +27,30 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
         COUNT(DISTINCT r.id),
         AVG(r.rating),
         m.bio,
-        m.email,
+        null,
+        null
+    )
+    FROM Mentor m
+    LEFT JOIN m.mentorships ms
+    LEFT JOIN ms.enrollments e
+    LEFT JOIN ms.reviews r
+    WHERE m.id = :id
+    GROUP BY m.id, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    """)
+    MentorProfileforStudentDto findMentorProfileById(@Param("id") Long id);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto(
+        m.id,
+        m.profileImageUrl,
+        m.firstName,
+        m.lastName,
+        m.yearsOfExperience,
+        COUNT(DISTINCT e.id),
+        COUNT(DISTINCT r.id),
+        AVG(r.rating),
+        m.bio,
+        null,
         null
     )
     FROM Mentor m
@@ -34,7 +58,7 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     LEFT JOIN ms.enrollments e
     LEFT JOIN ms.reviews r
     WHERE m.email = :email
-    GROUP BY m.id, m.profileImageUrl, m.firstName, m.lastName, m.bio, m.email
+    GROUP BY m.id, m.profileImageUrl, m.firstName, m.lastName, m.bio
     """)
     MentorProfileforStudentDto findMentorProfileByEmail(@Param("email") String email);
 

@@ -242,6 +242,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         m.coverImageUrl as coverImageUrl,
         m.status as status,
         m.rating as rating,
+        m.mentor.id as mentorId,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.mentor.email as mentorEmail,
         m.mentor.profileImageUrl as mentorProfileImageUrl,
@@ -276,4 +277,27 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
             Pageable pageable
     );
 
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
+        m.id,
+        m.title,
+        m.subtitle,
+        m.category,
+        m.difficultyLevel,
+        m.price,
+        m.discountPercentage,
+        m.duration,
+        m.coverImageUrl
+    )
+    FROM MentorShip m
+    LEFT JOIN m.enrollments e
+    WHERE m.mentor.id = :mentorId
+    AND m.status = 'ACTIVE'
+    GROUP BY m.id, m.title, m.subtitle, m.category, m.difficultyLevel, m.price, m.discountPercentage, m.duration, m.coverImageUrl, m.rating
+    ORDER BY m.rating DESC, COUNT(e.id) DESC
+    """)
+    Page<MentorProfileMentorshipsDto> findMentorshipsByMentorId(
+            @Param("mentorId") Long mentorId,
+            Pageable pageable
+    );
 }

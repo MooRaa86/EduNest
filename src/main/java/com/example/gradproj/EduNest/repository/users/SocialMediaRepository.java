@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface SocialMediaRepository extends JpaRepository<SocialMedia, Long> {
     List<SocialMedia> findByUserEmail(String email);
+    List<SocialMedia> findByUserId(Long userId);
 }
