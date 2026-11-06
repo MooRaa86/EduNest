@@ -16,46 +16,72 @@ public class MentorProfileForStudent {
 
     private final MentorProfileForStudentService mentorProfileService;
 
-    @GetMapping("/{mentorEmail}")
-    @Operation(summary = "Get mentor basic profile information")
-    public ResponseEntity<SimpleResponse> getMentorProfile(@PathVariable String mentorEmail) {
+    /**
+     * @deprecated Transitional dual-identifier endpoint (EB-88).
+     * Accepts numeric Long ID (primary) or legacy email (fallback).
+     * Will transition to publicId UUID in EB-109.
+     */
+    @GetMapping("/{mentorIdentifier}")
+    @Operation(
+            summary = "Get mentor basic profile information",
+            description = "Supports numeric mentor ID (primary) or legacy email. Migrating to UUID in EB-109."
+    )
+    public ResponseEntity<SimpleResponse> getMentorProfile(@PathVariable String mentorIdentifier) {
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("mentorProfile", mentorProfileService.getMentorProfile(mentorEmail));
+        response.addMessage("mentorProfile", mentorProfileService.getMentorProfile(mentorIdentifier));
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{mentorEmail}/mentorships")
-    @Operation(summary = "Get mentor mentorships with pagination")
+    /**
+     * @deprecated Transitional dual-identifier endpoint (EB-88).
+     */
+    @GetMapping("/{mentorIdentifier}/mentorships")
+    @Operation(
+            summary = "Get mentor mentorships with pagination",
+            description = "Supports numeric mentor ID (primary) or legacy email. Migrating to UUID in EB-109."
+    )
     public ResponseEntity<SimpleResponse> getMentorMentorships(
-            @PathVariable String mentorEmail,
+            @PathVariable String mentorIdentifier,
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "0") int page) {
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("mentorships", mentorProfileService.getMentorMentorships(mentorEmail, size, page));
+        response.addMessage("mentorships", mentorProfileService.getMentorMentorships(mentorIdentifier, size, page));
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{mentorEmail}/reviews")
-    @Operation(summary = "Get mentor reviews with pagination")
+    /**
+     * @deprecated Transitional dual-identifier endpoint (EB-88).
+     */
+    @GetMapping("/{mentorIdentifier}/reviews")
+    @Operation(
+            summary = "Get mentor reviews with pagination",
+            description = "Supports numeric mentor ID (primary) or legacy email. Migrating to UUID in EB-109."
+    )
     public ResponseEntity<SimpleResponse> getMentorReviews(
-            @PathVariable String mentorEmail,
+            @PathVariable String mentorIdentifier,
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "0") int page) {
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("reviews", mentorProfileService.getMentorReviews(mentorEmail, size, page));
+        response.addMessage("reviews", mentorProfileService.getMentorReviews(mentorIdentifier, size, page));
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{mentorEmail}/full")
-    @Operation(summary = "Get complete mentor profile with mentorships and reviews")
+    /**
+     * @deprecated Transitional dual-identifier endpoint (EB-88).
+     */
+    @GetMapping("/{mentorIdentifier}/full")
+    @Operation(
+            summary = "Get complete mentor profile with mentorships and reviews",
+            description = "Supports numeric mentor ID (primary) or legacy email. Migrating to UUID in EB-109."
+    )
     public ResponseEntity<SimpleResponse> getMentorFullProfile(
-            @PathVariable String mentorEmail,
+            @PathVariable String mentorIdentifier,
             @RequestParam(defaultValue = "5") int msSize,
             @RequestParam(defaultValue = "0") int msPage,
             @RequestParam(defaultValue = "5") int reviewsSize,
             @RequestParam(defaultValue = "0") int reviewsPage) {
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("profile", mentorProfileService.getMentorFullProfile(mentorEmail, msSize, msPage, reviewsSize, reviewsPage));
+        response.addMessage("profile", mentorProfileService.getMentorFullProfile(mentorIdentifier, msSize, msPage, reviewsSize, reviewsPage));
         return ResponseEntity.ok(response);
     }
 }

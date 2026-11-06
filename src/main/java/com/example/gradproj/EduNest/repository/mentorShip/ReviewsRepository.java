@@ -86,4 +86,24 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
             Pageable pageable
     );
 
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
+        r.id,
+        CONCAT(r.student.firstName, ' ', r.student.lastName),
+        r.student.email,
+        r.rating,
+        r.feedBack,
+        r.student.profileImageUrl,
+        r.mentorShip.id,
+        r.mentorShip.title,
+        r.updatedAt
+    )
+    FROM MentorShipReviews r
+    WHERE r.mentorShip.mentor.id = :mentorId
+    ORDER BY r.rating DESC
+    """)
+    Page<MentorProfileReviews> findReviewsByMentorId(
+            @Param("mentorId") Long mentorId,
+            Pageable pageable
+    );
 }

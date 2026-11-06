@@ -21,8 +21,23 @@ public class AfterEnrollData {
     private String coverImageUrl;
     private List<String> whatWillLearn;
     private List<String> tags;
+
+    /**
+     * @deprecated Temporary numeric identifier bridge (EB-88).
+     * Will transition to publicId UUID in EB-109.
+     */
+    @Deprecated
+    private Long mentorId;
+
     private String mentorName;
+
+    /**
+     * @deprecated Exposing mentor email violates D-04 / USR-02.
+     * Retained for transitional backwards compatibility.
+     */
+    @Deprecated
     private String mentorEmail;
+
     private String mentorProfileImageUrl;
     private String mentorJobTitle;
     private Integer mentorYearsOfExperience;
