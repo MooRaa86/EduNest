@@ -3,16 +3,17 @@
 Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); anchors are short link targets (`tasks.md#p6-nn`). Infra tasks carry a **Rollback consideration** field per template.
 
 <a id="p6-01"></a>
-### P6-01 — Environment & infrastructure matrix (D-22 execution)
+### P6-01 — Environment & infrastructure matrix (D-22 execution) [COMPLETED]
 
 **Priority:** P0 — every infra task and the whole launch path hang on this decision made real; it's the only P0 in an infra phase because nothing else here is decidable without it.  **Size:** M
 **Owner role:** DevOps Engineer (author) + PO (approval)   **Reviewers:** Eng Lead
 **Issues:** DEP-07 (env definition half), D-22   **Domain:** deployment
-**Components:** `ops/environments.md` (dev/test/staging/prod matrix), infra inventory doc, stakeholder approval record
+**Components:** [`ops/environments.md`](../../../ops/environments.md) (dev/test/staging/prod matrix), [`.env.example`](../../../.env.example), stakeholder approval record
 
 **Context:** Today's reality: local Dockerfile, no compose, no infra (audit DEP). The matrix defines each environment's: host, MySQL provisioning + credentials flow, TLS/domain, backups target, upload storage, and who owns what.
 **Amendment (2026-11-02, D-22):** hosting = **Vercel** with the app as a dockerized **GHCR** image (per [Vercel's Dockerfile blog](https://vercel.com/blog/dockerfile-on-vercel)). The matrix records Vercel project/env matrix, GHCR pull + registry auth, and Supabase/SMTP/Zoom env injection instead of VM provisioning; WS/STOMP + background scheduler behavior under Vercel must be verified here or flagged (risk **R14**).
 **Second amendment (2026-11-02, D-22 — team decision):** Vercel ruled a mismatch for WS + `@Scheduled` → **host = Railway** (fallback Render); matrix records a Railway project (Dockerfile deploy from GitHub or GHCR registry), env injection unchanged. Vercel row kept as the documented fallback. R14 validation task stays (Railway WS/scheduler behavior under staging load).
+**Ratification (2026-11-06, EB-72):** Ratified and delivered. Primary backend host = **Railway** connected to custom domain **`https://backend.edunest.dpdns.org/`**. Decoupled CD strategy established using dedicated **`production`** branch. DB + storage = **Supabase**. Matrix, fallback specs (Render, Vercel), secrets dictionary, and verification procedures codified in [`ops/environments.md`](../../../ops/environments.md) and [`.env.example`](../../../.env.example).
 **Evidence:** DECISIONS D-22 block; [`mds/deployment/environment-configuration.md`](../../../mds/deployment/environment-configuration.md).
 **Expected outcome:** a ratification-ready matrix + chosen infra shape recorded against D-22 (recommended default: single VM + Docker Compose + off-site DB dumps) with explicit "revisit plan" triggers.
 **Approach:** draft → review → PO approval meeting; record decision note in DECISIONS file (status flip) with matrix link.
@@ -20,7 +21,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Rollback consideration:** doc-only — rollback = revert to previous shape doc; no infra touched yet.
 **Depends on:** D-22; P5-04 list.  **Blocks:** P6-02..09.
 **Tests:** none (decision artifact).
-**Docs:** environments matrix (new ops doc), DECISIONS D-22 record; ISSUE-MAPPING DEP-07.
+**Docs:** environments matrix ([`ops/environments.md`](../../../ops/environments.md)), [`.env.example`](../../../.env.example), DECISIONS D-22 record; ISSUE-MAPPING DEP-07.
 
 <a id="p6-02"></a>
 ### P6-02 — Staging provisioning + backup policy

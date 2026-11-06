@@ -1,11 +1,14 @@
 # Environment Configuration
 
+> **Authoritative Infrastructure Reference:** See [`ops/environments.md`](../../ops/environments.md) for the ratified staging/production topology (Railway deployment at `https://backend.edunest.dpdns.org/`, Supabase PostgreSQL & S3 storage, and `production` branch CD pipeline) and [`.env.example`](../../.env.example) for the environment template.
+
 Complete configuration surface (verified against `application.properties`, `application-prod.properties`, `Dockerfile`, and the code that reads env values).
 
 ## 1. Required environment variables
 
 | Variable | Used by | Notes |
 |---|---|---|
+| `PORT` | `server.port` | HTTP container port (`${PORT:8080}`); dynamically injected by Railway/Render |
 | `DATABASE_URL` | `spring.datasource.url` | Full JDBC URL expected by the naming convention (e.g. `jdbc:postgresql://<host>:5432/<db>?sslmode=require` — see §7) |
 | `DATABASE_NAME` | `spring.datasource.username` | (name holds the *user*) |
 | `DATABASE_PASSWORD` | `spring.datasource.password` | – |
@@ -23,6 +26,7 @@ Complete configuration surface (verified against `application.properties`, `appl
 
 | Setting | default (`application.properties`) | `prod` (`application-prod.properties`) |
 |---|---|---|
+| `server.port` | `${PORT:8080}` | `${PORT:8080}` |
 | DDL | `ddl-auto=update` | `ddl-auto=update` (same) |
 | SQL logging | `show-sql=true`, `format_sql=true` | same (**prod-noisy**, DEP-04) |
 | Jackson unknown fields | default (ignored) | `fail-on-unknown-properties=true` (contract drift — API-05) |
@@ -100,7 +104,8 @@ Implemented in code: `postgresql` JDBC driver (Spring Boot-managed version) repl
 **Environment variable matrix:**
 
 | Variable | Development (local run) | Staging (container) | Production (container) |
-|---|---|---|---|
+|---|---|---|
+| `PORT` | `server.port` | HTTP container port (`${PORT:8080}`); dynamically injected by Railway/Render |---|
 | `DATABASE_URL` | `jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require` | same shape; secrets stored in GitHub Actions environment secret (`stg`) | same shape (separate Supabase project expected — distinct host/user/password); secret in GitHub Actions environment secret (`prod`) |
 | `DATABASE_NAME` | `postgres.ciogysvcykzxrjuskxmk` (holds the **user**) | separates per environment | separates per environment |
 | `DATABASE_PASSWORD` | local process environment / secret store — **never in a file** | GH environment secret | GH environment secret |
