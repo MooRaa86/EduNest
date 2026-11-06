@@ -60,7 +60,9 @@ public class EduNestAuthenticationProvider implements AuthenticationProvider {
 
         if (passwordEncoder.matches(pwd, userDetails.getPassword())) {
             lockoutService.reset(username);
-            return new UsernamePasswordAuthenticationToken(username, pwd, userDetails.getAuthorities());
+            Object principal = userDetails instanceof EduNestUserDetailsService.IdentityDetails identity
+                    ? identity.principal(username) : username;
+            return new UsernamePasswordAuthenticationToken(principal, pwd, userDetails.getAuthorities());
         }
 
         lockoutService.recordFailure(username);
