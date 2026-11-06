@@ -1,7 +1,9 @@
 package com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -11,11 +13,9 @@ import java.util.List;
 public class MentorProfileforStudentDto {
 
     /**
-     * @deprecated Temporary numeric identifier bridge (EB-88).
-     * Will transition to publicId UUID in EB-109.
+     * Opaque UUID public identifier for the mentor (EB-109 / D-04).
      */
-    @Deprecated
-    private Long mentorId;
+    private UUID mentorId;
 
     private String profileImageUrl;
     private String mentorFirstName;
@@ -34,6 +34,14 @@ public class MentorProfileforStudentDto {
     private String mentorEmail;
 
     private List<SocialMediaLinksDto> socialMediaLinks;
+
+    /**
+     * Alias getter so frontend can consume either mentorId or publicId.
+     */
+    @JsonProperty("publicId")
+    public UUID getPublicId() {
+        return mentorId;
+    }
 
     /**
      * Legacy 10-arg constructor for JPQL backwards compatibility.

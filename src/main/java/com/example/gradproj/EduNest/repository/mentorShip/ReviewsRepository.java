@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long> {
@@ -51,13 +52,8 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     FROM MentorShipReviews r
     JOIN r.student s
     WHERE r.mentorShip.id = :mentorshipId
-    ORDER BY 
-        CASE 
-            WHEN :studentEmail IS NOT NULL AND s.email = :studentEmail THEN 0 
-            ELSE 1 
-        END,
-        r.rating DESC,
-        r.createdAt DESC
+    AND (:studentEmail IS NULL OR s.email != :studentEmail)
+    ORDER BY r.rating DESC
 """)
     Page<MentorshipReviewProjection> findMentorshipReviews(
             @Param("mentorshipId") Long mentorshipId,
@@ -104,6 +100,27 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     """)
     Page<MentorProfileReviews> findReviewsByMentorId(
             @Param("mentorId") Long mentorId,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
+        r.id,
+        CONCAT(r.student.firstName, ' ', r.student.lastName),
+        r.student.email,
+        r.rating,
+        r.feedBack,
+        r.student.profileImageUrl,
+        r.mentorShip.id,
+        r.mentorShip.title,
+        r.updatedAt
+    )
+    FROM MentorShipReviews r
+    WHERE r.mentorShip.mentor.publicId = :publicId
+    ORDER BY r.rating DESC
+    """)
+    Page<MentorProfileReviews> findReviewsByMentorPublicId(
+            @Param("publicId") UUID publicId,
             Pageable pageable
     );
 }

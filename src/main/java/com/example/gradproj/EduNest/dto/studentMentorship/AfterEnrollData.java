@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import lombok.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -14,6 +15,7 @@ import java.util.List;
 @Builder
 public class AfterEnrollData {
     private Long id;
+    private UUID publicId;
     private String title;
     private String subtitle;
     private String description;
@@ -23,11 +25,9 @@ public class AfterEnrollData {
     private List<String> tags;
 
     /**
-     * @deprecated Temporary numeric identifier bridge (EB-88).
-     * Will transition to publicId UUID in EB-109.
+     * Opaque UUID public identifier for the mentor (EB-109 / D-04).
      */
-    @Deprecated
-    private Long mentorId;
+    private UUID mentorId;
 
     private String mentorName;
 

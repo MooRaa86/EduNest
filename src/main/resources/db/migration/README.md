@@ -33,8 +33,9 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | **`V1`** | **APPLIED** | `EB-43` / `P3-01` | `V1__initial_schema.sql` | Canonical baseline schema (42 entity tables, primary identities, constraints, indexes, and initial roles). |
 | **`V2`** | **APPLIED** | `EB-59` / `P4-10` | `V2__mentorship_explore_trigram_index.sql` | `pg_trgm` extension activation and specialized GIN search indexes on mentorship and user full names. |
 | **`V3`** | **BUILD COMPLETE — applied to Supabase; merge pending** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Uniqueness guarantees with deterministic dedupe (`earliest id wins`): one enrollment per (student, mentorship), one review per student per mentorship, unordered `(LEAST, GREATEST)` pair-unique conversations + `NOT NULL` participant invariant. All removed rows archived verbatim into the one-time `eb44_archive_*` surfaces; loser-conversation messages are reassigned, never dropped. See `docs/migration/EB-44-PRODUCTION-ADOPTION-RUNBOOK.md` for adoption evidence and requirements for other environments. |
-| **`V4`** | **RESERVED** | `EB-45` / `P3-03` | `V4__transactional_consistency_hardening.sql` | Transactional integrity constraints and file-operation reference consistency. |
-| **`V5`** | **RESERVED** | `EB-50` / `P3-05` | `V5__seed_commission_default.sql` | Default commission rate idempotent initialization (`app.commission.default`). |
+| **`V4`** | **APPLIED** | `EB-47` / `P3-05` | `V4__seed_default_commission.sql` | Default commission rate idempotent initialization (`app.commission.default`). |
+| **`V5`** | **RESERVED** | `EB-91` | `V5__refresh_token_sessions.sql` | Refresh token session store and revocation infrastructure. |
+| **`V6`** | **APPLIED** | `EB-109` | `V6__add_public_uuid_identifiers.sql` | Global Public UUID migration (cryptographically random `public_id` on all `BaseEntity` tables). |
 
 *Note: Do not invent or assign version numbers out of order. Consult the engineering lead and Phase 3 task roadmap before reserving versions beyond V5.*
 

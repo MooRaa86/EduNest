@@ -92,6 +92,7 @@ public class MentorshipOverviewService {
             
             BeforeEnrollData beforeEnroll = BeforeEnrollData.builder()
                     .id(mentorship.getId())
+                    .publicId(mentorship.getPublicId())
                     .title(mentorship.getTitle())
                     .subtitle(mentorship.getSubtitle())
                     .description(mentorship.getDescription())
@@ -122,6 +123,7 @@ public class MentorshipOverviewService {
         } else {
             AfterEnrollData afterEnroll = AfterEnrollData.builder()
                     .id(mentorship.getId())
+                    .publicId(mentorship.getPublicId())
                     .title(mentorship.getTitle())
                     .subtitle(mentorship.getSubtitle())
                     .description(mentorship.getDescription())
