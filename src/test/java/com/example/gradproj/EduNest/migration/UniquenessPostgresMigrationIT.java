@@ -216,7 +216,7 @@ public class UniquenessPostgresMigrationIT {
 		assertThat(result.success)
 				.as("V3 dedupe migration (including the in-file verification block) must succeed")
 				.isTrue();
-		assertThat(result.migrationsExecuted).isEqualTo(3);
+		assertThat(result.migrationsExecuted).isEqualTo(4);
 
 		// --- enrollments: winner kept, loser archived verbatim with archive metadata ---
 		assertThat(query("SELECT id FROM enrollments ORDER BY id"))

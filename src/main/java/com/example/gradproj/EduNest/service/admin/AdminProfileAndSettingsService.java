@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.admin;
 
 
 import com.example.gradproj.EduNest.dto.account.request.ChangePasswordRequest;
+import com.example.gradproj.EduNest.service.auth.RefreshTokenService;
 import com.example.gradproj.EduNest.dto.profile.request.UpdateAdminProfileRequest;
 import com.example.gradproj.EduNest.dto.profile.response.AdminProfileInformationResponse;
 import com.example.gradproj.EduNest.entity.register.OTP;
@@ -37,6 +38,7 @@ public class AdminProfileAndSettingsService {
     private final EmailService emailService;
     private final UserRepository userRepository;
     private final CommissionService commissionService;
+    private final RefreshTokenService refreshTokenService;
     private final int expiryTime = 2;
 
     private static final String admin_IMAGE_FOLDER = "admin";
@@ -166,6 +168,7 @@ public class AdminProfileAndSettingsService {
 
         admin.setPassword(passwordEncoder.encode(request.getNewPassword()));
         adminRepository.save(admin);
+        refreshTokenService.revokeAllForAdmin(admin.getId());
     }
 
     private Admin getCurrentadmin() {

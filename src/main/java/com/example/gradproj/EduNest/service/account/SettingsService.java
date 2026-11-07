@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.enums.register.OtpType;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.OTPRepository;
 import com.example.gradproj.EduNest.repository.users.UserRepository;
+import com.example.gradproj.EduNest.service.auth.RefreshTokenService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.register.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class SettingsService {
     private final OTPRepository otpRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final RefreshTokenService refreshTokenService;
     private final int expiryTime = 2;
 
     @Transactional
@@ -106,6 +108,7 @@ public class SettingsService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        refreshTokenService.revokeAllForUser(user.getId());
     }
 
 
@@ -118,6 +121,7 @@ public class SettingsService {
 
         user.setEnabled(false);
         userRepository.save(user);
+        refreshTokenService.revokeAllForUser(user.getId());
 
         SecurityContextHolder.clearContext();
     }

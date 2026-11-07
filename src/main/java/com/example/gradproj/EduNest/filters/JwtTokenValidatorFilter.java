@@ -39,6 +39,9 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+        if (jwtToken.startsWith("Bearer ")) {
+            jwtToken = jwtToken.substring(7).trim();
+        }
         try {
             jwtService.validateToken(jwtToken);
         } catch (InvalidJwtToken ex) {
