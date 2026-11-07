@@ -11,14 +11,41 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface MentorRepository extends JpaRepository<Mentor, Long> {
     boolean existsByEmail(String email);
     Optional<Mentor> findByEmail(String email);
 
-        @Query("""
+    boolean existsByPublicId(UUID publicId);
+    Optional<Mentor> findByPublicId(UUID publicId);
+
+    @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto(
-        m.id,
+        m.publicId,
+        m.profileImageUrl,
+        m.firstName,
+        m.lastName,
+        m.yearsOfExperience,
+        COUNT(DISTINCT e.id),
+        COUNT(DISTINCT r.id),
+        AVG(r.rating),
+        m.bio,
+        null,
+        null
+    )
+    FROM Mentor m
+    LEFT JOIN m.mentorships ms
+    LEFT JOIN ms.enrollments e
+    LEFT JOIN ms.reviews r
+    WHERE m.publicId = :publicId
+    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    """)
+    MentorProfileforStudentDto findMentorProfileByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto(
+        m.publicId,
         m.profileImageUrl,
         m.firstName,
         m.lastName,
@@ -35,13 +62,13 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     LEFT JOIN ms.enrollments e
     LEFT JOIN ms.reviews r
     WHERE m.id = :id
-    GROUP BY m.id, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio
     """)
     MentorProfileforStudentDto findMentorProfileById(@Param("id") Long id);
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto(
-        m.id,
+        m.publicId,
         m.profileImageUrl,
         m.firstName,
         m.lastName,
@@ -58,7 +85,7 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     LEFT JOIN ms.enrollments e
     LEFT JOIN ms.reviews r
     WHERE m.email = :email
-    GROUP BY m.id, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio
     """)
     MentorProfileforStudentDto findMentorProfileByEmail(@Param("email") String email);
 

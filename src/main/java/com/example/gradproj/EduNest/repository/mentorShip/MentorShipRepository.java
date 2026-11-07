@@ -15,9 +15,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
+    boolean existsByPublicId(UUID publicId);
+    Optional<MentorShip> findByPublicId(UUID publicId);
     boolean existsById(Long id);
     long countByMentor_Id(Long mentorId);
 
@@ -231,6 +235,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     @Query("""
     SELECT 
         m.id as id,
+        m.publicId as publicId,
         m.title as title,
         m.subtitle as subtitle,
         m.description as description,
@@ -242,7 +247,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         m.coverImageUrl as coverImageUrl,
         m.status as status,
         m.rating as rating,
-        m.mentor.id as mentorId,
+        m.mentor.publicId as mentorId,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.mentor.email as mentorEmail,
         m.mentor.profileImageUrl as mentorProfileImageUrl,
@@ -298,6 +303,56 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     """)
     Page<MentorProfileMentorshipsDto> findMentorshipsByMentorId(
             @Param("mentorId") Long mentorId,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT 
+        m.id as id,
+        m.publicId as publicId,
+        m.title as title,
+        m.subtitle as subtitle,
+        m.description as description,
+        m.category as category,
+        m.difficultyLevel as difficultyLevel,
+        m.duration as duration,
+        m.price as price,
+        m.discountPercentage as discountPercentage,
+        m.coverImageUrl as coverImageUrl,
+        m.status as status,
+        m.rating as rating,
+        m.mentor.publicId as mentorId,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
+        m.mentor.email as mentorEmail,
+        m.mentor.profileImageUrl as mentorProfileImageUrl,
+        m.mentor.jobTitle as mentorJobTitle,
+        m.mentor.yearsOfExperience as mentorYearsOfExperience
+    FROM MentorShip m
+    WHERE m.publicId = :publicId
+    """)
+    MentorshipDetailsProjection findMentorshipDetailsByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
+        m.id,
+        m.title,
+        m.subtitle,
+        m.category,
+        m.difficultyLevel,
+        m.price,
+        m.discountPercentage,
+        m.duration,
+        m.coverImageUrl
+    )
+    FROM MentorShip m
+    LEFT JOIN m.enrollments e
+    WHERE m.mentor.publicId = :publicId
+    AND m.status = 'ACTIVE'
+    GROUP BY m.id, m.title, m.subtitle, m.category, m.difficultyLevel, m.price, m.discountPercentage, m.duration, m.coverImageUrl, m.rating
+    ORDER BY m.rating DESC, COUNT(e.id) DESC
+    """)
+    Page<MentorProfileMentorshipsDto> findMentorshipsByMentorPublicId(
+            @Param("publicId") UUID publicId,
             Pageable pageable
     );
 }

@@ -3,8 +3,11 @@ package com.example.gradproj.EduNest.repository.mentorShip.projections;
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 
+import java.util.UUID;
+
 public interface MentorshipDetailsProjection {
     Long getId();
+    UUID getPublicId();
     String getTitle();
     String getSubtitle();
     String getDescription();
@@ -16,7 +19,7 @@ public interface MentorshipDetailsProjection {
     String getCoverImageUrl();
     Status getStatus();
     Double getRating();
-    Long getMentorId();
+    UUID getMentorId();
     String getMentorName();
     String getMentorEmail();
     String getMentorProfileImageUrl();

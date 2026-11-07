@@ -43,6 +43,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     @Query("""
     select
+        u.publicId as publicId,
         u.email as email,
         concat(u.firstName, ' ', u.lastName) as fullName
     from UserEntity u
