@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
@@ -46,6 +47,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final MentorRepository mentorRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final WeekRepository weekRepository;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -194,7 +196,15 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     public TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req) {
         TaskSubmission sub = validateMentorOwnsSubmission(submissionId);
 
-        Task task = sub.getTask();
+        // EB-51 — L1 -> L2 shared gate: the task's week row and the task row
+        // are lock-sorted ahead of any graded-state change, so a mentor's
+        // points edit or delete attempt can never interleave with an
+        // in-flight regrade; the points baseline (sub/task state) is verified
+        // while both gates are held.
+        weekRepository.findForUpdateById(sub.getTask().getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Task task = taskRepository.findForUpdateById(sub.getTask().getId())
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
 
         if (req.getScore() > task.getPoints()) {
             throw new globalLogicEx("score must be less than or equal to task points " + task.getPoints());

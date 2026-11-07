@@ -67,6 +67,13 @@ public class BadgeAwardService {
         if (!badge.getMentorship().getMentor().getId().equals(mentor.getId()))
             throw new AccessDeniedException("You are not authorized to award badges for this mentorship");
 
+        // EB-51 — L0 shared gate taken before any eligibility check or ledger
+        // mutation: badge point edits and the COMPLETED transition are
+        // serialised against this award so the CREDITED points snapshot
+        // (badge.getPoints()) is stable while applyDelta runs.
+        MentorShip l0Gate = mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
         Student student = studentRepository.findById(req.getStudentId())
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
@@ -85,7 +92,7 @@ public class BadgeAwardService {
 
         badgeAwardRepository.save(award);
 
-        totalPointsService.applyDelta(student, badge.getMentorship(), badge.getPoints());
+        totalPointsService.applyDelta(student, l0Gate, badge.getPoints());
 
         // Notify the student that they received a badge
         notificationService.sendToUserByEmail(

@@ -95,8 +95,16 @@
 
 ### D-09 — Points reconciliation & freeze rules
 - **Question:** Can mentors edit task/project/quiz points after grading (LEARN-06)? Badge point edits after mentorship COMPLETED (CERT-04)? Bulk-update clamp policy (GAME-03)?
-- **Options per axis:** allow+recalculate vs lock-after-first-grade; freeze badge edits on completed; clamp ≥0 always.
+- **Options per axis:** allow+recalculate vs lock-after-first-grade; freeze badge edits on COMPLETED; clamp ≥0 always.
 - **Default:** lock content points after any grade exists (regrade flows recompute explicitly); freeze badge edits on COMPLETED; clamp everywhere. Decide-by: before P4-02.
+
+- **Outcome (decided 2026-11-07, user-approved):** the documented default is adopted as-is — content point
+  values **lock after a qualifying grade exists** (task/project point edits and graded-content deletion are
+  rejected); **explicitly supported regrading is preserved** and recomputes the credited delta through the
+  service-level ledger guard; **badge point changes freeze once the mentorship reaches COMPLETED** (CERT-04);
+  **TotalPoints clamps at zero everywhere** (negative deltas floor at 0, never negative). No additional policy
+  axes were introduced. Implemented by EB-51 (P4-02) — atomic ledger writes, shared-lock gates and freeze
+  guards; reconciliation is read-only with documented reconstruction limitations.
 
 ### D-10 — passPoints/unlock
 - **Question:** Implement checkpoint unlock semantics (feature) or remove `passPoints` + fix claims?

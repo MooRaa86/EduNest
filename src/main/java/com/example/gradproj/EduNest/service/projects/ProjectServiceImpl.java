@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -146,6 +147,15 @@ public class ProjectServiceImpl implements ProjectService{
             throw new globalLogicEx("Cannot update closed project");
         }
 
+        // EB-51 — L1 -> L2 shared gate + D-09 content freeze (mirrors the task
+        // edit gate): gates are held across the value mutation and the freeze
+        // eligibility check, so an in-flight grade cannot interleave.
+        weekRepository.findForUpdateById(project.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        project = projectRepository.findForUpdateById(project.getId())
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+
+        int oldPoints = project.getPoints();
         ProjectStatus oldStatus = project.getStatus();
         if (req != null) {
             if (req.getTitle() != null) project.setTitle(req.getTitle());
@@ -164,6 +174,14 @@ public class ProjectServiceImpl implements ProjectService{
 
             if (req.getStartAt() != null) project.setStartAt(req.getStartAt());
             if (req.getEndAt() != null) project.setEndAt(req.getEndAt());
+        }
+
+        // EB-51 / D-09 (LEARN-06) — content-point freeze: project points are
+        // locked once a qualifying (GRADED) submission exists; evaluated while
+        // the gate is held, after the value mutation.
+        if (project.getPoints() != oldPoints
+                && submissionRepository.existsByProject_IdAndStatus(project.getId(), SubmissionStatus.GRADED)) {
+            throw new globalLogicEx("Project points are locked once a submission is graded");
         }
 
         if (file != null && !file.isEmpty()) {
@@ -193,6 +211,18 @@ public class ProjectServiceImpl implements ProjectService{
     @Override
     public void deleteProject(Long projectId) {
         Project project = validateMentorOwnershipAndGetProject(projectId);
+
+        // EB-51 — L1 -> L2 shared gate + D-09 delete freeze: a graded project
+        // carries reconstruction-relevant award history, so deleting it is
+        // rejected while the gate is held.
+        weekRepository.findForUpdateById(project.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        project = projectRepository.findForUpdateById(project.getId())
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+
+        if (submissionRepository.existsByProject_IdAndStatus(project.getId(), SubmissionStatus.GRADED)) {
+            throw new globalLogicEx("Cannot delete a project that has graded submissions");
+        }
 
         String filePath = project.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {

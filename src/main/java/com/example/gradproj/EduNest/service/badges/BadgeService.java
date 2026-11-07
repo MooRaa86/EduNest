@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.badges.response.BadgeResponse;
 import com.example.gradproj.EduNest.entity.badges.Badge;
 import com.example.gradproj.EduNest.entity.badges.BadgeAward;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.badges.BadgeRepository;
@@ -90,6 +91,13 @@ public class BadgeService {
 
         validateOwnership(badge.getMentorship());
 
+        // EB-51 — L0 shared gate (mirrors the award and completion gates) so a
+        // concurrent badge award or completion notification can never
+        // interleave with a badge-point diff; CERT-04 freeze is evaluated
+        // while the gate is held.
+        MentorShip gate = mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
         Integer oldPoints = badge.getPoints();
 
         if (req.getTitle() != null) badge.setTitle(req.getTitle());
@@ -97,11 +105,20 @@ public class BadgeService {
         if (req.getDescription() != null) badge.setDescription(req.getDescription());
         if (req.getPoints() != null) badge.setPoints(req.getPoints());
 
+        // EB-51 / D-09 (CERT-04) — badge-point freeze: point changes on
+        // awarded-surface badges are locked once the mentorship is COMPLETED.
+        if (gate.getStatus() == Status.COMPLETED
+                && req.getPoints() != null && !oldPoints.equals(req.getPoints())) {
+            badge.setPoints(oldPoints);
+            throw new globalLogicEx("Badge points are locked once the mentorship is completed");
+        }
+
         Badge savedBadge = badgeRepository.save(badge);
 
         if (req.getPoints() != null && !oldPoints.equals(req.getPoints())) {
             int diff = req.getPoints() - oldPoints;
-            totalPointsRepository.updatePointsForBadgeAwards(badgeId, badge.getMentorship().getId(), diff);
+            totalPointsRepository.applyBadgePointDiff(
+                    badgeId, badge.getMentorship().getId(), diff, getCurrentUserEmail());
         }
 
         return toDto(savedBadge);
@@ -112,6 +129,11 @@ public class BadgeService {
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
 
         validateOwnership(badge.getMentorship());
+
+        // EB-51 — L0 shared gate: delete serialises against awards so the
+        // award's badge reference cannot vanish mid-award.
+        mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
         if (badgeAwardRepository.existsByBadge_Id(badgeId))
             throw new globalLogicEx("Badge has already been awarded and cannot be deleted");

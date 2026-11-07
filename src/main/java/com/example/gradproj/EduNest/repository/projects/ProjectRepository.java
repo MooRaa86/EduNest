@@ -6,9 +6,11 @@ import com.example.gradproj.EduNest.repository.projects.projection.ProjectAuthPr
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectDashboardProjection;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithStatsProjection;
 import com.example.gradproj.EduNest.repository.projects.projection.UpcomingProjectProjection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +19,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectRepository extends JpaRepository<Project,Long> {
+    /** EB-51 — shared gate lock (L2) for project points-edit/delete and grading gates. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Project p WHERE p.id = :id")
+    Optional<Project> findForUpdateById(@Param("id") Long id);
     @Query("""
         SELECT p.id AS id,
                m.email AS mentorEmail,

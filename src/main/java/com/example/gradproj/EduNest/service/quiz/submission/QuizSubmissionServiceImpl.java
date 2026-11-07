@@ -84,13 +84,15 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Quiz is not available");
         }
 
-//        if (quizSubmissionDTO.getAnswers() == null
-//                || quizSubmissionDTO.getAnswers().isEmpty()) {
-//            throw new globalLogicEx("Answers are required");
-//        }
+        // EB-51 — L2 (quiz row) -> L3 (submission row) shared gate: with both
+        // locks held there is no window in which a concurrent double submit
+        // passes the score!=null eligibility check, and quiz deletion is
+        // serialised against this award path.
+        quizRepository.findForUpdateById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         QuizSubmission quizSubmission = quizSubmissionRepository
-                .findByStudent_IdAndQuiz_Id(student.getId(), quizId)
+                .findByStudentIdAndQuizIdForUpdate(student.getId(), quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not started yet"));
         if (quizSubmission.getScore() != null) {
             throw new globalLogicEx("Quiz already submitted");

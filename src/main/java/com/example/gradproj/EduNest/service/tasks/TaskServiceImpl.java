@@ -9,6 +9,7 @@ import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -116,6 +117,16 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == TaskStatus.CLOSED) {
             throw new globalLogicEx("cannot update closed task");
         }
+        // EB-51 — L1 -> L2 shared gate + D-09 content freeze: both gates are
+        // held while the points-minus baseline and the value-mutation happen,
+        // so an in-flight regrade cannot interleave with a points change.
+        weekRepository.findForUpdateById(task.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Long weekTaskId = task.getId();
+        task = taskRepository.findForUpdateById(weekTaskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        int oldPoints = task.getPoints();
         TaskStatus oldStatus = task.getStatus();
         if (request != null) {
             if (request.getTitle() != null) task.setTitle(request.getTitle());
@@ -131,6 +142,14 @@ public class TaskServiceImpl implements TaskService {
                 }
                 task.setDueAt(request.getDueAt());
             }
+        }
+        // EB-51 / D-09 (LEARN-06) — content-point freeze: task points are
+        // locked once a qualifying (GRADED) submission exists. Check happens
+        // while the gate is held, after the value mutation, so an interleaved
+        // regrade cannot slip between the eligibility check and the change.
+        if (task.getPoints() != oldPoints
+                && taskSubmissionRepository.existsByTask_IdAndStatus(task.getId(), SubmissionStatus.GRADED)) {
+            throw new globalLogicEx("Task points are locked once a submission is graded");
         }
         if (file != null && !file.isEmpty()) {
             Long mentorshipId = task.getWeek().getMentorship().getId();
@@ -161,6 +180,19 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteTask(Long taskId, String email) {
         Task task = validateMentorOwnershipAndGetTask(taskId, email);
+
+        // EB-51 — L1 -> L2 shared gate + D-09 delete freeze: a graded task
+        // carries reconstruction-relevant award history, so deleting it is
+        // rejected while the gate is held (an interleaved regrade cannot pass
+        // between the check and the delete).
+        weekRepository.findForUpdateById(task.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        task = taskRepository.findForUpdateById(task.getId())
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        if (taskSubmissionRepository.existsByTask_IdAndStatus(task.getId(), SubmissionStatus.GRADED)) {
+            throw new globalLogicEx("Cannot delete a task that has graded submissions");
+        }
 
         String filePath = task.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {

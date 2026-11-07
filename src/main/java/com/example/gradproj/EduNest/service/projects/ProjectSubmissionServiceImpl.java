@@ -17,6 +17,7 @@ import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionReposit
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
@@ -47,6 +48,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final ContentReadGuard contentReadGuard;
+    private final WeekRepository weekRepository;
 
     private void validateEnrolled(Long projectId, String email) {
         if (!enrollmentRepository.isStudentEnrolledForProjectByEmail(projectId, email)) {
@@ -162,7 +164,14 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     @Override
     public ProjectSubmissionResponse gradeProject(Long submissionId, GradeProjectSubmissionRequest req, String email) {
         ProjectSubmission sub = validateMentorOwnsSubmission(submissionId, email);
-        Project project = sub.getProject();
+
+        // EB-51 — L1 -> L2 shared gate: identical to the task-grade gate (the
+        // project's week row, then the project row) so a mentor's points edit
+        // or delete cannot interleave with an in-flight regrade.
+        weekRepository.findForUpdateById(sub.getProject().getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Project project = projectRepository.findForUpdateById(sub.getProject().getId())
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
 
         if (req.getScore() > project.getPoints()) {
             throw new globalLogicEx("score must be less than or equal to project points " + project.getPoints());

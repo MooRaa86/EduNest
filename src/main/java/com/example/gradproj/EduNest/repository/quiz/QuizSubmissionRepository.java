@@ -1,9 +1,11 @@
 package com.example.gradproj.EduNest.repository.quiz;
 
 import com.example.gradproj.EduNest.entity.quiz.QuizSubmission;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,6 +17,20 @@ import java.util.Optional;
 public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, Long> {
 
     boolean existsByStudent_IdAndQuiz_Id(Long studentId, Long quizId);
+
+    /**
+     * EB-51 — submission-row gate lock (L3): serialises the DOUBLE-SUBMIT race
+     * window where two submits for the same (student, quiz) both pass the
+     * {@code score != null} recomputation-free eligibility check; both award
+     * paths now see the merged state of the first.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT qs FROM QuizSubmission qs WHERE qs.student.id = :studentId AND qs.quiz.id = :quizId")
+    Optional<QuizSubmission> findByStudentIdAndQuizIdForUpdate(@Param("studentId") Long studentId,
+                                                               @Param("quizId") Long quizId);
+
+    /** EB-51 — freeze predicate: at least one scored quiz attempt exists. */
+    boolean existsByQuiz_IdAndScoreIsNotNull(Long quizId);
 
     Page<QuizSubmission> findAllByQuiz_Id(Long quizId, Pageable pageable);
 

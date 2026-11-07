@@ -32,6 +32,8 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
     Page<ProjectSubmission> findByProject_Id(Long projectId, Pageable pageable);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
     boolean existsByProject_IdAndStudent_Id(Long projectId, Long studentId);
+    /** EB-51 / D-09 — freeze predicate: at least one qualifying (GRADED) submission exists. */
+    boolean existsByProject_IdAndStatus(Long projectId, SubmissionStatus status);
 
     @Query("""
         SELECT
