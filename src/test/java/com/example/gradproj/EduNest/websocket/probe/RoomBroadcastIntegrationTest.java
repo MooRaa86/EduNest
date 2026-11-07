@@ -13,29 +13,30 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * P2-05 / EB-39 — room edit/delete broadcast probes (CHAT-06, payload 4).
+ * P2-05 / EB-39 & EB-55 — room edit/delete broadcast probes (CHAT-06, payload 4).
  *
- * Pins TODAY's real behavior (pre EB-20 baseline, deliberately established
- * before the server-derived routing rework of P1-13):
  * <ol>
  *   1. A message sent over the socket by a room member is broadcast ON the
  *      room topic to subscribed members.
  *   2. REST {@code PATCH /api/v1/chat-room/{roomId}/messages/{messageId}?content=}
  *      by the same sender broadcasts the UPDATED ChatMessageResponse to
- *      {@code /topic/room/{pathVar}}.
+ *      {@code /topic/room/{serverDerivedRoomId}}.
  *   3. REST {@code DELETE ...} broadcasts the {@code {type:"DELETE",
  *      messageId:...}} event shape to the room topic.
+ *   4. EB-55 / CHAT-06: Mismatched roomId in path vs message.chatRoom is rejected
+ *      with 400 ERR_BUSINESS_RULE ("Message does not belong to this room").
+ *   5. EB-55 / CHAT-06: Edit/delete by non-sender is rejected with 403 Forbidden.
  * </ol>
- * Known CHAT-06 shadow (documented, NOT asserted here): the controller builds
- * the topic from the PATH VARIABLE, not the message's actual room — a wrong
- * {roomId} would broadcast into a different room's topic. EB-20 re-derives the
- * routing server-side; when it lands, that becomes a negative probe.
  */
 @Tag("critical")
 class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 
 	private static final String MEMBER_EMAIL = "it-eb39-broadcast-member@example.org";
 	private static final String MENTOR_EMAIL = "it-eb39-broadcast-mentor@example.org";
+
+	private static final String SENDER_EMAIL = "it-eb55-sender@example.org";
+	private static final String OTHER_MEMBER_EMAIL = "it-eb55-other@example.org";
+	private static final String MENTOR2_EMAIL = "it-eb55-mentor2@example.org";
 
 	@Test
 	@DisplayName("EB39/CAST[1] socket SEND → live broadcast to subscribed peer; REST edit → updated broadcast; REST delete → DELETE event")
@@ -85,6 +86,103 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 		var rows = messageRepo.findMessagesByRoom(ctx.roomId(), null, PageRequest.of(0, 50));
 		if (rows.stream().anyMatch(m -> m.getMessageId() == messageId.longValue())) {
 			throw new AssertionError("Deleted message still persisted — sender-only delete broken");
+		}
+	}
+
+	@Test
+	@DisplayName("EB55/CHAT-06: REST edit with mismatched roomId path variable is rejected with 400 Bad Request")
+	void editMessage_mismatchedRoomId_rejectedWith400() throws Exception {
+		var ctxA = seedRoom("mismatchA", MENTOR_EMAIL);
+		var ctxB = seedRoom("mismatchB", MENTOR2_EMAIL);
+		enroll(ctxA.mentorshipId(), SENDER_EMAIL);
+		joinRoom(ctxA.roomId(), SENDER_EMAIL);
+
+		TrackingConnection sender = connect(auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT));
+		sender.session().subscribe("/topic/room/" + ctxA.roomId(), sender.handler());
+
+		sender.session().send("/app/chat/" + ctxA.roomId(), Map.of("content", "msg in room A"));
+		Map<String, Object> created = sender.awaitFrame(
+				f -> "msg in room A".equals(f.get("message")), 10);
+		Integer messageId = ((Number) created.get("id")).intValue();
+
+		// Attempt to edit messageId belonging to room A using room B path variable
+		rest.perform(MockMvcRequestBuilders
+				.patch("/api/v1/chat-room/" + ctxB.roomId() + "/messages/" + messageId)
+				.header("Authorization", auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT))
+				.queryParam("content", "spoofed edit"))
+			.andExpect(MockMvcResultMatchers.status().isBadRequest())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Message does not belong to this room")));
+
+		// Content in DB should remain unchanged
+		var msg = messageRepo.findById(messageId.longValue()).orElseThrow();
+		if (!"msg in room A".equals(msg.getContent())) {
+			throw new AssertionError("Message content was modified despite room mismatch");
+		}
+	}
+
+	@Test
+	@DisplayName("EB55/CHAT-06: REST delete with mismatched roomId path variable is rejected with 400 Bad Request")
+	void deleteMessage_mismatchedRoomId_rejectedWith400() throws Exception {
+		var ctxA = seedRoom("delMismatchA", MENTOR_EMAIL);
+		var ctxB = seedRoom("delMismatchB", MENTOR2_EMAIL);
+		enroll(ctxA.mentorshipId(), SENDER_EMAIL);
+		joinRoom(ctxA.roomId(), SENDER_EMAIL);
+
+		TrackingConnection sender = connect(auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT));
+		sender.session().subscribe("/topic/room/" + ctxA.roomId(), sender.handler());
+
+		sender.session().send("/app/chat/" + ctxA.roomId(), Map.of("content", "stay alive in room A"));
+		Map<String, Object> created = sender.awaitFrame(
+				f -> "stay alive in room A".equals(f.get("message")), 10);
+		Integer messageId = ((Number) created.get("id")).intValue();
+
+		// Attempt to delete messageId belonging to room A using room B path variable
+		rest.perform(MockMvcRequestBuilders
+				.delete("/api/v1/chat-room/" + ctxB.roomId() + "/messages/" + messageId)
+				.header("Authorization", auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT)))
+			.andExpect(MockMvcResultMatchers.status().isBadRequest())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Message does not belong to this room")));
+
+		// Message in DB should still exist
+		if (!messageRepo.existsById(messageId.longValue())) {
+			throw new AssertionError("Message was deleted despite room mismatch");
+		}
+	}
+
+	@Test
+	@DisplayName("EB55/CHAT-06: Non-sender attempting REST edit or delete is rejected with 403 Forbidden")
+	void editAndDeleteMessage_nonSender_rejectedWith403() throws Exception {
+		var ctx = seedRoom("authGuard", MENTOR_EMAIL);
+		enroll(ctx.mentorshipId(), SENDER_EMAIL);
+		joinRoom(ctx.roomId(), SENDER_EMAIL);
+		enroll(ctx.mentorshipId(), OTHER_MEMBER_EMAIL);
+		joinRoom(ctx.roomId(), OTHER_MEMBER_EMAIL);
+
+		TrackingConnection sender = connect(auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT));
+		sender.session().subscribe("/topic/room/" + ctx.roomId(), sender.handler());
+
+		sender.session().send("/app/chat/" + ctx.roomId(), Map.of("content", "sender own message"));
+		Map<String, Object> created = sender.awaitFrame(
+				f -> "sender own message".equals(f.get("message")), 10);
+		Integer messageId = ((Number) created.get("id")).intValue();
+
+		// 1) Other member attempts edit -> 403 Forbidden
+		rest.perform(MockMvcRequestBuilders
+				.patch("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
+				.header("Authorization", auth.authToken(OTHER_MEMBER_EMAIL, AuthFixture.STUDENT))
+				.queryParam("content", "hacked edit"))
+			.andExpect(MockMvcResultMatchers.status().isForbidden());
+
+		// 2) Other member attempts delete -> 403 Forbidden
+		rest.perform(MockMvcRequestBuilders
+				.delete("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
+				.header("Authorization", auth.authToken(OTHER_MEMBER_EMAIL, AuthFixture.STUDENT)))
+			.andExpect(MockMvcResultMatchers.status().isForbidden());
+
+		// DB message unchanged
+		var msg = messageRepo.findById(messageId.longValue()).orElseThrow();
+		if (!"sender own message".equals(msg.getContent())) {
+			throw new AssertionError("Message was tampered by unauthorized user");
 		}
 	}
 }

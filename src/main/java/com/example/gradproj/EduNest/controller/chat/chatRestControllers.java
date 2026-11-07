@@ -191,13 +191,14 @@ public class chatRestControllers {
             Authentication authentication
     ) {
         ChatMessageResponse updated = chatMessageService.editMessage(
+                roomId,
                 messageId,
                 authentication.getName(),
                 content
         );
         
         messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+                "/topic/room/" + updated.getRoomId(),
                 updated
         );
         
@@ -214,15 +215,16 @@ public class chatRestControllers {
             @PathVariable Long messageId,
             Authentication authentication
     ) {
-        chatMessageService.deleteMessage(messageId, authentication.getName());
+        Long targetRoomId = chatMessageService.deleteMessage(roomId, messageId, authentication.getName());
         
         Map<String, Object> event = Map.of(
                 "type", "DELETE",
-                "messageId", messageId
+                "messageId", messageId,
+                "roomId", targetRoomId
         );
         
         messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+                "/topic/room/" + targetRoomId,
                 event
         );
         
