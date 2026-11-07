@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Collection;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +47,8 @@ public class EduNestUserDetailsService implements UserDetailsService {
             }
             String roleName = "ROLE_" + user.getRoleName();
             List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));
-            return new User(user.getEmail(), user.getPassword(), authorities);
+            return new IdentityDetails(user.getEmail(), user.getPassword(), authorities,
+                    PrincipalIdentity.Type.USER, user.getId());
         }
 
         // If not found in UserRepository, try AdminRepository
@@ -59,10 +61,27 @@ public class EduNestUserDetailsService implements UserDetailsService {
             }
             String roleName = "ROLE_" + admin.getRole().getName();
             List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));
-            return new User(admin.getEmail(), admin.getPassword(), authorities);
+            return new IdentityDetails(admin.getEmail(), admin.getPassword(), authorities,
+                    PrincipalIdentity.Type.ADMIN, admin.getId());
         }
 
         throw new UsernameNotFoundException("User not found for this email : " + username);
     }
 
+    /** Password-bearing details are never exposed as the authenticated principal. */
+    static final class IdentityDetails extends User {
+        private final PrincipalIdentity.Type type;
+        private final long id;
+
+        IdentityDetails(String email, String password, Collection<? extends GrantedAuthority> authorities,
+                        PrincipalIdentity.Type type, long id) {
+            super(email, password, authorities);
+            this.type = type;
+            this.id = id;
+        }
+
+        PrincipalIdentity principal(String presentedEmail) {
+            return new PrincipalIdentity(type, id, presentedEmail);
+        }
+    }
 }
