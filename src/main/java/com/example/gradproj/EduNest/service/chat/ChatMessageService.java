@@ -185,7 +185,7 @@ public class ChatMessageService {
         }
 
         if (!msg.getSenderEmail().equals(senderEmail)) {
-            throw new AccessDeniedException("Not allowed to edit this message");
+            throw new globalLogicEx("Not allowed to edit this message");
         }
 
         msg.setContent(newContent);
@@ -216,7 +216,7 @@ public class ChatMessageService {
         }
 
         if (!msg.getSenderEmail().equals(senderEmail)) {
-            throw new AccessDeniedException("Not allowed to delete this message");
+            throw new globalLogicEx("Not allowed to delete this message");
         }
 
         Long actualRoomId = msg.getChatRoom().getId();

@@ -220,13 +220,13 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("When senderEmail does not match message sender, throws AccessDeniedException")
-        void senderMismatch_throwsAccessDenied() {
+        @DisplayName("When senderEmail does not match message sender, throws globalLogicEx")
+        void senderMismatch_throwsGlobalLogicEx() {
             when(messageRepo.findById(500L)).thenReturn(Optional.of(message1));
 
             // Called by eve@example.com instead of alice@example.com
             assertThatThrownBy(() -> chatMessageService.editMessage(10L, 500L, "eve@example.com", "new text"))
-                    .isInstanceOf(AccessDeniedException.class)
+                    .isInstanceOf(globalLogicEx.class)
                     .hasMessageContaining("Not allowed to edit this message");
         }
 
@@ -288,13 +288,13 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("When senderEmail does not match message sender, throws AccessDeniedException")
-        void senderMismatch_throwsAccessDenied() {
+        @DisplayName("When senderEmail does not match message sender, throws globalLogicEx")
+        void senderMismatch_throwsGlobalLogicEx() {
             when(messageRepo.findById(500L)).thenReturn(Optional.of(message1));
 
             // Called by eve@example.com instead of alice@example.com
             assertThatThrownBy(() -> chatMessageService.deleteMessage(10L, 500L, "eve@example.com"))
-                    .isInstanceOf(AccessDeniedException.class)
+                    .isInstanceOf(globalLogicEx.class)
                     .hasMessageContaining("Not allowed to delete this message");
             verify(messageRepo, never()).delete(any());
         }

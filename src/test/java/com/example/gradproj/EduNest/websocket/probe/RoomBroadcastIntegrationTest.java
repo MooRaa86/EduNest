@@ -150,8 +150,8 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 	}
 
 	@Test
-	@DisplayName("EB55/CHAT-06: Non-sender attempting REST edit or delete is rejected with 403 Forbidden")
-	void editAndDeleteMessage_nonSender_rejectedWith403() throws Exception {
+	@DisplayName("EB55/CHAT-06: Non-sender attempting REST edit or delete is rejected with 400 Bad Request")
+	void editAndDeleteMessage_nonSender_rejectedWith400() throws Exception {
 		var ctx = seedRoom("authGuard", MENTOR_EMAIL);
 		enroll(ctx.mentorshipId(), SENDER_EMAIL);
 		joinRoom(ctx.roomId(), SENDER_EMAIL);
@@ -166,18 +166,20 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 				f -> "sender own message".equals(f.get("message")), 10);
 		Integer messageId = ((Number) created.get("id")).intValue();
 
-		// 1) Other member attempts edit -> 403 Forbidden
+		// 1) Other member attempts edit -> 400 Bad Request
 		rest.perform(MockMvcRequestBuilders
 				.patch("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(OTHER_MEMBER_EMAIL, AuthFixture.STUDENT))
 				.queryParam("content", "hacked edit"))
-			.andExpect(MockMvcResultMatchers.status().isForbidden());
+			.andExpect(MockMvcResultMatchers.status().isBadRequest())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Not allowed to edit this message")));
 
-		// 2) Other member attempts delete -> 403 Forbidden
+		// 2) Other member attempts delete -> 400 Bad Request
 		rest.perform(MockMvcRequestBuilders
 				.delete("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(OTHER_MEMBER_EMAIL, AuthFixture.STUDENT)))
-			.andExpect(MockMvcResultMatchers.status().isForbidden());
+			.andExpect(MockMvcResultMatchers.status().isBadRequest())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Not allowed to delete this message")));
 
 		// DB message unchanged
 		var msg = messageRepo.findById(messageId.longValue()).orElseThrow();
