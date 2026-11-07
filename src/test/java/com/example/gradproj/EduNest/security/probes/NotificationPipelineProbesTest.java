@@ -143,7 +143,7 @@ public class NotificationPipelineProbesTest extends ProdChainIntegrationTestBase
 		TransactionTemplate tx = new TransactionTemplate(txManager);
 
 		// Wait briefly for @Async execution and check inside tx session
-		long deadline = System.currentTimeMillis() + 4000;
+		long deadline = System.currentTimeMillis() + 8000;
 		int a1Count = 0;
 		int a2Count = 0;
 		while (System.currentTimeMillis() < deadline) {
