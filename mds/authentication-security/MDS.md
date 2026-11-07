@@ -26,7 +26,7 @@ Supporting documents:
 | R5 | Account delete (soft), deactivate, restore via OTP | Implemented |
 | R6 | Change email via OTP sent to the **new** address; change password with old-password check | Implemented |
 | R7 | Admin bootstrap: one-time public `POST /api/v1/admin/register` (first admin only, synchronized one-shot guard; credentials never returned; last-admin delete guarded — P1-09/EB-16) | Implemented |
-| R8 | Server-side logout/invalidation, refresh tokens | **Not implemented** |
+| R8 | Server-side logout/invalidation, single-use refresh token rotation (RTR), family replay defense, and global session revocation (EB-91 / D-01 / SEL-06) | Implemented |
 | R9 | Rate limiting / brute-force protection on OTP and login | **Not implemented** |
 
 ## 3. Current Implementation (map)

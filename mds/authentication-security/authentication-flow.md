@@ -31,12 +31,23 @@ Controller: `POST /login-api` returns the raw JWT in the `Authorization` respons
    - `UserRepository.findAuthUser` projection (id, email, password, enabled, roleName, deleted).
    - No role → ` globalLogicEx`; disabled → "This account is not verified, request a new otp..."; deleted → "This User is deleted! Contact us.."; password mismatch → `BadCredentialsException("Invalid password!")`.
    - Admin fallback: `AdminRepository.findByEmail` (admins have no enabled/deleted columns).
-3. JWT — `JwtService.generateToken` (line 41):
-   - HS256, issuer `"EduNest"`, subject `"JWT Token"`, `exp = now + 7 days` (`EXPIRATION_TIME_MS`, line 33).
-   - Claims: `username` (email), `authorities` (`ROLE_MENTOR` etc., comma-joined), `fullName` (`UserRepository.findFullNameByEmail` or Admin first+last).
-   - Secret: `getSecretKey` (line 165) uses `env.getProperty(Constants.JWT_SECRET_KEY, Constants.JWT_SECRET_DEFAULT_VALUE)` → **committed default `jxgEQeXKcPq8VdbyYFNkANomdQ53YUn4` if env unset**.
-4. Role in the response is parsed by `LoginServiceI.getJwtRole` (line 41) — **hardcodes the default secret instead of env resolution** → when `JWT_SECRET` env differs, login fails here despite correct issuance/validation.
-5. Response: JWT in `SimpleResponse.jwt` **and** `Authorization` header. No cookie, **no refresh token** anywhere in the repo.
+3. JWT Access Token — `JwtService.generateAccessToken` / `generateToken`:
+   - HS256, issuer `"EduNest"`, subject `"JWT Token"`, `exp = now + 15 minutes` (`EXPIRATION_TIME_MS`).
+   - Claims: `username` (email), `authorities` (`ROLE_STUDENT` etc.), `fullName`, `userId` (public UUID), `ownerType` (`USER` | `ADMIN`), `ownerId` (BIGINT PK), `jti` (unique token ID).
+4. Refresh Token Issuance (`RefreshTokenService.issueInitialTokenPair` — EB-91 / D-01 / SEL-06):
+   - Generates 256-bit CSPRNG raw token (Base64URL), assigns new `family_id` (UUID), stores only SHA-256 digest (`token_hash`) in `refresh_token_sessions`.
+   - Sliding expiration: 7 days (`expires_at`), capped by absolute expiration: 30 days (`family_expires_at`).
+5. Response: Returns access `jwt` in header and body, `refreshToken` in body, and `Role`.
+
+### 2.1 Refresh Token Rotation & Session Revocation (EB-91)
+
+Full specification and sequence diagrams in [refresh-token-session-flow.md](refresh-token-session-flow.md).
+
+- **Rotation (`POST /login-api/refresh`)**: Single-use Refresh Token Rotation (RTR). Re-issues new 15-minute access JWT and new refresh token, updates sliding expiration, marks old refresh token revoked (`replaced_by_hash`).
+- **Replay Attack Defense**: Replaying an already-revoked refresh token triggers immediate family-wide revocation via an isolated transaction (`RefreshTokenTx`), protecting the account.
+- **Single Logout (`POST /login-api/logout`)**: Revokes the specific refresh token session (`revoked_reason = 'USER_LOGOUT'`).
+- **Global Logout (`POST /login-api/logout-all`)**: Revokes all refresh sessions across all devices for the authenticated account (`revoked_reason = 'LOGOUT_ALL'`).
+- **Lifecycle Invalidation Hooks**: Password change, account deactivation, and password reset OTP automatically revoke all outstanding refresh sessions.
 
 ## 3. Per-request JWT validation (prod only)
 
