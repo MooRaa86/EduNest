@@ -88,8 +88,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute scripts V1 through V7")
-                .isEqualTo(7);
+                .as("Initial migration must execute scripts V1 through V8")
+                .isEqualTo(8);
     }
 
     @Test
@@ -98,8 +98,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Seven migrations must be registered in flyway_schema_history")
-                .hasSize(7);
+                .as("Eight migrations must be registered in flyway_schema_history")
+                .hasSize(8);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -152,6 +152,13 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v7.getType().name()).isEqualTo("SQL");
         assertThat(v7.getState().isApplied()).isTrue();
         assertThat(v7.getChecksum()).isNotNull();
+        // [EB-62] V8 failed email attempts
+        MigrationInfo v8 = applied[7];
+        assertThat(v8.getVersion().getVersion()).isEqualTo("8");
+        assertThat(v8.getDescription()).isEqualTo("failed email attempts");
+        assertThat(v8.getType().name()).isEqualTo("SQL");
+        assertThat(v8.getState().isApplied()).isTrue();
+        assertThat(v8.getChecksum()).isNotNull();
     }
 
     @Test
@@ -177,11 +184,11 @@ public class PostgreSqlMigrationIntegrationTest {
                 }
                 assertThat(tables)
                         .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
-                        .hasSize(47);
+                        .hasSize(48);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
                         .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
-                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions");
+                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions", "failed_email_attempts");
             }
 
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
@@ -457,8 +464,8 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations V2 through V7")
-                    .isEqualTo(6);
+                    .as("Post-baseline migrate must apply pending migrations V2 through V8")
+                    .isEqualTo(7);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {
@@ -647,16 +654,17 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .target("7")
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
             MigrateResult upgraded = upgrade.migrate();
             assertThat(upgraded.success).isTrue();
             assertThat(upgraded.migrationsExecuted)
-                    .as("Upgrade from the V6-shaped database must apply exactly V7")
+                    .as("Upgrade from the V6-shaped database to V7 must apply exactly V7")
                     .isEqualTo(1);
             assertThat(upgrade.info().applied())
-                    .as("Upgraded schema history must hold all seven migrations")
+                    .as("Upgraded schema history must hold all seven migrations through V7")
                     .hasSize(7);
 
             // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.

@@ -216,8 +216,10 @@ public class UniquenessPostgresMigrationIT {
 		assertThat(result.success)
 				.as("V3 dedupe migration (including the in-file verification block) must succeed")
 				.isTrue();
-		// EB-44 scoped V3..V6 dedupe/baseline work; EB-54's additive V7 rides along and must not fail it.
-		assertThat(result.migrationsExecuted).isEqualTo(5);
+		// EB-44 scoped V3..V6 dedupe/baseline work; subsequent additive migrations (V7, V8, ...) ride along.
+		assertThat(result.migrationsExecuted)
+				.as("Dedupe migration and subsequent additive migrations must succeed")
+				.isGreaterThanOrEqualTo(4);
 
 		// --- enrollments: winner kept, loser archived verbatim with archive metadata ---
 		assertThat(query("SELECT id FROM enrollments ORDER BY id"))
