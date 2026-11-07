@@ -40,10 +40,12 @@ public class ChatWebSocketController {
                         principal
                 );
 
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
-                response
-        );
+        if (response != null) {
+            messagingTemplate.convertAndSend(
+                    "/topic/room/" + roomId,
+                    response
+            );
+        }
     }
 
 }

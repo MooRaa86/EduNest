@@ -13,6 +13,7 @@ import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.chat.ChatAuthorization;
 import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -73,9 +75,15 @@ public class ChatMessageService {
 
         ChatRoom room = roomRepo.getReferenceById(roomId);
 
-        UserEntity sender = userRepo.findByEmail(principal.email()).orElseThrow(
-                () -> new UsernameNotFoundException("User not found")
-        );
+        UserEntity sender = userRepo.findByEmail(principal.email()).orElse(null);
+        if (sender == null) {
+            messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    "User not found"
+            );
+            return null;
+        }
 
         ChatMessage message = ChatMessage.builder()
                 .content(content)
@@ -85,7 +93,18 @@ public class ChatMessageService {
                 .sender(sender)
                 .build();
 
-        ChatMessage saved = messageRepo.save(message);
+        ChatMessage saved;
+        try {
+            saved = messageRepo.save(message);
+        } catch (Exception ex) {
+            log.error("Failed to save chat message in room {} for user {}", roomId, principal.email(), ex);
+            messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    "Failed to save message. Please try again."
+            );
+            return null;
+        }
 
         return messageMapper(saved, roomId);
     }
@@ -128,13 +147,13 @@ public class ChatMessageService {
 
     private ChatMessageResponse messageMapper(ChatMessage message,Long roomId) {
         return ChatMessageResponse.builder()
-                .id(message.getId())
+                .id(message.getId() != null ? message.getId() : 0L)
                 .message(message.getContent())
                 .roomId(roomId)
                 .time(message.getCreatedAt())
                 .senderName(message.getSenderName())
                 .senderEmail(message.getSenderEmail())
-                .senderProfileImageUrl(message.getSender().getProfileImageUrl())
+                .senderProfileImageUrl(message.getSender() != null ? message.getSender().getProfileImageUrl() : null)
                 .build();
     }
 
@@ -144,8 +163,26 @@ public class ChatMessageService {
             String senderEmail,
             String newContent
     ) {
+        return editMessage(null, messageId, senderEmail, newContent);
+    }
+
+    @Transactional
+    public ChatMessageResponse editMessage(
+            Long roomId,
+            Long messageId,
+            String senderEmail,
+            String newContent
+    ) {
+        if (newContent == null || newContent.isBlank()) {
+            throw new globalLogicEx("Message content must not be blank");
+        }
+
         ChatMessage msg = messageRepo.findById(messageId)
-                .orElseThrow(() -> new UsernameNotFoundException("Message not found"));
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+
+        if (roomId != null && !msg.getChatRoom().getId().equals(roomId)) {
+            throw new globalLogicEx("Message does not belong to this room");
+        }
 
         if (!msg.getSenderEmail().equals(senderEmail)) {
             throw new globalLogicEx("Not allowed to edit this message");
@@ -162,11 +199,29 @@ public class ChatMessageService {
             Long messageId,
             String senderEmail
     ) {
-        int deleted = messageRepo.deleteByIdAndSender(messageId, senderEmail);
+        deleteMessage(null, messageId, senderEmail);
+    }
 
-        if (deleted == 0) {
-            throw new BadCredentialsException("Not allowed to delete this message");
+    @Transactional
+    public Long deleteMessage(
+            Long roomId,
+            Long messageId,
+            String senderEmail
+    ) {
+        ChatMessage msg = messageRepo.findById(messageId)
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+
+        if (roomId != null && !msg.getChatRoom().getId().equals(roomId)) {
+            throw new globalLogicEx("Message does not belong to this room");
         }
+
+        if (!msg.getSenderEmail().equals(senderEmail)) {
+            throw new globalLogicEx("Not allowed to delete this message");
+        }
+
+        Long actualRoomId = msg.getChatRoom().getId();
+        messageRepo.delete(msg);
+        return actualRoomId;
     }
 
 }
