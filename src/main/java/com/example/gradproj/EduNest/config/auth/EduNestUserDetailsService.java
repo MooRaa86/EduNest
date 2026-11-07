@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Collection;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -82,6 +83,20 @@ public class EduNestUserDetailsService implements UserDetailsService {
 
         PrincipalIdentity principal(String presentedEmail) {
             return new PrincipalIdentity(type, id, presentedEmail);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            if (!super.equals(o)) return false;
+            IdentityDetails that = (IdentityDetails) o;
+            return id == that.id && type == that.type;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), type, id);
         }
     }
 }

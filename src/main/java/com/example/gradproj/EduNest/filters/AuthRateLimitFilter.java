@@ -60,6 +60,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     static {
         BUCKET_ROUTES.put("LOGIN", new String[]{"/login-api"});
+        BUCKET_ROUTES.put("REFRESH", new String[]{"/login-api/refresh"});
         BUCKET_ROUTES.put("OTP_ISSUE", new String[]{
                 "/api/v1/register/send-otp", "/api/v1/register/restore", "/forget-password"});
         BUCKET_ROUTES.put("OTP_VERIFY", new String[]{

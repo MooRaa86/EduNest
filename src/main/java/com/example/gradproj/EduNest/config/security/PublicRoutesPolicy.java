@@ -39,6 +39,8 @@ public final class PublicRoutesPolicy {
             "/api/auth/**",
             "/api/v1/register/**",
             "/login-api",
+            "/login-api/refresh",
+            "/login-api/logout",
             "/forget-password/**",
             "/api/v1/admin/register",
             "/ws/**",

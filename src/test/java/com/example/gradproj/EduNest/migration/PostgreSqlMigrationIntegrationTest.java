@@ -71,6 +71,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .outOfOrder(true)
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
         }
@@ -87,8 +88,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute exactly 5 scripts (V1, V2, V3, V4, V6)")
-                .isEqualTo(5);
+                .as("Initial migration must execute exactly 6 scripts (V1, V2, V3, V4, V5, V6)")
+                .isEqualTo(6);
     }
 
     @Test
@@ -98,7 +99,7 @@ public class PostgreSqlMigrationIntegrationTest {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
                 .as("Exactly 4 migrations must be registered in flyway_schema_history")
-                .hasSize(5);
+                .hasSize(6);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -130,8 +131,16 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v4.getState().isApplied()).isTrue();
         assertThat(v4.getChecksum()).isNotNull();
 
-        // [EB-109] V6 public uuid identifiers (V5 reserved for EB-91)
-        MigrationInfo v6 = applied[4];
+        // [EB-91] V5 refresh token sessions
+        MigrationInfo v5 = applied[4];
+        assertThat(v5.getVersion().getVersion()).isEqualTo("5");
+        assertThat(v5.getDescription()).isEqualTo("refresh token sessions");
+        assertThat(v5.getType().name()).isEqualTo("SQL");
+        assertThat(v5.getState().isApplied()).isTrue();
+        assertThat(v5.getChecksum()).isNotNull();
+
+        // [EB-109] V6 public uuid identifiers
+        MigrationInfo v6 = applied[5];
         assertThat(v6.getVersion().getVersion()).isEqualTo("6");
         assertThat(v6.getDescription()).isEqualTo("add public uuid identifiers");
         assertThat(v6.getType().name()).isEqualTo("SQL");
@@ -162,11 +171,11 @@ public class PostgreSqlMigrationIntegrationTest {
                 }
                 assertThat(tables)
                         .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
-                        .hasSize(46);
+                        .hasSize(47);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
                         .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
-                                "eb44_archive_conversations", "eb44_archive_messages");
+                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions");
             }
 
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
@@ -336,6 +345,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .outOfOrder(true)
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
@@ -420,6 +430,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .baselineOnMigrate(false) // Must be false
                     .baselineVersion("1")
                     .cleanDisabled(true)
+                    .outOfOrder(true)
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
@@ -440,8 +451,8 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3, V4, V6)")
-                    .isEqualTo(4);
+                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3, V4, V5, V6)")
+                    .isEqualTo(5);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {
