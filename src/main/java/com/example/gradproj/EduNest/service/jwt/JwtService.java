@@ -49,16 +49,19 @@ public class JwtService implements JwtServiceI{
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        // Try to get full name from UserRepository first, then AdminRepository
+        // Try to get full name and public UUID from UserRepository first, then AdminRepository
         String fullName;
+        String userId;
         UserFullNameProjection user = userRepository.findFullNameByEmail(username).orElse(null);
         if (user != null) {
             fullName = user.getFullName();
+            userId = user.getPublicId() != null ? user.getPublicId().toString() : null;
         } else {
             // Try to get from AdminRepository
             Admin admin = adminRepository.findByEmail(username)
                     .orElseThrow(() -> new UsernameNotFoundException("User or Admin not found"));
             fullName = admin.getFirstName() + " " + admin.getLastName();
+            userId = admin.getPublicId() != null ? admin.getPublicId().toString() : null;
         }
 
         return Jwts.builder()
@@ -66,6 +69,7 @@ public class JwtService implements JwtServiceI{
                 .subject("JWT Token")
                 .issuedAt(new Date())
                 .expiration(new Date(new Date().getTime() + EXPIRATION_TIME_MS))
+                .claim("userId", userId)
                 .claim("username", username)
                 .claim("authorities", authorities)
                 .claim("fullName", fullName)
@@ -137,6 +141,12 @@ public class JwtService implements JwtServiceI{
         Claims claims = extractAllClaims(token);
         return claims.get("fullName", String.class);
 
+    }
+
+    @Override
+    public String extractUserId(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("userId", String.class);
     }
 
     @Override

@@ -54,4 +54,18 @@ class JwtRoleRotationTest {
 
         assertThat(loginService.getJwtRole(token)).isEqualTo("ROLE_STUDENT,ROLE_USER");
     }
+    @Test
+    @DisplayName("userId claim parses under secret A")
+    void userIdClaimParsesCorrectly() {
+        String expectedUuid = "123e4567-e89b-12d3-a456-426614174000";
+        String token = Jwts.builder()
+                .claim("userId", expectedUuid)
+                .claim("username", "student1@edunest.local")
+                .claim("authorities", "ROLE_STUDENT")
+                .claim("fullName", "Test Student")
+                .signWith(jwtServiceWithSecret(SECRET_A).getSecretKey())
+                .compact();
+
+        assertThat(jwtServiceWithSecret(SECRET_A).extractUserId(token)).isEqualTo(expectedUuid);
+    }
 }

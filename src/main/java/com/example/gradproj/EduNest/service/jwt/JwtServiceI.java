@@ -13,4 +13,5 @@ public interface JwtServiceI {
     String extractAuthorities(String token);
     Claims extractAllClaims(String token);
     String getFullName(String token);
+    String extractUserId(String token);
 }
