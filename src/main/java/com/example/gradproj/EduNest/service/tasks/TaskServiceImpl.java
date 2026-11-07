@@ -10,6 +10,7 @@ import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -274,7 +275,7 @@ public class TaskServiceImpl implements TaskService {
                 .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                 .description(task.getDescription())
                 .totalSubmissions((int) submissionsPage.getTotalElements())
-                .pendingReview(totalStudents - submissionsPage.getTotalPages())
+                .pendingReview(Math.toIntExact(taskSubmissionRepository.countByTask_IdAndStatus(taskId, SubmissionStatus.SUBMITTED)))
                 .createdAt(task.getCreatedAt())
                 .deadLine(task.getDueAt())
                 .totalPoints(task.getPoints())

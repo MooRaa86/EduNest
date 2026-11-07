@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.tasks;
 
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissionProjection;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
 
     @Query("SELECT s FROM TaskSubmission s JOIN FETCH s.student WHERE s.task.id = :taskId")
     Page<TaskSubmission> findByTask_Id(Long taskId, Pageable pageable);
+    long countByTask_IdAndStatus(Long taskId, SubmissionStatus status);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);
     boolean existsByTask_IdAndStudent_Id(Long taskId, Long studentId);
 

@@ -1,181 +1,81 @@
 package com.example.gradproj.EduNest.service.certificate;
 
-import com.example.gradproj.EduNest.dto.studentMentorship.StudentInLeaderboardDto;
-import com.example.gradproj.EduNest.entity.certificate.Certificate;
-import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
-import com.example.gradproj.EduNest.entity.users.Student;
-import com.example.gradproj.EduNest.enums.notification.NotificationType;
-import com.example.gradproj.EduNest.repository.certificate.CertificateRepository;
-import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
+import com.example.gradproj.EduNest.entity.points.TotalPoints;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
-import com.example.gradproj.EduNest.repository.users.StudentRepository;
-import com.example.gradproj.EduNest.service.notification.NotificationService;
-import com.example.gradproj.EduNest.service.security.SecurityService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
+import com.example.gradproj.EduNest.security.probes.AuthFixture;
+import com.example.gradproj.EduNest.testing.ProdChainIntegrationTestBase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
-import java.util.Optional;
-
+import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class CertificateRankAssignmentTest {
+/** Behavioral replacement for the old saveAll/mock-specific assertions. */
+class CertificateRankAssignmentTest extends ProdChainIntegrationTestBase {
+    @Autowired private AuthFixture auth;
+    @Autowired private TotalPointsRepository points;
+    @Autowired private CertificateService service;
+    @Autowired private JdbcTemplate jdbc;
 
-    private static final Long MENTORSHIP_ID = 7L;
-
-    private TotalPointsRepository totalPointsRepository;
-    private MentorShipRepository mentorShipRepository;
-    private CertificateRepository certificateRepository;
-    private StudentRepository studentRepository;
-    private NotificationService notificationService;
-    private SecurityService securityService;
-
-    private CertificateService service;
-    private MentorShip mentorship;
-
-    @BeforeEach
-    void setUp() {
-        totalPointsRepository = mock(TotalPointsRepository.class);
-        mentorShipRepository = mock(MentorShipRepository.class);
-        certificateRepository = mock(CertificateRepository.class);
-        studentRepository = mock(StudentRepository.class);
-        notificationService = mock(NotificationService.class);
-        securityService = mock(SecurityService.class);
-
-        // Constructor field order (Lombok @RequiredArgsConstructor):
-        // totalPointsRepository, mentorShipRepository, certificateRepository,
-        // studentRepository, notificationService, securityService
-        service = new CertificateService(
-                totalPointsRepository, mentorShipRepository, certificateRepository,
-                studentRepository, notificationService, securityService);
-
-        mentorship = MentorShip.builder().id(MENTORSHIP_ID).title("Backend Track").build();
+    private void authenticate(String email) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                email, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
     }
 
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
-
-    private static Student student(long id, String email) {
-        return Student.builder().id(id).firstName("Stu").lastName(String.valueOf(id))
-                .email(email).build();
-    }
-
-    private static StudentInLeaderboardDto row(String email, int points) {
-        return StudentInLeaderboardDto.builder()
-                .studentEmail(email)
-                .totalPoints(points)
-                .build();
-    }
-
-    /** Common stubbing; `students` is what findAllByEmailIn "finds" in the DB. */
-    private void stubIssuePath(List<StudentInLeaderboardDto> leaderboard, List<Student> students) {
-        when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
-        when(securityService.isMentorOwnMentorship(MENTORSHIP_ID, "mentor@test.com")).thenReturn(true);
-        when(mentorShipRepository.findById(MENTORSHIP_ID)).thenReturn(Optional.of(mentorship));
-        // matchers (not raw values) — Pageable.unpaged() instances are not safely equals-comparable
-        when(totalPointsRepository.findLeaderboardByMentorshipId(eq(MENTORSHIP_ID), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(leaderboard));
-        when(studentRepository.findAllByEmailIn(
-                leaderboard.stream().map(StudentInLeaderboardDto::getStudentEmail).toList()))
-                .thenReturn(students);
-    }
-
-    @SuppressWarnings("unchecked")
-    private ArgumentCaptor<List<Certificate>> listCaptor() {
-        return (ArgumentCaptor<List<Certificate>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(List.class);
-    }
-
-    // ------------------------------------------------------------------
-    // Tests
-    // ------------------------------------------------------------------
+    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
 
     @Test
-    @DisplayName("Ranks follow leaderboard order 1..N and every student is notified")
     void ranksFollowLeaderboardOrder() {
-        // leaderboard is already sorted DESC by points (repository query)
-        List<StudentInLeaderboardDto> leaderboard = List.of(
-                row("gold@test.com", 90), row("silver@test.com", 60), row("bronze@test.com", 30));
-        List<Student> students = List.of(
-                student(11L, "gold@test.com"), student(12L, "silver@test.com"), student(13L, "bronze@test.com"));
-        stubIssuePath(leaderboard, students);
-
-        service.issueCertificates(MENTORSHIP_ID);
-
-        ArgumentCaptor<List<Certificate>> captor = listCaptor();
-        verify(certificateRepository, times(1)).saveAll(captor.capture());
-        List<Certificate> saved = captor.getValue();
-
-        assertThat(saved).hasSize(3);
-        assertThat(saved).extracting(Certificate::getRank).containsExactly(1L, 2L, 3L);
-        assertThat(saved).extracting(c -> c.getStudent().getEmail())
-                .containsExactly("gold@test.com", "silver@test.com", "bronze@test.com");
-        assertThat(saved).extracting(Certificate::getMentorship).containsOnly(mentorship);
-        // All issued at the same instant
-        assertThat(saved).extracting(Certificate::getIssuedAt).containsOnly(saved.get(0).getIssuedAt());
-
-        // One notification per certificate, message carries the rank
-        verify(notificationService).sendToUserByEmail(
-                eq("gold@test.com"), eq("Certificate Issued!"),
-                contains("rank #1"), eq(NotificationType.CERTIFICATE));
-        verify(notificationService).sendToUserByEmail(
-                eq("bronze@test.com"), eq("Certificate Issued!"),
-                contains("rank #3"), eq(NotificationType.CERTIFICATE));
-        verify(notificationService, times(3))
-                .sendToUserByEmail(any(), any(), contains("rank #"), eq(NotificationType.CERTIFICATE));
+        String owner = "eb54-rank-owner@example.org";
+        var chain = auth.mentorship(owner, Status.ACTIVE);
+        var a = auth.enroll(chain.mentorship().getId(), "eb54-rank-a@example.org").getStudent();
+        var b = auth.enroll(chain.mentorship().getId(), "eb54-rank-b@example.org").getStudent();
+        var c = auth.enroll(chain.mentorship().getId(), "eb54-rank-c@example.org").getStudent();
+        for (var student : List.of(a, b, c)) points.saveAndFlush(TotalPoints.builder().student(student)
+                .mentorship(chain.mentorship()).totalPoints(student == c ? 30 : 90).build());
+        authenticate(owner);
+        service.issueCertificates(chain.mentorship().getId());
+        var rows = jdbc.queryForList("select student_id, student_rank, issued_at from certificates where mentorship_id = ? order by student_rank", chain.mentorship().getId());
+        assertThat(rows).hasSize(3);
+        assertThat(rows).extracting(r -> ((Number) r.get("student_id")).longValue()).containsExactly(a.getId(), b.getId(), c.getId());
+        assertThat(rows).extracting(r -> ((Number) r.get("student_rank")).longValue()).containsExactly(1L, 2L, 3L);
+        assertThat(rows).extracting(r -> r.get("issued_at")).containsOnly(rows.get(0).get("issued_at"));
+        assertThat(jdbc.queryForObject("select count(*) from user_notification un join notification n on n.id=un.notification_id where un.user_id in (?, ?, ?) and n.type='CERTIFICATE'", Long.class, a.getId(), b.getId(), c.getId())).isEqualTo(3);
+        assertThatThrownBy(() -> service.issueCertificates(chain.mentorship().getId())).isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(jdbc.queryForObject("select count(*) from certificates where mentorship_id = ?", Long.class, chain.mentorship().getId())).isEqualTo(3);
     }
 
     @Test
-    @DisplayName("Student missing from the DB map is SKIPPED; later students keep rank i+1 (no gap-fill)")
-    void missingStudentSkipped_laterStudentsKeepIndexRank() {
-        // rows: gold(i=0), silver(i=1), ghost(i=2) — ghost has no Student entity
-        List<StudentInLeaderboardDto> leaderboard = List.of(
-                row("gold@test.com", 90), row("silver@test.com", 60), row("ghost@test.com", 40));
-        List<Student> students = List.of(student(11L, "gold@test.com"), student(12L, "silver@test.com"));
-        stubIssuePath(leaderboard, students);
-
-        service.issueCertificates(MENTORSHIP_ID);
-
-        ArgumentCaptor<List<Certificate>> captor = listCaptor();
-        verify(certificateRepository, times(1)).saveAll(captor.capture());
-        List<Certificate> saved = captor.getValue();
-
-        // ghost skipped; silver keeps rank 2 (its leaderboard index) — ranks are NOT renumbered
-        assertThat(saved).hasSize(2);
-        assertThat(saved).extracting(Certificate::getRank).containsExactly(1L, 2L);
-        assertThat(saved).extracting(c -> c.getStudent().getEmail())
-                .containsExactly("gold@test.com", "silver@test.com");
-
-        // No notification was attempted for the ghost
-        verify(notificationService, times(2))
-                .sendToUserByEmail(any(), any(), contains("rank #"), eq(NotificationType.CERTIFICATE));
+    void missingStudentCannotEnterLeaderboardAndOtherRanksRemainCorrect() {
+        String owner = "eb54-rank-missing-owner@example.org";
+        var chain = auth.mentorship(owner, Status.ACTIVE);
+        var student = auth.enroll(chain.mentorship().getId(), "eb54-rank-present@example.org").getStudent();
+        points.saveAndFlush(TotalPoints.builder().student(student).mentorship(chain.mentorship()).totalPoints(10).build());
+        assertThatThrownBy(() -> jdbc.update("insert into total_points (student_id, mentorship_id, total_points, created_at, updated_at, created_by, updated_by, public_id) values (?, ?, ?, current_timestamp, current_timestamp, ?, ?, ?)", -99999L, chain.mentorship().getId(), 99, owner, owner, UUID.randomUUID()))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        authenticate(owner);
+        service.issueCertificates(chain.mentorship().getId());
+        assertThat(jdbc.queryForObject("select student_rank from certificates where mentorship_id=? and student_id=?", Long.class, chain.mentorship().getId(), student.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from certificates where mentorship_id=?", Long.class, chain.mentorship().getId())).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("Empty leaderboard: nothing saved, no notifications (early return)")
-    void emptyLeaderboard_noop() {
-        when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
-        when(securityService.isMentorOwnMentorship(MENTORSHIP_ID, "mentor@test.com")).thenReturn(true);
-        when(mentorShipRepository.findById(MENTORSHIP_ID)).thenReturn(Optional.of(mentorship));
-        when(totalPointsRepository.findLeaderboardByMentorshipId(eq(MENTORSHIP_ID), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
-
-        service.issueCertificates(MENTORSHIP_ID);
-
-        verify(certificateRepository, never()).saveAll(any());
-        verifyNoInteractions(notificationService);
+    void emptyLeaderboardAndForeignMentor() {
+        String owner = "eb54-rank-empty-owner@example.org";
+        var chain = auth.mentorship(owner, Status.ACTIVE);
+        authenticate("eb54-foreign@example.org");
+        assertThatThrownBy(() -> service.issueCertificates(chain.mentorship().getId())).isInstanceOf(AccessDeniedException.class);
+        authenticate(owner);
+        service.issueCertificates(chain.mentorship().getId());
+        assertThat(jdbc.queryForObject("select count(*) from certificates where mentorship_id=?", Long.class, chain.mentorship().getId())).isZero();
     }
 }
