@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +28,7 @@ public interface RefreshTokenSessionRepository extends JpaRepository<RefreshToke
     """)
     int revokeFamily(
             @Param("familyId") String familyId,
-            @Param("revokedAt") Instant revokedAt,
+            @Param("revokedAt") LocalDateTime revokedAt,
             @Param("reason") String reason
     );
 
@@ -40,7 +40,7 @@ public interface RefreshTokenSessionRepository extends JpaRepository<RefreshToke
     """)
     int revokeAllByUserId(
             @Param("userId") Long userId,
-            @Param("revokedAt") Instant revokedAt,
+            @Param("revokedAt") LocalDateTime revokedAt,
             @Param("reason") String reason
     );
 
@@ -52,11 +52,11 @@ public interface RefreshTokenSessionRepository extends JpaRepository<RefreshToke
     """)
     int revokeAllByAdminId(
             @Param("adminId") Long adminId,
-            @Param("revokedAt") Instant revokedAt,
+            @Param("revokedAt") LocalDateTime revokedAt,
             @Param("reason") String reason
     );
 
     @Modifying
     @Query("DELETE FROM RefreshTokenSession s WHERE s.expiresAt < :cutoff OR s.familyExpiresAt < :cutoff")
-    int deleteExpiredSessions(@Param("cutoff") Instant cutoff);
+    int deleteExpiredSessions(@Param("cutoff") LocalDateTime cutoff);
 }

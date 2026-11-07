@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 /**
  * EB-91: Transactional operations that must commit independently of caller rollback.
@@ -23,6 +23,6 @@ public class RefreshTokenTx {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void revokeFamilyImmediately(String familyId, String reason) {
         log.warn("EB-91: Revoking entire session family {} with reason: {}", familyId, reason);
-        sessionRepository.revokeFamily(familyId, Instant.now(), reason);
+        sessionRepository.revokeFamily(familyId, LocalDateTime.now(), reason);
     }
 }

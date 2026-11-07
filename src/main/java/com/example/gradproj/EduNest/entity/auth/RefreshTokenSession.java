@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 /**
  * EB-91: Persistent store for rotating refresh token sessions.
@@ -50,17 +50,17 @@ public class RefreshTokenSession extends BaseEntity {
     private Admin admin;
 
     @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+    private LocalDateTime expiresAt;
 
     @Column(name = "family_expires_at", nullable = false)
-    private Instant familyExpiresAt;
+    private LocalDateTime familyExpiresAt;
 
     @Builder.Default
     @Column(name = "revoked", nullable = false)
     private boolean revoked = false;
 
     @Column(name = "revoked_at")
-    private Instant revokedAt;
+    private LocalDateTime revokedAt;
 
     @Column(name = "revoked_reason", length = 64)
     private String revokedReason;
@@ -71,7 +71,7 @@ public class RefreshTokenSession extends BaseEntity {
     /**
      * Checks if the session has expired either via sliding TTL or absolute family TTL.
      */
-    public boolean isExpired(Instant now) {
+    public boolean isExpired(LocalDateTime now) {
         return now.isAfter(expiresAt) || now.isAfter(familyExpiresAt);
     }
 }

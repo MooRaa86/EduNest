@@ -15,8 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDateTime;
+
 import java.util.UUID;
 
 @Service
@@ -58,9 +58,9 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         String tokenHash = RefreshTokenCryptoUtil.hashToken(rawToken);
         String jti = UUID.randomUUID().toString();
 
-        Instant now = Instant.now();
-        Instant expiresAt = now.plus(SLIDING_EXPIRATION_DAYS, ChronoUnit.DAYS);
-        Instant familyExpiresAt = now.plus(ABSOLUTE_EXPIRATION_DAYS, ChronoUnit.DAYS);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plusDays(SLIDING_EXPIRATION_DAYS);
+        LocalDateTime familyExpiresAt = now.plusDays(ABSOLUTE_EXPIRATION_DAYS);
 
         RefreshTokenSession session = RefreshTokenSession.builder()
                 .familyId(familyId)
@@ -97,7 +97,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
             throw new InvalidRefreshTokenException("Invalid refresh token: token reuse detected, session terminated");
         }
 
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         if (session.isExpired(now)) {
             session.setRevoked(true);
             session.setRevokedAt(now);
@@ -136,7 +136,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         sessionRepository.save(session);
 
         // Calculate sliding expiry capped by absolute family expiry
-        Instant slidingExpiry = now.plus(SLIDING_EXPIRATION_DAYS, ChronoUnit.DAYS);
+        LocalDateTime slidingExpiry = now.plusDays(SLIDING_EXPIRATION_DAYS);
         if (slidingExpiry.isAfter(session.getFamilyExpiresAt())) {
             slidingExpiry = session.getFamilyExpiresAt();
         }
@@ -170,7 +170,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         sessionRepository.findByTokenHash(hash).ifPresent(session -> {
             if (!session.isRevoked()) {
                 session.setRevoked(true);
-                session.setRevokedAt(Instant.now());
+                session.setRevokedAt(LocalDateTime.now());
                 session.setRevokedReason("USER_LOGOUT");
                 sessionRepository.save(session);
             }
@@ -192,7 +192,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         sessionRepository.findByAccessTokenJti(jti)
                 .orElseThrow(() -> new InvalidRefreshTokenException("Session binding not found or already invalidated"));
 
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
         if ("USER".equalsIgnoreCase(ownerType)) {
             sessionRepository.revokeAllByUserId(ownerId, now, "LOGOUT_ALL");
         } else if ("ADMIN".equalsIgnoreCase(ownerType)) {
@@ -206,7 +206,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public void revokeAllForUser(Long userId) {
         if (userId != null) {
-            sessionRepository.revokeAllByUserId(userId, Instant.now(), "PASSWORD_RESET");
+            sessionRepository.revokeAllByUserId(userId, LocalDateTime.now(), "PASSWORD_RESET");
         }
     }
 
@@ -214,7 +214,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public void revokeAllForAdmin(Long adminId) {
         if (adminId != null) {
-            sessionRepository.revokeAllByAdminId(adminId, Instant.now(), "PASSWORD_RESET");
+            sessionRepository.revokeAllByAdminId(adminId, LocalDateTime.now(), "PASSWORD_RESET");
         }
     }
 }
