@@ -20,7 +20,7 @@ import java.util.Optional;
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 
     @Query("""
-        SELECT COUNT(e.id)
+        SELECT COUNT(DISTINCT e.student.id)
         FROM Enrollment e
         WHERE e.mentorShip.mentor.id = :mentorId
     """)
@@ -280,7 +280,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
         COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) as totalTasks,
         COUNT(DISTINCT ts.id) as completedTasks,
         COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) as totalQuizzes,
-        COUNT(DISTINCT qs.id) as completedQuizzes,
+        COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' AND qs.score IS NOT NULL THEN q.id END) as completedQuizzes,
         COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) as totalProjects,
         COUNT(DISTINCT ps.id) as completedProjects
     FROM enrollments e
@@ -301,7 +301,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     GROUP BY m.id, m.title, m.cover_image_url, u.first_name, u.last_name
     ORDER BY (
         (COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) - COUNT(DISTINCT ts.id)) +
-        (COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) - COUNT(DISTINCT qs.id)) +
+        (COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) - COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' AND qs.score IS NOT NULL THEN q.id END)) +
         (COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) - COUNT(DISTINCT ps.id))
     ) DESC
     LIMIT :limit
@@ -323,7 +323,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
         COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) AS totalTasks,
         COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) AS submittedTasks,
         COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) AS totalQuizzes,
-        COUNT(DISTINCT CASE WHEN qs.student_id IS NOT NULL THEN qs.id END) AS submittedQuizzes,
+        COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' AND qs.score IS NOT NULL THEN q.id END) AS submittedQuizzes,
         COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) AS totalProjects,
         COUNT(DISTINCT CASE WHEN ps.student_id IS NOT NULL THEN ps.id END) AS submittedProjects,
         COUNT(DISTINCT lec.id) AS totalLectures,
@@ -351,7 +351,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
                   COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) + 
                   COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END)) > 0
             THEN ((COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) + 
-                   COUNT(DISTINCT CASE WHEN qs.student_id IS NOT NULL THEN qs.id END) + 
+                   COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' AND qs.score IS NOT NULL THEN q.id END) +
                    COUNT(DISTINCT CASE WHEN ps.student_id IS NOT NULL THEN ps.id END)) * 100.0) / 
                   (COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) + 
                    COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) + 
@@ -379,7 +379,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
         COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) as totalTasks,
         COUNT(DISTINCT CASE WHEN ts.student_id IS NOT NULL THEN ts.id END) as completedTasks,
         COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) as totalQuizzes,
-        COUNT(DISTINCT CASE WHEN qs.student_id IS NOT NULL THEN qs.id END) as completedQuizzes,
+        COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' AND qs.score IS NOT NULL THEN q.id END) as completedQuizzes,
         COUNT(DISTINCT CASE WHEN p.project_status = 'PUBLISHED' THEN p.id END) as totalProjects,
         COUNT(DISTINCT CASE WHEN ps.student_id IS NOT NULL THEN ps.id END) as completedProjects
     FROM weeks w

@@ -306,7 +306,7 @@ public class TaskServiceImpl implements TaskService {
                 .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                 .description(task.getDescription())
                 .totalSubmissions((int) submissionsPage.getTotalElements())
-                .pendingReview(totalStudents - submissionsPage.getTotalPages())
+                .pendingReview(Math.toIntExact(taskSubmissionRepository.countByTask_IdAndStatus(taskId, SubmissionStatus.SUBMITTED)))
                 .createdAt(task.getCreatedAt())
                 .deadLine(task.getDueAt())
                 .totalPoints(task.getPoints())

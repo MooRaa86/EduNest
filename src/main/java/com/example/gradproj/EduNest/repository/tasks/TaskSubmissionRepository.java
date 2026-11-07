@@ -31,6 +31,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
 
     @Query("SELECT s FROM TaskSubmission s JOIN FETCH s.student WHERE s.task.id = :taskId")
     Page<TaskSubmission> findByTask_Id(Long taskId, Pageable pageable);
+    long countByTask_IdAndStatus(Long taskId, SubmissionStatus status);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);
     boolean existsByTask_IdAndStudent_Id(Long taskId, Long studentId);
     /** EB-51 / D-09 — freeze predicate: at least one qualifying (GRADED) submission exists. */

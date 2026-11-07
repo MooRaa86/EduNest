@@ -407,7 +407,8 @@ public class QuizServiceImpl implements QuizService {
         }
 
         double average = quiz.getSubmissions().stream()
-                .mapToDouble(s -> s.getScore() != null ? s.getScore() : 0)
+                .filter(s -> s.getScore() != null)
+                .mapToDouble(s -> s.getScore())
                 .average()
                 .orElse(0.0);
 
