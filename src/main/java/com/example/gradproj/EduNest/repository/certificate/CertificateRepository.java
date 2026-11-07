@@ -22,7 +22,9 @@ SELECT new com.example.gradproj.EduNest.dto.certificate.CertificateResponse(
     c.mentorship.title,
     c.mentorship.subtitle,
     c.issuedAt,
-    c.rank
+    c.rank,
+    c.pointsAtIssuance,
+    c.cohortSizeAtIssuance
 )
 FROM Certificate c
 WHERE c.student.email = :email

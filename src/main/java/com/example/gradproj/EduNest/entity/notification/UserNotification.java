@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.BaseEntity;
 import com.example.gradproj.EduNest.entity.users.UserEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.UUID;
 
 @Entity
 @Getter
@@ -34,4 +35,10 @@ public class UserNotification extends BaseEntity {
     @Builder.Default
     @Column(name = "is_read")
     private boolean isRead = false;
+
+    @Column(name = "certificate_issuance_id")
+    private UUID certificateIssuanceId;
+
+    @Column(name = "certificate_recipient_email")
+    private String certificateRecipientEmail;
 }

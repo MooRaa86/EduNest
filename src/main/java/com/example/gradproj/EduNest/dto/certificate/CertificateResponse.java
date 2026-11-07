@@ -18,4 +18,6 @@ public class CertificateResponse {
     private String mentorshipSubtitle;
     private LocalDateTime issuedAt;
     private long rank;
+    private Integer pointsAtIssuance;
+    private Long cohortSizeAtIssuance;
 }

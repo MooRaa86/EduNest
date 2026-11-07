@@ -28,6 +28,12 @@ public class Certificate extends BaseEntity {
     @Column(name = "student_rank", nullable = false)
     private long rank;
 
+    @Column(name = "points_at_issuance", updatable = false)
+    private Integer pointsAtIssuance;
+
+    @Column(name = "cohort_size_at_issuance", updatable = false)
+    private Long cohortSizeAtIssuance;
+
     @Column(name = "issued_at", nullable = false)
     private LocalDateTime issuedAt;
 }
