@@ -87,8 +87,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute exactly 4 scripts (V1, V2, V3, V4 — EB-47/P3-05 commission seed)")
-                .isEqualTo(4);
+                .as("Initial migration must execute exactly 5 scripts (V1, V2, V3, V4, V6)")
+                .isEqualTo(5);
     }
 
     @Test
@@ -440,8 +440,8 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3, V4 — EB-47/P3-05)")
-                    .isEqualTo(3);
+                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3, V4, V6)")
+                    .isEqualTo(4);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {
