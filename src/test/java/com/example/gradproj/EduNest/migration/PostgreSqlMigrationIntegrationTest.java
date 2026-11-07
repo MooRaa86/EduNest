@@ -654,16 +654,17 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .target("7")
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
             MigrateResult upgraded = upgrade.migrate();
             assertThat(upgraded.success).isTrue();
             assertThat(upgraded.migrationsExecuted)
-                    .as("Upgrade from the V6-shaped database must apply exactly V7")
+                    .as("Upgrade from the V6-shaped database to V7 must apply exactly V7")
                     .isEqualTo(1);
             assertThat(upgrade.info().applied())
-                    .as("Upgraded schema history must hold all seven migrations")
+                    .as("Upgraded schema history must hold all seven migrations through V7")
                     .hasSize(7);
 
             // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.
