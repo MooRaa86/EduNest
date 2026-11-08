@@ -17,6 +17,12 @@ import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
+import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResultRepository;
+import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
+import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,6 +46,11 @@ public class WeekService {
     private final LiveSessionRepository sessionRepository;
     private final LectureRepository lectureRepository;
     private final MentorRepository mentorRepository;
+    private final TaskSubmissionRepository taskSubmissionRepository;
+    private final ProjectSubmissionRepository projectSubmissionRepository;
+    private final QuizSubmissionRepository quizSubmissionRepository;
+    private final SessionAttendanceResultRepository sessionAttendanceResultRepository;
+    private final AttendanceRepository attendanceRepository;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -93,6 +104,17 @@ public class WeekService {
     @PreAuthorize("hasRole('MENTOR')")
     public void deleteWeek(Long weekId) {
         validateMentorOwnsWeek(weekId);
+        // EB-51 — L1 shared gate: prevent cascade deletion while submission / attendance exists
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        if (taskSubmissionRepository.existsByTask_Week_Id(weekId)
+                || projectSubmissionRepository.existsByProject_Week_Id(weekId)
+                || quizSubmissionRepository.existsByQuiz_Week_IdAndScoreIsNotNull(weekId)
+                || sessionAttendanceResultRepository.existsBySession_Week_Id(weekId)
+                || sessionRepository.existsByWeek_IdAndStatus(weekId, SessionStatus.LIVE)
+                || attendanceRepository.existsBySession_Week_Id(weekId)) {
+            throw new globalLogicEx("Cannot delete week that contains submissions or session attendance records");
+        }
         weekRepository.deleteById(weekId);
     }
 

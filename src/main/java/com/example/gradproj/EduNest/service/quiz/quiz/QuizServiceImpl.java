@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.SecurityService;
@@ -40,6 +41,7 @@ public class QuizServiceImpl implements QuizService {
     private final QuizSubmissionService quizSubmissionService;
     private final NotificationService notificationService;
     private final SecurityService securityService;
+    private final QuizSubmissionRepository quizSubmissionRepository;
 
 
     @Override
@@ -93,8 +95,17 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to delete this quiz");
         }
 
-        if (!quizRepository.existsById(id)) {
-            throw new globalLogicEx("Quiz not found");
+        Quiz quiz = quizRepository.findById(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        // EB-51 — L1 (week) -> L2 (quiz) shared gate: serialised against quiz-submit and cascade deletes
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quiz = quizRepository.findForUpdateById(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quizSubmissionRepository.existsByQuiz_IdAndScoreIsNotNull(id)) {
+            throw new globalLogicEx("Cannot delete a quiz that has scored submissions");
         }
 
         quizRepository.deleteById(id);
@@ -110,6 +121,12 @@ public class QuizServiceImpl implements QuizService {
         }
 
         Quiz quiz = quizRepository.findById(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        // EB-51 — L1 (week) -> L2 (quiz) shared gate
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quiz = quizRepository.findForUpdateById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         if (quiz.getStatus() == QuizStatus.PUBLISHED || quiz.getStatus() == QuizStatus.CLOSED) {
@@ -360,6 +377,7 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
+    @Transactional
     public void changeStatus(Long quizId, QuizStatus quizStatus) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnQuiz(quizId, email)) {
@@ -369,12 +387,31 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        // EB-51 — L1 (week) -> L2 (quiz) shared gate: serialize status transitions against concurrent submissions
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quiz = quizRepository.findForUpdateById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quiz.getStatus() == QuizStatus.CLOSED) {
+            throw new globalLogicEx("Cannot change status of a closed quiz");
+        }
+
         if (quizStatus == QuizStatus.CLOSED && quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Only published quizzes can be closed");
         }
 
         if (quizStatus == QuizStatus.PUBLISHED && quiz.getStatus() == QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Quiz is already published");
+        }
+
+        if (quizStatus == QuizStatus.DRAFT && (quizSubmissionRepository.existsByQuiz_Id(quizId)
+                || quizSubmissionRepository.existsByQuiz_IdAndScoreIsNotNull(quizId))) {
+            throw new globalLogicEx("Cannot revert quiz with submissions to draft");
+        }
+
+        if (quizStatus == QuizStatus.PUBLISHED && (quiz.getQuestions() == null || quiz.getQuestions().isEmpty())) {
+            throw new globalLogicEx("Cannot publish a quiz with no questions");
         }
 
         if (quizStatus == QuizStatus.CLOSED) {

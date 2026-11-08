@@ -8,42 +8,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * EB-51 / GAME-04 — atomic ledger writer.
- *
- * applyDelta is one statement per branch, never a read-modify-write of a
- * managed entity:
- *
- *  - row present  -> {@link TotalPointsRepository#incrementIfPresent} (JPQL
- *    UPDATE with a CASE floor taken by its own row lock; the Java-side
- *    SELECT FOR UPDATE hop is gone, so no two writers can interleave a
- *    between-select-and-apply window);
- *  - row absent   -> on PostgreSQL the validated one-shot
- *    {@link TotalPointsRepository#upsertDeltaRowPostgres} (ON CONFLICT
- *    upsert; a concurrent uncommitted insert takes the DO UPDATE branch with
- *    committed values, so no 23505 can ever abort the caller's transaction),
- *    on the no-Docker H2 MySQL-mode test profile a plain entity insert
- *    (single-threaded flows there; a concurrent absent-row race on H2 is
- *    documented test-only limitation, no constraint-catching/retry exists
- *    anywhere — decision D-09 / GAME cage rules).
- *
- * Clamp contract (GAME-03/CERT-04): the ledger floors at zero on every
- * branch — first insert floors {@code GREATEST(0, delta)}, absent-row insert
- * floors for H2, present-row update clamps. Nothing downstream can see a
- * negative total.
- *
- * Caller cursor (shared lock hierarchy, EB-51): applyDelta must always be
- * the LAST ledger step of a gate that already opened the higher-rank shared
- * locks (L0 mentorship / L1 week / L2 content — content, submission & badge
- * gate -> L4 here). Content-axis flows never take L0, badge/completion flows
- * never take L1/L2: so arriving writers can only ever converge here, never
- * cycle. The zero-delta short-circuit is preserved for cheap idempotent
- * callers.
- */
+/** EB-51 work in progress. Multi-row writer ordering is not yet established. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -58,30 +28,23 @@ public class TotalPointsServiceImp {
     public void applyDelta(Student student, MentorShip mentorship, int delta) {
         if (delta == 0) return;
 
-        String actorEmail = resolveActorEmail(student);
-
-        int updated = totalPointsRepository.incrementIfPresent(
-                student.getId(), mentorship.getId(), delta, actorEmail);
-
-        if (updated > 0) return; // row existed; single-statement atomic add is complete
-
-        if (isPostgresBackend()) {
-            totalPointsRepository.upsertDeltaRowPostgres(
-                    student.getId(), mentorship.getId(), delta, actorEmail);
-        } else {
-            // H2 (test profile): first row is created through the entity where
-            // BaseTime fill-in and audit fields behave exactly like enrollment
-            // scaffolding. The CREATE TABLE default floor (total_points >= 0
-            // documented policy) is applied in the builder.
-            int floored = Math.max(0, delta);
-            log.debug("EB-51 absent-row insert on non-PostgreSQL backend ({}, ms={}, delta={} clamped to {})",
-                    student.getId(), mentorship.getId(), delta, floored);
-            totalPointsRepository.save(TotalPoints.builder()
-                    .student(student)
-                    .mentorship(mentorship)
-                    .totalPoints(floored)
-                    .build());
+        TotalPoints points = totalPointsRepository.findForUpdate(student.getId(), mentorship.getId())
+                .orElse(null);
+        if (points == null) {
+            if (isPostgresBackend()) {
+                totalPointsRepository.insertEmptyIfAbsentPostgres(
+                        student.getId(), mentorship.getId(), resolveActorEmail(student));
+                points = totalPointsRepository.findForUpdate(student.getId(), mentorship.getId())
+                        .orElseThrow(() -> new IllegalStateException("Initialized points row not found"));
+            } else {
+                // H2 test profile only; concurrent first inserts are tested on PostgreSQL.
+                points = totalPointsRepository.saveAndFlush(TotalPoints.builder()
+                        .student(student).mentorship(mentorship).totalPoints(0).build());
+            }
         }
+        long updated = (long) points.getTotalPoints() + delta;
+        if (updated > Integer.MAX_VALUE) throw new ArithmeticException("Points total exceeds integer range");
+        points.setTotalPoints((int) Math.max(0L, updated));
     }
 
     /**
@@ -95,6 +58,8 @@ public class TotalPointsServiceImp {
                 SecurityContextHolder.getContext() == null
                         ? null : SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)
                 && authentication.getName() != null
                 && !authentication.getName().isBlank()) {
             return authentication.getName();

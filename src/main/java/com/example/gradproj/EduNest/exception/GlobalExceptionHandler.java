@@ -240,6 +240,9 @@ public class GlobalExceptionHandler {
         if (constraintName.contains("uk_conversation_unordered_pair")) {
             return "A conversation with this recipient already exists.";
         }
+        if (constraintName.contains("uk_session_attendance_result_session_student")) {
+            return "Attendance for this student in this session has already been recorded.";
+        }
         return null;
     }
 
@@ -300,6 +303,19 @@ public class GlobalExceptionHandler {
     }
 
     /* ============ business logic + catch-all ============ */
+
+    @ExceptionHandler({ConcurrentModificationConflict.class,
+            jakarta.persistence.OptimisticLockException.class,
+            org.springframework.orm.ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<ApiError> handleConcurrentModification(HttpServletRequest req, Exception ex) {
+        return build(req, HttpStatus.CONFLICT, ApiErrorCode.ERR_CONCURRENT_MODIFICATION,
+                "The item changed concurrently. Reload it and try again.");
+    }
+
+    @ExceptionHandler(LegacySubmissionAuditRequiredException.class)
+    public ResponseEntity<ApiError> handleLegacySubmissionAuditRequired(HttpServletRequest req, LegacySubmissionAuditRequiredException ex) {
+        return build(req, HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.LEGACY_SUBMISSION_AUDIT_REQUIRED, ex.getMessage());
+    }
 
     @ExceptionHandler(globalLogicEx.class)
     public ResponseEntity<ApiError> handleLogicEx(HttpServletRequest req, globalLogicEx ex) {

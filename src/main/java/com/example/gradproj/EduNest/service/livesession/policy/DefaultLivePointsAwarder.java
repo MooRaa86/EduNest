@@ -53,9 +53,18 @@ public class DefaultLivePointsAwarder implements PointsAwardingPolicy {
         List<Student> allStudents = enrollmentRepository.findStudentsByMentorshipId(mentorshipId);
         int bonusPoints = properties.getAttendance().getBonusPoints();
 
-        for (Student student : allStudents) {
+                for (Student student : allStudents) {
             String status = attendanceMap.getOrDefault(student.getId(), "Absent");
             boolean attended = "Present".equals(status);
+
+            // EB-51: Idempotency pre-check under lock — avoid duplicate results and points deltas
+            var existing = sessionAttendanceResultRepository
+                    .findBySession_IdAndStudent_Id(session.getId(), student.getId());
+            if (existing.isPresent()) {
+                log.warn("Attendance result already recorded for session {} and student {}, skipping duplicate award",
+                        session.getId(), student.getId());
+                continue;
+            }
 
             SessionAttendanceResult attendanceResult = SessionAttendanceResult.builder()
                     .session(session)
@@ -71,13 +80,17 @@ public class DefaultLivePointsAwarder implements PointsAwardingPolicy {
                 totalPointsService.applyDelta(student, session.getWeek().getMentorship(), pointsEarned);
             }
 
-            notificationService.sendToUserByEmail(
-                    student.getEmail(),
-                    "Session Attendance Result",
-                    "Your attendance for session " + session.getTitle() + " is: " + status +
-                            (attended ? ". You earned " + pointsEarned + " points!" : "."),
-                    NotificationType.LIVE_SESSION
-            );
+            try {
+                notificationService.sendToUserByEmail(
+                        student.getEmail(),
+                        "Session Attendance Result",
+                        "Your attendance for session " + session.getTitle() + " is: " + status +
+                                (attended ? ". You earned " + pointsEarned + " points!" : "."),
+                        NotificationType.LIVE_SESSION
+                );
+            } catch (Exception ex) {
+                log.warn("Failed to send attendance notification to {}: {}", student.getEmail(), ex.getMessage());
+            }
         }
     }
 }

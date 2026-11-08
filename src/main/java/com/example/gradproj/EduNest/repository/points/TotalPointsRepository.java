@@ -134,90 +134,21 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             @Param("studentEmail") String studentEmail
     );
 
-    /**
-     * EB-51 / GAME-04 — atomic single-statement ledger increment for an existing
-     * row. The clamp is expressed as a portable CASE expression (identical
-     * semantics to SQL {@code GREATEST}) so the identical JPQL compiles to
-     * PostgreSQL in production and to H2 MySQL-mode in the no-Docker test
-     * profile without a behavior fork. Zero affected rows means the row is
-     * absent; the caller then runs the one-shot upsert primitive below.
-     *
-     * Locking note: this UPDATE takes its own row X-lock; no caller may hold a
-     * managed TotalPoints entity in the same persistence context alongside the
-     * order of the shared lock hierarchy (L0 mentorship → L4 total_points) that
-     * guarantees no cyclic waits.
-     */
-    @Modifying
-    @Query("""
-        UPDATE TotalPoints tp
-        SET tp.totalPoints =
-              CASE WHEN tp.totalPoints + :delta < 0 THEN 0 ELSE tp.totalPoints + :delta END,
-            tp.updatedAt = CURRENT_TIMESTAMP,
-            tp.updatedBy = :actorEmail
-        WHERE tp.student.id = :studentId
-          AND tp.mentorship.id = :mentorshipId
-    """)
-    int incrementIfPresent(@Param("studentId") Long studentId,
-                           @Param("mentorshipId") Long mentorshipId,
-                           @Param("delta") int delta,
-                           @Param("actorEmail") String actorEmail);
 
-    /**
-     * EB-51 / GAME-03 + CERT-04 — bulk badge-diff ledger correction, clamped at
-     * zero and executed as one statement so its row locks are taken in
-     * PostgreSQL's deterministic scan order (no per-row Java loop, so no
-     * interleaved lock acquisition). Unclamped semantics of the previous JPQL
-     * are retired on purpose.
-     */
-    @Modifying
-    @Query("""
-        UPDATE TotalPoints tp
-        SET tp.totalPoints =
-              CASE WHEN tp.totalPoints + :delta < 0 THEN 0 ELSE tp.totalPoints + :delta END,
-            tp.updatedAt = CURRENT_TIMESTAMP,
-            tp.updatedBy = :actorEmail
-        WHERE tp.student.id IN (
-            SELECT ba.student.id
-            FROM BadgeAward ba
-            WHERE ba.badge.id = :badgeId
-        )
-        AND tp.mentorship.id = :mentorshipId
-    """)
-    int applyBadgePointDiff(@Param("badgeId") Long badgeId,
-                            @Param("mentorshipId") Long mentorshipId,
-                            @Param("delta") int delta,
-                            @Param("actorEmail") String actorEmail);
-
-    /**
-     * EB-51 — the one-shot insert-or-increment primitive for the row-absent
-     * edge case, validated statement-for-statement against PostgreSQL 17.11
-     * (T1..T6: zero-delta / negative-delta first insert -> 0, normal arithmetic,
-     * below-zero clamp on the conflict branch, concurrent uncommitted-insert
-     * race takes the DO UPDATE branch with committed values, single row per
-     * (student, mentorship)). PostgreSQLOnly: see TotalPointsServiceImp's
-     * dialect gate. Never raises a 23505, so the surrounding Spring transaction
-     * is never aborted and no constraint-violation retry exists anywhere.
-     *
-     * @return 1 on the insert branch, 1 on the update branch (0 impossible —
-     *         the conflict branch is always taken or the row is inserted)
-     */
+    /** Insert-only initialization; callers must then lock and mutate the managed row. */
     @Modifying
     @Query(value = """
         INSERT INTO total_points
-            (student_id, mentorship_id, total_points, public_id,
+            (student_id, mentorship_id, total_points, version, public_id,
              created_at, updated_at, created_by, updated_by)
         VALUES
-            (:studentId, :mentorshipId, GREATEST(0, :delta),
+            (:studentId, :mentorshipId, 0, 0,
              gen_random_uuid(), now(), now(), :actorEmail, :actorEmail)
         ON CONFLICT (student_id, mentorship_id)
-        DO UPDATE SET
-            total_points = GREATEST(0, total_points.total_points + :delta),
-            updated_at = now(),
-            updated_by = EXCLUDED.updated_by
+        DO NOTHING
         """, nativeQuery = true)
-    int upsertDeltaRowPostgres(@Param("studentId") Long studentId,
-                               @Param("mentorshipId") Long mentorshipId,
-                               @Param("delta") int delta,
-                               @Param("actorEmail") String actorEmail);
+    int insertEmptyIfAbsentPostgres(@Param("studentId") Long studentId,
+                                    @Param("mentorshipId") Long mentorshipId,
+                                    @Param("actorEmail") String actorEmail);
 
 }

@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.badges.BadgeRepository;
@@ -17,6 +18,8 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -40,6 +43,7 @@ public class BadgeAwardService {
     private final TotalPointsServiceImp totalPointsService;
     private final MentorShipRepository mentorShipRepository;
     private final NotificationService notificationService;
+    private final EntityManager entityManager;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -73,6 +77,15 @@ public class BadgeAwardService {
         // (badge.getPoints()) is stable while applyDelta runs.
         MentorShip l0Gate = mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
+        // EB-51 / D-09 (CERT-04) — post-completion badge freeze: cannot award badge once mentorship is COMPLETED
+        if (l0Gate.getStatus() == Status.COMPLETED) {
+            throw new globalLogicEx("Cannot award badge once the mentorship is completed");
+        }
+
+        // EB-51 — acquire locked badge from repository under the L0 gate
+        badge = badgeRepository.findForUpdateById(badgeId)
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
 
         Student student = studentRepository.findById(req.getStudentId())
                 .orElseThrow(() -> new globalLogicEx("Student not found"));

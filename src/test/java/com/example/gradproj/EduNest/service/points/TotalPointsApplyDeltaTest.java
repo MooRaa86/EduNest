@@ -8,11 +8,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.junit.jupiter.api.AfterEach;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -26,7 +33,26 @@ class TotalPointsApplyDeltaTest {
     @BeforeEach
     void setUp() {
         totalPointsRepository = mock(TotalPointsRepository.class);
-        service = new TotalPointsServiceImp(totalPointsRepository);
+        service = new TotalPointsServiceImp(totalPointsRepository, new MockEnvironment());
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void anonymousAuthenticationFallsBackToStudentEmail() {
+        SecurityContextHolder.getContext().setAuthentication(new AnonymousAuthenticationToken(
+                "test", "anonymousUser", List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
+        service = new TotalPointsServiceImp(totalPointsRepository,
+                new MockEnvironment().withProperty("spring.datasource.url", "jdbc:postgresql://localhost/test"));
+        TotalPoints created = TotalPoints.builder().student(student()).mentorship(mentorship()).totalPoints(0).build();
+        when(totalPointsRepository.findForUpdate(5L, 100L))
+                .thenReturn(Optional.empty(), Optional.of(created));
+        service.applyDelta(student(), mentorship(), 1);
+        verify(totalPointsRepository).insertEmptyIfAbsentPostgres(5L, 100L, "rahma@test.com");
+        assertThat(created.getTotalPoints()).isEqualTo(1);
     }
 
     private static Student student() {
@@ -36,11 +62,6 @@ class TotalPointsApplyDeltaTest {
 
     private static MentorShip mentorship() {
         return MentorShip.builder().id(100L).title("Backend Track").build();
-    }
-
-    private static TotalPoints existing(int total) {
-        return TotalPoints.builder().student(student()).mentorship(mentorship())
-                .totalPoints(total).build();
     }
 
     // ------------------------------------------------------------------
@@ -58,12 +79,12 @@ class TotalPointsApplyDeltaTest {
     @Test
     @DisplayName("positive delta, no existing row: creates a row whose total == delta")
     void positiveDelta_noRow_createsRowWithDelta() {
-        when(totalPointsRepository.findForUpdate(5L, 100L)).thenReturn(Optional.empty());
-
+        when(totalPointsRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(TotalPoints.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         service.applyDelta(student(), mentorship(), 15);
 
         ArgumentCaptor<TotalPoints> captor = ArgumentCaptor.forClass(TotalPoints.class);
-        verify(totalPointsRepository, times(1)).save(captor.capture());
+        verify(totalPointsRepository, times(1)).saveAndFlush(captor.capture());
         TotalPoints saved = captor.getValue();
         assertThat(saved.getTotalPoints()).isEqualTo(15);
         assertThat(saved.getStudent().getId()).isEqualTo(5L);
@@ -71,43 +92,42 @@ class TotalPointsApplyDeltaTest {
     }
 
     @Test
-    @DisplayName("positive delta, existing row: total increases by delta (15 <- 10 + 5)")
+    @DisplayName("positive delta mutates the locked existing row")
     void positiveDelta_existingRow_adds() {
         Student s = student();
         MentorShip m = mentorship();
-        TotalPoints tp = existing(10);
-        when(totalPointsRepository.findForUpdate(5L, 100L)).thenReturn(Optional.of(tp));
+        TotalPoints points = TotalPoints.builder().student(s).mentorship(m).totalPoints(10).build();
+        when(totalPointsRepository.findForUpdate(5L, 100L)).thenReturn(Optional.of(points));
 
         service.applyDelta(s, m, 5);
 
-        ArgumentCaptor<TotalPoints> captor = ArgumentCaptor.forClass(TotalPoints.class);
-        verify(totalPointsRepository, times(1)).save(captor.capture());
-        assertThat(captor.getValue().getTotalPoints()).isEqualTo(15);
+        verify(totalPointsRepository).findForUpdate(5L, 100L);
+        verify(totalPointsRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+        assertThat(points.getTotalPoints()).isEqualTo(15);
     }
 
     @Test
-    @DisplayName("negative delta that stays positive: total decreases (7 <- 10 - 3)")
+    @DisplayName("negative delta mutates the locked existing row")
     void negativeDelta_partial_reduces() {
-        TotalPoints tp = existing(10);
-        when(totalPointsRepository.findForUpdate(5L, 100L)).thenReturn(Optional.of(tp));
+        TotalPoints points = TotalPoints.builder().student(student()).mentorship(mentorship()).totalPoints(10).build();
+        when(totalPointsRepository.findForUpdate(5L, 100L)).thenReturn(Optional.of(points));
 
         service.applyDelta(student(), mentorship(), -3);
 
-        ArgumentCaptor<TotalPoints> captor = ArgumentCaptor.forClass(TotalPoints.class);
-        verify(totalPointsRepository, times(1)).save(captor.capture());
-        assertThat(captor.getValue().getTotalPoints()).isEqualTo(7);
+        verify(totalPointsRepository).findForUpdate(5L, 100L);
+        verify(totalPointsRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any());
+        assertThat(points.getTotalPoints()).isEqualTo(7);
     }
 
     @Test
-    @DisplayName("negative delta beyond total: 0-clamp floors at zero, never negative (GAME-05 accepted model)")
+    @DisplayName("negative delta for an absent H2 row is floored at zero")
     void negativeDelta_floorsAtZero_neverNegative() {
-        TotalPoints tp = existing(5);
-        when(totalPointsRepository.findForUpdate(5L, 100L)).thenReturn(Optional.of(tp));
-
+        when(totalPointsRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(TotalPoints.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         service.applyDelta(student(), mentorship(), -20);
 
         ArgumentCaptor<TotalPoints> captor = ArgumentCaptor.forClass(TotalPoints.class);
-        verify(totalPointsRepository, times(1)).save(captor.capture());
+        verify(totalPointsRepository, times(1)).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getTotalPoints()).isEqualTo(0);
         assertThat(captor.getValue().getTotalPoints()).isNotNegative();
     }

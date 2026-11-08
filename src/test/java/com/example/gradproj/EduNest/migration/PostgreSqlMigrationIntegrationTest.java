@@ -88,8 +88,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute scripts V1 through V7")
-                .isEqualTo(7);
+                .as("Initial migration must execute scripts V1 through V9")
+                .isEqualTo(9);
     }
 
     @Test
@@ -98,8 +98,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Seven migrations must be registered in flyway_schema_history")
-                .hasSize(7);
+                .as("Nine migrations must be registered in flyway_schema_history")
+                .hasSize(9);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -152,6 +152,19 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v7.getType().name()).isEqualTo("SQL");
         assertThat(v7.getState().isApplied()).isTrue();
         assertThat(v7.getChecksum()).isNotNull();
+        MigrationInfo v8 = applied[7];
+        assertThat(v8.getVersion().getVersion()).isEqualTo("8");
+        assertThat(v8.getDescription()).isEqualTo("badge and total points versions");
+        assertThat(v8.getType().name()).isEqualTo("SQL");
+        assertThat(v8.getState().isApplied()).isTrue();
+        assertThat(v8.getChecksum()).isNotNull();
+
+        MigrationInfo v9 = applied[8];
+        assertThat(v9.getVersion().getVersion()).isEqualTo("9");
+        assertThat(v9.getDescription()).isEqualTo("unique session attendance result");
+        assertThat(v9.getType().name()).isEqualTo("SQL");
+        assertThat(v9.getState().isApplied()).isTrue();
+        assertThat(v9.getChecksum()).isNotNull();
     }
 
     @Test
@@ -177,7 +190,7 @@ public class PostgreSqlMigrationIntegrationTest {
                 }
                 assertThat(tables)
                         .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
-                        .hasSize(47);
+                        .hasSize(48);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
                         .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
@@ -433,6 +446,8 @@ public class PostgreSqlMigrationIntegrationTest {
                     .schemas(testSchema)
                     .defaultSchema(testSchema)
                     .locations("classpath:db/migration")
+                    // This deliberately synthetic unmanaged schema does not contain V1 tables.
+                    .target("7")
                     .baselineOnMigrate(false) // Must be false
                     .baselineVersion("1")
                     .cleanDisabled(true)
@@ -628,6 +643,17 @@ public class PostgreSqlMigrationIntegrationTest {
                     + "WHERE m.title = 'legacy-mt' "
                     + "AND s.student_id = (SELECT id FROM " + testSchema + ".users WHERE email = 'legacy@example.org')");
 
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".badges "
+                    + "(created_at, updated_at, created_by, updated_by, mentorship_id, title, category, description, points) "
+                    + "SELECT NOW(), NOW(), 'legacy', 'legacy', m.id, 'legacy-badge', 'ACHIEVEMENT', 'legacy', 17 "
+                    + "FROM " + testSchema + ".mentorship m WHERE m.title = 'legacy-mt'");
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".total_points "
+                    + "(created_at, updated_at, created_by, updated_by, mentorship_id, student_id, total_points) "
+                    + "SELECT NOW(), NOW(), 'legacy', 'legacy', m.id, s.student_id, 23 "
+                    + "FROM " + testSchema + ".mentorship m, " + testSchema + ".students s "
+                    + "WHERE m.title = 'legacy-mt' AND s.student_id = "
+                    + "(SELECT id FROM " + testSchema + ".users WHERE email = 'legacy@example.org')");
+
                 stmt.executeUpdate("INSERT INTO " + testSchema + ".notification "
                     + "(title, content, type, created_at, updated_at, created_by, updated_by) "
                     + "VALUES ('Legacy title', 'body', 'CERTIFICATE', NOW(), NOW(), 'legacy', 'legacy')");
@@ -639,7 +665,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     + "WHERE u.email = 'legacy@example.org' AND n.title = 'Legacy title'");
             }
 
-            // 3. Upgrade to the current release: only V7 must be pending.
+            // 3. Upgrade to the current local branch: V7 and V8 must be pending.
             Flyway upgrade = Flyway.configure()
                     .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                     .schemas(testSchema)
@@ -653,14 +679,26 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult upgraded = upgrade.migrate();
             assertThat(upgraded.success).isTrue();
             assertThat(upgraded.migrationsExecuted)
-                    .as("Upgrade from the V6-shaped database must apply exactly V7")
-                    .isEqualTo(1);
+                    .as("Upgrade from the V6-shaped database must apply V7, V8, and V9")
+                    .isEqualTo(3);
             assertThat(upgrade.info().applied())
-                    .as("Upgraded schema history must hold all seven migrations")
-                    .hasSize(7);
+                    .as("Upgraded schema history must hold all nine migrations")
+                    .hasSize(9);
 
             // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT points, version FROM " + testSchema + ".badges WHERE title = 'legacy-badge'")) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getInt("points")).isEqualTo(17);
+                    assertThat(rs.getLong("version")).isZero();
+                }
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT total_points, version FROM " + testSchema + ".total_points")) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getInt("total_points")).isEqualTo(23);
+                    assertThat(rs.getLong("version")).isZero();
+                }
                 var snapshotColumns = Map.of(
                         "certificates", List.of("points_at_issuance", "cohort_size_at_issuance"),
                         "user_notification", List.of("certificate_issuance_id", "certificate_recipient_email"));

@@ -53,8 +53,9 @@ public class TaskSubmission extends BaseEntity {
     @Column(name = "is_late")
     private Boolean isLate=false;
 
+    @Builder.Default
     @Column(name = "points_applied")
-    private Integer pointsApplied;
+    private Integer pointsApplied = 0;
 
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

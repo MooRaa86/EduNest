@@ -18,6 +18,11 @@ import java.util.List;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class Badge extends BaseEntity {
 
+    // Null before persist allows Spring Data to recognize a new entity.
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "mentorship_id", nullable = false)
     private MentorShip mentorship;

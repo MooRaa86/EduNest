@@ -98,8 +98,8 @@ public class PostgreSqlLiveMigrationSmokeTest {
                 .as("Live migration into disposable schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Must apply migrations V1 through V7")
-                .isEqualTo(7);
+                .as("Must apply migrations V1 through V9")
+                .isEqualTo(9);
 
         // 2. Direct JDBC schema validation inside disposable schema
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass)) {

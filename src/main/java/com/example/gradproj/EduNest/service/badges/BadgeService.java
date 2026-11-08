@@ -6,16 +6,21 @@ import com.example.gradproj.EduNest.dto.badges.response.BadgeResponse;
 import com.example.gradproj.EduNest.entity.badges.Badge;
 import com.example.gradproj.EduNest.entity.badges.BadgeAward;
 import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
+import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
+import com.example.gradproj.EduNest.enums.badge.BadgeCategory;
+import com.example.gradproj.EduNest.exception.ConcurrentModificationConflict;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.badges.BadgeRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
-import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,7 +38,10 @@ public class BadgeService {
     private final BadgeAwardRepository badgeAwardRepository;
     private final MentorShipRepository mentorShipRepository;
     private final MentorRepository mentorRepository;
-    private final TotalPointsRepository totalPointsRepository;
+    private final TotalPointsServiceImp totalPointsService;
+    private final EntityManager entityManager;
+    private final JdbcTemplate jdbc;
+    private final BadgeLoadedState loadedState;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -86,17 +94,37 @@ public class BadgeService {
     }
 
     public BadgeResponse updateBadge(Long badgeId, UpdateBadgeRequest req) {
+        // JDBC reads share the caller's transaction but do not trigger a JPA auto-flush
+        // before the gate. Never refresh the caller's managed object or its graph.
+        var owner = jdbc.query("select m.id, u.email from badges b join mentorship m on m.id=b.mentorship_id "
+                        + "join users u on u.id=m.mentor_id where b.id=?",
+                (rs, row) -> new BadgeOwner(rs.getLong(1), rs.getString(2)), badgeId).stream().findFirst()
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
+        if (!owner.email().equals(getCurrentUserEmail())) {
+            throw new AccessDeniedException("You are not authorized to manage this mentorship's badges");
+        }
+        var statuses = jdbc.query("select status from mentorship where id=? for update",
+                (rs, row) -> rs.getString(1), owner.mentorshipId());
+        if (statuses.isEmpty()) throw new globalLogicEx("Mentorship not found");
+        var authoritative = jdbc.query("select title, description, category, points, version, mentorship_id "
+                        + "from badges where id=? for update",
+                (rs, row) -> new LockedBadge(new BadgeLoadedState.Values(rs.getString(1), rs.getString(2),
+                        BadgeCategory.valueOf(rs.getString(3)), rs.getInt(4), rs.getLong(5)), rs.getLong(6)), badgeId)
+                .stream().findFirst().orElseThrow(() -> new globalLogicEx("Badge not found"));
+        if (authoritative.mentorshipId() != owner.mentorshipId()) {
+            throw new ConcurrentModificationConflict("Badge ownership changed concurrently");
+        }
         Badge badge = badgeRepository.findById(badgeId)
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
-
-        validateOwnership(badge.getMentorship());
-
-        // EB-51 — L0 shared gate (mirrors the award and completion gates) so a
-        // concurrent badge award or completion notification can never
-        // interleave with a badge-point diff; CERT-04 freeze is evaluated
-        // while the gate is held.
-        MentorShip gate = mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        if (!badge.getMentorship().getId().equals(owner.mentorshipId())) {
+            throw new ConcurrentModificationConflict("Badge ownership changed concurrently");
+        }
+        var original = loadedState.requireOriginal(badge);
+        loadedState.requireUnchanged(original, authoritative.values());
+        loadedState.rejectOverlappingChange(original.title(), badge.getTitle(), req.getTitle());
+        loadedState.rejectOverlappingChange(original.description(), badge.getDescription(), req.getDescription());
+        loadedState.rejectOverlappingChange(original.category(), badge.getCategory(), req.getCategory());
+        loadedState.rejectOverlappingChange(original.points(), badge.getPoints(), req.getPoints());
 
         Integer oldPoints = badge.getPoints();
 
@@ -107,7 +135,7 @@ public class BadgeService {
 
         // EB-51 / D-09 (CERT-04) — badge-point freeze: point changes on
         // awarded-surface badges are locked once the mentorship is COMPLETED.
-        if (gate.getStatus() == Status.COMPLETED
+        if (Status.COMPLETED.name().equals(statuses.get(0))
                 && req.getPoints() != null && !oldPoints.equals(req.getPoints())) {
             badge.setPoints(oldPoints);
             throw new globalLogicEx("Badge points are locked once the mentorship is completed");
@@ -117,12 +145,17 @@ public class BadgeService {
 
         if (req.getPoints() != null && !oldPoints.equals(req.getPoints())) {
             int diff = req.getPoints() - oldPoints;
-            totalPointsRepository.applyBadgePointDiff(
-                    badgeId, badge.getMentorship().getId(), diff, getCurrentUserEmail());
+            List<Student> awardedStudents = badgeAwardRepository.findDistinctStudentsByBadgeId(badgeId);
+            for (Student student : awardedStudents) {
+                totalPointsService.applyDelta(student, badge.getMentorship(), diff);
+            }
         }
 
         return toDto(savedBadge);
     }
+
+    private record BadgeOwner(long mentorshipId, String email) { }
+    private record LockedBadge(BadgeLoadedState.Values values, long mentorshipId) { }
 
     public void deleteBadge(Long badgeId) {
         Badge badge = badgeRepository.findById(badgeId)
@@ -134,6 +167,10 @@ public class BadgeService {
         // award's badge reference cannot vanish mid-award.
         mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
+        // EB-51 — acquire locked badge from repository under the L0 gate
+        badge = badgeRepository.findForUpdateById(badgeId)
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
 
         if (badgeAwardRepository.existsByBadge_Id(badgeId))
             throw new globalLogicEx("Badge has already been awarded and cannot be deleted");

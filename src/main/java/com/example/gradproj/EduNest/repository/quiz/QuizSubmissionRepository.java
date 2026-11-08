@@ -31,6 +31,10 @@ public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, 
 
     /** EB-51 — freeze predicate: at least one scored quiz attempt exists. */
     boolean existsByQuiz_IdAndScoreIsNotNull(Long quizId);
+    boolean existsByQuiz_Id(Long quizId);
+    /** EB-51 — cascade-delete protection: rejects deleting week if scored quiz attempts exist. */
+    boolean existsByQuiz_Week_IdAndScoreIsNotNull(Long weekId);
+    boolean existsByQuiz_Week_Id(Long weekId);
 
     Page<QuizSubmission> findAllByQuiz_Id(Long quizId, Pageable pageable);
 
@@ -70,4 +74,15 @@ public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, 
     List<QuizSubmission> findByStudent_IdAndQuiz_Week_IdIn(@Param("studentId") Long studentId,
                                                             @Param("weekIds") List<Long> weekIds);
 
+
+    @Query("""
+        SELECT qs
+        FROM QuizSubmission qs
+        JOIN qs.quiz q
+        JOIN q.week w
+        WHERE qs.student.id = :studentId
+          AND w.mentorship.id = :mentorshipId
+    """)
+    List<QuizSubmission> findByStudentIdAndMentorshipId(@Param("studentId") Long studentId,
+                                                        @Param("mentorshipId") Long mentorshipId);
 }

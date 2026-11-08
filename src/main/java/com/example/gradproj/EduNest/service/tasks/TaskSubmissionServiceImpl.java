@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
@@ -9,6 +10,7 @@ import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.exception.LegacySubmissionAuditRequiredException;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
@@ -19,6 +21,7 @@ import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +51,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final WeekRepository weekRepository;
+    private final EntityManager entityManager;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -134,6 +138,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             s.setTask(taskRepository.getReferenceById(taskId));
             s.setStudent(studentRepository.getReferenceById(studentId));
             s.setStatus(SubmissionStatus.SUBMITTED);
+            s.setPointsApplied(0);
             return s;
         });
 
@@ -196,15 +201,24 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     public TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req) {
         TaskSubmission sub = validateMentorOwnsSubmission(submissionId);
 
-        // EB-51 — L1 -> L2 shared gate: the task's week row and the task row
-        // are lock-sorted ahead of any graded-state change, so a mentor's
-        // points edit or delete attempt can never interleave with an
-        // in-flight regrade; the points baseline (sub/task state) is verified
-        // while both gates are held.
-        weekRepository.findForUpdateById(sub.getTask().getWeek().getId())
+        // EB-51 — L1 -> L2 -> L3 ordered locking: week -> task -> submission
+        Long weekId = sub.getTask().getWeek().getId();
+        Long taskId = sub.getTask().getId();
+        weekRepository.findForUpdateById(weekId)
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
-        Task task = taskRepository.findForUpdateById(sub.getTask().getId())
+        Task task = taskRepository.findForUpdateById(taskId)
                 .orElseThrow(() -> new globalLogicEx("Task not found"));
+        sub = submissionRepository.findForUpdateById(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        if (entityManager != null) {
+            entityManager.refresh(sub);
+        }
+
+        // EB-51 D-09a: Strict integrity gate - reject grading if points provenance is null
+        if (sub.getPointsApplied() == null) {
+            throw new LegacySubmissionAuditRequiredException(
+                    "Task submission " + submissionId + " lacks recorded points provenance. Grading requires administrative reconciliation.");
+        }
 
         if (req.getScore() > task.getPoints()) {
             throw new globalLogicEx("score must be less than or equal to task points " + task.getPoints());
@@ -218,7 +232,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         MentorShip mentorship = task.getWeek().getMentorship();
         int newScore = sub.getFinalScore();
-        int oldApplied = (sub.getPointsApplied() == null) ? 0 : sub.getPointsApplied();
+        int oldApplied = sub.getPointsApplied();
         int delta = newScore - oldApplied;
 
         if (delta != 0) {

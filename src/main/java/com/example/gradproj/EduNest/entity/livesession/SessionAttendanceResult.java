@@ -10,7 +10,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "session_attendance_result")
+@Table(name = "session_attendance_result", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_session_attendance_result_session_student", columnNames = {"session_id", "student_id"})
+})
 @Setter @Getter
 @SuperBuilder
 @NoArgsConstructor

@@ -5,6 +5,8 @@ import com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSess
 import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
 import com.example.gradproj.EduNest.entity.livesession.Session;
 import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import com.example.gradproj.EduNest.repository.livesession.projections.MonthlySessionsProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,8 +16,19 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface LiveSessionRepository extends JpaRepository<Session,Long> {
+
+    /** EB-51 — L2 session gate lock: ordered row locking (L0 mentorship -> L1 week -> L2 session). */
+    /** EB-51 — L2 session gate lock: ordered row locking (L0 mentorship -> L1 week -> L2 session). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Session s WHERE s.id = :id")
+    Optional<Session> findForUpdateById(@Param("id") Long id);
+
+    /** EB-51 — Scalar query to read authoritative database status directly, bypassing 1st-level cache. */
+    @Query("SELECT s.status FROM Session s WHERE s.id = :id")
+    SessionStatus findStatusById(@Param("id") Long id);
 
     List<Session> findByStatusAndActualStartTimeBefore(SessionStatus status, LocalDateTime cutoff);
 
@@ -23,6 +36,7 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
     List<Session> findByWeek_Id(Long weekId);
 
     List<Session> findByWeek_IdIn(List<Long> weekIds);
+    boolean existsByWeek_IdAndStatus(Long weekId, SessionStatus status);
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse(
