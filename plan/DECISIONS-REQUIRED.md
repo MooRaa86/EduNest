@@ -219,7 +219,7 @@
     2. Dispatcher iterates over candidate sessions, delegating each to `sweepWorker` in an isolated try-catch block. A failure or deadlock on one session rolls back only that session, allowing all other sessions to commit independently (Dimension 3: Failure Isolation).
     3. `LiveSessionSweepWorker` acquires row locks strictly in canonical hierarchy: L0 mentorship (`mentorShipRepository.findForUpdateById`) -> L1 week (`weekRepository.findForUpdateById`) -> L2 session (`liveSessionRepository.findForUpdateById`).
     4. Authoritative session status is rechecked under pessimistic write lock (`status == LIVE` / `SCHEDULED`). If status changed concurrently (e.g. mentor called `endSession`), the worker skips without double-processing.
-    5. Database-level idempotency guaranteed by Flyway migration `V9__unique_session_attendance_result.sql`, creating unique index `uk_session_attendance_result_session_student` on `session_attendance_result(session_id, student_id)` and archiving duplicates in `eb51_archive_session_attendance_result`.
+    5. Database-level idempotency guaranteed by Flyway migration `V10__unique_session_attendance_result.sql`, creating unique index `uk_session_attendance_result_session_student` on `session_attendance_result(session_id, student_id)` and archiving duplicates in `eb51_archive_session_attendance_result`.
     6. Verified by 20/20 tests passing in `TotalPointsPostgresIntegrationTest` (including `liveSessionSweepAndManualEndSessionSerializeSafelyOnPostgres` on PostgreSQL 17), 8/8 in `LiveSessionHousekeepingIntegrationTest`, and 10/10 in `LiveSessionSweepArchitectureScenariosTest`.
 
 ### D-16 — Live-video platform

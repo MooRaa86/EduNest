@@ -79,11 +79,11 @@ public class PostgreSqlV9MigrationScenariosTest {
         String jdbcUrl = createDisposableDatabase();
 
         Flyway flyway = flywayConfig(jdbcUrl)
-                .target("9")
+                .target("10")
                 .load();
 
         int migrationsApplied = flyway.migrate().migrationsExecuted;
-        assertThat(migrationsApplied).isEqualTo(9);
+        assertThat(migrationsApplied).isEqualTo(10);
 
         // Verify unique index exists in PostgreSQL
         try (Connection conn = DriverManager.getConnection(jdbcUrl, postgres.getUsername(), postgres.getPassword());
@@ -100,9 +100,9 @@ public class PostgreSqlV9MigrationScenariosTest {
     void duplicateRecordsBlockV9MigrationFailClosed() throws Exception {
         String jdbcUrl = createDisposableDatabase();
 
-        // 1. Migrate up to V8
+        // 1. Migrate up to V9
         Flyway flywayV8 = flywayConfig(jdbcUrl)
-                .target("8")
+                .target("9")
                 .load();
         flywayV8.migrate();
 
@@ -120,7 +120,7 @@ public class PostgreSqlV9MigrationScenariosTest {
 
         // 3. Attempt V9 migration: must FAIL-CLOSED without silently deleting data
         Flyway flywayV9 = flywayConfig(jdbcUrl)
-                .target("9")
+                .target("10")
                 .load();
 
         assertThatThrownBy(flywayV9::migrate)
@@ -143,7 +143,7 @@ public class PostgreSqlV9MigrationScenariosTest {
         String jdbcUrl = createDisposableDatabase();
 
         Flyway flywayV8 = flywayConfig(jdbcUrl)
-                .target("8")
+                .target("9")
                 .load();
         flywayV8.migrate();
 
@@ -160,7 +160,7 @@ public class PostgreSqlV9MigrationScenariosTest {
         }
 
         Flyway flywayV9 = flywayConfig(jdbcUrl)
-                .target("9")
+                .target("10")
                 .load();
 
         assertThatThrownBy(flywayV9::migrate)
@@ -184,7 +184,7 @@ public class PostgreSqlV9MigrationScenariosTest {
         String jdbcUrl = createDisposableDatabase();
 
         Flyway flywayV8 = flywayConfig(jdbcUrl)
-                .target("8")
+                .target("9")
                 .load();
         flywayV8.migrate();
 
@@ -197,7 +197,7 @@ public class PostgreSqlV9MigrationScenariosTest {
         }
 
         Flyway flywayV9 = flywayConfig(jdbcUrl)
-                .target("9")
+                .target("10")
                 .load();
         flywayV9.migrate();
 
@@ -216,7 +216,7 @@ public class PostgreSqlV9MigrationScenariosTest {
         String jdbcUrl = createDisposableDatabase();
 
         Flyway flyway = flywayConfig(jdbcUrl)
-                .target("9")
+                .target("10")
                 .load();
         flyway.migrate();
 

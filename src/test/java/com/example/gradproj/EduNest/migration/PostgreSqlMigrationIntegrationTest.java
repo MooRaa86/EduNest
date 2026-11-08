@@ -88,8 +88,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute scripts V1 through V9")
-                .isEqualTo(9);
+                .as("Initial migration must execute scripts V1 through V10")
+                .isEqualTo(10);
     }
 
     @Test
@@ -98,8 +98,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Nine migrations must be registered in flyway_schema_history")
-                .hasSize(9);
+                .as("Ten migrations must be registered in flyway_schema_history")
+                .hasSize(10);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -152,19 +152,29 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v7.getType().name()).isEqualTo("SQL");
         assertThat(v7.getState().isApplied()).isTrue();
         assertThat(v7.getChecksum()).isNotNull();
+        // [EB-62] V8 failed email attempts
         MigrationInfo v8 = applied[7];
         assertThat(v8.getVersion().getVersion()).isEqualTo("8");
-        assertThat(v8.getDescription()).isEqualTo("badge and total points versions");
+        assertThat(v8.getDescription()).isEqualTo("failed email attempts");
         assertThat(v8.getType().name()).isEqualTo("SQL");
         assertThat(v8.getState().isApplied()).isTrue();
         assertThat(v8.getChecksum()).isNotNull();
 
+        // [EB-51] V9 badge and total points versions
         MigrationInfo v9 = applied[8];
         assertThat(v9.getVersion().getVersion()).isEqualTo("9");
-        assertThat(v9.getDescription()).isEqualTo("unique session attendance result");
+        assertThat(v9.getDescription()).isEqualTo("badge and total points versions");
         assertThat(v9.getType().name()).isEqualTo("SQL");
         assertThat(v9.getState().isApplied()).isTrue();
         assertThat(v9.getChecksum()).isNotNull();
+
+        // [EB-51] V10 unique session attendance result
+        MigrationInfo v10 = applied[9];
+        assertThat(v10.getVersion().getVersion()).isEqualTo("10");
+        assertThat(v10.getDescription()).isEqualTo("unique session attendance result");
+        assertThat(v10.getType().name()).isEqualTo("SQL");
+        assertThat(v10.getState().isApplied()).isTrue();
+        assertThat(v10.getChecksum()).isNotNull();
     }
 
     @Test
@@ -190,11 +200,11 @@ public class PostgreSqlMigrationIntegrationTest {
                 }
                 assertThat(tables)
                         .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
-                        .hasSize(48);
+                        .hasSize(49);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
                         .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
-                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions");
+                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions", "failed_email_attempts", "eb51_archive_session_attendance_result");
             }
 
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
@@ -447,7 +457,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .defaultSchema(testSchema)
                     .locations("classpath:db/migration")
                     // This deliberately synthetic unmanaged schema does not contain V1 tables.
-                    .target("7")
+                    .target("8")
                     .baselineOnMigrate(false) // Must be false
                     .baselineVersion("1")
                     .cleanDisabled(true)
@@ -472,8 +482,8 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations V2 through V7")
-                    .isEqualTo(6);
+                    .as("Post-baseline migrate must apply pending migrations V2 through V8")
+                    .isEqualTo(7);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {
@@ -679,11 +689,11 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult upgraded = upgrade.migrate();
             assertThat(upgraded.success).isTrue();
             assertThat(upgraded.migrationsExecuted)
-                    .as("Upgrade from the V6-shaped database must apply V7, V8, and V9")
-                    .isEqualTo(3);
+                    .as("Upgrade from the V6-shaped database must apply V7, V8, V9, and V10")
+                    .isEqualTo(4);
             assertThat(upgrade.info().applied())
-                    .as("Upgraded schema history must hold all nine migrations")
-                    .hasSize(9);
+                    .as("Upgraded schema history must hold all ten migrations")
+                    .hasSize(10);
 
             // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
