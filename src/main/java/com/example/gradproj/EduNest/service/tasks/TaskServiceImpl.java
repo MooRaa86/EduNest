@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
@@ -9,8 +10,8 @@ import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
-import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
+import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -21,6 +22,7 @@ import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +46,7 @@ public class TaskServiceImpl implements TaskService {
     private final NotificationService notificationService;
     private final FileStorageService StorageService;
     private final ContentReadGuard contentReadGuard;
+    private final EntityManager entityManager;
 
     private void validateMentorshipOwnership(Long mentorShipId, String email) {
         if (!mentorShipRepository.existsByIdAndMentor_Email(mentorShipId, email)) {
@@ -114,9 +117,19 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file, String email) {
         Task task = validateMentorOwnershipAndGetTask(taskId, email);
+        // EB-51 — L1 -> L2 shared gate + D-09 content freeze: both gates are
+        // held while the points-minus baseline and the value-mutation happen,
+        // so an in-flight regrade cannot interleave with a points change.
+        Long weekId = task.getWeek().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        task = taskRepository.findForUpdateById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
         if (task.getStatus() == TaskStatus.CLOSED) {
             throw new globalLogicEx("cannot update closed task");
         }
+
+        int oldPoints = task.getPoints();
         TaskStatus oldStatus = task.getStatus();
         if (request != null) {
             if (request.getTitle() != null) task.setTitle(request.getTitle());
@@ -132,6 +145,12 @@ public class TaskServiceImpl implements TaskService {
                 }
                 task.setDueAt(request.getDueAt());
             }
+        }
+        // No persisted field can distinguish all never-graded submissions from
+        // legacy graded-then-resubmitted ones. Protect both conservatively.
+        if (task.getPoints() != oldPoints
+                && taskSubmissionRepository.existsByTask_Id(task.getId())) {
+            throw new globalLogicEx("Task points are locked while submissions exist");
         }
         if (file != null && !file.isEmpty()) {
             Long mentorshipId = task.getWeek().getMentorship().getId();
@@ -162,6 +181,20 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteTask(Long taskId, String email) {
         Task task = validateMentorOwnershipAndGetTask(taskId, email);
+
+        // EB-51 — L1 -> L2 shared gate + D-09 delete freeze: a graded task
+        // carries reconstruction-relevant award history, so deleting it is
+        // rejected while the gate is held (an interleaved regrade cannot pass
+        // between the check and the delete).
+        Long weekId = task.getWeek().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        task = taskRepository.findForUpdateById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        if (taskSubmissionRepository.existsByTask_Id(task.getId())) {
+            throw new globalLogicEx("Cannot delete a task that has submissions");
+        }
 
         String filePath = task.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {

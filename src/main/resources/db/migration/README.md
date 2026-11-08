@@ -36,6 +36,10 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | **`V4`** | **APPLIED** | `EB-47` / `P3-05` | `V4__seed_default_commission.sql` | Default commission rate idempotent initialization (`app.commission.default`). |
 | **`V5`** | **APPLIED** | `EB-91` | `V5__refresh_token_sessions.sql` | Refresh token session store and revocation infrastructure. |
 | **`V6`** | **APPLIED** | `EB-109` | `V6__add_public_uuid_identifiers.sql` | Global Public UUID migration (cryptographically random `public_id` on all `BaseEntity` tables). |
+| **`V7`** | **MERGED — deployment not verified here** | `EB-54` | `V7__certificate_issuance_snapshot.sql` | Nullable certificate issuance snapshots and delivery metadata. |
+| **`V8`** | **MERGED** | `EB-62` / `INT-02` | `V8__failed_email_attempts.sql` | Outbox-style persistence table for asynchronous delivery failure observability and bounded retries. |
+| **`V9`** | **LOCAL WIP — not deployed** | `EB-51` | `V9__badge_and_total_points_versions.sql` | Adds version columns for badges and total points optimistic locking. |
+| **`V10`** | **LOCAL WIP — not deployed** | `EB-51` | `V10__unique_session_attendance_result.sql` | Archive table `eb51_archive_session_attendance_result`, deduplicate session attendance results, and enforce unique constraint `uk_session_attendance_result_session_student` on `(session_id, student_id)`. |
 
 *Note: Do not invent or assign version numbers out of order. Consult the engineering lead and Phase 3 task roadmap before reserving versions beyond V5.*
 

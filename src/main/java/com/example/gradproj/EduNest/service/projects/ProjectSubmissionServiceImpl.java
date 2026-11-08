@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.projects;
 
+import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
@@ -11,16 +12,19 @@ import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.exception.LegacySubmissionAuditRequiredException;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -47,6 +51,8 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final ContentReadGuard contentReadGuard;
+    private final WeekRepository weekRepository;
+    private final EntityManager entityManager;
 
     private void validateEnrolled(Long projectId, String email) {
         if (!enrollmentRepository.isStudentEnrolledForProjectByEmail(projectId, email)) {
@@ -108,6 +114,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
             s.setProject(projectRepository.getReferenceById(projectId));
             s.setStudent(studentRepository.getReferenceById(studentId));
             s.setStatus(SubmissionStatus.SUBMITTED);
+            s.setPointsApplied(0);
             return s;
         });
 
@@ -162,7 +169,25 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     @Override
     public ProjectSubmissionResponse gradeProject(Long submissionId, GradeProjectSubmissionRequest req, String email) {
         ProjectSubmission sub = validateMentorOwnsSubmission(submissionId, email);
-        Project project = sub.getProject();
+
+        // EB-51 — L1 -> L2 -> L3 ordered locking: week -> project -> submission
+        Long weekId = sub.getProject().getWeek().getId();
+        Long projectId = sub.getProject().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Project project = projectRepository.findForUpdateById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        sub = projectSubmissionRepository.findForUpdateById(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        if (entityManager != null) {
+            entityManager.refresh(sub);
+        }
+
+        // EB-51 D-09a: Strict integrity gate - reject grading if points provenance is null
+        if (sub.getPointsApplied() == null) {
+            throw new LegacySubmissionAuditRequiredException(
+                    "Project submission " + submissionId + " lacks recorded points provenance. Grading requires administrative reconciliation.");
+        }
 
         if (req.getScore() > project.getPoints()) {
             throw new globalLogicEx("score must be less than or equal to project points " + project.getPoints());
@@ -175,7 +200,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
         sub.setGradedAt(LocalDateTime.now());
 
         MentorShip mentorship = project.getWeek().getMentorship();
-        int delta = sub.getFinalScore() - (sub.getPointsApplied() == null ? 0 : sub.getPointsApplied());
+        int delta = sub.getFinalScore() - sub.getPointsApplied();
         if (delta != 0) totalPointsService.applyDelta(sub.getStudent(), mentorship, delta);
         sub.setPointsApplied(sub.getFinalScore());
 

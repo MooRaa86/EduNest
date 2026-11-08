@@ -269,7 +269,11 @@ public class mentorShipServiceI implements mentorShipService{
     @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public void updateMentorShipStatus(long mentorShipId, Status status) {
-        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
+        // EB-51 — L0 shared gate acquired at method start: the COMPLETED
+        // transition and its certificate fan-out are serialised against
+        // badge point edits and new badge awards so no award (ledger) can
+        // interleave between the final certificate truth and the freeze.
+        MentorShip mentorShip = MentorShipRepository.findForUpdateById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
 
         Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())

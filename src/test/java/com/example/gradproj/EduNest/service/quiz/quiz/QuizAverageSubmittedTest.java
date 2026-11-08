@@ -10,7 +10,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class QuizAverageSubmittedTest {
-    private final QuizServiceImpl service = new QuizServiceImpl(null, null, null, null, null, null, null);
+    private final QuizServiceImpl service = new QuizServiceImpl(null, null, null, null, null, null, null, null);
 
     private double average(QuizSubmission... submissions) {
         Quiz quiz = Quiz.builder().submissions(List.of(submissions)).build();

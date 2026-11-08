@@ -134,19 +134,21 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             @Param("studentEmail") String studentEmail
     );
 
+
+    /** Insert-only initialization; callers must then lock and mutate the managed row. */
     @Modifying
-    @Query("""
-        UPDATE TotalPoints tp
-        SET tp.totalPoints = tp.totalPoints + :delta
-        WHERE tp.student.id IN (
-            SELECT ba.student.id 
-            FROM BadgeAward ba 
-            WHERE ba.badge.id = :badgeId
-        )
-        AND tp.mentorship.id = :mentorshipId
-    """)
-    int updatePointsForBadgeAwards(@Param("badgeId") Long badgeId, 
-                                    @Param("mentorshipId") Long mentorshipId, 
-                                    @Param("delta") int delta);
+    @Query(value = """
+        INSERT INTO total_points
+            (student_id, mentorship_id, total_points, version, public_id,
+             created_at, updated_at, created_by, updated_by)
+        VALUES
+            (:studentId, :mentorshipId, 0, 0,
+             gen_random_uuid(), now(), now(), :actorEmail, :actorEmail)
+        ON CONFLICT (student_id, mentorship_id)
+        DO NOTHING
+        """, nativeQuery = true)
+    int insertEmptyIfAbsentPostgres(@Param("studentId") Long studentId,
+                                    @Param("mentorshipId") Long mentorshipId,
+                                    @Param("actorEmail") String actorEmail);
 
 }

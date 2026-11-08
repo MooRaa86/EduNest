@@ -5,9 +5,11 @@ import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskDashboardProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.UpcomingTaskProjection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task,Long> {
+    /** EB-51 — shared gate lock (L2) for task points-edit/delete and grading gates. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Task t WHERE t.id = :id")
+    Optional<Task> findForUpdateById(@Param("id") Long id);
     @Query("""
         SELECT t.id AS id,
                m.email AS mentorEmail,

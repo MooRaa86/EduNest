@@ -4,6 +4,8 @@ import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,9 +31,19 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
     """)
     Optional<ProjectSubmissionAuthProjection> findAuthProjectionById(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ps FROM ProjectSubmission ps WHERE ps.id = :id")
+    Optional<ProjectSubmission> findForUpdateById(@Param("id") Long id);
+
     Page<ProjectSubmission> findByProject_Id(Long projectId, Pageable pageable);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
     boolean existsByProject_IdAndStudent_Id(Long projectId, Long studentId);
+    boolean existsByProject_Id(Long projectId);
+    /** EB-51 / D-09 — freeze predicate: at least one qualifying (GRADED) submission exists. */
+    boolean existsByProject_IdAndStatus(Long projectId, SubmissionStatus status);
+    /** EB-51 — cascade-delete protection: rejects deleting week if submissions exist. */
+    boolean existsByProject_Week_Id(Long weekId);
+    boolean existsByProject_Week_IdAndStatus(Long weekId, SubmissionStatus status);
 
     @Query("""
         SELECT
@@ -133,4 +145,15 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
         WHERE ps.project.id = :projectId
     """)
     List<Long> findStudentIdsByProjectId(@Param("projectId") Long projectId);
+
+    @Query("""
+        SELECT ps
+        FROM ProjectSubmission ps
+        JOIN ps.project p
+        JOIN p.week w
+        WHERE ps.student.id = :studentId
+          AND w.mentorship.id = :mentorshipId
+    """)
+    List<ProjectSubmission> findByStudentIdAndMentorshipId(@Param("studentId") Long studentId,
+                                                           @Param("mentorshipId") Long mentorshipId);
 }

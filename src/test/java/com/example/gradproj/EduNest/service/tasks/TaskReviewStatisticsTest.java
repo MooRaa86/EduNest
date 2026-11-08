@@ -32,7 +32,7 @@ class TaskReviewStatisticsTest {
     private final EnrollmentRepository enrollments = mock(EnrollmentRepository.class);
     private final TaskServiceImpl service = new TaskServiceImpl(tasks, mentorships, mock(WeekRepository.class),
             submissions, enrollments, mock(NotificationService.class), mock(FileStorageService.class),
-            mock(ContentReadGuard.class));
+            mock(ContentReadGuard.class), mock(jakarta.persistence.EntityManager.class));
 
     @Test
     void noSubmissionsMeansNoPendingReviewsEvenWithEnrolledStudents() {

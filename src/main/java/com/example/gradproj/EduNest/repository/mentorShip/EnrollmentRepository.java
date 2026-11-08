@@ -259,6 +259,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
        select e.student
        from Enrollment e
        where e.mentorShip.id = :mentorshipId
+       order by e.student.id asc
        """)
     List<Student> findStudentsByMentorshipId(Long mentorshipId);
 

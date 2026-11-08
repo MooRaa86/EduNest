@@ -21,6 +21,7 @@ import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResultRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingClient;
@@ -39,6 +40,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +55,6 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LiveSessionServiceImp implements LiveSessionService {
 
     private final WeekRepository weekRepository;
@@ -71,6 +72,67 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final AttendancePolicy attendancePolicy;
     private final PointsAwardingPolicy pointsAwardingPolicy;
     private final LiveSessionProperties liveSessionProperties;
+    private final MentorShipRepository mentorShipRepository;
+
+    @Autowired
+    public LiveSessionServiceImp(
+            WeekRepository weekRepository,
+            LiveSessionRepository liveSessionRepository,
+            EnrollmentRepository enrollmentRepository,
+            StudentRepository studentRepository,
+            AttendanceRepository attendanceRepository,
+            SessionAttendanceResultRepository sessionAttendanceResultRepository,
+            JitsiService jitsiService,
+            TotalPointsServiceImp totalPointsService,
+            NotificationService notificationService,
+            SecurityService securityService,
+            ZoomMeetingClient zoomMeetingClient,
+            ZoomProperties zoomProperties,
+            AttendancePolicy attendancePolicy,
+            PointsAwardingPolicy pointsAwardingPolicy,
+            LiveSessionProperties liveSessionProperties,
+            MentorShipRepository mentorShipRepository
+    ) {
+        this.weekRepository = weekRepository;
+        this.liveSessionRepository = liveSessionRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.studentRepository = studentRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.sessionAttendanceResultRepository = sessionAttendanceResultRepository;
+        this.jitsiService = jitsiService;
+        this.totalPointsService = totalPointsService;
+        this.notificationService = notificationService;
+        this.securityService = securityService;
+        this.zoomMeetingClient = zoomMeetingClient;
+        this.zoomProperties = zoomProperties;
+        this.attendancePolicy = attendancePolicy;
+        this.pointsAwardingPolicy = pointsAwardingPolicy;
+        this.liveSessionProperties = liveSessionProperties;
+        this.mentorShipRepository = mentorShipRepository;
+    }
+
+    public LiveSessionServiceImp(
+            WeekRepository weekRepository,
+            LiveSessionRepository liveSessionRepository,
+            EnrollmentRepository enrollmentRepository,
+            StudentRepository studentRepository,
+            AttendanceRepository attendanceRepository,
+            SessionAttendanceResultRepository sessionAttendanceResultRepository,
+            JitsiService jitsiService,
+            TotalPointsServiceImp totalPointsService,
+            NotificationService notificationService,
+            SecurityService securityService,
+            ZoomMeetingClient zoomMeetingClient,
+            ZoomProperties zoomProperties,
+            AttendancePolicy attendancePolicy,
+            PointsAwardingPolicy pointsAwardingPolicy,
+            LiveSessionProperties liveSessionProperties
+    ) {
+        this(weekRepository, liveSessionRepository, enrollmentRepository, studentRepository,
+             attendanceRepository, sessionAttendanceResultRepository, jitsiService, totalPointsService,
+             notificationService, securityService, zoomMeetingClient, zoomProperties,
+             attendancePolicy, pointsAwardingPolicy, liveSessionProperties, null);
+    }
 
     @Override
     @Transactional
@@ -389,8 +451,24 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new AccessDeniedException("You are not authorized to end this session");
         }
 
-        Session session = liveSessionRepository.findById(sessionId)
+        Session uncommitted = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
+
+        Long mentorshipId = uncommitted.getWeek().getMentorship().getId();
+        Long weekId = uncommitted.getWeek().getId();
+
+        // EB-51: Canonical ordered row locking (L0 mentorship -> L1 week -> L2 session)
+        if (mentorShipRepository != null) {
+            mentorShipRepository.findForUpdateById(mentorshipId)
+                    .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        }
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Session session = liveSessionRepository.findForUpdateById(sessionId)
+                .orElse(null);
+        if (session == null) {
+            session = uncommitted;
+        }
 
         if (session.getStatus() != SessionStatus.LIVE) {
             throw new globalLogicEx("Session must be live");
@@ -408,12 +486,16 @@ public class LiveSessionServiceImp implements LiveSessionService {
             }
         }
 
-        notificationService.sendToMentorshipStudents(
-                session.getWeek().getMentorship().getId(),
-                "Session Ended",
-                "Session " + session.getTitle() + " has ended.",
-                NotificationType.LIVE_SESSION
-        );
+        try {
+            notificationService.sendToMentorshipStudents(
+                    mentorshipId,
+                    "Session Ended",
+                    "Session " + session.getTitle() + " has ended.",
+                    NotificationType.LIVE_SESSION
+            );
+        } catch (Exception e) {
+            log.warn("Notice on student notification for ended session {}: {}", sessionId, e.getMessage());
+        }
 
         calculateAttendancePoints(session);
         return mapToDto(session);

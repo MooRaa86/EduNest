@@ -10,10 +10,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +26,18 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     Optional<MentorShip> findByPublicId(UUID publicId);
     boolean existsById(Long id);
     long countByMentor_Id(Long mentorId);
+
+    /**
+     * EB-51 — shared gate lock (L0). Acquired at validation time by every
+     * convergence-coin mentorship-axis flow (badge CRUD radial boundary,
+     * badge award, mentorship completion) so eligibility checks run while the
+     * gate is held and no two mentorship-axis writers can interleave.
+     * Does NOT contain L4 (total_points): the ledger row lock is taken last,
+     * inside applyDelta's own statement, closing the hierarchy.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ms FROM MentorShip ms WHERE ms.id = :id")
+    Optional<MentorShip> findForUpdateById(@Param("id") Long id);
 
     boolean existsByIdAndMentor_Email(Long id, String email);
 

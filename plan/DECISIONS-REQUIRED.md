@@ -17,12 +17,14 @@
 | D-07 | Upload exposure policy & FE link changes | PO + FE liaison | ✅ Decided 2026-10-25 (Supabase Storage) | P1-21 (re-scoped), P7-02 |
 | D-08 | Late-submission & quiz close policy | PO | Before P4-04 | P4-04 |
 | D-09 | Points reconciliation & completion freeze rules | PO | Before P4-02 | P4-02 |
+| D-09a | Legacy Submission Grading Policy (Double-Credit Prevention) | PO + Eng Lead | ✅ Decided 2026-11-08 (Integrity First) | EB-51 (P4-02) |
 | D-10 | `passPoints`/unlock: implement or retire | PO | Before P4-15 (may be deferred) | P4-15 (conditional) |
 | D-11 | Certificate PDF feature: implement or claim-update | PO | Before P5-05 (deferral allowed) | P5-05 content, optional feature |
 | D-12 | Admin notification broadcast model | PO + Eng Lead | Before P4-01 slice | P4-01 |
 | D-13 | Chat read receipts scope | PO (deferral allowed) | Before P4-07 | P4-07 (conditional) |
 | D-14 | Chat membership semantics | PO + Eng Lead | ✅ Decided 2026-10-25 (fix approved) | P1-12 (unblocked) |
 | D-15 | Live-session rules: attendance constants + auto-close | PO | Before P4-08 | P4-08 |
+| D-15b | Live Session Sweep Concurrency & Transaction Boundary Architecture | Eng Lead + Infra | ✅ Decided 2026-11-08 (Option B Worker) | EB-51 (P4-02), P4-08 |
 | D-16 | Live-video platform (Jitsi public vs self-host JWT vs Agora) | PO + Infra | ✅ Decided 2026-10-25 (Zoom) | P4-17 (re-scoped: Zoom integration) |
 | D-17 | Fresh-deployment default commission rate | PO | Before P3-05 | P3-05 |
 | D-18 | Soft-deleted users' visibility on public reads | PO | Before P3-04 | P3-04 |
@@ -95,8 +97,60 @@
 
 ### D-09 — Points reconciliation & freeze rules
 - **Question:** Can mentors edit task/project/quiz points after grading (LEARN-06)? Badge point edits after mentorship COMPLETED (CERT-04)? Bulk-update clamp policy (GAME-03)?
-- **Options per axis:** allow+recalculate vs lock-after-first-grade; freeze badge edits on completed; clamp ≥0 always.
+- **Options per axis:** allow+recalculate vs lock-after-first-grade; freeze badge edits on COMPLETED; clamp ≥0 always.
 - **Default:** lock content points after any grade exists (regrade flows recompute explicitly); freeze badge edits on COMPLETED; clamp everywhere. Decide-by: before P4-02.
+
+- **Outcome (decided 2026-11-07, user-approved):** the documented default is adopted as-is — content point
+  values **lock after a qualifying grade exists** (task/project point edits and graded-content deletion are
+  rejected); **explicitly supported regrading is preserved** and recomputes the credited delta through the
+  service-level ledger guard; **badge point changes freeze once the mentorship reaches COMPLETED** (CERT-04);
+  **TotalPoints clamps at zero everywhere** (negative deltas floor at 0, never negative). No additional policy
+  axes were introduced. EB-51 (P4-02) local implementation verified: managed version-aware ledger writes with optimistic locking (V8), coordinated hierarchical gates (L0-L4), provisional task/project any-submission freeze (protecting ambiguous legacy grading records), week cascade-delete protection, scored-quiz deletion guard, and post-completion badge freezes (CERT-04).
+- **Legacy grading blocker:** `pointsApplied != null`, including zero, records a contribution under the
+  current flow. A null value on an existing task/project submission does not prove it was never graded:
+  legacy grading may not have populated the field, and resubmission clears other grade evidence. Do not
+  infer an old contribution from the aggregate ledger. A trustworthy historical source or an approved
+  workflow decision is required before treating all such submissions as safe first grades. A proposed
+  read-only, mentorship-scoped audit appears in `mds/database/transactions-consistency.md`; it has not
+  been run against production.
+
+### D-09a — Legacy Submission Grading Policy (Double-Credit Prevention)
+- **Question:** How should `TaskSubmissionServiceImpl.grade` and `ProjectSubmissionServiceImpl.gradeProject` handle legacy submissions where `pointsApplied == null`?
+- **Background & Schema Limitation:**
+  In `task_submission` and `project_submission`, `points_applied` is `NULL` for:
+  1. Fresh submissions that have never been graded.
+  2. Legacy submissions that were graded prior to Sprint 2 where points were added to `TotalPoints`, but `points_applied` was unpopulated.
+  Furthermore, the Sprint 1 resubmission path actively set `final_score = null`, `raw_score = null`, and `graded_at = null` on resubmit.
+  The database maintains no immutable transaction ledger table of individual point credits.
+  Therefore, it is impossible from database columns alone (`submission_status`, `rawScore`, `finalScore`, or `TotalPoints`) to distinguish a never-graded submission from a previously graded-and-resubmitted submission.
+- **Double-Credit Vulnerability Path:**
+  If an ambiguous legacy submission was graded prior to Sprint 2 and points were credited to `TotalPoints`, regrading it today evaluates `pointsApplied == null ? 0 : pointsApplied`. The delta $\Delta = \text{newScore} - 0 = \text{newScore}$ credits the full score to `TotalPoints` a second time, silently inflating student points and corrupting leaderboards.
+- **Classification Categories:**
+  - `KNOWN_CREDIT`: Recorded prior contribution is trustworthy (`points_applied IS NOT NULL`). Safe to regrade ($\Delta = \text{newScore} - \text{points_applied}$).
+  - `KNOWN_FIRST_GRADE`: Reliable provenance proves no earlier credit exists. *(Currently, no reliable automatic classifier exists in the database schema; Git commit dates are not deployment evidence, and production rollout timestamps are unverified).*
+  - `AMBIGUOUS_LEGACY_HISTORY`: Earlier credit cannot be established or excluded (`points_applied IS NULL`).
+- **Classification Feasibility & Blocker:**
+  Because the database schema lacks an immutable historical ledger and resubmissions erased grading evidence, **a trustworthy automatic classifier for `KNOWN_FIRST_GRADE` cannot be implemented reliably with current data.** Marking un-audited submissions as safe first-time grades based on heuristics or commit dates is unsafe. This classification is therefore formally marked **BLOCKED** pending a product decision.
+- **Audit Override Security (Client Headers Strictly Rejected):**
+  - **Direct client headers (such as `X-Audit-Baseline-Points`) are REJECTED.** Arbitrary callers must never be permitted to supply unverified historical baselines that mutate points.
+  - A future admin-only remediation workflow is designed (not implemented yet) requiring:
+    1. Explicit admin authorization (`Roles.ADMIN` only).
+    2. Independently verified external evidence (e.g. historical log exports or mentor gradebooks).
+    3. Immutable audit trail logging (recording auditor identity, timestamp, before/after balances, rationale, and proof reference).
+    4. Explicit submission and student identity verification.
+    5. Mentorship scope boundary validation.
+    6. Idempotency (repeated baseline execution produces identical state without re-incrementing).
+    7. Transactional ledger consistency (updating `points_applied` and adjusting `TotalPoints` atomically).
+    8. Dual-approval / review controls for material points corrections.
+- **Business-Policy Tradeoff for Product Owner Decision:**
+  - *Option 1 (Tolerate Double-Credit Risk):* Allow mentors to grade all `points_applied IS NULL` submissions as first-time grades. Tradeoff: eliminates mentor friction on legacy deliverables, but accepts unverified points inflation on students who resubmitted after Sprint 1 grading.
+  - *Option 2 (Strict Integrity Gate — Recommended):* Reject grading on any submission where `points_applied IS NULL` with HTTP 422 `ERR_LEGACY_SUBMISSION_REQUIRES_AUDIT`. Tradeoff: completely prevents points ledger corruption and double-credit, but requires admin audit/clearance for legacy submissions prior to grading.
+- **Decision Status:** ✅ **DECIDED 2026-11-08 (Integrity First Policy Approved by Product Owner & Engineering Lead).**
+  - **Adopted Policy:** Strict Integrity First. Historical points must never be credited a second time when prior contribution cannot be reliably established. Non-null `pointsApplied` is authoritative only when recorded. Unverified creation-date cutoffs are rejected. All client-controlled baseline headers (`X-Audit-Baseline-Points`) are purged and rejected.
+  - **Implementation Contract:**
+    - Submissions that were previously graded (`status == GRADED || gradedAt != null || finalScore != null`) with `pointsApplied == null` fail closed with `LegacySubmissionAuditRequiredException` mapped to HTTP 422 `ERR_BUSINESS_RULE`.
+    - Fresh first-time submissions (`pointsApplied == null && status == SUBMITTED && gradedAt == null`) proceed normally to grade for the first time without administrative blocking.
+    - Verified by `LegacySubmissionGradingSafetyTest` (6/6 passing) and `GradingPointsLeaderboardFlowIntegrationTest` (3/3 passing). Zero test fixtures broken.
 
 ### D-10 — passPoints/unlock
 - **Question:** Implement checkpoint unlock semantics (feature) or remove `passPoints` + fix claims?
@@ -128,6 +182,45 @@
   - **Auto-close sweep:** ACTIVATED via `LiveSessionSweepService` with `@Scheduled` sweep interval set to **every 5 minutes** (`app.livesession.auto-close.sweep-rate-ms: 300000`, adjusted from 60s per Omar's directive to optimize DB load). Enforces a 10-minute grace window (`grace-minutes: 10`) after the 40-minute duration cap (`max-duration-minutes: 40`, D-29 Basic plan). Automatically transitions expired LIVE sessions to `ENDED` (signaling Zoom to end the meeting) and stale un-started SCHEDULED sessions to `CANCELLED` (deleting Zoom meeting).
   - **Attendance & Gamification:** Enforcement is **DORMANT** by default (`app.livesession.attendance.enforced=false`). Strategy Pattern implemented (`SnapshotGridAttendancePolicy` and `DefaultLivePointsAwarder` compiled and ready for activation; `NoEnforcementAttendancePolicy` and `DormantPointsAwarder` active by default). When dormant, session end records no absence verdicts, marks no absences, and executes zero gamification/leaderboard writes. Flipping `app.livesession.attendance.enforced=true` activates the full snapshot grid (75% threshold, 5-min grid, +5 bonus) without code changes.
   - **Transactional Boundaries:** `@Transactional` added to `startLiveSession` and `recordSnapshot` (LS-05); snapshot persistence batched via `saveAll` (LS-04).
+
+### D-15b — Live Session Sweep Concurrency & Transaction Boundary Architecture
+- **Question:** How should `LiveSessionSweepService` orchestrate transactions and database locks when sweeping expired live sessions across multiple mentorships?
+- **Background:**
+  The baseline `LiveSessionSweepService.autoCloseExpiredSessions` runs on a background `@Scheduled` cron (every 5 minutes per D-15). In the original implementation, the entire sweep executed in a single top-level `@Transactional` boundary, iterating over all expired sessions across all mentorships. In EB-51, in-memory sorting was added by `(mentorshipId, weekId, sessionId)`.
+  **Critical Architectural Realities:**
+  1. *In-memory Java sorting is NOT proof that database locks were acquired in order.* Rows are locked in the database only when queries with pessimistic write locks (`FOR UPDATE`) execute against the database.
+  2. *Exactly-once points awarding cannot be claimed without database-level idempotency evidence.* `session_attendance_result` lacks a database-level unique constraint on `(session_id, student_id)`, meaning concurrent sweep or manual end execution can insert duplicate results and award points twice.
+  3. *`REQUIRES_NEW` is NOT approved and is NOT strictly necessary.* A separate worker bean with ordinary `REQUIRED` propagation invoked from a non-transactional dispatcher provides identical per-session transaction isolation without the connection-suspension overhead of `REQUIRES_NEW`.
+- **11-Dimension Comparative Evaluation:**
+  | Dimension | Option A: Grouped Transaction with Ordered DB Gates | Option B: Per-Session Worker (`REQUIRED` + Non-TX Dispatcher) |
+  | :--- | :--- | :--- |
+  | **1. Lock Scope & Blast Radius** | Global: locks held across multiple mentorships, weeks, and sessions in one transaction. Failure in one session rolls back all swept sessions. | Isolated: locks restricted to a single mentorship, week, and session per transaction. Failure in one session affects only that session. |
+  | **2. Lock Duration (Connection Hold Time)** | Long: database connection and row locks held across the entire batch sweep, including all Zoom API checks, JPA queries, and attendance writes. | Short: connection and locks held only for the duration of a single session closure (milliseconds). |
+  | **3. Failure Isolation & Rollback** | All-or-nothing: if the 10th session encounters a database constraint or transient error, the preceding 9 closed sessions roll back. | Complete isolation: each session commits independently. Successfully closed sessions stay closed. |
+  | **4. Deadlock Surface with User TXs** | Moderate-to-High: holding locks across multiple mentorships increases lock contention with concurrent user transactions (e.g. mentor ending session, student submitting quiz). | Minimal: sweep worker acquires L0 → L1 → L2 locks for exactly one session at a time in the exact same order as user endpoints. |
+  | **5. Connection Pool Starvation Risk** | Low-to-Moderate: uses 1 connection for the entire sweep, but holds it for a sustained duration during cron execution. | Minimal: uses 1 connection briefly per session; connections return to pool immediately between iterations. |
+  | **6. Dialect Portability (Postgres / H2)** | Dialect-agnostic (standard JPA queries + `@Lock(PESSIMISTIC_WRITE)`). | Dialect-agnostic (standard Spring `@Transactional` + `@Lock(PESSIMISTIC_WRITE)`). Tested cleanly on PG 17 and H2. |
+  | **7. Code Complexity & Maintenance** | Very low: single service class, single method with loops. | Low: requires introducing a `LiveSessionSweepWorker` bean to host isolated `@Transactional` processing. |
+  | **8. Scalability (Many Active Sessions)** | Poor: transaction execution time scales linearly with total number of expired sessions across all mentorships. | High: constant transaction size ($O(1)$ per unit of work); easily parallelizable in future sprints if needed. |
+  | **9. Out-of-Band External Side Effects** | High risk: Zoom API calls or notifications inside the giant transaction can stall the DB transaction or leave external systems out of sync on DB rollback. | Clean boundary: external side effects can be executed per-session with explicit after-commit hooks or before-commit guards. |
+  | **10. Observability & Metrics Granularity** | Low: sweep reports 1 aggregate result for the entire run. Individual session failure reasons are swallowed or cause whole-batch abort. | High: structured per-session logging (`sessionId`, `mentorshipId`, elapsed time, status transition) and per-session error metrics. |
+  | **11. Implementation & Regression Risk** | Minimal immediate code changes, but carries latent production concurrency risks. | Low implementation risk (clean Spring component separation), zero regression to existing attendance policies. |
+- **Recommendation:** **Option B with ordinary `REQUIRED` propagation and a non-transactional dispatcher** is the recommended architecture for production resilience.
+- **Lock Protocol for Option B:**
+  1. Outer sweep orchestrator (non-transactional) queries list of candidate expired session IDs ordered deterministically by `(mentorshipId, weekId, sessionId)`.
+  2. For each session ID, invoke `LiveSessionSweepWorker.processSessionClose(sessionId)` annotated with `@Transactional(propagation = Propagation.REQUIRED)`. Because the dispatcher is non-transactional, Spring begins a fresh transaction for each invocation.
+  3. Inside worker, acquire locks in canonical order: L0 `mentorShipRepository.findForUpdateById(mentorshipId)` $\to$ L1 `weekRepository.findForUpdateById(weekId)` $\to$ L2 `sessionRepository.findForUpdateById(sessionId)`.
+  4. Verify session state is still eligible for auto-close (double-check guard under lock).
+  5. Close session, evaluate attendance policy, commit transaction.
+- **Decision Status:** ✅ **DECIDED 2026-11-08 (Option B Approved by Product Owner & Engineering Lead).**
+  - **Adopted Architecture:** Dedicated Spring component `LiveSessionSweepWorker` executing with `@Transactional(propagation = Propagation.REQUIRED)` called by non-transactional dispatcher `LiveSessionSweepService`.
+  - **Locking & Concurrency Contract:**
+    1. Outer orchestrator queries candidate sessions sorted deterministically by `(mentorshipId, weekId, sessionId)`.
+    2. Dispatcher iterates over candidate sessions, delegating each to `sweepWorker` in an isolated try-catch block. A failure or deadlock on one session rolls back only that session, allowing all other sessions to commit independently (Dimension 3: Failure Isolation).
+    3. `LiveSessionSweepWorker` acquires row locks strictly in canonical hierarchy: L0 mentorship (`mentorShipRepository.findForUpdateById`) -> L1 week (`weekRepository.findForUpdateById`) -> L2 session (`liveSessionRepository.findForUpdateById`).
+    4. Authoritative session status is rechecked under pessimistic write lock (`status == LIVE` / `SCHEDULED`). If status changed concurrently (e.g. mentor called `endSession`), the worker skips without double-processing.
+    5. Database-level idempotency guaranteed by Flyway migration `V10__unique_session_attendance_result.sql`, creating unique index `uk_session_attendance_result_session_student` on `session_attendance_result(session_id, student_id)` and archiving duplicates in `eb51_archive_session_attendance_result`.
+    6. Verified by 20/20 tests passing in `TotalPointsPostgresIntegrationTest` (including `liveSessionSweepAndManualEndSessionSerializeSafelyOnPostgres` on PostgreSQL 17), 8/8 in `LiveSessionHousekeepingIntegrationTest`, and 10/10 in `LiveSessionSweepArchitectureScenariosTest`.
 
 ### D-16 — Live-video platform
 - **Question:** Keep public `meet.jit.si` rooms (update docs), self-host Jitsi with JWT-gated rooms, or evaluate Agora SDK (dependency present but **unused** — planning-phase discovery, see [RISKS §6](RISKS-AND-DEPENDENCIES.md#6-planning-assumptions-register))?

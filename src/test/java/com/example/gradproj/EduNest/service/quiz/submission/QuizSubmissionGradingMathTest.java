@@ -241,8 +241,9 @@ class QuizSubmissionGradingMathTest {
         when(securityService.getCurrentUserEmail()).thenReturn("rahma@test.com");
         when(securityService.isStudentEnrolledByQuizId("rahma@test.com", 1L)).thenReturn(true);
         when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findForUpdateById(1L)).thenReturn(Optional.of(quiz));
         when(studentRepository.findByEmail("rahma@test.com")).thenReturn(Optional.of(student));
-        when(quizSubmissionRepository.findByStudent_IdAndQuiz_Id(5L, 1L))
+        when(quizSubmissionRepository.findByStudentIdAndQuizIdForUpdate(5L, 1L))
                 .thenReturn(Optional.of(submission));
 
         QuizSubmissionDTO dto = QuizSubmissionDTO.builder()
@@ -285,8 +286,9 @@ class QuizSubmissionGradingMathTest {
         when(securityService.getCurrentUserEmail()).thenReturn("rahma@test.com");
         when(securityService.isStudentEnrolledByQuizId("rahma@test.com", 1L)).thenReturn(true);
         when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findForUpdateById(1L)).thenReturn(Optional.of(quiz));
         when(studentRepository.findByEmail("rahma@test.com")).thenReturn(Optional.of(student));
-        when(quizSubmissionRepository.findByStudent_IdAndQuiz_Id(5L, 1L))
+        when(quizSubmissionRepository.findByStudentIdAndQuizIdForUpdate(5L, 1L))
                 .thenReturn(Optional.of(submission));
 
         QuizSubmissionDTO dto = QuizSubmissionDTO.builder()
@@ -318,8 +320,9 @@ class QuizSubmissionGradingMathTest {
         when(securityService.getCurrentUserEmail()).thenReturn("rahma@test.com");
         when(securityService.isStudentEnrolledByQuizId("rahma@test.com", 1L)).thenReturn(true);
         when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findForUpdateById(1L)).thenReturn(Optional.of(quiz));
         when(studentRepository.findByEmail("rahma@test.com")).thenReturn(Optional.of(student));
-        when(quizSubmissionRepository.findByStudent_IdAndQuiz_Id(5L, 1L))
+        when(quizSubmissionRepository.findByStudentIdAndQuizIdForUpdate(5L, 1L))
                 .thenReturn(Optional.of(submission));
 
         QuizSubmissionDTO dto = QuizSubmissionDTO.builder()
