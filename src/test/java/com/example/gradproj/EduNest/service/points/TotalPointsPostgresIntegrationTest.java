@@ -100,6 +100,26 @@ class TotalPointsPostgresIntegrationTest extends ProdChainIntegrationTestBase {
     @Autowired private SessionAttendanceResultRepository sessionAttendanceResults;
 
     @Test
+    void versionedNewBadgeAndLedgerRowsPersistOnFlywaySchema() {
+        String suffix = UUID.randomUUID().toString();
+        var chain = auth.mentorship("eb51-version-mentor-" + suffix + "@example.org", Status.ACTIVE);
+        var student = auth.student("eb51-version-student-" + suffix + "@example.org");
+        var badge = Badge.builder()
+                .mentorship(chain.mentorship()).title("Version test").description("version test")
+                .category(BadgeCategory.ACHIEVEMENT).points(10).build();
+        var ledger = TotalPoints.builder().student(student).mentorship(chain.mentorship()).totalPoints(23).build();
+        assertThat(badge.getVersion()).isNull();
+        assertThat(ledger.getVersion()).isNull();
+        var savedBadge = badges.saveAndFlush(badge);
+        var savedLedger = points.saveAndFlush(ledger);
+        assertThat(savedBadge.getId()).isNotNull();
+        assertThat(savedLedger.getId()).isNotNull();
+        assertThat(savedBadge.getVersion()).isZero();
+        assertThat(savedLedger.getVersion()).isZero();
+        assertThat(points.findById(savedLedger.getId()).orElseThrow().getTotalPoints()).isEqualTo(23);
+    }
+
+    @Test
     void concurrentFirstInsertsAccumulateAndRollbackDoesNotPersist() throws Exception {
         String suffix = UUID.randomUUID().toString();
         var chain = auth.mentorship("pg-points-mentor-" + suffix + "@example.org", Status.ACTIVE);

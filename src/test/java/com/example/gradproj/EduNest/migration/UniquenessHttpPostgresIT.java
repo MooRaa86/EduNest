@@ -150,7 +150,6 @@ public class UniquenessHttpPostgresIT {
 	@Autowired private com.example.gradproj.EduNest.repository.mentorShip.CommissionRepository commissions;
 	@Autowired private com.example.gradproj.EduNest.repository.points.TotalPointsRepository totalPoints;
 	@Autowired private com.example.gradproj.EduNest.repository.users.UserRepository users;
-	@Autowired private com.example.gradproj.EduNest.repository.badges.BadgeRepository badges;
 	@Autowired private OuterTxProbe outerTxProbe;
 
 	// the commission config row join/rate flows depend on (fresh PG database starts empty)
@@ -161,26 +160,6 @@ public class UniquenessHttpPostgresIT {
 					.rate(10.0)
 					.build());
 		}
-	}
-
-	@Test
-	void versionedNewBadgeAndLedgerRowsPersistOnFlywaySchema() {
-		String suffix = UUID.randomUUID().toString();
-		var chain = auth.mentorship("eb51-version-mentor-" + suffix + "@example.org", Status.ACTIVE);
-		var student = auth.student("eb51-version-student-" + suffix + "@example.org");
-		var badge = com.example.gradproj.EduNest.entity.badges.Badge.builder()
-				.mentorship(chain.mentorship()).title("Version test").description("version test")
-				.category(com.example.gradproj.EduNest.enums.badge.BadgeCategory.ACHIEVEMENT).points(10).build();
-		var ledger = TotalPoints.builder().student(student).mentorship(chain.mentorship()).totalPoints(23).build();
-		assertThat(badge.getVersion()).isNull();
-		assertThat(ledger.getVersion()).isNull();
-		var savedBadge = badges.saveAndFlush(badge);
-		var savedLedger = totalPoints.saveAndFlush(ledger);
-		assertThat(savedBadge.getId()).isNotNull();
-		assertThat(savedLedger.getId()).isNotNull();
-		assertThat(savedBadge.getVersion()).isZero();
-		assertThat(savedLedger.getVersion()).isZero();
-		assertThat(totalPoints.findById(savedLedger.getId()).orElseThrow().getTotalPoints()).isEqualTo(23);
 	}
 
 	@Test
