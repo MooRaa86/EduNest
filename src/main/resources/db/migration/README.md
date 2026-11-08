@@ -18,7 +18,7 @@ V<version>__<snake_case_description>.sql
 
 ### Critical Rules:
 1. **Version Format:** `V<integer>__` (double underscore separator after the version number). Example: `V1__initial_schema.sql`.
-2. **Immutability After Merge:** Once a migration script is merged into `main`, **it must NEVER be modified or renamed**. Flyway validates SHA-256 checksums on boot; altering a merged migration causes boot failure (`FlywayException: Validate failed: Checksum mismatch`).
+2. **Immutability After Merge:** Once a migration script is merged into `main`, **it must NEVER be modified or renamed**. Standalone Flyway validation checks recorded checksums; modifying an applied migration causes validation failure.
 3. **Forward-Only Mutations:** Any bug fix, schema addition, column alteration, or index drop must be implemented as a new, forward-only sequential migration (`V3`, `V4`, etc.).
 4. **Targeted Dialect:** All migrations must strictly use PostgreSQL 17.x syntax (e.g. `IDENTITY`, `TEXT`, `DOUBLE PRECISION`, `TIMESTAMP(6)`).
 
@@ -38,8 +38,9 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | **`V6`** | **APPLIED** | `EB-109` | `V6__add_public_uuid_identifiers.sql` | Global Public UUID migration (cryptographically random `public_id` on all `BaseEntity` tables). |
 | **`V7`** | **MERGED — deployment not verified here** | `EB-54` | `V7__certificate_issuance_snapshot.sql` | Nullable certificate issuance snapshots and delivery metadata. |
 | **`V8`** | **MERGED** | `EB-62` / `INT-02` | `V8__failed_email_attempts.sql` | Outbox-style persistence table for asynchronous delivery failure observability and bounded retries. |
-| **`V9`** | **LOCAL WIP — not deployed** | `EB-51` | `V9__badge_and_total_points_versions.sql` | Adds version columns for badges and total points optimistic locking. |
-| **`V10`** | **LOCAL WIP — not deployed** | `EB-51` | `V10__unique_session_attendance_result.sql` | Archive table `eb51_archive_session_attendance_result`, deduplicate session attendance results, and enforce unique constraint `uk_session_attendance_result_session_student` on `(session_id, student_id)`. |
+| **`V9`** | **MERGED** | `EB-51` | `V9__badge_and_total_points_versions.sql` | Adds version columns for badges and total points optimistic locking. |
+| **`V10`** | **MERGED** | `EB-51` | `V10__unique_session_attendance_result.sql` | Creates an archive surface, fails closed on duplicate attendance results, and enforces uniqueness. The V9 labels in its SQL are historical and must not be edited. |
+| **`V11`** | **PENDING DEPLOYMENT** | Archive relocation | `V11__move_archive_tables_to_migration_schema.sql` | Moves all five existing archive tables from public into migration_archive without deleting rows. |
 
 *Note: Do not invent or assign version numbers out of order. Consult the engineering lead and Phase 3 task roadmap before reserving versions beyond V5.*
 
@@ -53,8 +54,8 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 +----------------------+--------------------+---------------------+------------------+--------------------+
 | Profile / Env        | Flyway Enabled     | ddl-auto            | show-sql         | baseline-on-migrate|
 +----------------------+--------------------+---------------------+------------------+--------------------+
-| Base / Dev           | true               | validate            | false            | false              |
-| Production (prod)    | true               | validate            | false            | false (STRICT)     |
+| Base / Dev           | false              | validate            | false            | false              |
+| Production (prod)    | false              | validate            | false            | false (STRICT)     |
 | Test (H2 in-memory)  | false (D-26 / D-27)| create-drop         | false            | false              |
 +----------------------+--------------------+---------------------+------------------+--------------------+
 ```
@@ -62,10 +63,30 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 ### 3.1 Local Development Workflow
 1. Developers run against their local or containerized PostgreSQL instance.
 2. Hibernate automatic updates are disabled (`ddl-auto=validate`).
-3. To introduce a schema change:
-   - Create the next sequential migration file under `src/main/resources/db/migration/`.
-   - Update the corresponding JPA entity annotation.
-   - Run the application. Flyway applies the migration first, and Hibernate validates the matching entity schema.
+3. To introduce a schema change, create the next sequential migration, execute the standalone procedure below against an isolated local database, then run the application. Hibernate validates the matching entity schema.
+
+### 3.1.1 Explicit migration deployment (PowerShell)
+
+Normal application startup never migrates by default, including the production profile. Property and environment overrides can re-enable Flyway: restrict access to the DDL-capable credential and use a separate runtime role without schema ownership or DDL privileges. If credential separation is not yet available, protect the shared credential and treat manual process controls as temporary, not as an authorization boundary. Disabling out-of-order execution enforces ordering only.
+
+An authorized operator uses the exact release checkout, a verified target and backup, and a migration role able to create the destination schema and move each table (owner privileges and CREATE on the target schema). Supply secrets through a protected process environment, not command-line arguments, source control or Maven debug logs. Set `FLYWAY_URL`, `FLYWAY_USER`, and `FLYWAY_PASSWORD` in that environment; the URL is a PostgreSQL JDBC URL. Never copy credentials into the commands below. The profile supplies the historical V4 default of 10.0; for a fresh database requiring a different rate, explicitly supply `-Dflyway.placeholders.defaultCommissionRate=<approved-rate>` on migrate.
+
+```powershell
+.\mvnw.cmd -B -Pdb-migrate flyway:info
+if ($LASTEXITCODE -ne 0) { throw 'Flyway info failed' }
+.\mvnw.cmd -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=*:pending' flyway:validate
+if ($LASTEXITCODE -ne 0) { throw 'Pre-migration validation failed' }
+.\mvnw.cmd -B -Pdb-migrate flyway:migrate
+if ($LASTEXITCODE -ne 0) { throw 'Migration failed; do not deploy' }
+.\mvnw.cmd -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=' flyway:validate
+if ($LASTEXITCODE -ne 0) { throw 'Strict validation failed; do not deploy' }
+.\mvnw.cmd -B -Pdb-migrate flyway:info
+if ($LASTEXITCODE -ne 0) { throw 'Flyway info failed' }
+```
+
+Check that the last info output reports exactly the release's required version (V11 for this release), all migrations successful and none pending or future. Then independently verify all five archive tables are in `migration_archive`, none in `public`, row counts and table owners/ACLs match the pre-migration inventory, and `public.flyway_schema_history` is unchanged except for the V11 entry. Confirm schema USAGE and effective privileges, RLS, and Supabase Data API exposed-schema configuration with the administrator: moving a table preserves its table ACL and owner but does **not** grant USAGE on the new schema. Only then deploy the matching application artifact. Do not expose `migration_archive` to the Data API without a separate decision.
+
+An application rollback after a successful V11 can retain V11 because the app does not use these tables. If relocation itself must be reversed, approve and test a new forward migration moving all five tables back; never edit V11 or use Flyway repair as a routine rollback. A failed transactional V11 must be investigated before retrying. Do not deploy after a failed or skipped migration. Hibernate validation is an additional entity-schema check, not a complete Flyway release-state gate.
 
 ### 3.2 Automated CI Testing Workflow
 - The standard test suite (`mvnw test`) uses the `test` profile with in-memory H2 in MySQL compatibility mode.
@@ -78,8 +99,8 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 
 When spinning up a new development environment, staging environment, or test container against an empty PostgreSQL database:
 1. Ensure the target PostgreSQL database and schema (`public`) are provisioned.
-2. Boot the Spring Boot application with the intended database configuration. The repository does not configure a Flyway Maven plugin.
-3. Because the schema is empty (0 tables), Flyway automatically:
+2. Run the standalone migration procedure in §3.1.1 with local database credentials.
+3. Because the schema is empty (0 tables), Flyway:
    - Creates the metadata table `flyway_schema_history`.
    - Executes `V1__initial_schema.sql` (creating all 42 tables and initial roles).
    - Executes `V2__mentorship_explore_trigram_index.sql` (creating trigram indexes).
@@ -121,15 +142,11 @@ pg_dump --clean --if-exists --no-owner --no-privileges -h <host> -U <user> -d <d
 ```
 
 ### Step 5.4 — Explicit One-Time Manual Baseline
-Execute the baseline command explicitly using the Flyway Maven plugin or Flyway CLI:
+Only after explicit approval, execute a standalone baseline using the isolated migration profile and credentials described in §3.1.1:
 ```powershell
-.\mvnw.cmd flyway:baseline -Dflyway.baselineVersion=1 -Dflyway.baselineDescription="Baseline schema"
+.\mvnw.cmd -B -Pdb-migrate '-Dflyway.baselineVersion=1' '-Dflyway.baselineDescription=Baseline schema' flyway:baseline
 ```
-Or via a one-time single-command environment variable when launching the JAR:
-```bash
-SPRING_FLYWAY_BASELINE_ON_MIGRATE=true java -jar target/EduNest-0.0.1-SNAPSHOT.jar
-```
-*(Remove `SPRING_FLYWAY_BASELINE_ON_MIGRATE` immediately after the first successful boot).*
+Never use an application startup to baseline or migrate a shared database.
 
 ### Step 5.5 — Post-Baseline Verification
 Inspect `flyway_schema_history`:

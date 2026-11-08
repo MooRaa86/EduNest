@@ -88,6 +88,8 @@ public class PostgreSqlLiveMigrationSmokeTest {
                 .schemas(testSchema)
                 .defaultSchema(testSchema)
                 .locations("classpath:db/migration")
+                // V11 is deliberately public-only; never touch public in a schema-only live smoke test.
+                .target("10")
                 .baselineOnMigrate(false)
                 .cleanDisabled(true)
                 .placeholders(Map.of("defaultCommissionRate", "10.0"))
