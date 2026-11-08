@@ -59,14 +59,14 @@ Ordered phases inside the single transaction Flyway manages:
        HAVING count(*) > 1) cv;
    ```
    These numbers must match what the archive tables will receive in step 5 ( losers `count` per pair minus the winner per pair ).
-2. Verify the intended database and migration version. Flyway `spring.flyway.enabled=true` remains configured for normal application startup.
+2. Verify the intended database and migration version. Run migrations separately; Flyway is disabled by default during normal application startup.
 3. **Backup first** (PITR or `pg_dump` pattern from `db/migration/README.md` §5.3).
 
 ## 4. Adoption record
 
 The approved Supabase adoption is complete; do not re-run V1, V2 or V3 manually. V2 and V3 were applied using Flyway's standalone Java API, without starting Spring Boot. A subsequent controlled prod-profile startup used `app.scheduling.enabled=false` and a Flyway target of `3`; it reached Tomcat startup on port 8080 with Hibernate validation enabled. The controlled verification process is no longer running. Scheduling remains enabled by default unless explicitly disabled.
 
-For any other environment, follow that environment's approved migration and backup process and verify its Flyway history first. The project does not configure a Flyway Maven plugin, so `mvnw flyway:migrate` is not an adoption procedure for this repository. Do not use Flyway clean or repair as an automatic recovery step.
+For any other environment, follow the separately authorized standalone Maven procedure in `src/main/resources/db/migration/README.md` §3.1.1. Normal application startup does not run migrations. Verify history and take an approved backup first. Do not use Flyway clean or repair as an automatic recovery step.
 
 ## 5. Post-adopt verification (one-shot, safe to re-run)
 
@@ -74,10 +74,11 @@ For any other environment, follow that environment's approved migration and back
 SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;
 -- Supabase adoption evidence: V1 BASELINE, V2 SQL and V3 SQL, each successful.
 
-SELECT count(*) FROM eb44_archive_enrollments;        -- removed duplicate enrollment rows
-SELECT count(*) FROM eb44_archive_mentorship_reviews; -- removed duplicate review rows
-SELECT count(*) FROM eb44_archive_conversations;      -- removed conversation rows (dupes + NULL-participant)
-SELECT count(*) FROM eb44_archive_messages;           -- messages of removed conversations (verbatim)
+-- After V11; use public instead of migration_archive before V11.
+SELECT count(*) FROM migration_archive.eb44_archive_enrollments;
+SELECT count(*) FROM migration_archive.eb44_archive_mentorship_reviews;
+SELECT count(*) FROM migration_archive.eb44_archive_conversations;
+SELECT count(*) FROM migration_archive.eb44_archive_messages;
 
 SELECT indexname FROM pg_indexes
 WHERE indexname IN ('uk_enrollment_student_mentorship',

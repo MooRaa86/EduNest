@@ -246,4 +246,34 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<profile>
+			<id>db-migrate</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.flywaydb</groupId>
+						<artifactId>flyway-maven-plugin</artifactId>
+						<version>${flyway.version}</version>
+						<configuration>
+							<url>${env.FLYWAY_URL}</url>
+							<user>${env.FLYWAY_USER}</user>
+							<password>${env.FLYWAY_PASSWORD}</password>
+							<locations><location>filesystem:src/main/resources/db/migration</location></locations>
+							<defaultSchema>public</defaultSchema>
+							<cleanDisabled>true</cleanDisabled>
+							<baselineOnMigrate>false</baselineOnMigrate>
+							<outOfOrder>false</outOfOrder>
+							<placeholders><defaultCommissionRate>10.0</defaultCommissionRate></placeholders>
+						</configuration>
+						<dependencies>
+							<dependency><groupId>org.flywaydb</groupId><artifactId>flyway-database-postgresql</artifactId><version>${flyway.version}</version></dependency>
+							<dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><version>${postgresql.version}</version></dependency>
+						</dependencies>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>
