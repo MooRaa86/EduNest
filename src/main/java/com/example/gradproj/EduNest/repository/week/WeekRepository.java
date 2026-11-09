@@ -12,10 +12,31 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface WeekRepository extends JpaRepository<Week,Long> {
-    Optional<Week> findByPublicId(UUID publicId);
+    @Query("SELECT e FROM Week e WHERE e.publicId = :publicId")
+    Optional<Week> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<Week> findByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<Week> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return Optional.empty();
+    }
 
     @Query("SELECT w.id FROM Week w WHERE w.publicId = :publicId")
-    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(Week::getId);
+        }
+        return Optional.empty();
+    }
 
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);

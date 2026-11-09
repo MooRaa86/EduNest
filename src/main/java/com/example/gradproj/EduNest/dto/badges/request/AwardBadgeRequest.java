@@ -30,12 +30,7 @@ public class AwardBadgeRequest {
         }
     }
 
-    public void setStudentId(Long id) {
-        this.studentId = id != null ? new UUID(0L, id) : null;
-    }
-
     public void setStudentId(UUID id) {
         this.studentId = id;
     }
-
 }

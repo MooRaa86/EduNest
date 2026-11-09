@@ -235,7 +235,7 @@ public class HomePageService {
 
     public studentProgressDto getStudentMentorshipProgress(String email, UUID mentorshipPublicId) {
         Long internalId = mentorShipRepository.findIdByPublicId(mentorshipPublicId)
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + mentorshipPublicId));
+                .orElse(-1L);
         return getStudentMentorshipProgress(email, internalId);
     }
 

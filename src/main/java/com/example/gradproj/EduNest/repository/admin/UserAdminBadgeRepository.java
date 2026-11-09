@@ -15,12 +15,33 @@ import java.util.UUID;
 @Repository
 public interface UserAdminBadgeRepository extends JpaRepository<UserAdminBadge, Long> {
 
-    Optional<UserAdminBadge> findByPublicId(UUID publicId);
+    @Query("SELECT e FROM UserAdminBadge e WHERE e.publicId = :publicId")
+    Optional<UserAdminBadge> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<UserAdminBadge> findByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<UserAdminBadge> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return Optional.empty();
+    }
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);
 
     @Query("SELECT uab.id FROM UserAdminBadge uab WHERE uab.publicId = :publicId")
-    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(UserAdminBadge::getId);
+        }
+        return Optional.empty();
+    }
 
     @Query("""
         SELECT

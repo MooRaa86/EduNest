@@ -38,7 +38,7 @@ public class MentorshipOverviewController {
             Authentication authentication) {
         String studentEmail = (authentication != null) ? authentication.getName() : null;
         Long internalId = mentorShipRepository.findIdByPublicId(mentorshipId)
-                .orElseThrow(() -> new EntityNotFoundException("Mentorship not found with UUID: " + mentorshipId));
+                .orElse(-1L);
         PageResponse<MentorshipReviewProjection> reviews = mentorshipOverviewService
                 .getMentorshipReviews(internalId, studentEmail, page, size);
         Double averageRating = mentorshipOverviewService.getMentorshipAverageRating(internalId);
@@ -49,7 +49,7 @@ public class MentorshipOverviewController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping({"/mentor/{mentorIdentifier}/top-mentorships", "/mentor/{mentorEmail}/top-mentorships"})
+    @GetMapping("/mentor/{mentorIdentifier}/top-mentorships")
     @Operation(summary = "Get top mentorships by mentor UUID or email ordered by rating")
     public ResponseEntity<SimpleResponse> getTop3MentorshipsByMentor(
             @PathVariable String mentorIdentifier,
@@ -73,7 +73,7 @@ public class MentorshipOverviewController {
             Authentication authentication) {
         String studentEmail = (authentication != null) ? authentication.getName() : null;
         Long internalId = mentorShipRepository.findIdByPublicId(mentorshipId)
-                .orElseThrow(() -> new EntityNotFoundException("Mentorship not found with UUID: " + mentorshipId));
+                .orElse(-1L);
         MentorshipDetailsDto mentorship = mentorshipOverviewService.getMentorshipWithEnrollmentStatus(
                 internalId, studentEmail, UpcomingPage, UpcomingSize, topMentorshipsLimit);
         SimpleResponse response = new SimpleResponse();
@@ -91,7 +91,7 @@ public class MentorshipOverviewController {
             Authentication authentication) {
         String studentEmail = authentication.getName();
         Long internalId = mentorShipRepository.findIdByPublicId(mentorshipId)
-                .orElseThrow(() -> new EntityNotFoundException("Mentorship not found with UUID: " + mentorshipId));
+                .orElse(-1L);
         var leaderboard = mentorshipLeaderboardService.getMentorshipLeaderboard(internalId, size, page, studentEmail);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Leaderboard retrieved successfully");

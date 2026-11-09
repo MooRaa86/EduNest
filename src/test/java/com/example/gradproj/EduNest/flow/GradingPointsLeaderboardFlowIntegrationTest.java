@@ -107,7 +107,7 @@ public class GradingPointsLeaderboardFlowIntegrationTest extends ProdChainIntegr
 						.param("fileUrl", "https://github.com/example/edunest-solution")
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.apiResponse.submission.taskId").value(task.getId()))
+				.andExpect(jsonPath("$.apiResponse.submission.taskId").value(task.getPublicId().toString()))
 				.andExpect(jsonPath("$.apiResponse.submission.status").value("SUBMITTED"));
 
 		TaskSubmission sub = submissions.findByTask_IdAndStudent_Id(task.getId(), student.getId())

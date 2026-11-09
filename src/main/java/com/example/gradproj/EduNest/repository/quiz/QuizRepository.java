@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.repository.quiz;
 
+import java.util.UUID;
+
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import jakarta.persistence.LockModeType;
@@ -16,9 +18,30 @@ import java.util.Optional;
 
 @Repository
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
-    java.util.Optional<Quiz> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT e FROM Quiz e WHERE e.publicId = :publicId")
+    java.util.Optional<Quiz> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default java.util.Optional<Quiz> findByPublicId(UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<Quiz> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return java.util.Optional.empty();
+    }
     @Query("SELECT q.id FROM Quiz q WHERE q.publicId = :publicId")
-    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    java.util.Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default java.util.Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(Quiz::getId);
+        }
+        return java.util.Optional.empty();
+    }
     boolean existsByPublicId(java.util.UUID publicId);
     void deleteByPublicId(java.util.UUID publicId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

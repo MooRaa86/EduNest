@@ -434,7 +434,7 @@ public class ProjectServiceImpl implements ProjectService{
     @Override
     public PageResponse<ProjectWithStatsResponse> getProject(String projectName, ProjectStatus status, UUID msid, Pageable pageable) {
         Long internalMsid = mentorShipRepository.findIdByPublicId(msid)
-                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
+                .orElse(-1L);
         return getProject(projectName, status, internalMsid, pageable);
     }
 

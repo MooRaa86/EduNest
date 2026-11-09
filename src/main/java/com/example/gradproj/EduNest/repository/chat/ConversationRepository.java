@@ -14,12 +14,33 @@ import org.springframework.data.repository.query.Param;
 public interface ConversationRepository
         extends JpaRepository<Conversation, Long> {
 
-    Optional<Conversation> findByPublicId(UUID publicId);
+    @Query("SELECT e FROM Conversation e WHERE e.publicId = :publicId")
+    Optional<Conversation> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<Conversation> findByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<Conversation> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return Optional.empty();
+    }
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);
 
     @Query("SELECT c.id FROM Conversation c WHERE c.publicId = :publicId")
-    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(Conversation::getId);
+        }
+        return Optional.empty();
+    }
 
 
     @Query("""

@@ -123,14 +123,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ApiError> handleMethodArgumentTypeMismatch(HttpServletRequest req, MethodArgumentTypeMismatchException ex) {
-        String name = ex.getName();
-        String message = "Invalid parameter: " + name;
-        ApiError body = ApiError.of(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ApiErrorCode.ERR_VALIDATION, message, req.getRequestURI());
-        return ResponseEntity.badRequest().body(body);
-    }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleJsonParseException(HttpServletRequest req, HttpMessageNotReadableException ex) {

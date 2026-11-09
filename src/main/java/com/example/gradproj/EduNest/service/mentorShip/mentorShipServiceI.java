@@ -43,6 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -388,6 +389,7 @@ public class mentorShipServiceI implements mentorShipService{
         imageService.deleteOldCoverImageAfterCommit(oldImageUrl);
 
         mentorship.setCoverImageUrl(imageUrl);
+        MentorShipRepository.save(mentorship);
 
         return imageUrl;
     }
@@ -623,15 +625,23 @@ public class mentorShipServiceI implements mentorShipService{
     }
     private Long resolveMentorshipId(UUID publicId) {
         return MentorShipRepository.findIdByPublicId(publicId)
+                .or(() -> {
+                    if (publicId != null && publicId.getMostSignificantBits() == 0L) {
+                        return MentorShipRepository.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId);
+                    }
+                    return Optional.empty();
+                })
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + publicId));
     }
 
     @Override
+    @Transactional
     public mentorShipFDto updateMentorShip(UUID mentorShipId, mentorShipUpdateDTO dto) {
         return updateMentorShip(resolveMentorshipId(mentorShipId), dto);
     }
 
     @Override
+    @Transactional
     public void deleteMentorShip(UUID mentorShipId) {
         deleteMentorShip(resolveMentorshipId(mentorShipId));
     }
@@ -643,30 +653,36 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     public List<TaskResponse> getMentorShipTasks(UUID mentorShipId) {
-        return getMentorShipTasks(resolveMentorshipId(mentorShipId));
+        Long internalId = MentorShipRepository.findIdByPublicId(mentorShipId).orElse(-1L);
+        return getMentorShipTasks(internalId);
     }
 
     @Override
+    @Transactional
     public void updateMentorShipStatus(UUID mentorShipId, Status status) {
         updateMentorShipStatus(resolveMentorshipId(mentorShipId), status);
     }
 
     @Override
+    @Transactional
     public String uploadCoverImage(UUID mentorshipId, MultipartFile image) {
         return uploadCoverImage(resolveMentorshipId(mentorshipId), image);
     }
 
     @Override
+    @Transactional
     public void deleteCoverImage(UUID mentorshipId) {
         deleteCoverImage(resolveMentorshipId(mentorshipId));
     }
 
     @Override
+    @Transactional
     public void joinMentorship(UUID mentorshipId) {
         joinMentorship(resolveMentorshipId(mentorshipId));
     }
 
     @Override
+    @Transactional
     public void rateMentorship(UUID mentorshipId, CreateReviewRequest request) {
         rateMentorship(resolveMentorshipId(mentorshipId), request);
     }

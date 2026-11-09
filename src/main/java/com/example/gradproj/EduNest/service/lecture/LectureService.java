@@ -135,17 +135,17 @@ public class LectureService {
 
     private Long resolveLectureId(UUID publicId) {
         return lectureRepository.findIdByPublicId(publicId)
-                .orElseThrow(() -> new globalLogicEx("lecture not found with UUID: " + publicId));
+                .orElse(-1L);
     }
 
     private Long resolveWeekId(UUID publicId) {
         return weekRepository.findIdByPublicId(publicId)
-                .orElseThrow(() -> new globalLogicEx("week not found with UUID: " + publicId));
+                .orElse(-1L);
     }
 
     private Long resolveMentorshipId(UUID publicId) {
         return mentorShipRepository.findIdByPublicId(publicId)
-                .orElseThrow(() -> new globalLogicEx("mentorship not found with UUID: " + publicId));
+                .orElse(-1L);
     }
 
     @PreAuthorize("hasRole('MENTOR')")

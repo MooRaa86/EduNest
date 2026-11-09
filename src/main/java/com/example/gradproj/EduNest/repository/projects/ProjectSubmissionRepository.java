@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.repository.projects;
 
+import java.util.UUID;
+
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
@@ -16,9 +18,30 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
-    java.util.Optional<ProjectSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT e FROM ProjectSubmission e WHERE e.publicId = :publicId")
+    java.util.Optional<ProjectSubmission> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default java.util.Optional<ProjectSubmission> findByPublicId(UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<ProjectSubmission> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return java.util.Optional.empty();
+    }
     @Query("SELECT ps.id FROM ProjectSubmission ps WHERE ps.publicId = :publicId")
-    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    java.util.Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default java.util.Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(ProjectSubmission::getId);
+        }
+        return java.util.Optional.empty();
+    }
     boolean existsByPublicId(java.util.UUID publicId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ps FROM ProjectSubmission ps WHERE ps.publicId = :publicId")

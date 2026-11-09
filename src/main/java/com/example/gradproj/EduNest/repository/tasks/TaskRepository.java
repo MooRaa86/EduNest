@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.repository.tasks;
 
+import java.util.UUID;
+
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjection;
@@ -18,9 +20,31 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task,Long> {
-    java.util.Optional<Task> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT t FROM Task t WHERE t.publicId = :publicId")
+    java.util.Optional<Task> findByPublicIdDirect(@Param("publicId") java.util.UUID publicId);
+
+    default java.util.Optional<Task> findByPublicId(java.util.UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<Task> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return java.util.Optional.empty();
+    }
+
     @Query("SELECT t.id FROM Task t WHERE t.publicId = :publicId")
-    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    java.util.Optional<Long> findIdByPublicIdDirect(@Param("publicId") java.util.UUID publicId);
+
+    default java.util.Optional<Long> findIdByPublicId(java.util.UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(Task::getId);
+        }
+        return java.util.Optional.empty();
+    }
     boolean existsByPublicId(java.util.UUID publicId);
     void deleteByPublicId(java.util.UUID publicId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

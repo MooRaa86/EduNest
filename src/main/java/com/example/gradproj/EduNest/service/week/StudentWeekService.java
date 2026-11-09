@@ -256,21 +256,21 @@ public class StudentWeekService {
     @Transactional(readOnly = true)
     public MentorshipWeeksResponse getWeeksByMentorship(UUID mentorshipPublicId, String stEmail) {
         Long internalId = mentorShipRepository.findIdByPublicId(mentorshipPublicId)
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + mentorshipPublicId));
+                .orElse(-1L);
         return getWeeksByMentorship(internalId, stEmail);
     }
 
     @Transactional(readOnly = true)
     public MentorshipWeeksWithContentsResponse getMentorshipWeeksWithContents(UUID mentorshipPublicId, String stEmail) {
         Long internalId = mentorShipRepository.findIdByPublicId(mentorshipPublicId)
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + mentorshipPublicId));
+                .orElse(-1L);
         return getMentorshipWeeksWithContents(internalId, stEmail);
     }
 
     @Transactional(readOnly = true)
     public StudentWeekContentsResponse getWeekContents(UUID weekPublicId) {
         Long internalId = weekRepository.findIdByPublicId(weekPublicId)
-                .orElseThrow(() -> new globalLogicEx("Week not found with UUID: " + weekPublicId));
+                .orElse(-1L);
         return getWeekContents(internalId);
     }
 

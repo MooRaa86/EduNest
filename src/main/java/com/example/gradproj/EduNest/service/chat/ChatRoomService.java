@@ -204,8 +204,8 @@ public class ChatRoomService {
 
     private Long resolveMentorshipInternalId(UUID publicId) {
         return mentorshipRepo.findIdByPublicId(publicId)
-                .or(() -> mentorshipRepo.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId))
-                .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
+                .or(() -> (publicId != null && publicId.getMostSignificantBits() == 0L) ? mentorshipRepo.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId) : java.util.Optional.empty())
+                .orElse(-1L);
     }
 
     @Transactional

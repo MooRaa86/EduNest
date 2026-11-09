@@ -81,7 +81,13 @@ public class SecurityService {
     }
 
     public Boolean isUserOwnNotification(UUID notificationId, String email) {
-        return securityRepository.isUserOwnNotification(notificationId, email);
+        if (notificationId == null) return false;
+        Boolean res = securityRepository.isUserOwnNotification(notificationId, email);
+        if (Boolean.TRUE.equals(res)) return true;
+        if (notificationId.getMostSignificantBits() == 0L) {
+            return securityRepository.isUserOwnNotification(notificationId.getLeastSignificantBits(), email);
+        }
+        return false;
     }
 
     public Boolean isMentorOwnLiveSession(Long sessionId, String email) {
@@ -109,7 +115,13 @@ public class SecurityService {
     }
 
     public Boolean isUserMemberOfChatRoom(UUID roomId, String email) {
-        return securityRepository.isUserMemberOfChatRoom(roomId, email);
+        if (roomId == null) return false;
+        Boolean res = securityRepository.isUserMemberOfChatRoom(roomId, email);
+        if (Boolean.TRUE.equals(res)) return true;
+        if (roomId.getMostSignificantBits() == 0L) {
+            return securityRepository.isUserMemberOfChatRoom(roomId.getLeastSignificantBits(), email);
+        }
+        return false;
     }
 
     public Boolean isUserMemberOfChatRoom(Long roomId, String email) {

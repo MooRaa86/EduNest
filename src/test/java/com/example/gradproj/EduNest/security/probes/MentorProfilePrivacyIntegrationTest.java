@@ -88,7 +88,7 @@ class MentorProfilePrivacyIntegrationTest extends ProdChainIntegrationTestBase {
                         .param("page", "0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.apiResponse.mentorships.content", hasSize(greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$.apiResponse.mentorships.content[0].id").value(mentorshipId));
+                .andExpect(jsonPath("$.apiResponse.mentorships.content[0].id").value(mentorshipPublicId.toString()));
     }
 
     @Test

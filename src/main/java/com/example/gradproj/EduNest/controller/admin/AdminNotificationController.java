@@ -31,7 +31,7 @@ public class AdminNotificationController {
         return ResponseEntity.ok(notifications);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9a-fA-F\\-]+}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete admin notification by id", description = "Delete a specific admin notification by its ID")
     public ResponseEntity<SimpleResponse> deleteAdminNotification(@PathVariable UUID id) {

@@ -22,10 +22,31 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByEmail(String email);
 
-    Optional<UserEntity> findByPublicId(UUID publicId);
+    @Query("SELECT e FROM UserEntity e WHERE e.publicId = :publicId")
+    Optional<UserEntity> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<UserEntity> findByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<UserEntity> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return Optional.empty();
+    }
 
     @Query("SELECT u.id FROM UserEntity u WHERE u.publicId = :publicId")
-    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return Optional.empty();
+        Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(UserEntity::getId);
+        }
+        return Optional.empty();
+    }
 
     // OTP operations lock the users row first inside their transaction, even when no OTP exists yet.
     @Lock(LockModeType.PESSIMISTIC_WRITE)

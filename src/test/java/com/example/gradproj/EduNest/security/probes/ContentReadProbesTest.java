@@ -58,6 +58,7 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
     private static final String OTHER = "eb21-other@example.org", FOREIGN = "eb21-foreign@example.org";
     private static final String MENTOR = "eb21-mentor-other@example.org", ADMIN = "eb21-admin@example.org";
     private long mentorshipId, weekId, lectureId, taskId, projectId, draftTaskId, draftProjectId;
+    private java.util.UUID weekPublicId;
 
     @BeforeEach void seed() {
         var course = auth.mentorship(OWNER, Status.ACTIVE).mentorship();
@@ -69,6 +70,7 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
         auth.admin(ADMIN);
         Week week = weeks.saveAndFlush(Week.builder().mentorship(course).title("eb21 week").build());
         weekId = week.getId();
+        weekPublicId = week.getPublicId();
         lectureId = lectures.saveAndFlush(Lecture.builder().week(week).title("eb21-secret").lectureUrl("https://example.org/secret").build()).getId();
         taskId = task(week, TaskStatus.PUBLISHED);
         draftTaskId = task(week, TaskStatus.DRAFT);
@@ -166,12 +168,12 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
             assertThat(api.path("status").asText()).isNotBlank();
             if (route.endsWith("/weeks")) {
                 assertThat(api.path("weeks").path("mentorshipTitle").asText()).isNotBlank();
-                assertThat(api.path("weeks").path("weeks").get(0).path("id").asLong()).isEqualTo(weekId);
+                assertThat(api.path("weeks").path("weeks").get(0).path("id").asText()).isEqualTo(weekPublicId.toString());
                 assertThat(api.path("weeks").path("weeks").get(0).path("title").asText()).isEqualTo("eb21 week");
             } else {
                 JsonNode week = route.endsWith("/contents") && !route.endsWith("/weeks-with-contents")
                         ? api.path("week") : api.path("weeks").path("weeks").get(0);
-                assertThat(week.path("weekId").asLong()).isEqualTo(weekId);
+                assertThat(week.path("weekId").asText()).isEqualTo(weekPublicId.toString());
                 assertThat(week.path("weekTitle").asText()).isEqualTo("eb21 week");
                 JsonNode items = week.path("items");
                 assertThat(items.isArray()).isTrue();
@@ -197,7 +199,7 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
         try {
             assertThat(studentWeekService.getWeeksByMentorship(mentorshipId, OTHER).getWeeks()).hasSize(1);
             assertThat(studentWeekService.getMentorshipWeeksWithContents(mentorshipId, OTHER).getWeeks()).hasSize(1);
-            assertThat(studentWeekService.getWeekContents(weekId).getWeekId()).isEqualTo(weekId);
+            assertThat(studentWeekService.getWeekContents(weekId).getWeekId()).isEqualTo(weekPublicId);
         } finally { SecurityContextHolder.clearContext(); }
     }
 

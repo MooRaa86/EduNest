@@ -103,7 +103,7 @@ class BadgePostCompletionFreezeTest {
         when(mentorShipRepository.findForUpdateById(MENTORSHIP_ID)).thenReturn(Optional.of(completedMentorship));
 
         AwardBadgeRequest req = new AwardBadgeRequest();
-        req.setStudentId(STUDENT_ID);
+        req.setStudentId(new java.util.UUID(0L, STUDENT_ID));
         req.setNote("Great performance!");
 
         assertThatThrownBy(() -> badgeAwardService.awardBadge(BADGE_ID, req))
@@ -135,7 +135,7 @@ class BadgePostCompletionFreezeTest {
         when(badgeAwardRepository.existsByBadge_IdAndStudent_Id(BADGE_ID, STUDENT_ID)).thenReturn(false);
 
         AwardBadgeRequest req = new AwardBadgeRequest();
-        req.setStudentId(STUDENT_ID);
+        req.setStudentId(new java.util.UUID(0L, STUDENT_ID));
         req.setNote("Great performance!");
 
         assertThatCode(() -> badgeAwardService.awardBadge(BADGE_ID, req)).doesNotThrowAnyException();

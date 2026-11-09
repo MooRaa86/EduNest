@@ -40,8 +40,8 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
     @Autowired private TaskService taskService;
 
     private Task task;
-    private long studentSubmissionId;
-    private long otherSubmissionId;
+    private java.util.UUID studentSubmissionId;
+    private java.util.UUID otherSubmissionId;
 
     @BeforeEach
     void seed() {
@@ -58,10 +58,10 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
         auth.student(NO_SUBMISSION);
     }
 
-    private long submission(String email) {
+    private java.util.UUID submission(String email) {
         return submissions.saveAndFlush(TaskSubmission.builder().task(task).student(auth.student(email))
                 .fileUrl("https://example.org/submission").status(SubmissionStatus.SUBMITTED)
-                .submittedAt(LocalDateTime.now()).build()).getId();
+                .submittedAt(LocalDateTime.now()).build()).getPublicId();
     }
 
     private JsonNode taskDetail(String email) throws Exception {
@@ -75,10 +75,10 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
     void returnsOnlyTheCurrentStudentsSubmissionId() throws Exception {
         JsonNode student = taskDetail(STUDENT);
         JsonNode other = taskDetail(OTHER);
-        assertThat(student.path("submissionId").asLong()).isEqualTo(studentSubmissionId);
-        assertThat(other.path("submissionId").asLong()).isEqualTo(otherSubmissionId);
+        assertThat(student.path("submissionId").asText()).isEqualTo(studentSubmissionId.toString());
+        assertThat(other.path("submissionId").asText()).isEqualTo(otherSubmissionId.toString());
         assertThat(studentSubmissionId).isNotEqualTo(otherSubmissionId);
-        assertThat(student.path("taskId").asLong()).isEqualTo(task.getId());
+        assertThat(student.path("taskId").asText()).isEqualTo(task.getPublicId().toString());
         assertThat(student.path("description").asText()).isEqualTo("existing description");
         assertThat(student.path("submissionUrl").asText()).isEqualTo("https://example.org/submission");
     }
@@ -88,7 +88,7 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
         JsonNode data = taskDetail(NO_SUBMISSION);
         assertThat(data.has("submissionId")).isTrue();
         assertThat(data.get("submissionId").isNull()).isTrue();
-        assertThat(data.path("taskId").asLong()).isEqualTo(task.getId());
+        assertThat(data.path("taskId").asText()).isEqualTo(task.getPublicId().toString());
     }
 
     @Test

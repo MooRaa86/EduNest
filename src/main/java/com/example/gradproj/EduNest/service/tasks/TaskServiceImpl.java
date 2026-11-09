@@ -403,7 +403,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, UUID msid, Pageable pageable) {
         Long internalMsid = mentorShipRepository.findIdByPublicId(msid)
-                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+                .orElse(-1L);
         return getTasks(taskName, status, internalMsid, pageable);
     }
 

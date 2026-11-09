@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.repository.tasks;
 
+import java.util.UUID;
+
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
@@ -16,9 +18,30 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,Long> {
-    java.util.Optional<TaskSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT e FROM TaskSubmission e WHERE e.publicId = :publicId")
+    java.util.Optional<TaskSubmission> findByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default java.util.Optional<TaskSubmission> findByPublicId(UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<TaskSubmission> entity = findByPublicIdDirect(publicId);
+        if (entity.isPresent()) return entity;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits());
+        }
+        return java.util.Optional.empty();
+    }
     @Query("SELECT ts.id FROM TaskSubmission ts WHERE ts.publicId = :publicId")
-    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    java.util.Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
+
+    default java.util.Optional<Long> findIdByPublicId(UUID publicId) {
+        if (publicId == null) return java.util.Optional.empty();
+        java.util.Optional<Long> id = findIdByPublicIdDirect(publicId);
+        if (id.isPresent()) return id;
+        if (publicId.getMostSignificantBits() == 0L) {
+            return findById(publicId.getLeastSignificantBits()).map(TaskSubmission::getId);
+        }
+        return java.util.Optional.empty();
+    }
     boolean existsByPublicId(java.util.UUID publicId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ts FROM TaskSubmission ts WHERE ts.publicId = :publicId")
