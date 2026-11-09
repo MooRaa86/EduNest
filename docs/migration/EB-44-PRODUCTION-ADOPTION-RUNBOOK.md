@@ -8,7 +8,7 @@
 
 | # | Milestone | Evidence |
 |---|-----------|----------|
-| M1 | **Code merged to `main`** | Pending merge; verify the merge commit and CI separately. |
+| M1 | **Code merged to `main`** | [PR #79](https://github.com/MooRaa86/EduNest/pull/79), merged 2026-11-04. |
 | M2 | **V3 executed on a disposable PostgreSQL instance** | Completed on throwaway PostgreSQL, including the standalone V2/V3 rehearsal. |
 | M3 | **V3 applied to the production database** | Completed 2026-11-04; successful V1 BASELINE, V2 SQL and V3 SQL history entries and §5 checks. |
 
@@ -64,11 +64,15 @@ Ordered phases inside the single transaction Flyway manages:
 
 ## 4. Adoption record
 
+**Later development-only record (owner-reported, 2026-11-09):** The development database had successful V1–V10 history and no V11 deployment. The Owner removed the five empty archive tables and confirmed none remained. Production/staging data was not cleaned as part of this development operation. A subsequent merged-main startup connected to PostgreSQL and initialized the Hibernate EntityManagerFactory without visible validation errors; no Flyway migration execution appeared in the supplied logs. `OtpCleanupService` ran, so this startup was **not read-only**. See the [development cleanup record](DEVELOPMENT-DATABASE-RESET.md); the historical V3 adoption record below remains unchanged.
+
 The approved Supabase adoption is complete; do not re-run V1, V2 or V3 manually. V2 and V3 were applied using Flyway's standalone Java API, without starting Spring Boot. A subsequent controlled prod-profile startup used `app.scheduling.enabled=false` and a Flyway target of `3`; it reached Tomcat startup on port 8080 with Hibernate validation enabled. The controlled verification process is no longer running. Scheduling remains enabled by default unless explicitly disabled.
 
 For any other environment, follow the separately authorized standalone Maven procedure in `src/main/resources/db/migration/README.md` §3.1.1. Normal application startup does not run migrations. Verify history and take an approved backup first. Do not use Flyway clean or repair as an automatic recovery step.
 
 ## 5. Post-adopt verification (one-shot, safe to re-run)
+
+The archive count queries below apply only where the archive tables still exist. They will fail on the development database after the later owner-confirmed cleanup; check table existence first. Do not infer archive contents or cleanup in any other environment from the development record.
 
 ```sql
 SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;
