@@ -32,7 +32,7 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | :--- | :--- | :--- | :--- | :--- |
 | **`V1`** | **APPLIED** | `EB-43` / `P3-01` | `V1__initial_schema.sql` | Canonical baseline schema (42 entity tables, primary identities, constraints, indexes, and initial roles). |
 | **`V2`** | **APPLIED** | `EB-59` / `P4-10` | `V2__mentorship_explore_trigram_index.sql` | `pg_trgm` extension activation and specialized GIN search indexes on mentorship and user full names. |
-| **`V3`** | **BUILD COMPLETE — applied to Supabase; merge pending** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Uniqueness guarantees with deterministic dedupe (`earliest id wins`): one enrollment per (student, mentorship), one review per student per mentorship, unordered `(LEAST, GREATEST)` pair-unique conversations + `NOT NULL` participant invariant. All removed rows archived verbatim into the one-time `eb44_archive_*` surfaces; loser-conversation messages are reassigned, never dropped. See `docs/migration/EB-44-PRODUCTION-ADOPTION-RUNBOOK.md` for adoption evidence and requirements for other environments. |
+| **`V3`** | **MERGED — development adoption recorded** | `EB-44` / `P3-02` | `V3__uniqueness_constraints_and_dedupe.sql` | Deterministic dedupe and uniqueness for enrollments, reviews and unordered conversation pairs. V3 archived removed rows and reassigned loser-conversation messages. See [EB-44 adoption record](../../../../../docs/migration/EB-44-PRODUCTION-ADOPTION-RUNBOOK.md) for historical evidence and other-environment requirements. |
 | **`V4`** | **APPLIED** | `EB-47` / `P3-05` | `V4__seed_default_commission.sql` | Default commission rate idempotent initialization (`app.commission.default`). |
 | **`V5`** | **APPLIED** | `EB-91` | `V5__refresh_token_sessions.sql` | Refresh token session store and revocation infrastructure. |
 | **`V6`** | **APPLIED** | `EB-109` | `V6__add_public_uuid_identifiers.sql` | Global Public UUID migration (cryptographically random `public_id` on all `BaseEntity` tables). |
@@ -83,7 +83,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Strict validation failed; do not deploy' }
 if ($LASTEXITCODE -ne 0) { throw 'Flyway info failed' }
 ```
 
-Check that the last info output reports exactly the release's required version (V10 for this release), all migrations successful and none pending or future. Only then deploy the matching application artifact. Archive tables created by V3 and V10 remain in `public` unless an independently approved development-only cleanup is performed; see `docs/migration/DEVELOPMENT-DATABASE-RESET.md`.
+Check that the last info output reports exactly the release's required version, all migrations successful and none pending or future. Only then deploy the matching application artifact. Archive tables created by V3 and V10 remain in `public` unless an independently approved development-only cleanup is performed; see the [development reset and cleanup record](../../../../../docs/migration/DEVELOPMENT-DATABASE-RESET.md).
+
+**Development verification (owner-reported, 2026-11-09):** V1–V10 were successful and V10 was the latest applied version; V11 was not deployed. The Owner removed the five empty archive tables from development and confirmed the archive-table query returned no rows. A subsequent startup using merged main connected to PostgreSQL and initialized the Hibernate EntityManagerFactory without visible schema-validation errors; the supplied logs showed no Flyway migration execution. This was **not a read-only startup**: `OtpCleanupService` ran background cleanup. No production or staging data was cleaned as part of this development cleanup. Fresh V1–V10 migrations recreate the five archive tables. Other environments' deployment and archive contents must be checked independently.
 
 Do not deploy after a failed or skipped migration; investigate before retrying and never use Flyway repair as a routine rollback. Hibernate validation is an additional entity-schema check, not a complete Flyway release-state gate.
 
@@ -98,12 +100,13 @@ Do not deploy after a failed or skipped migration; investigate before retrying a
 
 When spinning up a new development environment, staging environment, or test container against an empty PostgreSQL database:
 1. Ensure the target PostgreSQL database and schema (`public`) are provisioned.
-2. Run the standalone migration procedure in §3.1.1 with local database credentials.
+2. Run the standalone migration procedure in §3.1.1 with credentials for the independently verified target environment.
 3. Because the schema is empty (0 tables), Flyway:
    - Creates the metadata table `flyway_schema_history`.
    - Executes `V1__initial_schema.sql` (creating all 42 tables and initial roles).
    - Executes `V2__mentorship_explore_trigram_index.sql` (creating trigram indexes).
    - Executes `V3__uniqueness_constraints_and_dedupe.sql` (creating the uniqueness indexes/constraints and the four one-time `eb44_archive_*` dedupe surfaces; on an empty database these are no-op data steps).
+   - Executes remaining migrations through the release version; V10 creates `eb51_archive_session_attendance_result`.
 4. Hibernate's `ddl-auto=validate` executes, verifying zero schema drift between entities and database.
 
 ---
