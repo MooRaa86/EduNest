@@ -27,22 +27,28 @@ class FlywayDisabledStartupPostgresTest {
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
         Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                .locations("classpath:db/migration").target("10")
+                .locations("classpath:db/migration")
                 .placeholders(Map.of("defaultCommissionRate", "10.0")).load().migrate();
+        var probe = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .locations("classpath:db/migration", "classpath:startup-migrations")
+                .placeholders(Map.of("defaultCommissionRate", "10.0")).load();
+        assertThat(probe.info().pending()).extracting(info -> info.getVersion().getVersion()).containsExactly("11");
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        registry.add("spring.flyway.locations", () -> "classpath:db/migration,classpath:startup-migrations");
     }
 
     @Autowired ApplicationContext context;
     @Autowired JdbcTemplate jdbc;
 
     @Test
-    void startupDoesNotMigratePendingV11() {
+    void startupDoesNotExecutePendingTestOnlyMigration() {
         assertThat(context.getBeansOfType(Flyway.class)).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM public.flyway_schema_history WHERE version='11'", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public.flyway_startup_safety_probe') IS NULL", Boolean.class)).isTrue();
         assertThat(jdbc.queryForObject("SELECT to_regclass('public.eb44_archive_messages') IS NOT NULL", Boolean.class)).isTrue();
     }
 }
