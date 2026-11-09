@@ -227,7 +227,7 @@ public class UniquenessPostgresMigrationIT {
 				.extracting(r -> r.get(0).toString())
 				.containsExactly("700", "702");
 		List<List<Object>> archivedEnrollments = query(
-				"SELECT id, student_id, mentorship_id, archived_by, archived_at FROM migration_archive.eb44_archive_enrollments");
+				"SELECT id, student_id, mentorship_id, archived_by, archived_at FROM eb44_archive_enrollments");
 		assertThat(archivedEnrollments)
 				.as("The removed enrollment must be preserved in the archive with EB-44 metadata")
 				.extracting(r -> r.get(0).toString())
@@ -242,7 +242,7 @@ public class UniquenessPostgresMigrationIT {
 				.extracting(r -> r.get(0).toString())
 				.as("Reviews dedupe: (100,500) collapsed to 750, identical NULL/NULL rows collapsed to 753")
 				.containsExactly("750", "753");
-		assertThat(query("SELECT id FROM migration_archive.eb44_archive_mentorship_reviews ORDER BY id"))
+		assertThat(query("SELECT id FROM eb44_archive_mentorship_reviews ORDER BY id"))
 				.extracting(r -> r.get(0).toString())
 				.as("Both removed review rows must be archived")
 				.containsExactly("751", "754");
@@ -253,7 +253,7 @@ public class UniquenessPostgresMigrationIT {
 				.extracting(r -> r.get(0).toString() + "(" + r.get(1) + "," + r.get(2) + ")")
 				.containsExactly("800(100,101)", "806(103,102)");
 		List<List<Object>> archivedConversations = query(
-				"SELECT id FROM migration_archive.eb44_archive_conversations ORDER BY id");
+				"SELECT id FROM eb44_archive_conversations ORDER BY id");
 		assertThat(archivedConversations)
 				.as("All removed conversation rows must be archived")
 				.extracting(r -> r.get(0).toString())
@@ -273,7 +273,7 @@ public class UniquenessPostgresMigrationIT {
 				.extracting(r -> r.get(0) + "->" + r.get(1))
 				.containsExactly("9001->800", "9002->800");
 		List<List<Object>> archivedMessages = query(
-				"SELECT id, conversation_id, content FROM migration_archive.eb44_archive_messages");
+				"SELECT id, conversation_id, content FROM eb44_archive_messages");
 		assertThat(archivedMessages)
 				.as("Messages of archived conversations must be preserved verbatim in the archive")
 				.extracting(r -> r.get(0) + "->" + r.get(1))

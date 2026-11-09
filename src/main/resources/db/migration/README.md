@@ -40,7 +40,6 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | **`V8`** | **MERGED** | `EB-62` / `INT-02` | `V8__failed_email_attempts.sql` | Outbox-style persistence table for asynchronous delivery failure observability and bounded retries. |
 | **`V9`** | **MERGED** | `EB-51` | `V9__badge_and_total_points_versions.sql` | Adds version columns for badges and total points optimistic locking. |
 | **`V10`** | **MERGED** | `EB-51` | `V10__unique_session_attendance_result.sql` | Creates an archive surface, fails closed on duplicate attendance results, and enforces uniqueness. The V9 labels in its SQL are historical and must not be edited. |
-| **`V11`** | **PENDING DEPLOYMENT** | Archive relocation | `V11__move_archive_tables_to_migration_schema.sql` | Moves all five existing archive tables from public into migration_archive without deleting rows. |
 
 *Note: Do not invent or assign version numbers out of order. Consult the engineering lead and Phase 3 task roadmap before reserving versions beyond V5.*
 
@@ -69,7 +68,7 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 
 Normal application startup never migrates by default, including the production profile. Property and environment overrides can re-enable Flyway: restrict access to the DDL-capable credential and use a separate runtime role without schema ownership or DDL privileges. If credential separation is not yet available, protect the shared credential and treat manual process controls as temporary, not as an authorization boundary. Disabling out-of-order execution enforces ordering only.
 
-An authorized operator uses the exact release checkout, a verified target and backup, and a migration role able to create the destination schema and move each table (owner privileges and CREATE on the target schema). Supply secrets through a protected process environment, not command-line arguments, source control or Maven debug logs. Set `FLYWAY_URL`, `FLYWAY_USER`, and `FLYWAY_PASSWORD` in that environment; the URL is a PostgreSQL JDBC URL. Never copy credentials into the commands below. The profile supplies the historical V4 default of 10.0; for a fresh database requiring a different rate, explicitly supply `-Dflyway.placeholders.defaultCommissionRate=<approved-rate>` on migrate.
+An authorized operator uses the exact release checkout, a verified target and backup, and a migration-capable database role. Supply secrets through a protected process environment, not command-line arguments, source control or Maven debug logs. Set `FLYWAY_URL`, `FLYWAY_USER`, and `FLYWAY_PASSWORD` in that environment; the URL is a PostgreSQL JDBC URL. Never copy credentials into the commands below. The profile supplies the historical V4 default of 10.0; for a fresh database requiring a different rate, explicitly supply `-Dflyway.placeholders.defaultCommissionRate=<approved-rate>` on migrate.
 
 ```powershell
 .\mvnw.cmd -B -Pdb-migrate flyway:info
@@ -84,9 +83,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Strict validation failed; do not deploy' }
 if ($LASTEXITCODE -ne 0) { throw 'Flyway info failed' }
 ```
 
-Check that the last info output reports exactly the release's required version (V11 for this release), all migrations successful and none pending or future. Then independently verify all five archive tables are in `migration_archive`, none in `public`, row counts and table owners/ACLs match the pre-migration inventory, and `public.flyway_schema_history` is unchanged except for the V11 entry. Confirm schema USAGE and effective privileges, RLS, and Supabase Data API exposed-schema configuration with the administrator: moving a table preserves its table ACL and owner but does **not** grant USAGE on the new schema. Only then deploy the matching application artifact. Do not expose `migration_archive` to the Data API without a separate decision.
+Check that the last info output reports exactly the release's required version (V10 for this release), all migrations successful and none pending or future. Only then deploy the matching application artifact. Archive tables created by V3 and V10 remain in `public` unless an independently approved development-only cleanup is performed; see `docs/migration/DEVELOPMENT-DATABASE-RESET.md`.
 
-An application rollback after a successful V11 can retain V11 because the app does not use these tables. If relocation itself must be reversed, approve and test a new forward migration moving all five tables back; never edit V11 or use Flyway repair as a routine rollback. A failed transactional V11 must be investigated before retrying. Do not deploy after a failed or skipped migration. Hibernate validation is an additional entity-schema check, not a complete Flyway release-state gate.
+Do not deploy after a failed or skipped migration; investigate before retrying and never use Flyway repair as a routine rollback. Hibernate validation is an additional entity-schema check, not a complete Flyway release-state gate.
 
 ### 3.2 Automated CI Testing Workflow
 - The standard test suite (`mvnw test`) uses the `test` profile with in-memory H2 in MySQL compatibility mode.

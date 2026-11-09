@@ -74,11 +74,10 @@ For any other environment, follow the separately authorized standalone Maven pro
 SELECT version, description, type, success FROM flyway_schema_history ORDER BY installed_rank;
 -- Supabase adoption evidence: V1 BASELINE, V2 SQL and V3 SQL, each successful.
 
--- After V11; use public instead of migration_archive before V11.
-SELECT count(*) FROM migration_archive.eb44_archive_enrollments;
-SELECT count(*) FROM migration_archive.eb44_archive_mentorship_reviews;
-SELECT count(*) FROM migration_archive.eb44_archive_conversations;
-SELECT count(*) FROM migration_archive.eb44_archive_messages;
+SELECT count(*) FROM public.eb44_archive_enrollments;
+SELECT count(*) FROM public.eb44_archive_mentorship_reviews;
+SELECT count(*) FROM public.eb44_archive_conversations;
+SELECT count(*) FROM public.eb44_archive_messages;
 
 SELECT indexname FROM pg_indexes
 WHERE indexname IN ('uk_enrollment_student_mentorship',

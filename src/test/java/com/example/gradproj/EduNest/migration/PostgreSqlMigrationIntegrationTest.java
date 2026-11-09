@@ -88,8 +88,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute scripts V1 through V11")
-                .isEqualTo(11);
+                .as("Initial migration must execute scripts V1 through V10")
+                .isEqualTo(10);
     }
 
     @Test
@@ -98,8 +98,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Eleven migrations must be registered in flyway_schema_history")
-                .hasSize(11);
+                .as("Ten migrations must be registered in flyway_schema_history")
+                .hasSize(10);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -175,16 +175,16 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v10.getType().name()).isEqualTo("SQL");
         assertThat(v10.getState().isApplied()).isTrue();
         assertThat(v10.getChecksum()).isNotNull();
-        assertThat(applied[10].getVersion().getVersion()).isEqualTo("11");
-        assertThat(applied[10].getState().isApplied()).isTrue();
     }
 
     @Test
     @Order(3)
-    @DisplayName("3. Schema verification: public application tables, relocated archives, indexes and seeded roles")
+    @DisplayName("3. Schema verification: 46 tables (42 entity + 4 EB-44 archive), 5 TEXT columns, trgm extension & indexes, seeded roles")
     void testSchemaVerification() throws Exception {
         try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
-            // A. V11 moved five archive tables out of the public schema.
+            // A. Verify exactly 46 application tables in public schema
+            // [EB-44][P3-02] 42 EB-82-reconciled entity tables + 4 one-time
+            // dedupe archive surfaces (eb44_archive_*), flipped baseline
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery("""
                      SELECT table_name
@@ -199,18 +199,12 @@ public class PostgreSqlMigrationIntegrationTest {
                     tables.add(rs.getString("table_name"));
                 }
                 assertThat(tables)
-                        .as("Public schema must contain the 44 application tables")
-                        .hasSize(44);
+                        .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
+                        .hasSize(49);
                 assertThat(tables)
-                        .as("Application tables remain public; archive tables do not")
-                        .contains("refresh_token_sessions", "failed_email_attempts")
-                        .doesNotContain("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
-                                "eb44_archive_conversations", "eb44_archive_messages", "eb51_archive_session_attendance_result");
-            }
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery("SELECT count(*) FROM information_schema.tables WHERE table_schema = 'migration_archive' AND table_name IN ('eb44_archive_enrollments','eb44_archive_mentorship_reviews','eb44_archive_conversations','eb44_archive_messages','eb51_archive_session_attendance_result')")) {
-                assertThat(rs.next()).isTrue();
-                assertThat(rs.getInt(1)).isEqualTo(5);
+                        .as("All four EB-44 archive surfaces must exist")
+                        .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
+                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions", "failed_email_attempts", "eb51_archive_session_attendance_result");
             }
 
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
@@ -378,7 +372,6 @@ public class PostgreSqlMigrationIntegrationTest {
                     .schemas(testSchema)
                     .defaultSchema(testSchema)
                     .locations("classpath:db/migration")
-                    .target("10") // V11 explicitly requires the production public schema.
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
                     .outOfOrder(true)
@@ -563,7 +556,6 @@ public class PostgreSqlMigrationIntegrationTest {
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
                     .placeholders(Map.of("defaultCommissionRate", "15.5"))
-                    .target("10") // This isolated-schema test exercises the V4 seed.
                     .load();
 
             MigrateResult result = customFlyway.migrate();
@@ -691,7 +683,6 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
-                    .target("10") // This isolated-schema test exercises the V6 to V10 upgrade.
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
