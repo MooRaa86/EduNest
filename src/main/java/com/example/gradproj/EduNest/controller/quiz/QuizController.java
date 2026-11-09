@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -49,7 +50,7 @@ public class QuizController {
     @Operation(summary = "Update quiz", description = "Update quiz details using quiz ID")
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> updateQuiz(@Valid @RequestBody QuizUpdateDto quizUpdateDto, @PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> updateQuiz(@Valid @RequestBody QuizUpdateDto quizUpdateDto, @PathVariable UUID id) {
         QuizResponseDTO quizResponseDTO = quizService.updateQuiz(id, quizUpdateDto);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz updated successfully");
@@ -60,7 +61,7 @@ public class QuizController {
     @Operation(summary = "Delete quiz", description = "Delete a quiz using quiz ID")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> deleteQuiz(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> deleteQuiz(@PathVariable UUID id) {
         quizService.deleteQuiz(id);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz deleted successfully");
@@ -72,7 +73,7 @@ public class QuizController {
             description = "Retrieve quiz details by quiz ID"
     )
     @GetMapping("/{id}")
-    public ResponseEntity<SimpleResponse> getQuiz(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> getQuiz(@PathVariable UUID id) {
         QuizResponseDTO quizResponseDTO = quizService.getQuizDetails(id);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz retrieved successfully");
@@ -91,7 +92,7 @@ public class QuizController {
             @RequestParam(required = false) QuizStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size,
-            @PathVariable Long mentorshipId
+            @PathVariable UUID mentorshipId
     ) {
         Pageable pageable = PageRequest.of(page, size);
         PageResponse<QuizResponseDTO> response =
@@ -115,7 +116,7 @@ public class QuizController {
             @RequestParam(required = false) QuizStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size,
-            @PathVariable Long mentorshipId
+            @PathVariable UUID mentorshipId
     ) {
         Pageable pageable = PageRequest.of(page, size);
         PageResponse<QuizResponseDTO> response =
@@ -131,7 +132,7 @@ public class QuizController {
     @Operation(summary = "Quiz dashboard", description = "Retrieve quiz dashboard data for a mentorship")
     @GetMapping("/dashboard/{mentorshipId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable UUID mentorshipId) {
         QuizDashboardDTO quizDashboardDTO = quizService.getQuizDashboard(mentorshipId);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Dashboard retrieved successfully");
@@ -142,7 +143,7 @@ public class QuizController {
     @Operation(summary = "Quiz statistics", description = "Retrieve statistics for a specific quiz")
     @GetMapping("/statistics/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> getStatistics(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> getStatistics(@PathVariable UUID id) {
         QuizStatisticsDTO quizStatisticsDTO = quizService.getQuizStatistics(id);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Statistics retrieved successfully");
@@ -153,7 +154,7 @@ public class QuizController {
     @Operation(summary = "Change quiz status", description = "Change quiz status (DRAFT, PUBLISHED, CLOSED)")
     @PostMapping("/change-status/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> changeQuizStatus(@PathVariable Long id, @RequestParam QuizStatus status) {
+    public ResponseEntity<SimpleResponse> changeQuizStatus(@PathVariable UUID id, @RequestParam QuizStatus status) {
         quizService.changeStatus(id, status);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz status changed successfully");
@@ -165,7 +166,7 @@ public class QuizController {
     @GetMapping("/mentorshipQuizzesOverview/{mentorshipId}")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getMentorshipQuizzesOverview(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         MentorshipQuizzesOverviewResponseDto mentorshipQuizzesOverviewResponseDto=quizService.getMentorshipQuizzesOverview(mentorshipId,page,size);
@@ -179,7 +180,7 @@ public class QuizController {
     @GetMapping("/QuizOverview/{quizId}")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getQuizOverview(
-            @PathVariable Long quizId,
+            @PathVariable UUID quizId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         QuizOverviewResponseDto quizOverviewResponseDto=quizService.getQuizOverviewDto(quizId,page,size);

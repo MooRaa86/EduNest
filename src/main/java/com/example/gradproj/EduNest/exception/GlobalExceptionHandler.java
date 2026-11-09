@@ -18,6 +18,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -119,6 +120,15 @@ public class GlobalExceptionHandler {
         ApiError body = ApiError.of(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 ApiErrorCode.ERR_VALIDATION, MSG_VALIDATION, req.getRequestURI());
         body.setFields(fields.isEmpty() ? null : fields);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleMethodArgumentTypeMismatch(HttpServletRequest req, MethodArgumentTypeMismatchException ex) {
+        String name = ex.getName();
+        String message = "Invalid parameter: " + name;
+        ApiError body = ApiError.of(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCode.ERR_VALIDATION, message, req.getRequestURI());
         return ResponseEntity.badRequest().body(body);
     }
 

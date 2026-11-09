@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Active when {@code app.livesession.attendance.enforced=true}.
@@ -60,8 +61,8 @@ public class SnapshotGridAttendancePolicy implements AttendancePolicy {
 
             attendanceReport.add(
                     AttendanceResponse.builder()
-                            .sessionId(session.getId())
-                            .studentId(student.getId())
+                            .sessionId(session.getPublicId() != null ? session.getPublicId() : (session.getId() != null ? new UUID(0L, session.getId()) : null))
+                            .studentId(student.getPublicId() != null ? student.getPublicId() : (student.getId() != null ? new UUID(0L, student.getId()) : null))
                             .attendancePercentage(attendancePercentage)
                             .status(status)
                             .build()

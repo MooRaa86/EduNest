@@ -21,6 +21,7 @@
 
 ## 3. Documents
 
+- [../architecture/universal-public-id-standard.md](../architecture/universal-public-id-standard.md) — Universal Public UUID Standard (EB-110)
 - [endpoints.md](endpoints.md) — complete endpoint inventory (route-verified)
 - [error-responses.md](error-responses.md) — exception → status → body contract
 

@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
@@ -28,7 +29,7 @@ public class AdminUserDirectoryController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get user details by ID", description = "Retrieve detailed information for a specific user (Mentor or Student) by their ID.")
-    public ResponseEntity<SimpleResponse> getUserById(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> getUserById(@PathVariable UUID id) {
         SimpleResponse response = new SimpleResponse();
         Object userDetails = adminUserDirectory.getUserById(id);
         

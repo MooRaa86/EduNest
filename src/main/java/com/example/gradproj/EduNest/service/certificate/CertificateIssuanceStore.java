@@ -109,11 +109,11 @@ public class CertificateIssuanceStore {
         while (true) {
             final long after = cursor;
             List<Delivery> page = committedReads.execute(status -> jdbc.query(
-                    "SELECT un.id, un.certificate_recipient_email, n.title, n.content, n.type, n.created_at "
+                    "SELECT un.id, un.certificate_recipient_email, n.title, n.content, n.type, n.created_at, un.public_id "
                             + "FROM user_notification un JOIN notification n ON n.id = un.notification_id "
                             + "WHERE un.certificate_issuance_id = ? AND un.id > ? ORDER BY un.id LIMIT ?",
                     (rs, n) -> new Delivery(rs.getLong(1), rs.getString(2), NotificationDto.builder()
-                            .id(rs.getLong(1)).title(rs.getString(3)).content(rs.getString(4))
+                            .id(rs.getObject(7, UUID.class)).title(rs.getString(3)).content(rs.getString(4))
                             .type(NotificationType.valueOf(rs.getString(5))).isRead(false)
                             .time(rs.getObject(6, LocalDateTime.class)).build()), issuance, after, batchSize));
             if (page == null || page.isEmpty()) return;

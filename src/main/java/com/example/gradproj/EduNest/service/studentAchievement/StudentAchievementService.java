@@ -71,11 +71,11 @@ public class StudentAchievementService {
 
     private BadgeAchievementResponse toBadgeDto(BadgeAward a) {
         return BadgeAchievementResponse.builder()
-                .id(a.getId())
+                .id(a.getPublicId())
                 .title(a.getBadge().getTitle())
                 .description(a.getBadge().getDescription())
                 .points(a.getBadge().getPoints())
-                .mentorshipId(a.getBadge().getMentorship().getId())
+                .mentorshipId(a.getBadge().getMentorship().getPublicId())
                 .mentorshipTitle(a.getBadge().getMentorship().getTitle())
                 .awardedByFullName(a.getAwardedBy().getFirstName() + " " + a.getAwardedBy().getLastName())
                 .awardedAt(a.getCreatedAt())
@@ -84,10 +84,10 @@ public class StudentAchievementService {
 
     private ProjectAchievementResponse toProjectDto(ProjectSubmission s) {
         return ProjectAchievementResponse.builder()
-                .projectId(s.getProject().getId())
-                .submissionId(s.getId())
+                .projectId(s.getProject().getPublicId())
+                .submissionId(s.getPublicId())
                 .projectTitle(s.getProject().getTitle())
-                .mentorshipId(s.getProject().getWeek().getMentorship().getId())
+                .mentorshipId(s.getProject().getWeek().getMentorship().getPublicId())
                 .mentorshipTitle(s.getProject().getWeek().getMentorship().getTitle())
                 .mentorFullName(s.getProject().getWeek().getMentorship().getMentor().getFirstName() + " " + s.getProject().getWeek().getMentorship().getMentor().getLastName())
                 .submissionStatus(s.getStatus())

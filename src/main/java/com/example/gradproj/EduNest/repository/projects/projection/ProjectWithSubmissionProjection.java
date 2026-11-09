@@ -3,9 +3,10 @@ package com.example.gradproj.EduNest.repository.projects.projection;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface ProjectWithSubmissionProjection {
-    Long getProjectId();
+    UUID getProjectId();
     String getTitle();
     String getBrief();
     String getDescriptionUrl();
@@ -15,7 +16,7 @@ public interface ProjectWithSubmissionProjection {
     LocalDateTime getEndAt();
     String getGoal();
 
-    Long getSubmissionId();
+    UUID getSubmissionId();
     SubmissionStatus getSubmissionStatus();
     Integer getFinalScore();
     Integer getTotalPoints();
@@ -23,7 +24,7 @@ public interface ProjectWithSubmissionProjection {
     String getUploadedFilePath();
     String getFeedback();
 
-    Long getMentorId();
+    UUID getMentorId();
     String getMentorName();
     String getMentorPhoto();
 }

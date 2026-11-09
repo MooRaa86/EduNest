@@ -16,6 +16,15 @@ import java.util.Optional;
 
 @Repository
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
+    java.util.Optional<Quiz> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT q.id FROM Quiz q WHERE q.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    void deleteByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM Quiz q WHERE q.publicId = :publicId")
+    java.util.Optional<Quiz> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     /** EB-51 — shared gate lock (L2-quiz) for the quiz-submit gate ordering. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT q FROM Quiz q WHERE q.id = :id")

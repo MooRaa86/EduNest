@@ -20,6 +20,12 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     boolean existsByPublicId(UUID publicId);
     Optional<Mentor> findByPublicId(UUID publicId);
 
+    @Query("select m.id from Mentor m where m.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("SELECT m FROM Mentor m LEFT JOIN FETCH m.socialMediaLinks WHERE m.publicId = :publicId")
+    Optional<Mentor> findMentorWithSocialMediaByPublicId(@Param("publicId") UUID publicId);
+
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileforStudentDto(
         m.publicId,

@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -187,11 +188,71 @@ public class ChatRoomService {
         roomRepo.delete(room);
     }
 
-    private ChatRoomResponse mapRoomToResponse(ChatRoom room,Long mentorshipId) {
+    private ChatRoomResponse mapRoomToResponse(ChatRoom room, Long mentorshipId) {
         return ChatRoomResponse.builder()
-                .id(room.getId())
+                .id(room.getPublicId())
                 .name(room.getName())
-                .mentorshipId(mentorshipId)
+                .mentorshipId(room.getMentorship().getPublicId())
                 .build();
     }
+
+    public Long resolveRoomInternalId(UUID publicId) {
+        return roomRepo.findIdByPublicId(publicId)
+                .or(() -> roomRepo.findById(publicId.getLeastSignificantBits()).map(ChatRoom::getId))
+                .orElseThrow(() -> new UsernameNotFoundException("Room not found by id: " + publicId));
+    }
+
+    private Long resolveMentorshipInternalId(UUID publicId) {
+        return mentorshipRepo.findIdByPublicId(publicId)
+                .or(() -> mentorshipRepo.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId))
+                .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public ChatRoomResponse createRoom(
+            UUID mentorshipId,
+            String roomName,
+            String creatorEmail
+    ) {
+        Long internalMentorshipId = resolveMentorshipInternalId(mentorshipId);
+        ChatRoomResponse resp = createRoom(internalMentorshipId, roomName, creatorEmail);
+        resp.setMentorshipId(mentorshipId);
+        return resp;
+    }
+
+    @Transactional
+    public void joinRoom(UUID roomId, String userEmail) {
+        joinRoom(resolveRoomInternalId(roomId), userEmail);
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public String updateRoomImage(UUID roomId, String userEmail, MultipartFile image) {
+        return updateRoomImage(resolveRoomInternalId(roomId), userEmail, image);
+    }
+
+    @Transactional
+    public List<RoomMemberProjection> getRoomMembers(UUID roomId, String email) {
+        if (!securityService.isUserMemberOfChatRoom(roomId, email)) {
+            throw new AccessDeniedException("User is not a member of this room");
+        }
+        return getRoomMembers(resolveRoomInternalId(roomId), email);
+    }
+
+    public List<ChatRoomProjection> getRoomsforMentorship(UUID mentorshipId, String studentEmail) {
+        return getRoomsforMentorship(resolveMentorshipInternalId(mentorshipId), studentEmail);
+    }
+
+    @PreAuthorize("hasRole('STUDENT')")
+    public List<MentorshipRoomDetailsResponse> getRoomsWithJoinStatus(UUID mentorshipId, String studentEmail) {
+        return getRoomsWithJoinStatus(resolveMentorshipInternalId(mentorshipId), studentEmail);
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public void deleteRoom(UUID roomId, String userEmail) {
+        deleteRoom(resolveRoomInternalId(roomId), userEmail);
+    }
+
 }

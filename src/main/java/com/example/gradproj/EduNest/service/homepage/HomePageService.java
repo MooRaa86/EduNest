@@ -24,6 +24,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
+import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 
 @Service
 @RequiredArgsConstructor
@@ -133,7 +135,7 @@ public class HomePageService {
                     int progressPercentage = totalItems > 0 ? (int)((completedItems * 100) / totalItems) : 0;
 
                     return ContinueLearningDto.builder()
-                            .mentorshipId(m.getMentorshipId())
+                            .mentorshipId(mentorShipRepository.findPublicIdById(m.getMentorshipId()).orElseGet(() -> new UUID(0L, m.getMentorshipId())))
                             .title(m.getTitle())
                             .coverImageUrl(m.getCoverImageUrl())
                             .mentorName(m.getMentorName())
@@ -228,6 +230,13 @@ public class HomePageService {
                 .totalElements(allItems.size())
                 .totalPages((int) Math.ceil((double) allItems.size() / size))
                 .build();
+    }
+
+
+    public studentProgressDto getStudentMentorshipProgress(String email, UUID mentorshipPublicId) {
+        Long internalId = mentorShipRepository.findIdByPublicId(mentorshipPublicId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + mentorshipPublicId));
+        return getStudentMentorshipProgress(email, internalId);
     }
 
 }

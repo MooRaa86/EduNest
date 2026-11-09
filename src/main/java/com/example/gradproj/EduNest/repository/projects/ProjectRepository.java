@@ -19,6 +19,15 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectRepository extends JpaRepository<Project,Long> {
+    java.util.Optional<Project> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT p.id FROM Project p WHERE p.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    void deleteByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Project p WHERE p.publicId = :publicId")
+    java.util.Optional<Project> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     /** EB-51 — shared gate lock (L2) for project points-edit/delete and grading gates. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Project p WHERE p.id = :id")
@@ -62,7 +71,7 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
 
     @Query("""
     SELECT
-        p.id                          AS id,
+        p.publicId                    AS id,
         p.title                       AS title,
         p.goal                        AS goal,
         p.brief                       AS brief,
@@ -72,7 +81,7 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
         p.endAt                       AS endAt,
         p.points                      AS points,
         p.status                      AS status,
-        p.week.id                     AS weekId,
+        p.week.publicId               AS weekId,
         p.createdAt                   AS createdAt,
         COUNT(DISTINCT e.id)          AS totalStudents,
         COUNT(DISTINCT ps.id)         AS submissionsCount
@@ -85,8 +94,8 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
       AND (:projectName IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :projectName, '%')))
       AND (:status IS NULL OR p.status = :status)
       AND (:studentView = false OR p.status IN (com.example.gradproj.EduNest.enums.project.ProjectStatus.PUBLISHED, com.example.gradproj.EduNest.enums.project.ProjectStatus.CLOSED))
-    GROUP BY p.id, p.title, p.goal, p.brief, p.descriptionUrl, p.uploadedAttachmentPath,
-             p.startAt, p.endAt, p.points, p.status, p.week.id, p.createdAt
+    GROUP BY p.publicId, p.title, p.goal, p.brief, p.descriptionUrl, p.uploadedAttachmentPath,
+             p.startAt, p.endAt, p.points, p.status, p.week.publicId, p.createdAt
     """)
     Page<ProjectWithStatsProjection> findProjectsWithStatsByMentorship(
             @Param("msid") Long msid,
@@ -119,9 +128,9 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
 
 
     @Query("""
-    SELECT p.id as id, p.title as title, p.endAt as endAt, p.points as points,
-           w.id as weekId, w.title as weekTitle,
-           m.id as mentorshipId, m.title as mentorshipTitle
+    SELECT p.publicId as id, p.title as title, p.endAt as endAt, p.points as points,
+           w.publicId as weekId, w.title as weekTitle,
+           m.publicId as mentorshipId, m.title as mentorshipTitle
     FROM Project p
     JOIN p.week w
     JOIN w.mentorship m
@@ -146,9 +155,9 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
     );
 
     @Query("""
-    SELECT p.id as id, p.title as title, p.endAt as endAt, p.points as points,
-           w.id as weekId, w.title as weekTitle,
-           m.id as mentorshipId, m.title as mentorshipTitle
+    SELECT p.publicId as id, p.title as title, p.endAt as endAt, p.points as points,
+           w.publicId as weekId, w.title as weekTitle,
+           m.publicId as mentorshipId, m.title as mentorshipTitle
     FROM Project p
     JOIN p.week w
     JOIN w.mentorship m

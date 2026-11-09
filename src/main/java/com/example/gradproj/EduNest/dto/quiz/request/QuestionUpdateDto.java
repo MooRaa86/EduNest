@@ -3,15 +3,17 @@ package com.example.gradproj.EduNest.dto.quiz.request;
 import com.example.gradproj.EduNest.enums.quiz.AnswerChoices;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import lombok.*;
-
 
 @Getter
 @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class QuestionUpdateDto {
 
-    private Long quizId;
+    private UUID quizId;
 
     @Size(max = 500, message = "Question text can't exceed 500 characters")
     private String text;
@@ -32,4 +34,16 @@ public class QuestionUpdateDto {
 
     @Size(max = 100)
     private String optionD;
+
+    public static class QuestionUpdateDtoBuilder {
+        public QuestionUpdateDtoBuilder quizId(Long id) {
+            this.quizId = id != null ? new UUID(0, id) : null;
+            return this;
+        }
+
+        public QuestionUpdateDtoBuilder quizId(UUID id) {
+            this.quizId = id;
+            return this;
+        }
+    }
 }

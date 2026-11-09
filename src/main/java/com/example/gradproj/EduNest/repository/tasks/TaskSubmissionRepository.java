@@ -16,6 +16,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,Long> {
+    java.util.Optional<TaskSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT ts.id FROM TaskSubmission ts WHERE ts.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ts FROM TaskSubmission ts WHERE ts.publicId = :publicId")
+    java.util.Optional<TaskSubmission> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     @Query("""
         SELECT ts.id AS id,
                s.email AS studentEmail,
@@ -49,7 +57,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
 
     @Query("""
         SELECT
-            t.id                                    AS taskId,
+            t.publicId                              AS taskId,
             t.title                                 AS taskTitle,
             t.points                                AS points,
             t.dueAt                                 AS dueAt,
@@ -57,7 +65,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
             t.attachmentUrl                         AS attachmentUrl,
             t.uploadedAttachmentPath                AS uploadedAttachmentPath,
             t.estimatedMinutes                      AS estimatedMinutes,
-            ts.id                                   AS submissionId,
+            ts.publicId                             AS submissionId,
             ts.fileUrl                              AS fileUrl,
             ts.finalScore                           AS finalScore,
             t.points                                AS totalPoints,

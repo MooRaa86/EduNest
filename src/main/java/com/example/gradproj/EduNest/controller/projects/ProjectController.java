@@ -25,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -57,7 +58,7 @@ public class ProjectController {
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateProjectStatusRequest req
     ) {
         SimpleResponse response = new SimpleResponse();
@@ -67,7 +68,7 @@ public class ProjectController {
     }
     @Operation(summary = "get project by project id")
     @GetMapping("/{id}")
-    public  ResponseEntity<SimpleResponse> getById(@PathVariable Long id){
+    public  ResponseEntity<SimpleResponse> getById(@PathVariable UUID id){
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "project retrieved successfully");
         response.addMessage("project", projectService.getProjectById(id));
@@ -77,7 +78,7 @@ public class ProjectController {
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> patch(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestPart(value = "req", required = false) String reqJson,
             @RequestPart(value = "file", required = false) MultipartFile file
     ) throws Exception {
@@ -100,7 +101,7 @@ public class ProjectController {
     @Operation(summary = "delete project by project id")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public  ResponseEntity<SimpleResponse> delete(@PathVariable Long id){
+    public  ResponseEntity<SimpleResponse> delete(@PathVariable UUID id){
         projectService.deleteProject(id);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message", "project deleted successfully");
@@ -113,7 +114,7 @@ public class ProjectController {
             @RequestParam(required = false) ProjectStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size,
-            @PathVariable Long msid
+            @PathVariable UUID msid
     ) {
         Pageable pageable = (Pageable) PageRequest.of(page, size);
 
@@ -130,7 +131,7 @@ public class ProjectController {
     @GetMapping("/{projectId}/statistics")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getProjectStatistics(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size
     ) {
@@ -151,7 +152,7 @@ public class ProjectController {
     @Operation(summary = "get full project dashboard (dashboard + projects list)")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getFullDashboard(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestParam(required = false) String projectName,
             @RequestParam(required = false) ProjectStatus status,
             @RequestParam(defaultValue = "0") int page,
@@ -170,7 +171,7 @@ public class ProjectController {
     @Operation(summary = "get project details with student submission in one response")
     @GetMapping("/{projectId}/student")
     public ResponseEntity<SimpleResponse> getProjectWithSubmission(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             Authentication authentication
     ) {
         SimpleResponse response = new SimpleResponse();

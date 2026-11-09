@@ -2,6 +2,8 @@ package com.example.gradproj.EduNest.config.webSocket;
 
 import com.example.gradproj.EduNest.service.chat.ChatAuthorization;
 import com.example.gradproj.EduNest.service.jwt.JwtService;
+import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -58,6 +60,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
     private final JwtService jwtService;
     private final ChatAuthorization chatAuthorization;
+    private final ChatRoomRepository chatRoomRepository;
     /**
      * Provider, not the bean itself: SimpMessagingTemplate is owned by the
      * broker configuration this interceptor is registered into — direct
@@ -114,8 +117,15 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
 
         String email = jwtService.extractUserEmail(token);
         String fullName = jwtService.getFullName(token);
+        UUID userId = null;
+        try {
+            String uidStr = jwtService.extractUserId(token);
+            if (uidStr != null) {
+                userId = UUID.fromString(uidStr);
+            }
+        } catch (Exception ignored) {}
 
-        accessor.setUser(new ChatPrincipal(email, fullName));
+        accessor.setUser(new ChatPrincipal(email, fullName, userId));
     }
 
     // ===================== SUBSCRIBE (READ rule) =====================
@@ -197,11 +207,15 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     private Long extractRoomId(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
         try {
-            return Long.parseLong(
-                    destination.substring(
-                            destination.lastIndexOf("/") + 1
-                    )
+            String token = destination.substring(
+                    destination.lastIndexOf("/") + 1
             );
+            try {
+                return Long.parseLong(token);
+            } catch (NumberFormatException nfe) {
+                UUID publicId = UUID.fromString(token);
+                return chatRoomRepository.findIdByPublicId(publicId).orElse(null);
+            }
         } catch (Exception e) {
             String email = accessor.getUser() != null ? accessor.getUser().getName() : null;
             if (email != null) errorToUser(email, "Invalid destination format");

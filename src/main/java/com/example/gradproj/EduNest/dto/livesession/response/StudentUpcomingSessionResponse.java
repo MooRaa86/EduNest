@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.dto.livesession.response;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,12 +11,12 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class StudentUpcomingSessionResponse {
-    private Long sessionId;
+    private UUID sessionId;
     private String sessionName;
     private String mentorName;
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String mentorshipName;
-    private Long weekId;
+    private UUID weekId;
     private String weekTitle;
     private LocalDateTime sessionStartDate;
     private String meetingUrl;

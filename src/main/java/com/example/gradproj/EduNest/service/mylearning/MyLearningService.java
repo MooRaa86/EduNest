@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mylearning.EnrolledMentorshipDto;
 import com.example.gradproj.EduNest.dto.mylearning.MyLearningResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.ActiveMentorshipProgressProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,12 +12,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class MyLearningService {
 
     private final EnrollmentRepository enrollmentRepository;
+    private final MentorShipRepository mentorShipRepository;
 
     public MyLearningResponse getMyLearning(String email, int page, int size) {
         Page<ActiveMentorshipProgressProjection> result = enrollmentRepository
@@ -27,8 +30,11 @@ public class MyLearningService {
             long submittedItems = safe(m.getSubmittedTasks()) + safe(m.getSubmittedQuizzes()) + safe(m.getSubmittedProjects());
             int progress = totalItems > 0 ? (int) ((submittedItems * 100) / totalItems) : 0;
 
+            UUID publicMentorshipId = mentorShipRepository.findPublicIdById(m.getMentorshipId())
+                    .orElseGet(() -> new UUID(0L, m.getMentorshipId()));
+
             return EnrolledMentorshipDto.builder()
-                    .mentorshipId(m.getMentorshipId())
+                    .mentorshipId(publicMentorshipId)
                     .title(m.getTitle())
                     .subtitle(m.getSubtitle())
                     .category(m.getCategory())

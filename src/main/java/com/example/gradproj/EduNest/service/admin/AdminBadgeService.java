@@ -27,6 +27,7 @@ import org.springframework.web.util.HtmlUtils;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -135,7 +136,7 @@ public class AdminBadgeService {
 
     private AdminBadgeResponse toAdminBadgeDto(AdminBadge badge) {
         return AdminBadgeResponse.builder()
-                .id(badge.getId())
+                .id(badge.getPublicId())
                 .name(badge.getName())
                 .description(badge.getDescription())
                 .type(badge.getType())
@@ -144,10 +145,10 @@ public class AdminBadgeService {
 
     private UserAdminBadgeResponse toUserAdminBadgeDto(UserAdminBadge uab) {
         return UserAdminBadgeResponse.builder()
-                .id(uab.getId())
-                .userId(uab.getUser().getId())
+                .id(uab.getPublicId())
+                .userId(uab.getUser().getPublicId())
                 .userFullName(uab.getUser().getFirstName() + " " + uab.getUser().getLastName())
-                .badgeId(uab.getAdminBadge().getId())
+                .badgeId(uab.getAdminBadge().getPublicId())
                 .badgeName(uab.getAdminBadge().getName())
                 .badgeDescription(uab.getAdminBadge().getDescription())
                 .badgeType(uab.getAdminBadge().getType())
@@ -210,4 +211,48 @@ public class AdminBadgeService {
                 .awardedAt(projection.getAwardedAt())
                 .build();
     }
+
+    private Long resolveUserInternalId(UUID publicId) {
+        return userRepository.findIdByPublicId(publicId)
+                .or(() -> userRepository.findById(publicId.getLeastSignificantBits()).map(UserEntity::getId))
+                .orElseThrow(() -> new globalLogicEx("User not found"));
+    }
+
+    private Long resolveAdminBadgeInternalId(UUID publicId) {
+        return adminBadgeRepository.findIdByPublicId(publicId)
+                .or(() -> adminBadgeRepository.findById(publicId.getLeastSignificantBits()).map(AdminBadge::getId))
+                .orElseThrow(() -> new globalLogicEx("Admin badge not found"));
+    }
+
+    private Long resolveUserAdminBadgeInternalId(UUID publicId) {
+        return userAdminBadgeRepository.findIdByPublicId(publicId)
+                .or(() -> userAdminBadgeRepository.findById(publicId.getLeastSignificantBits()).map(UserAdminBadge::getId))
+                .orElseThrow(() -> new globalLogicEx("User admin badge not found"));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserAdminBadgeResponse awardBadgeToUser(UUID userId, UUID badgeId, String recognitionNote) {
+        return awardBadgeToUser(resolveUserInternalId(userId), resolveAdminBadgeInternalId(badgeId), recognitionNote);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserAdminBadgeResponse> getUserBadges(UUID userId) {
+        return getUserBadges(resolveUserInternalId(userId));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public void removeBadgeFromUser(UUID userBadgeId) {
+        removeBadgeFromUser(resolveUserAdminBadgeInternalId(userBadgeId));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public AdminBadgeResponse updateAdminBadge(UUID badgeId, UpdateAdminBadgeRequest req) {
+        return updateAdminBadge(resolveAdminBadgeInternalId(badgeId), req);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteAdminBadge(UUID badgeId) {
+        deleteAdminBadge(resolveAdminBadgeInternalId(badgeId));
+    }
+
 }

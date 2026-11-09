@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,7 +94,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req, MultipartFile file) {
-        Week week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
+        Week week=weekRepository.findByPublicId(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
         Long mentorId = week.getMentorship().getMentor().getId();
         if (!mentorId.equals(getCurrentMentorId())) {
             throw new AccessDeniedException("You are not authorized to create projects for this mentorship");
@@ -314,7 +315,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     private ProjectResponse mapToProjectResponse(Project project) {
         return ProjectResponse.builder()
-                .id(project.getId())
+                .id(project.getPublicId())
                 .title(project.getTitle())
                 .goal(project.getGoal())
                 .brief(project.getBrief())
@@ -324,7 +325,7 @@ public class ProjectServiceImpl implements ProjectService{
                 .endAt(project.getEndAt())
                 .points(project.getPoints())
                 .status(project.getStatus().name())
-                .weekId(project.getWeek().getId())
+                .weekId(project.getWeek().getPublicId())
                 .createdAt(project.getCreatedAt())
                 .build();
     }
@@ -375,9 +376,9 @@ public class ProjectServiceImpl implements ProjectService{
     }
     private ProjectSubmissionResponse mapToProjectSubmissionResponse(ProjectSubmission s) {
         return ProjectSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .projectId(s.getProject().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .projectId(s.getProject().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
@@ -400,5 +401,62 @@ public class ProjectServiceImpl implements ProjectService{
                 .projectDashboardDTO(dashboard)
                 .projectResponsePageResponse(projects)
                 .build();
+    }
+
+    @Override
+    public ProjectResponse getProjectById(UUID projectId) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getProjectById(internalId);
+    }
+
+    @Override
+    public ProjectResponse updateProject(UUID projectId, PatchProjectRequest req, MultipartFile file) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        return updateProject(internalId, req, file);
+    }
+
+    @Override
+    public void deleteProject(UUID projectId) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        deleteProject(internalId);
+    }
+
+    @Override
+    public ProjectResponse updateProjectStatus(UUID projectId, UpdateProjectStatusRequest req) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        return updateProjectStatus(internalId, req);
+    }
+
+    @Override
+    public PageResponse<ProjectWithStatsResponse> getProject(String projectName, ProjectStatus status, UUID msid, Pageable pageable) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(msid)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
+        return getProject(projectName, status, internalMsid, pageable);
+    }
+
+    @Override
+    public ProjectDashboardDTO getProjectDashboard(UUID mentorShipId) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
+        return getProjectDashboard(internalMsid);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectStatisticsDTO getProjectStatistics(UUID projectId, Pageable pageable) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        return getProjectStatistics(internalId, pageable);
+    }
+
+    @Override
+    public FullProjectDashBoardDto getFullProjectDashboard(UUID mentorShipId, String projectName, ProjectStatus status, Pageable pageable) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
+        return getFullProjectDashboard(internalMsid, projectName, status, pageable);
     }
 }

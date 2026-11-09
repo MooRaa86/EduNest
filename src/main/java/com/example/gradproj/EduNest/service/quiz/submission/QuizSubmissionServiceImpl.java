@@ -35,6 +35,8 @@ import java.security.PublicKey;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -98,9 +100,14 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Quiz already submitted");
         }
 
-        Map<Long, Question> questions =
-                quiz.getQuestions().stream()
-                        .collect(Collectors.toMap(Question::getId, q -> q));
+        Map<Object, Question> questions = new HashMap<>();
+        for (Question q : quiz.getQuestions()) {
+            if (q.getPublicId() != null) questions.put(q.getPublicId(), q);
+            if (q.getId() != null) {
+                questions.put(new UUID(0, q.getId()), q);
+                questions.put(q.getId(), q);
+            }
+        }
 
         ScoreResult score = calculateScore(quizSubmissionDTO.getAnswers(), questions);
 
@@ -161,8 +168,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         );
 
         return QuizSubmissionResponseDTO.builder()
-                .id(quizSubmission.getId())
-                .studentId(student.getId())
+                .id(quizSubmission.getPublicId())
+                .studentId(student.getPublicId())
                 .studentName(student.getFirstName() + " " + student.getLastName())
                 .score(finalScore)
                 .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
@@ -186,7 +193,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         return submission.getAnswers().stream()
                 .map(ans -> StudentAnswerDTO.builder()
-                        .questionId(ans.getQuestion().getId())
+                        .questionId(ans.getQuestion().getPublicId())
                         .selectedAnswer(ans.getSelectedAnswer())
                         .build())
                 .toList();
@@ -209,7 +216,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
 //        return submission.getAnswers().stream()
 //                .map(ans -> StudentQuizReviewDTO.builder()
-//                        .questionId(ans.getQuestion().getId())
+//                        .questionId(ans.getQuestion().getPublicId())
 //                        .text(ans.getQuestion().getText())
 //                        .optionA(ans.getQuestion().getOptionA())
 //                        .optionB(ans.getQuestion().getOptionB())
@@ -238,7 +245,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                      * StudentQuizReviewDTO omits it from the JSON entirely.
                      */
                     return StudentQuizReviewDTO.builder()
-                            .questionId(question.getId())
+                            .questionId(question.getPublicId())
                             .text(question.getText())
                             .optionA(question.getOptionA())
                             .optionB(question.getOptionB())
@@ -264,8 +271,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         return quizSubmissionRepository.findAllByStudentAndMentor(studentId, mentorId, PageRequest.of(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
-                        .id(sub.getId())
-                        .studentId(studentId)
+                        .id(sub.getPublicId())
+                        .studentId(sub.getStudent().getPublicId())
                         .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                         .score(sub.getScore())
                         .build())
@@ -299,8 +306,8 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                     }
 
                     return QuizSubmissionResponseDTO.builder()
-                            .id(sub.getId())
-                            .studentId(sub.getStudent().getId())
+                            .id(sub.getPublicId())
+                            .studentId(sub.getStudent().getPublicId())
                             .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                             .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                             .score(sub.getScore())
@@ -311,12 +318,15 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     }
 
 
-    private ScoreResult calculateScore(List<StudentAnswerDTO> answers, Map<Long, Question> questions) {
+    private ScoreResult calculateScore(List<StudentAnswerDTO> answers, Map<?, Question> questions) {
         double score = 0;
         int numOfCorrect = 0;
 
         for (StudentAnswerDTO studentAnswer : answers) {
             Question question = questions.get(studentAnswer.getQuestionId());
+            if (question == null && studentAnswer.getQuestionId() != null) {
+                question = questions.get(studentAnswer.getQuestionId().getLeastSignificantBits());
+            }
             if (question == null) continue;
 
             String correctAnswer= String.valueOf(question.getCorrectAnswer());
@@ -341,6 +351,44 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     }
 
+
+    @Override
+    @Transactional
+    public QuizSubmissionResponseDTO submitQuizAnswers(QuizSubmissionDTO quizSubmissionDTO, UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return submitQuizAnswers(quizSubmissionDTO, internalId);
+    }
+
+    @Override
+    public List<StudentAnswerDTO> getStudentAnswers(UUID studentId, UUID quizId) {
+        Long internalStudentId = studentRepository.findIdByPublicId(studentId)
+                .orElseThrow(() -> new globalLogicEx("Student not found"));
+        Long internalQuizId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getStudentAnswers(internalStudentId, internalQuizId);
+    }
+
+    @Override
+    public List<StudentQuizReviewDTO> getStudentQuizReview(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getStudentQuizReview(internalId);
+    }
+
+    @Override
+    public List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(UUID quizId, int page, int size) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getAllSubmissionsByQuiz(internalId, page, size);
+    }
+
+    @Override
+    public List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(UUID studentId, int page, int size) {
+        Long internalId = studentRepository.findIdByPublicId(studentId)
+                .orElseThrow(() -> new globalLogicEx("Student not found"));
+        return getAllSubmissionsByStudent(internalId, page, size);
+    }
 }
 
 

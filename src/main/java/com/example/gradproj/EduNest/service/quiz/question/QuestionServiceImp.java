@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,17 +44,18 @@ public class QuestionServiceImp implements QuestionService {
     @Transactional
     public QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnQuiz(questionCreateDTO.getQuizId(), email)) {
+        Quiz quiz = quizRepository.findByPublicId(questionCreateDTO.getQuizId())
+                .or(() -> quizRepository.findById(questionCreateDTO.getQuizId().getLeastSignificantBits()))
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (!securityService.isMentorOwnQuiz(quiz.getId(), email)) {
             throw new AccessDeniedException("You are not authorized to add questions to this quiz");
         }
-
-        Quiz quiz = quizRepository.findById(questionCreateDTO.getQuizId())
-                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         // EB-51 — L1 -> L2 shared gate: lock week -> lock quiz to serialize against concurrent status transitions
         weekRepository.findForUpdateById(quiz.getWeek().getId())
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
-        quiz = quizRepository.findForUpdateById(questionCreateDTO.getQuizId())
+        quiz = quizRepository.findForUpdateById(quiz.getId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         if (quiz.getStatus() != QuizStatus.DRAFT) {
@@ -147,14 +149,15 @@ public class QuestionServiceImp implements QuestionService {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
 
-        Quiz targetQuiz = quizRepository.findById(dto.getQuizId())
+        Quiz targetQuiz = quizRepository.findByPublicId(dto.getQuizId())
+                .or(() -> quizRepository.findById(dto.getQuizId().getLeastSignificantBits()))
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         // P1-19 / EB-26 (G15/QZ-06) — the TARGET quiz must also be the
         // caller's own. Checked BEFORE the status check so a foreign quiz's
         // DRAFT status is not leaked ("already published" would be an
         // existence/status oracle for another mentor's quizzes).
-        if (!Boolean.TRUE.equals(securityService.isMentorOwnQuiz(dto.getQuizId(), email))) {
+        if (!Boolean.TRUE.equals(securityService.isMentorOwnQuiz(targetQuiz.getId(), email))) {
             throw new AccessDeniedException("You are not authorized to move this question to this quiz");
         }
 
@@ -220,7 +223,7 @@ public class QuestionServiceImp implements QuestionService {
         if (dto.getOptionD() != null)
             question.setOptionD(dto.getOptionD());
 
-        if (!question.getQuiz().getId().equals(dto.getQuizId())) {
+        if (!question.getQuiz().getId().equals(targetQuiz.getId())) {
             question.setQuiz(lockedTarget);
         }
 
@@ -261,7 +264,7 @@ public class QuestionServiceImp implements QuestionService {
 
     private QuestionResponseDTO mapToResponseDTO(Question question) {
         return QuestionResponseDTO.builder()
-                .id(question.getId())
+                .id(question.getPublicId())
                 .text(question.getText())
                 .points(question.getPoints())
                 .correctAnswer(question.getCorrectAnswer())
@@ -274,7 +277,7 @@ public class QuestionServiceImp implements QuestionService {
 
     private StudentQuestionResponseDTO mapToStudentResponseDTO(Question question) {
         return StudentQuestionResponseDTO.builder()
-                .id(question.getId())
+                .id(question.getPublicId())
                 .text(question.getText())
                 .points(question.getPoints())
                 .optionA(question.getOptionA())
@@ -282,5 +285,44 @@ public class QuestionServiceImp implements QuestionService {
                 .optionC(question.getOptionC())
                 .optionD(question.getOptionD())
                 .build();
+    }
+
+    @Override
+    public List<QuestionResponseDTO> getQuestionsByQuizId(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuestionsByQuizId(internalId);
+    }
+
+    @Override
+    public List<StudentQuestionResponseDTO> getQuestionsByQuizIdForStudent(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuestionsByQuizIdForStudent(internalId);
+    }
+
+    @Override
+    public QuestionResponseDTO getQuestionById(UUID id) {
+        Long internalId = questionRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+        return getQuestionById(internalId);
+    }
+
+    @Override
+    @Transactional
+    public QuestionResponseDTO updateQuestion(UUID id, QuestionUpdateDto dto) {
+        Long internalId = questionRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+        return updateQuestion(internalId, dto);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuestion(UUID quizId, UUID questionId) {
+        Long internalQuizId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        Long internalQuestionId = questionRepository.findIdByPublicId(questionId)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+        deleteQuestion(internalQuizId, internalQuestionId);
     }
 }

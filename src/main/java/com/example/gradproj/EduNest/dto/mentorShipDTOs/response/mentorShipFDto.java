@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,7 +14,7 @@ import java.util.List;
 public class mentorShipFDto {
 
     @NotNull
-    private Long id;
+    private UUID id;
     private Status status;
     private String title;
     private String subtitle;

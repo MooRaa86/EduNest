@@ -13,6 +13,15 @@ import java.util.Optional;
 
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
+    java.util.Optional<Question> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT q.id FROM Question q WHERE q.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    void deleteByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM Question q WHERE q.publicId = :publicId")
+    java.util.Optional<Question> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     List<Question> findByQuiz_Id(Long quizId);
     boolean existsByQuiz_Id(Long quizId);
 

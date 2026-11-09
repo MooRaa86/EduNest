@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public interface QuizSubmissionService {
 
@@ -24,4 +25,16 @@ public interface QuizSubmissionService {
 
     List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(Long studentId, int page, int size);
 
+
+    @PreAuthorize("hasRole('STUDENT')")
+    QuizSubmissionResponseDTO submitQuizAnswers(QuizSubmissionDTO quizSubmissionDTO, UUID quizId);
+
+    List<StudentAnswerDTO> getStudentAnswers(UUID studentId, UUID quizId);
+
+    List<StudentQuizReviewDTO> getStudentQuizReview(UUID quizId);
+
+    @PreAuthorize("hasRole('MENTOR')")
+    List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(UUID quizId, int page, int size);
+
+    List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(UUID studentId, int page, int size);
 }

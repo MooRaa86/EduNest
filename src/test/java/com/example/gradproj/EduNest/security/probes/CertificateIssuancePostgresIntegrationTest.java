@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.HashSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -220,7 +221,7 @@ class CertificateIssuancePostgresIntegrationTest extends ProdChainIntegrationTes
 
         var payloads = ArgumentCaptor.forClass(Object.class);
         verify(messaging, times(total)).convertAndSendToUser(anyString(), eq("/queue/notifications"), payloads.capture());
-        Set<Long> deliveredIds = new HashSet<>();
+        Set<UUID> deliveredIds = new HashSet<>();
         for (Object payload : payloads.getAllValues()) {
             NotificationDto dto = (NotificationDto) payload;
             assertThat(dto.getTitle()).isEqualTo("Certificate Issued!");

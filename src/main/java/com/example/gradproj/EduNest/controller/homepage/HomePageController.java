@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/homepage")
@@ -36,7 +37,7 @@ public class HomePageController {
     @GetMapping("/progress/{mentorshipId}")
     @Operation(summary = "Get student progress for a specific mentorship (don't try)")
     public ResponseEntity<SimpleResponse> getStudentProgress(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             Authentication authentication
     ) {
         String email = authentication.getName();

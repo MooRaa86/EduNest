@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -250,9 +251,9 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
 
     private ProjectSubmissionResponse mapToSubmissionResponse(ProjectSubmission s) {
         return ProjectSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .projectId(s.getProject().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .projectId(s.getProject().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
                 .status(s.getStatus())
@@ -262,5 +263,34 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
                 .submittedAt(s.getSubmittedAt())
                 .feedback(s.getFeedBack())
                 .build();
+    }
+
+    @Override
+    public ProjectSubmissionResponse submit(UUID projectId, MultipartFile file, String fileUrl, String email) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("project not found"));
+        return submit(internalId, file, fileUrl, email);
+    }
+
+    @Override
+    public PageResponse<ProjectSubmissionResponse> listByProject(UUID projectId, int page, int size, String email) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("project not found"));
+        return listByProject(internalId, page, size, email);
+    }
+
+    @Override
+    public ProjectSubmissionResponse gradeProject(UUID submissionId, GradeProjectSubmissionRequest req, String email) {
+        Long internalId = projectSubmissionRepository.findIdByPublicId(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        return gradeProject(internalId, req, email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectWithSubmissionResponse getProjectWithSubmission(UUID projectId, String email) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getProjectWithSubmission(internalId, email);
     }
 }

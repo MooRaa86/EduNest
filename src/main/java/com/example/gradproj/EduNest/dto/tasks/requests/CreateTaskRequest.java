@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -21,7 +22,7 @@ public class CreateTaskRequest {
     private String title;
 
     @NotNull
-    private Long weekId;
+    private UUID weekId;
 
     @NotBlank(message = "description is required")
     @Size(min = 10, max = 10000, message = "description must be between 10 and 10000 characters")

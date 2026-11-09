@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -78,7 +79,7 @@ public class NotificationController {
     @PatchMapping("/{id}/mark-read")
     @Operation(summary = "mark notification as read")
     public void markOneAsRead(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             Authentication authentication
     ){
         notificationService.markOneAsRead(id, authentication.getName());
@@ -87,7 +88,7 @@ public class NotificationController {
     @DeleteMapping("/delete/{id}")
     @Operation(summary = "delete notification by id")
     public ResponseEntity<SimpleResponse> deleteNotification(
-            @PathVariable Long id ,Authentication authentication){
+            @PathVariable UUID id ,Authentication authentication){
         notificationService.deleteNotification(id,authentication.getName());
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("status","notification deleted successfully");

@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -87,13 +88,14 @@ public class BadgeAwardService {
         badge = badgeRepository.findForUpdateById(badgeId)
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
 
-        Student student = studentRepository.findById(req.getStudentId())
+        Student student = studentRepository.findByPublicId(req.getStudentId())
+                .or(() -> studentRepository.findById(req.getStudentId().getLeastSignificantBits()))
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
-        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(badge.getMentorship().getId(), req.getStudentId()))
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(badge.getMentorship().getId(), student.getId()))
             throw new globalLogicEx("Student is not enrolled in the mentorship that owns this badge");
 
-        if (badgeAwardRepository.existsByBadge_IdAndStudent_Id(badgeId, req.getStudentId()))
+        if (badgeAwardRepository.existsByBadge_IdAndStudent_Id(badgeId, student.getId()))
             throw new globalLogicEx("Student has already been awarded this badge");
 
         BadgeAward award = BadgeAward.builder()
@@ -168,15 +170,53 @@ public class BadgeAwardService {
 
     private BadgeAwardResponse toDto(BadgeAward a) {
         return BadgeAwardResponse.builder()
-                .id(a.getId())
-                .badgeId(a.getBadge().getId())
+                .id(a.getPublicId())
+                .badgeId(a.getBadge().getPublicId())
                 .badgeTitle(a.getBadge().getTitle())
-                .studentId(a.getStudent().getId())
+                .studentId(a.getStudent().getPublicId())
                 .studentFullName(a.getStudent().getFirstName() + " " + a.getStudent().getLastName())
-                .awardedById(a.getAwardedBy().getId())
+                .awardedById(a.getAwardedBy().getPublicId())
                 .awardedAt(a.getCreatedAt())
                 .note(a.getNote())
                 .badgePoints(a.getBadge().getPoints())
                 .build();
     }
+
+    private Long resolveBadgeInternalId(UUID publicId) {
+        return badgeRepository.findIdByPublicId(publicId)
+                .or(() -> badgeRepository.findById(publicId.getLeastSignificantBits()).map(Badge::getId))
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
+    }
+
+    private Long resolveMentorshipInternalId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .or(() -> mentorShipRepository.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId))
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+    }
+
+    private Long resolveStudentInternalId(UUID publicId) {
+        return studentRepository.findIdByPublicId(publicId)
+                .or(() -> studentRepository.findById(publicId.getLeastSignificantBits()).map(Student::getId))
+                .orElseThrow(() -> new globalLogicEx("Student not found"));
+    }
+
+    public BadgeAwardResponse awardBadge(UUID badgeId, AwardBadgeRequest req) {
+        return awardBadge(resolveBadgeInternalId(badgeId), req);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeAwardResponse> getAwardsByMentorship(UUID mentorshipId) {
+        return getAwardsByMentorship(resolveMentorshipInternalId(mentorshipId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeAwardResponse> getAwardsByStudent(UUID studentId) {
+        return getAwardsByStudent(resolveStudentInternalId(studentId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeAwardResponse> getAwardsByBadge(UUID badgeId) {
+        return getAwardsByBadge(resolveBadgeInternalId(badgeId));
+    }
+
 }

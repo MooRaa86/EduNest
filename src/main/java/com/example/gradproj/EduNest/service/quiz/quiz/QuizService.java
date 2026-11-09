@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface QuizService {
     @PreAuthorize("hasRole('MENTOR')")
@@ -43,4 +44,23 @@ public interface QuizService {
     void changeStatus(Long quizId, QuizStatus quizStatus);
     @PreAuthorize("hasRole('MENTOR')")
     MentorshipQuizzesOverviewResponseDto getMentorshipQuizzesOverview(Long mentorShipId, int page, int size);
+
+    @PreAuthorize("hasRole('MENTOR')")
+    void deleteQuiz(UUID id);
+    @PreAuthorize("hasRole('MENTOR')")
+    QuizResponseDTO updateQuiz(UUID id, QuizUpdateDto quizUpdateDto);
+    QuizResponseDTO getQuizDetails(UUID id);
+    PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, UUID msid, Pageable pageable);
+    @PreAuthorize("hasRole('STUDENT')")
+    PageResponse<QuizResponseDTO> getStudentQuizzes(String quizName, QuizStatus status, UUID msid, Pageable pageable);
+    @PreAuthorize("hasRole('MENTOR')")
+    QuizDashboardDTO getQuizDashboard(UUID mentorshipID);
+    @PreAuthorize("hasRole('MENTOR')")
+    QuizStatisticsDTO getQuizStatistics(UUID quizId);
+    @PreAuthorize("hasRole('MENTOR')")
+    QuizOverviewResponseDto getQuizOverviewDto(UUID quizId, int page, int size);
+    @PreAuthorize("hasRole('MENTOR')")
+    void changeStatus(UUID quizId, QuizStatus quizStatus);
+    @PreAuthorize("hasRole('MENTOR')")
+    MentorshipQuizzesOverviewResponseDto getMentorshipQuizzesOverview(UUID mentorShipId, int page, int size);
 }

@@ -1,8 +1,10 @@
 package com.example.gradproj.EduNest.repository.chat.projection;
 
+import java.util.UUID;
+
 public interface RoomMemberProjection {
 
-    Long getUserId();
+    UUID getUserId();
 
     String getEmail();
 

@@ -9,8 +9,20 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface WeekRepository extends JpaRepository<Week,Long> {
+    Optional<Week> findByPublicId(UUID publicId);
+
+    @Query("SELECT w.id FROM Week w WHERE w.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Week w WHERE w.publicId = :publicId")
+    Optional<Week> findForUpdateByPublicId(@Param("publicId") UUID publicId);
     void deleteById(Long id);
     List<Week> findByMentorship_IdOrderByIdAsc(Long mentorshipId);
 

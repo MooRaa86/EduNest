@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -29,7 +30,7 @@ public class TaskSubmissionController {
     @Operation(summary = "submit task answer with file upload or external URL")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> submit(
-            @PathVariable Long taskId,
+            @PathVariable UUID taskId,
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "fileUrl", required = false) String fileUrl
     ) {
@@ -42,7 +43,7 @@ public class TaskSubmissionController {
     @GetMapping("/{taskId}")
     @Operation(summary = "get task submissions")
     public ResponseEntity<SimpleResponse> listByTask(
-            @PathVariable Long taskId,
+            @PathVariable UUID taskId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
@@ -59,7 +60,7 @@ public class TaskSubmissionController {
     @Operation(summary = "grade task submissions by submission id")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> grade(
-            @PathVariable Long submissionId,
+            @PathVariable UUID submissionId,
             @Valid @RequestBody GradeTaskSubmissionRequest req
     ) {
         SimpleResponse response=new SimpleResponse();

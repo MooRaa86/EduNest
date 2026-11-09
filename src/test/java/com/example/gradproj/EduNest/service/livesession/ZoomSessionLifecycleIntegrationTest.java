@@ -105,7 +105,7 @@ class ZoomSessionLifecycleIntegrationTest {
         when(weekRepository.findById(weekId)).thenReturn(Optional.of(week));
         when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
         when(securityService.isMentorOwnWeek(eq(weekId), eq("mentor@test.com"))).thenReturn(true);
-        when(securityService.isMentorOwnLiveSession(any(), eq("mentor@test.com"))).thenReturn(true);
+        when(securityService.isMentorOwnLiveSession(any(Long.class), eq("mentor@test.com"))).thenReturn(true);
         return week;
     }
 

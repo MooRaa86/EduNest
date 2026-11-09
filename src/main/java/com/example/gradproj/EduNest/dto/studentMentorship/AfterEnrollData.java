@@ -14,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class AfterEnrollData {
-    private Long id;
+    private UUID id;
     private UUID publicId;
     private String title;
     private String subtitle;

@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.repository.chat.ChatRoomRepository;
 import com.example.gradproj.EduNest.repository.chat.MembersRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import java.util.UUID;
 
 /**
  * P1-12 / EB-19 — single authorization authority for the chat surfaces
@@ -40,6 +41,16 @@ public class ChatAuthorization {
     private final ChatRoomRepository roomRepo;
 
     /** READ rule (D-14): enrolled in the room's mentorship OR owning mentor. */
+    
+    public boolean canReadRoom(UUID roomId, String email) {
+        return securityRepository.isUserMemberOfChatRoom(roomId, email);
+    }
+
+    public boolean canWriteRoom(UUID roomId, String email) {
+        return membersRepo.existsByChatRoom_PublicIdAndUser_Email(roomId, email)
+                || roomRepo.isRoomOwnedByMentor(roomId, email);
+    }
+
     public boolean canReadRoom(Long roomId, String email) {
         return securityRepository.isUserMemberOfChatRoom(roomId, email);
     }

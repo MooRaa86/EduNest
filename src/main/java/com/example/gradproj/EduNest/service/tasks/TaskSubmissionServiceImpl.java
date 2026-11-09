@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -257,9 +258,9 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     private TaskSubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
         return TaskSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .taskId(s.getTask().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .taskId(s.getTask().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
@@ -272,4 +273,26 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
                 .build();
     }
 
+
+    @Override
+    public TaskSubmissionResponse submit(UUID taskId, MultipartFile file, String fileUrl) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return submit(internalId, file, fileUrl);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TaskSubmissionResponse> listByTask(UUID taskId, int page, int size) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return listByTask(internalId, page, size);
+    }
+
+    @Override
+    public TaskSubmissionResponse grade(UUID submissionId, GradeTaskSubmissionRequest req) {
+        Long internalId = submissionRepository.findIdByPublicId(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        return grade(internalId, req);
+    }
 }

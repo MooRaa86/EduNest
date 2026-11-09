@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -22,5 +23,17 @@ public class CreateSessionDto {
     private LocalDateTime scheduledAt;
 
     @NotNull(message = "week ID cannot be null")
-    private Long weekId;
+    private UUID weekId;
+
+    public static class CreateSessionDtoBuilder {
+        public CreateSessionDtoBuilder weekId(Long id) {
+            this.weekId = id != null ? new UUID(0L, id) : null;
+            return this;
+        }
+
+        public CreateSessionDtoBuilder weekId(UUID id) {
+            this.weekId = id;
+            return this;
+        }
+    }
 }

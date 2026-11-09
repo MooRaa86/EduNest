@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.dto.profile;
 
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import lombok.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,7 +11,7 @@ import lombok.*;
 @NoArgsConstructor
 public class EnrolledMentorshipProgressDto {
     private String imageUrl;
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String title;
     private Status status;
 

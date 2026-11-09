@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/profile/students")
@@ -31,7 +32,7 @@ public class MentorViewStudentProfileController {
     @GetMapping("/{studentId}")
     @Operation(summary = "get cards and student info")
     public ResponseEntity<SimpleResponse> getStudentProfile(
-            @PathVariable Long studentId
+            @PathVariable UUID studentId
     ){
      SimpleResponse response=new SimpleResponse();
      response.addMessage("status","Student profile retrieved successfully");
@@ -42,7 +43,7 @@ public class MentorViewStudentProfileController {
     @GetMapping("/students/{studentId}/mentorships-progress")
     @Operation(summary = "Get enrolled mentorships progress for a student")
     public ResponseEntity<SimpleResponse> getStudentMentorshipProgress(
-            @PathVariable Long studentId,
+            @PathVariable UUID studentId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size
     ) {
@@ -59,7 +60,7 @@ public class MentorViewStudentProfileController {
     @GetMapping("/students/{studentId}/projects")
     @Operation(summary = "Get student projects for profile")
     public ResponseEntity<SimpleResponse> getStudentProjects(
-            @PathVariable Long studentId,
+            @PathVariable UUID studentId,
             @RequestParam(required = false) SubmissionStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size
@@ -80,7 +81,7 @@ public class MentorViewStudentProfileController {
     @GetMapping("/{studentId}/full-profile")
     @Operation(summary = "Get full student profile (info + mentorship progress + projects +badges)")
     public ResponseEntity<SimpleResponse> getFullStudentProfile(
-            @PathVariable Long studentId,
+            @PathVariable UUID studentId,
             @RequestParam(defaultValue = "0") int mentorshipsPage,
             @RequestParam(defaultValue = "6") int mentorshipsSize,
             @RequestParam(defaultValue = "0") int projectsPage,

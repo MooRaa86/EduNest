@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -145,9 +146,9 @@ public class ChatMessageService {
 
 
 
-    private ChatMessageResponse messageMapper(ChatMessage message,Long roomId) {
+    private ChatMessageResponse messageMapper(ChatMessage message, UUID roomId) {
         return ChatMessageResponse.builder()
-                .id(message.getId() != null ? message.getId() : 0L)
+                .id(message.getPublicId())
                 .message(message.getContent())
                 .roomId(roomId)
                 .time(message.getCreatedAt())
@@ -155,6 +156,11 @@ public class ChatMessageService {
                 .senderEmail(message.getSenderEmail())
                 .senderProfileImageUrl(message.getSender() != null ? message.getSender().getProfileImageUrl() : null)
                 .build();
+    }
+
+    private ChatMessageResponse messageMapper(ChatMessage message, Long roomId) {
+        UUID roomPublicId = message.getChatRoom() != null ? message.getChatRoom().getPublicId() : null;
+        return messageMapper(message, roomPublicId);
     }
 
     @Transactional
@@ -222,6 +228,72 @@ public class ChatMessageService {
         Long actualRoomId = msg.getChatRoom().getId();
         messageRepo.delete(msg);
         return actualRoomId;
+    }
+
+
+    private Long resolveRoomInternalId(UUID publicId) {
+        return roomRepo.findIdByPublicId(publicId)
+                .or(() -> roomRepo.findById(publicId.getLeastSignificantBits()).map(ChatRoom::getId))
+                .orElseThrow(() -> new globalLogicEx("Room not found with this id"));
+    }
+
+    private Long resolveMessageInternalId(UUID publicId) {
+        return messageRepo.findIdByPublicId(publicId)
+                .or(() -> messageRepo.findById(publicId.getLeastSignificantBits()).map(ChatMessage::getId))
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+    }
+
+    public List<ChatMessageResponse> getRoomMessages(
+            UUID roomId,
+            Long beforeId,
+            int size,
+            String senderEmail
+    ) {
+        if (!securityService.isUserMemberOfChatRoom(roomId, senderEmail)) {
+            throw new AccessDeniedException("You are not a member of this room");
+        }
+        Long internalRoomId = resolveRoomInternalId(roomId);
+        Pageable pageable = PageRequest.of(0, size);
+        List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, beforeId, pageable);
+        return messages.stream()
+                .map(m -> ChatMessageResponse.builder()
+                        .id(m.getMessageId())
+                        .message(m.getContent())
+                        .roomId(roomId)
+                        .time(m.getCreatedAt())
+                        .senderName(m.getSenderName())
+                        .senderEmail(m.getSenderEmail())
+                        .senderProfileImageUrl(m.getSenderProfileImageUrl())
+                        .build())
+                .toList();
+    }
+
+    @Transactional
+    public ChatMessageResponse editMessage(
+            UUID roomId,
+            UUID messageId,
+            String senderEmail,
+            String newContent
+    ) {
+        Long internalRoomId = roomId != null ? resolveRoomInternalId(roomId) : null;
+        Long internalMsgId = resolveMessageInternalId(messageId);
+        ChatMessageResponse resp = editMessage(internalRoomId, internalMsgId, senderEmail, newContent);
+        if (roomId != null) {
+            resp.setRoomId(roomId);
+        }
+        return resp;
+    }
+
+    @Transactional
+    public UUID deleteMessage(
+            UUID roomId,
+            UUID messageId,
+            String senderEmail
+    ) {
+        Long internalRoomId = roomId != null ? resolveRoomInternalId(roomId) : null;
+        Long internalMsgId = resolveMessageInternalId(messageId);
+        deleteMessage(internalRoomId, internalMsgId, senderEmail);
+        return roomId;
     }
 
 }

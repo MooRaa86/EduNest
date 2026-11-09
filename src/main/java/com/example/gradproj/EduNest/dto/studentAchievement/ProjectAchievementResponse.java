@@ -6,14 +6,15 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 public class ProjectAchievementResponse {
-    private Long projectId;
-    private Long  submissionId;
+    private UUID projectId;
+    private UUID submissionId;
     private String projectTitle;
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String mentorshipTitle;
     private String mentorFullName;
     private SubmissionStatus submissionStatus;

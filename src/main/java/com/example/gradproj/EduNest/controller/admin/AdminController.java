@@ -39,11 +39,11 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{email}")
+    @DeleteMapping("/{identifier}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete admin by email", description = "Delete an admin account by email (Admin only)")
-    public ResponseEntity<SimpleResponse> deleteAdmin(@PathVariable String email) {
-        adminService.deleteAdmin(email);
+    @Operation(summary = "Delete admin by public ID or email", description = "Delete an admin account by public UUID or email (Admin only)")
+    public ResponseEntity<SimpleResponse> deleteAdmin(@PathVariable String identifier) {
+        adminService.deleteAdmin(identifier);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Admin deleted successfully");
         return ResponseEntity.ok(response);

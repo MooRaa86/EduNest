@@ -6,7 +6,7 @@ import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import java.util.UUID;
 
 public interface MentorshipDetailsProjection {
-    Long getId();
+    UUID getId();
     UUID getPublicId();
     String getTitle();
     String getSubtitle();

@@ -29,6 +29,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -167,10 +168,16 @@ public class ProfileService {
     }
 
     private StudentProjectProfileDTO mapToDto(ProjectSubmission ps) {
-
         return StudentProjectProfileDTO.builder()
-                .projectSubmissionId(ps.getId())
+                .projectId(ps.getProject().getPublicId())
+                .projectSubmissionId(ps.getPublicId())
                 .projectTitle(ps.getProject().getTitle())
+                .mentorshipId(
+                        ps.getProject()
+                                .getWeek()
+                                .getMentorship()
+                                .getPublicId()
+                )
                 .mentorshipTitle(
                         ps.getProject()
                                 .getWeek()
@@ -185,6 +192,37 @@ public class ProfileService {
                 .rawScore(ps.getRawScore())
                 .finalScore(ps.getFinalScore())
                 .build();
+    }
+
+    private Long resolveStudentId(UUID studentPublicId) {
+        return studentRepository.findIdByPublicId(studentPublicId)
+                .orElseThrow(() -> new UsernameNotFoundException("Student not found with UUID: " + studentPublicId));
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public ProfileStudentInformationForMentorResponse profileStudentInformationForMentorResponse(UUID studentPublicId) {
+        return profileStudentInformationForMentorResponse(resolveStudentId(studentPublicId));
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public PageResponse<EnrolledMentorshipProgressDto> getEnrolledMentorshipProgress(UUID studentPublicId, Pageable pageable) {
+        return getEnrolledMentorshipProgress(resolveStudentId(studentPublicId), pageable);
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public PageResponse<StudentProjectProfileDTO> getStudentProjects(UUID studentPublicId, int page, int size) {
+        return getStudentProjects(resolveStudentId(studentPublicId), page, size);
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public FullProfileStudentInformationForMentorResponse getFullStudentProfileForMentor(
+            UUID studentPublicId,
+            int mentorshipsPage,
+            int mentorshipsSize,
+            int projectsPage,
+            int projectsSize
+    ) {
+        return getFullStudentProfileForMentor(resolveStudentId(studentPublicId), mentorshipsPage, mentorshipsSize, projectsPage, projectsSize);
     }
     @PreAuthorize("hasRole('MENTOR')")
     public FullProfileStudentInformationForMentorResponse getFullStudentProfileForMentor(
@@ -215,12 +253,12 @@ public class ProfileService {
                 .findByStudent_IdOrderByCreatedAtDesc(studentId)
                 .stream()
                 .map(a -> BadgeAwardResponse.builder()
-                        .id(a.getId())
-                        .badgeId(a.getBadge().getId())
+                        .id(a.getPublicId())
+                        .badgeId(a.getBadge().getPublicId())
                         .badgeTitle(a.getBadge().getTitle())
-                        .studentId(a.getStudent().getId())
+                        .studentId(a.getStudent().getPublicId())
                         .studentFullName(a.getStudent().getFirstName() + " " + a.getStudent().getLastName())
-                        .awardedById(a.getAwardedBy().getId())
+                        .awardedById(a.getAwardedBy().getPublicId())
                         .awardedAt(a.getCreatedAt())
                         .note(a.getNote())
                         .badgePoints(a.getBadge().getPoints())

@@ -10,9 +10,23 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.Optional;
 
 @Repository
 public interface BadgeAwardRepository extends JpaRepository<BadgeAward, Long> {
+
+    Optional<BadgeAward> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT ba.id FROM BadgeAward ba WHERE ba.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    List<BadgeAward> findByBadge_Mentorship_PublicId(UUID mentorshipPublicId);
+    List<BadgeAward> findByStudent_PublicIdOrderByCreatedAtDesc(UUID studentPublicId);
+    List<BadgeAward> findByBadge_PublicId(UUID badgePublicId);
+
     boolean existsByBadge_IdAndStudent_Id(Long badgeId, Long studentId);
     boolean existsByBadge_Id(Long badgeId);
     List<BadgeAward> findByStudent_IdOrderByCreatedAtDesc(Long studentId);

@@ -1,13 +1,14 @@
 package com.example.gradproj.EduNest.dto.quiz.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
 
 @Data
 @Builder
 public class StudentQuizReviewDTO {
-    private Long questionId;
+    private UUID questionId;
     private String text;
     private String optionA;
     private String optionB;
