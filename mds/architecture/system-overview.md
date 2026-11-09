@@ -76,7 +76,10 @@ Dev profile (`!prod`): same servlet, but `ProjectSecurityConfig` chain — every
 - **Response envelope:** many controllers return `dto/SimpleResponse` (map-like) with 200/201; others return typed DTOs or `PageResponse<T>` for paging. No uniform envelope is enforced — documented in [../api/MDS.md](../api/MDS.md).
 - **Business error signal:** `exception/globalLogicException/globalLogicEx` reused as the generic 400 "logic" exception across domains.
 - **Entity auditing:** `BaseEntity` (`id`, `createdAt`, `updatedAt`, `createdBy`, `updatedBy`) for almost everything; exceptions listed in [MDS.md §3.4](MDS.md#34-persistence-pipeline).
-- **ID semantics:** sequential IDs exist across most tables (paths embed user IDs for admin badges/profiles), making enumeration feasible where object-level checks are missing (see [../ISSUES.md](../ISSUES.md) IDOR group).
+- **ID semantics & Dual Identifier Pattern (EB-109 / D-04):** To eliminate enumeration, web scraping, and IDOR attacks, EduNest enforces a strict **Dual Identifier Architecture**:
+  - **External API Surface (Requests & Responses):** Public-facing controllers, `@PathVariable`s, `@RequestParam`s, request DTOs, and response DTOs must strictly accept and return the opaque `UUID publicId` (string). Sequential `Long id`s must never be leaked across the HTTP API boundary.
+  - **Internal Persistence Layer:** High-performance 64-bit `Long id` (BIGINT) is retained exclusively inside PostgreSQL tables, primary keys, foreign keys, table joins, and internal repository queries.
+  - **Boundary Translation:** Repositories provide `findByPublicId(...)` or interface projections to translate incoming public UUIDs to internal entity instances at the controller/service boundary. All domain tables inherit `public_id UUID NOT NULL` with unique indexes via `V6__add_public_uuid_identifiers.sql` and `BaseEntity.publicId`.
 - **Ownership-check pattern:** `SecurityService` + `AuthorizationRepository` native/JPQL existence queries (`isMentorOwnWeek`, `isMentorOwnLiveSession`, `isStudentEnrolledByLiveSessionId`, `isUserMemberOfChatRoom`, ...). Coverage is documented per domain; known gaps are raised in the domain docs and [../ISSUES.md](../ISSUES.md).
 
 ## 6. Build & Run Overview (operational sketch)
