@@ -78,6 +78,10 @@ public class BadgeAwardService {
         MentorShip l0Gate = mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
+        // The ownership check above may already have loaded this entity before the lock
+        // was obtained. Refresh under L0 so a concurrent completion cannot be missed.
+        entityManager.refresh(l0Gate);
+
         // EB-51 / D-09 (CERT-04) — post-completion badge freeze: cannot award badge once mentorship is COMPLETED
         if (l0Gate.getStatus() == Status.COMPLETED) {
             throw new globalLogicEx("Cannot award badge once the mentorship is completed");

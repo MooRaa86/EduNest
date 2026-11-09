@@ -8,6 +8,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /** Executes the same native repository and service assertions on PostgreSQL when Docker is available. */
 @Testcontainers(disabledWithoutDocker = true)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class PublishedQuizProgressPostgresTest extends PublishedQuizProgressIntegrationTest {
     @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");

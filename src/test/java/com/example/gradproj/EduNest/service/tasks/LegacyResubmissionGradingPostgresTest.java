@@ -62,6 +62,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 7. Failed grading fully rolls back.
  */
 @Testcontainers(disabledWithoutDocker = true)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("EB-51: PostgreSQL Submission Grading Integrity & Legacy Safety Tests")
 public class LegacyResubmissionGradingPostgresTest extends ProdChainIntegrationTestBase {
 
