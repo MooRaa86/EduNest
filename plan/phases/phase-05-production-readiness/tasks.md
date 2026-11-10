@@ -48,7 +48,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Docs:** security-configuration.md; ISSUE-MAPPING SEL-03.
 
 <a id="p5-04"></a>
-### P5-04 — Config/secrets inventory & `.env.example`
+### P5-04 — Config/secrets inventory & `.env.example` [COMPLETED — PR #102 merged, EB-70 closed 2026-11-10]
 
 **Priority:** P2 — Phase 6 infra needs the authoritative list of env vars, defaults, and secrets ("which value is secret?" — DEP-05/07 prep).  **Size:** S
 **Owner role:** Backend Developer   **Reviewers:** DevOps
