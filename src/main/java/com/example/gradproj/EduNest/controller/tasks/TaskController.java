@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -49,7 +50,7 @@ public class TaskController {
     @Operation(summary = "update task status")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateTaskStatusRequest req,
             Authentication authentication
     ) {
@@ -61,7 +62,7 @@ public class TaskController {
 
     @GetMapping("/{id}")
     @Operation(summary = "get task by id")
-    public ResponseEntity<SimpleResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> getById(@PathVariable UUID id) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "task retrieved successfully");
         response.addMessage("task", taskService.getTaskById(id));
@@ -72,7 +73,7 @@ public class TaskController {
     @Operation(summary = "update task with optional file attachment")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> patch(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestPart(value = "req", required = false) String reqJson,
             @RequestPart(value = "file", required = false) MultipartFile file,
             Authentication authentication
@@ -97,7 +98,7 @@ public class TaskController {
     @DeleteMapping("/{id}")
     @Operation(summary = "delete task by id")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> delete(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<SimpleResponse> delete(@PathVariable UUID id, Authentication authentication) {
         taskService.deleteTask(id, authentication.getName());
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "task deleted successfully");
@@ -111,7 +112,7 @@ public class TaskController {
             @RequestParam(required = false) TaskStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size,
-            @PathVariable Long msid
+            @PathVariable UUID msid
     ) {
         Pageable pageable = PageRequest.of(page, size);
         SimpleResponse simpleResponse = new SimpleResponse();
@@ -123,7 +124,7 @@ public class TaskController {
     @GetMapping("/dashboard/{mentorshipId}")
     @Operation(summary = "get task dashboard details")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable Long mentorshipId, Authentication authentication) {
+    public ResponseEntity<SimpleResponse> getDashboard(@PathVariable UUID mentorshipId, Authentication authentication) {
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Dashboard retrieved successfully");
         simpleResponse.addMessage("Dashboard Details", taskService.getTaskDashboard(mentorshipId, authentication.getName()));
@@ -134,7 +135,7 @@ public class TaskController {
     @Operation(summary = "get task statistics (students/submissions + submissions page)")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getTaskStatistics(
-            @PathVariable Long taskId,
+            @PathVariable UUID taskId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size,
             Authentication authentication
@@ -150,7 +151,7 @@ public class TaskController {
     @Operation(summary = "get full task dashboard (dashboard + tasks list)")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getFullDashboard(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestParam(required = false) String taskName,
             @RequestParam(required = false) TaskStatus status,
             @RequestParam(defaultValue = "0") int page,
@@ -166,7 +167,7 @@ public class TaskController {
 
     @GetMapping("/{taskId}/student")
     @Operation(summary = "get task details with student submission in one response")
-    public ResponseEntity<SimpleResponse> getTaskWithSubmission(@PathVariable Long taskId, Authentication authentication) {
+    public ResponseEntity<SimpleResponse> getTaskWithSubmission(@PathVariable UUID taskId, Authentication authentication) {
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("message", "Task with submission retrieved successfully");
         resp.addMessage("data", taskService.getTaskWithSubmission(taskId, authentication.getName()));

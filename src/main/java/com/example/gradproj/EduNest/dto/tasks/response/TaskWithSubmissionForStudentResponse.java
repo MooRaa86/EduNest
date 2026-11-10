@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class TaskWithSubmissionForStudentResponse {
 
-    private Long taskId;
+    private UUID taskId;
     private String taskTitle;
     private Integer points;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -23,7 +24,7 @@ public class TaskWithSubmissionForStudentResponse {
     private String uploadedAttachmentPath;
     private Integer estimatedMinutes;
 
-    private Long submissionId;
+    private UUID submissionId;
     private String submissionUrl;
     private String uploadedSubmissionPath;
     private Integer score;

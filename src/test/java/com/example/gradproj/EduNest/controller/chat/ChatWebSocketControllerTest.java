@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -41,10 +42,13 @@ class ChatWebSocketControllerTest {
         ChatMessageRequest request = ChatMessageRequest.builder().content("Hello world").build();
         ChatPrincipal principal = new ChatPrincipal("alice@example.com", "Alice Smith");
 
+        UUID messageId = UUID.randomUUID();
+        UUID roomPublicId = UUID.randomUUID();
+
         ChatMessageResponse response = ChatMessageResponse.builder()
-                .id(101L)
+                .id(messageId)
                 .message("Hello world")
-                .roomId(roomId)
+                .roomId(roomPublicId)
                 .senderName("Alice Smith")
                 .senderEmail("alice@example.com")
                 .time(LocalDateTime.now())

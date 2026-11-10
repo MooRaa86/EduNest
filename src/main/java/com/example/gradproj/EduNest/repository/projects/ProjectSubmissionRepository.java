@@ -16,6 +16,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
+    java.util.Optional<ProjectSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT ps.id FROM ProjectSubmission ps WHERE ps.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ps FROM ProjectSubmission ps WHERE ps.publicId = :publicId")
+    java.util.Optional<ProjectSubmission> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     @Query("""
         SELECT ps.id AS id,
                s.email AS studentEmail,
@@ -47,7 +55,7 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
 
     @Query("""
         SELECT
-            p.id                                    AS projectId,
+            p.publicId                              AS projectId,
             p.title                                 AS title,
             p.brief                                 AS brief,
             p.descriptionUrl                        AS descriptionUrl,
@@ -56,14 +64,14 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
             p.startAt                               AS startAt,
             p.endAt                                 AS endAt,
             p.goal                                  AS goal,
-            ps.id                                   AS submissionId,
+            ps.publicId                             AS submissionId,
             ps.status                               AS submissionStatus,
             ps.finalScore                           AS finalScore,
             p.points                                AS totalPoints,
             ps.fileUrl                              AS fileUrl,
             ps.uploadedFilePath                     AS uploadedFilePath,
             ps.feedBack                             AS feedback,
-            m.id                                    AS mentorId,
+            m.publicId                              AS mentorId,
             CONCAT(m.firstName, ' ', m.lastName)    AS mentorName,
             m.profileImageUrl                       AS mentorPhoto
         FROM Project p

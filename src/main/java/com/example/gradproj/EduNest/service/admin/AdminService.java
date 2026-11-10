@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +51,7 @@ public class AdminService {
         // Credentials never cross the API boundary (P1-09): the request plaintext is
         // encoded and persisted only; the response carries identity fields exclusively.
         return AdminAccResponse.builder()
+                .id(admin.getPublicId())
                 .email(admin.getEmail())
                 .firstName(admin.getFirstName())
                 .lastName(admin.getLastName())
@@ -60,6 +62,7 @@ public class AdminService {
     public List<AdminAccResponse> getAllAdmins() {
         return adminRepository.findAll().stream().map(
                 a -> AdminAccResponse.builder()
+                        .id(a.getPublicId())
                         .email(a.getEmail())
                         .firstName(a.getFirstName())
                         .lastName(a.getLastName())
@@ -68,15 +71,19 @@ public class AdminService {
     }
 
     @org.springframework.transaction.annotation.Transactional
-    public void deleteAdmin(String email) {
-        // Last-admin guard (P1-09): deleting the final admin would re-open the public
-        // bootstrap endpoint (count -> 0) to the internet. Never allow it.
-        // (Transactional added by EB-16: this was previously unannotated — the derived
-        // delete threw a bare 500 on every call, so the route was never functional.)
+    public void deleteAdmin(String identifier) {
         if (adminRepository.count() <= 1) {
             throw new globalLogicEx("Cannot delete the last remaining admin.");
         }
-        adminRepository.deleteByEmail(email);
+        try {
+            UUID publicId = UUID.fromString(identifier);
+            if (adminRepository.existsByPublicId(publicId)) {
+                adminRepository.deleteByPublicId(publicId);
+                return;
+            }
+        } catch (IllegalArgumentException ignored) {
+        }
+        adminRepository.deleteByEmail(identifier);
     }
 
 }

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Active when {@code app.livesession.attendance.enforced=true}.
@@ -43,7 +44,7 @@ public class DefaultLivePointsAwarder implements PointsAwardingPolicy {
     public void awardPoints(Session session, List<AttendanceResponse> results) {
         Long mentorshipId = session.getWeek().getMentorship().getId();
 
-        Map<Long, String> attendanceMap = new HashMap<>();
+        Map<UUID, String> attendanceMap = new HashMap<>();
         if (results != null) {
             for (AttendanceResponse result : results) {
                 attendanceMap.put(result.getStudentId(), result.getStatus());
@@ -54,7 +55,7 @@ public class DefaultLivePointsAwarder implements PointsAwardingPolicy {
         int bonusPoints = properties.getAttendance().getBonusPoints();
 
                 for (Student student : allStudents) {
-            String status = attendanceMap.getOrDefault(student.getId(), "Absent");
+            String status = attendanceMap.getOrDefault(student.getPublicId(), "Absent");
             boolean attended = "Present".equals(status);
 
             // EB-51: Idempotency pre-check under lock — avoid duplicate results and points deltas

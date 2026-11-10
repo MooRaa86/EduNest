@@ -8,13 +8,32 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.repository.query.Param;
 
 public interface ChatMessageRepository
         extends JpaRepository<ChatMessage, Long> {
 
+    Optional<ChatMessage> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT m.id FROM ChatMessage m WHERE m.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Modifying
+    @Query("""
+    DELETE FROM ChatMessage m
+    WHERE m.publicId = :messagePublicId
+      AND m.sender.email = :senderEmail
+""")
+    int deleteByPublicIdAndSender(@Param("messagePublicId") UUID messagePublicId, @Param("senderEmail") String senderEmail);
+
+
     @Query("""
     select
-        m.id as messageId,
+        m.publicId as messageId,
         m.content as content,
         m.createdAt as createdAt,
         m.senderEmail as senderEmail,

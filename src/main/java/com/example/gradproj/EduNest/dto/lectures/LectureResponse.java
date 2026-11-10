@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.lectures;
 
 import lombok.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -8,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class LectureResponse {
-    private Long id;
+    private UUID id;
     private String title;
     private String lectureUrl;
 }

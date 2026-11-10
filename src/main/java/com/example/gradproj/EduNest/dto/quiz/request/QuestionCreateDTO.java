@@ -2,15 +2,20 @@ package com.example.gradproj.EduNest.dto.quiz.request;
 
 import com.example.gradproj.EduNest.enums.quiz.AnswerChoices;
 import jakarta.validation.constraints.*;
+import java.util.UUID;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class QuestionCreateDTO {
 
     @NotNull(message = "Quiz ID is required")
-    private Long quizId;
+    private UUID quizId;
 
     @NotBlank(message = "Question text is required")
     @Size(max = 500, message = "Question text can't exceed 500 characters")

@@ -182,7 +182,7 @@ class LiveSessionAttendanceMathTest {
         List<AttendanceResponse> report = getSessionAttendance(1L);
 
         assertThat(report).hasSize(1);
-        assertThat(report.get(0).getStudentId()).isEqualTo(2L);
+        assertThat(report.get(0).getStudentId()).isEqualTo(student.getPublicId());
         assertThat(report.get(0).getAttendancePercentage())
                 .isCloseTo(expectedPercentage, within(0.01));
         assertThat(report.get(0).getStatus()).isEqualTo(expectedStatus);

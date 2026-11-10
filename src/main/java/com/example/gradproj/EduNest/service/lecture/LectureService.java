@@ -23,11 +23,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 
 @Service
 @RequiredArgsConstructor
 public class LectureService {
     private final LectureRepository lectureRepository;
+    private final MentorShipRepository mentorShipRepository;
     private final WeekRepository weekRepository;
     private final MentorRepository mentorRepository;
     private final ContentReadGuard contentReadGuard;
@@ -58,7 +61,9 @@ public class LectureService {
 
     @PreAuthorize("hasRole('MENTOR')")
     public LectureResponse createLecture(CreateLecturerequest createLecturerequest) {
-       Week week=weekRepository.findById(createLecturerequest.getWeekId()).orElseThrow(
+       Long internalWeekId = weekRepository.findIdByPublicId(createLecturerequest.getWeekId())
+                .orElseThrow(() -> new globalLogicEx("week not found with UUID: " + createLecturerequest.getWeekId()));
+        Week week = weekRepository.findById(internalWeekId).orElseThrow(
                ()->new globalLogicEx("week not found")
        );
        Long mentorId = week.getMentorship().getMentor().getId();
@@ -89,7 +94,7 @@ public class LectureService {
 
     private LectureResponse mapToLectureResponse(Lecture lecture) {
         LectureResponse response=LectureResponse.builder()
-                .id(lecture.getId())
+                .id(lecture.getPublicId())
                 .title(lecture.getTitle())
                 .lectureUrl(lecture.getLectureUrl())
                 .build();
@@ -127,4 +132,42 @@ public class LectureService {
                 .totalPages(lecturePage.getTotalPages())
                 .build();
     }
+
+    private Long resolveLectureId(UUID publicId) {
+        return lectureRepository.findIdByPublicId(publicId)
+                .orElse(-1L);
+    }
+
+    private Long resolveWeekId(UUID publicId) {
+        return weekRepository.findIdByPublicId(publicId)
+                .orElse(-1L);
+    }
+
+    private Long resolveMentorshipId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .orElse(-1L);
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public void deleteLecture(UUID lecturePublicId) {
+        deleteLecture(resolveLectureId(lecturePublicId));
+    }
+
+    @PreAuthorize("hasRole('MENTOR')")
+    public LectureResponse updateLecture(UUID lecturePublicId, UpdeteLectureRequest request) {
+        return updateLecture(resolveLectureId(lecturePublicId), request);
+    }
+
+    public LectureResponse getLectureById(UUID lecturePublicId) {
+        return getLectureById(resolveLectureId(lecturePublicId));
+    }
+
+    public List<LectureResponse> getLecturesByWeekId(UUID weekPublicId) {
+        return getLecturesByWeekId(resolveWeekId(weekPublicId));
+    }
+
+    public PageResponse<LectureResponse> getLecturesByMentorshipId(UUID mentorshipPublicId, int page, int size) {
+        return getLecturesByMentorshipId(resolveMentorshipId(mentorshipPublicId), page, size);
+    }
+
 }

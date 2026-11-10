@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +46,7 @@ public class ContactMessageService {
         return contactMessageRepository.findAll()
                 .stream()
                 .map(entity -> ContactMessageResponseDto.builder()
-                        .id(entity.getId())
+                        .id(entity.getPublicId())
                         .name(entity.getName())
                         .email(entity.getEmail())
                         .phone(entity.getPhone())
@@ -60,7 +61,7 @@ public class ContactMessageService {
                 .orElseThrow(() -> new globalLogicEx("Message not found"));
 
         return ContactMessageResponseDto.builder()
-                .id(msg.getId())
+                .id(msg.getPublicId())
                 .name(msg.getName())
                 .phone(msg.getPhone())
                 .email(msg.getEmail())
@@ -82,7 +83,7 @@ public class ContactMessageService {
 
         List<ContactMessageResponseDto> messageResponseDtos = messages.getContent().stream()
                 .map(entity -> ContactMessageResponseDto.builder()
-                        .id(entity.getId())
+                        .id(entity.getPublicId())
                         .name(entity.getName())
                         .email(entity.getEmail())
                         .phone(entity.getPhone())
@@ -156,5 +157,34 @@ public class ContactMessageService {
 
 
 
+
+
+    private Long resolveMessageInternalId(UUID publicId) {
+        return contactMessageRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+    }
+
+    public ContactMessageResponseDto getSpecificMessage(UUID msgId) {
+        return getSpecificMessage(resolveMessageInternalId(msgId));
+    }
+
+    public void updateMessageStatus(UUID msgId, MessageStatus msgStatus) {
+        updateMessageStatus(resolveMessageInternalId(msgId), msgStatus);
+    }
+
+    @Transactional
+    public void sendAdminReply(UUID msgId, String reply) {
+        sendAdminReply(resolveMessageInternalId(msgId), reply);
+    }
+
+    @Transactional
+    public boolean sendNotificationToMessageSender(UUID messageId, String title, String content) {
+        return sendNotificationToMessageSender(resolveMessageInternalId(messageId), title, content);
+    }
+
+    @Transactional
+    public void deleteMessage(UUID msgId) {
+        deleteMessage(resolveMessageInternalId(msgId));
+    }
 
 }

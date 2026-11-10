@@ -1,10 +1,11 @@
 package com.example.gradproj.EduNest.dto.mylearning;
 
 import lombok.*;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class EnrolledMentorshipDto {
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String title;
     private String subtitle;
     private String category;
@@ -12,7 +13,6 @@ public class EnrolledMentorshipDto {
     private String coverImageUrl;
     private Integer totalPoints;
     private Integer progressPercentage;
-
     private Long totalTasks;
     private Long submittedTasks;
     private Long totalQuizzes;

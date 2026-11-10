@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.repository.chat.projection;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface ConversationMessageProjection {
 
@@ -16,5 +17,5 @@ public interface ConversationMessageProjection {
 
     String getSenderProfileImageUrl();
 
-    Long getConversationId();
+    UUID getConversationId();
 }

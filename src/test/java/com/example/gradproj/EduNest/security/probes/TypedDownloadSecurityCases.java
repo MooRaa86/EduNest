@@ -122,19 +122,19 @@ abstract class TypedDownloadSecurityCases {
                     .description("fixture").points(10).passPoints(5).estimatedMinutes(30)
                     .dueAt(LocalDateTime.now().plusDays(1)).status(TaskStatus.valueOf(publicationStatus))
                     .uploadedAttachmentPath(kind == Kind.TASK_ATTACHMENT ? path : null).build());
-            if (kind == Kind.TASK_ATTACHMENT) return new Case("/files/tasks/" + task.getId() + "/attachment", path);
+            if (kind == Kind.TASK_ATTACHMENT) return new Case("/files/tasks/" + task.getPublicId() + "/attachment", path);
             TaskSubmission sub = taskSubmissions.saveAndFlush(TaskSubmission.builder().task(task)
                     .student(auth.student(OWNER)).uploadedFilePath(path).submittedAt(LocalDateTime.now()).build());
-            return new Case("/files/task-submissions/" + sub.getId(), path);
+            return new Case("/files/task-submissions/" + sub.getPublicId(), path);
         }
         Project project = projects.saveAndFlush(Project.builder().week(week).title("fixture project")
                 .brief("fixture").goal("fixture").points(10).startAt(LocalDateTime.now())
                 .endAt(LocalDateTime.now().plusDays(1)).status(ProjectStatus.valueOf(publicationStatus))
                 .uploadedAttachmentPath(kind == Kind.PROJECT_ATTACHMENT ? path : null).build());
-        if (kind == Kind.PROJECT_ATTACHMENT) return new Case("/files/projects/" + project.getId() + "/attachment", path);
+        if (kind == Kind.PROJECT_ATTACHMENT) return new Case("/files/projects/" + project.getPublicId() + "/attachment", path);
         ProjectSubmission sub = projectSubmissions.saveAndFlush(ProjectSubmission.builder().project(project)
                 .student(auth.student(OWNER)).uploadedFilePath(path).submittedAt(LocalDateTime.now()).build());
-        return new Case("/files/project-submissions/" + sub.getId(), path);
+        return new Case("/files/project-submissions/" + sub.getPublicId(), path);
     }
 
     private Case stored(Kind kind) {
@@ -199,12 +199,12 @@ abstract class TypedDownloadSecurityCases {
     void genericRejectsReplacedFileEvenIfOldBytesRemain(Kind kind) throws Exception {
         Case item = stored(kind);
         String[] segments = item.url().split("/");
-        long id = Long.parseLong(segments[segments.length - (item.url().endsWith("/attachment") ? 2 : 1)]);
+        UUID publicId = UUID.fromString(segments[segments.length - (item.url().endsWith("/attachment") ? 2 : 1)]);
         switch (kind) {
-            case TASK_SUBMISSION -> { var entity = taskSubmissions.findById(id).orElseThrow(); entity.setUploadedFilePath("replaced"); taskSubmissions.saveAndFlush(entity); }
-            case PROJECT_SUBMISSION -> { var entity = projectSubmissions.findById(id).orElseThrow(); entity.setUploadedFilePath("replaced"); projectSubmissions.saveAndFlush(entity); }
-            case TASK_ATTACHMENT -> { var entity = tasks.findById(id).orElseThrow(); entity.setUploadedAttachmentPath("replaced"); tasks.saveAndFlush(entity); }
-            case PROJECT_ATTACHMENT -> { var entity = projects.findById(id).orElseThrow(); entity.setUploadedAttachmentPath("replaced"); projects.saveAndFlush(entity); }
+            case TASK_SUBMISSION -> { var entity = taskSubmissions.findByPublicId(publicId).orElseThrow(); entity.setUploadedFilePath("replaced"); taskSubmissions.saveAndFlush(entity); }
+            case PROJECT_SUBMISSION -> { var entity = projectSubmissions.findByPublicId(publicId).orElseThrow(); entity.setUploadedFilePath("replaced"); projectSubmissions.saveAndFlush(entity); }
+            case TASK_ATTACHMENT -> { var entity = tasks.findByPublicId(publicId).orElseThrow(); entity.setUploadedAttachmentPath("replaced"); tasks.saveAndFlush(entity); }
+            case PROJECT_ATTACHMENT -> { var entity = projects.findByPublicId(publicId).orElseThrow(); entity.setUploadedAttachmentPath("replaced"); projects.saveAndFlush(entity); }
         }
         mvc.perform(get("/files").param("filePath", item.path()).header("Authorization", token(OWNER, AuthFixture.STUDENT)))
                 .andExpect(status().isNotFound());
@@ -364,10 +364,10 @@ abstract class TypedDownloadSecurityCases {
         mvc.perform(get(item.url()).header("Authorization", token(OWNER, AuthFixture.STUDENT)))
                 .andExpect(status().isNotFound());
         String missing = switch (kind) {
-            case TASK_SUBMISSION -> "/files/task-submissions/9223372036854775807";
-            case PROJECT_SUBMISSION -> "/files/project-submissions/9223372036854775807";
-            case TASK_ATTACHMENT -> "/files/tasks/9223372036854775807/attachment";
-            case PROJECT_ATTACHMENT -> "/files/projects/9223372036854775807/attachment";
+            case TASK_SUBMISSION -> "/files/task-submissions/" + UUID.randomUUID();
+            case PROJECT_SUBMISSION -> "/files/project-submissions/" + UUID.randomUUID();
+            case TASK_ATTACHMENT -> "/files/tasks/" + UUID.randomUUID() + "/attachment";
+            case PROJECT_ATTACHMENT -> "/files/projects/" + UUID.randomUUID() + "/attachment";
         };
         var response = mvc.perform(get(missing).header("Authorization", token(OWNER, AuthFixture.STUDENT)))
                 .andReturn().getResponse();

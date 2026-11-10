@@ -1,13 +1,14 @@
 package com.example.gradproj.EduNest.dto.mentorShipDTOs.response;
 
 import lombok.*;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class MentorshipExploreDto {
-    private Long id;
+    private UUID id;
     private String title;
     private String subtitle;
     private String description;

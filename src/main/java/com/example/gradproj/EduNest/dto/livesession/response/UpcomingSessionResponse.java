@@ -4,20 +4,21 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Builder
 @Setter @Getter @AllArgsConstructor @NoArgsConstructor
 public class UpcomingSessionResponse {
-    private Long id;
+    private UUID id;
     private String title;
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String mentorshipTitle;
-    private Long weekId;
+    private UUID weekId;
     private String weekTitle;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime sessionStartDate;
 
-    public UpcomingSessionResponse(Long id, String title, LocalDateTime sessionStartDate, Long weekId, String weekTitle, Long mentorshipId, String mentorshipTitle) {
+    public UpcomingSessionResponse(UUID id, String title, LocalDateTime sessionStartDate, UUID weekId, String weekTitle, UUID mentorshipId, String mentorshipTitle) {
         this.id = id;
         this.title = title;
         this.sessionStartDate = sessionStartDate;

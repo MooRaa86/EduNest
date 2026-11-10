@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.dto.profile;
 
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import lombok.*;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -11,11 +12,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class StudentProjectProfileDTO {
-    private Long projectId;
-    private Long projectSubmissionId;
+    private UUID projectId;
+    private UUID projectSubmissionId;
 
     private String projectTitle;
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String mentorshipTitle;
 
     private SubmissionStatus status;

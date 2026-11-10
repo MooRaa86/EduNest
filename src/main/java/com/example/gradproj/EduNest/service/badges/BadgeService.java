@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -169,7 +170,7 @@ public class BadgeService {
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
 
         // EB-51 — acquire locked badge from repository under the L0 gate
-        badge = badgeRepository.findForUpdateById(badgeId)
+        badgeRepository.findForUpdateById(badgeId)
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
 
         if (badgeAwardRepository.existsByBadge_Id(badgeId))
@@ -179,12 +180,45 @@ public class BadgeService {
 
     private BadgeResponse toDto(Badge b) {
         return BadgeResponse.builder()
-                .id(b.getId())
-                .mentorshipId(b.getMentorship().getId())
+                .id(b.getPublicId())
+                .mentorshipId(b.getMentorship().getPublicId())
                 .title(b.getTitle())
                 .category(b.getCategory())
                 .description(b.getDescription())
                 .points(b.getPoints())
                 .build();
     }
+
+    private Long resolveBadgeInternalId(UUID publicId) {
+        return badgeRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
+    }
+
+    private Long resolveMentorshipInternalId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+    }
+
+    public BadgeResponse createBadge(UUID mentorshipId, CreateBadgeRequest req) {
+        return createBadge(resolveMentorshipInternalId(mentorshipId), req);
+    }
+
+    @Transactional(readOnly = true)
+    public BadgeResponse getBadgeById(UUID badgeId) {
+        return getBadgeById(resolveBadgeInternalId(badgeId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeResponse> getBadgesByMentorship(UUID mentorshipId) {
+        return getBadgesByMentorship(resolveMentorshipInternalId(mentorshipId));
+    }
+
+    public BadgeResponse updateBadge(UUID badgeId, UpdateBadgeRequest req) {
+        return updateBadge(resolveBadgeInternalId(badgeId), req);
+    }
+
+    public void deleteBadge(UUID badgeId) {
+        deleteBadge(resolveBadgeInternalId(badgeId));
+    }
+
 }

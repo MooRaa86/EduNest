@@ -10,6 +10,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface LiveSessionService {
 
@@ -17,6 +18,24 @@ public interface LiveSessionService {
     SessionResponseDto createSession(CreateSessionDto session);
     @PreAuthorize("hasRole('MENTOR')")
     SessionResponseDto updateSession(Long sessionId, UpdateSessionDto updateSessionDto);
+
+    @PreAuthorize("hasRole('MENTOR')")
+    SessionResponseDto updateSession(UUID sessionId, UpdateSessionDto updateSessionDto);
+    SessionResponseDto getSessionById(UUID id);
+    @PreAuthorize("hasRole('MENTOR')")
+    void deleteSession(UUID id);
+    @PreAuthorize("hasRole('MENTOR')")
+    SessionResponseDto startLiveSession(UUID sessionId);
+    SessionResponseDto joinSession(UUID sessionId);
+    @PreAuthorize("hasRole('MENTOR')")
+    SessionResponseDto endSession(UUID sessionId);
+    @PreAuthorize("hasRole('MENTOR')")
+    void recordSnapshot(UUID sessionId, List<UUID> studentIds);
+    @PreAuthorize("hasRole('MENTOR')")
+    List<AttendanceResponse> getAttendanceResult(UUID sessionId);
+    AttendanceResponse getStudentAttendanceResult(UUID sessionId);
+    PageResponse<DashboardSessionResponse> getAllSessions(UUID mentorshipId, int page, int size);
+
     SessionResponseDto getSessionById(Long id);
     @PreAuthorize("hasRole('MENTOR')")
     void deleteSession(Long id);

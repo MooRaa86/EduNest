@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.dto.lectures;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.validator.constraints.URL;
@@ -12,7 +13,7 @@ import org.hibernate.validator.constraints.URL;
 @Builder
 public class CreateLecturerequest {
     @NotNull
-    private Long weekId;
+    private UUID weekId;
 
     @NotBlank(message = "title is required")
     @Size(min = 3, max = 150, message = "title must be between 3 and 150 characters")

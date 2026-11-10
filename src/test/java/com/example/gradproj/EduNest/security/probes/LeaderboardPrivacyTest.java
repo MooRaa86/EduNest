@@ -38,14 +38,16 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
     @Autowired private MentorshipLeaderboardService service;
     @Autowired private ObjectMapper json;
     private long mentorshipId;
+    private java.util.UUID mentorshipPublicId;
     private String firstName, secondName;
 
     @BeforeEach void seed() {
         var course = auth.mentorship(OWNER, Status.ACTIVE).mentorship();
         mentorshipId = course.getId();
+        mentorshipPublicId = course.getPublicId();
         var other = auth.mentorship(OTHER_MENTOR, Status.ACTIVE).mentorship();
-        auth.enroll(mentorshipId, FIRST);
-        auth.enroll(mentorshipId, SECOND);
+        auth.enroll(course.getId(), FIRST);
+        auth.enroll(course.getId(), SECOND);
         auth.enroll(other.getId(), FOREIGN);
         auth.student(OUTSIDER);
         auth.admin(ADMIN);
@@ -60,22 +62,22 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
         reviews.saveAndFlush(MentorShipReviews.builder().student(first).mentorShip(course).rating(5).feedBack("Helpful").build());
     }
 
-    private String route(long id) { return "/api/v1/student/mentorships/" + id + "/leaderboard"; }
+    private String route(Object id) { return "/api/v1/student/mentorships/" + id + "/leaderboard"; }
     private String token(String email, String role) { return auth.authToken(email, role); }
 
     @Test void productionChainRoleMatrixAndInvalidMentorship() throws Exception {
-        mockMvc.perform(get(route(mentorshipId))).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(route(mentorshipPublicId))).andExpect(status().isUnauthorized());
         for (String email : List.of(OUTSIDER, FOREIGN))
-            mockMvc.perform(get(route(mentorshipId)).header("Authorization", token(email, AuthFixture.STUDENT))).andExpect(status().isForbidden());
-        mockMvc.perform(get(route(mentorshipId)).header("Authorization", token(OTHER_MENTOR, AuthFixture.MENTOR))).andExpect(status().isForbidden());
+            mockMvc.perform(get(route(mentorshipPublicId)).header("Authorization", token(email, AuthFixture.STUDENT))).andExpect(status().isForbidden());
+        mockMvc.perform(get(route(mentorshipPublicId)).header("Authorization", token(OTHER_MENTOR, AuthFixture.MENTOR))).andExpect(status().isForbidden());
         for (String[] principal : new String[][]{{FIRST, AuthFixture.STUDENT}, {OWNER, AuthFixture.MENTOR}, {ADMIN, AuthFixture.ADMIN}})
-            mockMvc.perform(get(route(mentorshipId)).header("Authorization", token(principal[0], principal[1]))).andExpect(status().isOk());
-        mockMvc.perform(get(route(999999999L)).header("Authorization", token(ADMIN, AuthFixture.ADMIN))).andExpect(status().isForbidden());
-        mockMvc.perform(get(route(-1L)).header("Authorization", token(FIRST, AuthFixture.STUDENT))).andExpect(status().isForbidden());
+            mockMvc.perform(get(route(mentorshipPublicId)).header("Authorization", token(principal[0], principal[1]))).andExpect(status().isOk());
+        mockMvc.perform(get(route(java.util.UUID.randomUUID())).header("Authorization", token(ADMIN, AuthFixture.ADMIN))).andExpect(status().isForbidden());
+        mockMvc.perform(get(route(java.util.UUID.randomUUID())).header("Authorization", token(FIRST, AuthFixture.STUDENT))).andExpect(status().isForbidden());
     }
 
     @Test void serializedEntriesFollowAmendedD04ContractWithOrderingAndPagination() throws Exception {
-        String body = mockMvc.perform(get(route(mentorshipId)).param("size", "1").param("page", "0")
+        String body = mockMvc.perform(get(route(mentorshipPublicId)).param("size", "1").param("page", "0")
                 .header("Authorization", token(SECOND, AuthFixture.STUDENT))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         JsonNode board = json.readTree(body).path("apiResponse").path("leaderboard");
         JsonNode page = board.path("leaderboard"), entries = page.path("content");
@@ -123,7 +125,7 @@ class LeaderboardPrivacyTest extends ProdChainIntegrationTestBase {
         // review cards expose the reviewer email + profile image under the
         // original per-surface property names until FE usage is verified —
         // both restorations are PENDING Lead/PO approval (D-04).
-        String mentorshipRoute = "/api/v1/student/mentorships/" + mentorshipId + "/reviews";
+        String mentorshipRoute = "/api/v1/student/mentorships/" + mentorshipPublicId + "/reviews";
         String profileRoute = "/api/v1/profile/mentor/" + OWNER + "/reviews";
         for (String[] pathAndEmailKey : new String[][]{{mentorshipRoute, "studentEmail", "feedback", "reviewId"}, {profileRoute, "userEmail", "feedBack", "id"}}) {
             String body = mockMvc.perform(get(pathAndEmailKey[0])).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -29,7 +30,7 @@ public class ProjectSubmissionController {
     @PostMapping(value = "/{projectId}/submissions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> submit(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "fileUrl", required = false) String fileUrl,
             Authentication authentication
@@ -44,7 +45,7 @@ public class ProjectSubmissionController {
     @GetMapping("/{projectId}/submissions")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> listByProject(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication
@@ -59,7 +60,7 @@ public class ProjectSubmissionController {
     @PostMapping("/submissions/{submissionId}/grade")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> grade(
-            @PathVariable Long submissionId,
+            @PathVariable UUID submissionId,
             @Valid @RequestBody GradeProjectSubmissionRequest req,
             Authentication authentication
     ) {

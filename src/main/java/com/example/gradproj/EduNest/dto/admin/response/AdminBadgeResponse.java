@@ -1,13 +1,19 @@
 package com.example.gradproj.EduNest.dto.admin.response;
 
 import com.example.gradproj.EduNest.enums.admin.AdminBadgeType;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AdminBadgeResponse {
-    private Long id;
+    private UUID id;
     private String name;
     private String description;
     private AdminBadgeType type;

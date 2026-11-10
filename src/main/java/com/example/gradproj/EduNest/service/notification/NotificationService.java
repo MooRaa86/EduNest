@@ -31,6 +31,7 @@ import com.example.gradproj.EduNest.config.transaction.AfterCommitExecutor;
 
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +54,7 @@ public class NotificationService {
         Notification n = u.getNotification();
 
         return NotificationDto.builder()
-                .id(u.getId())
+                .id(u.getPublicId())
                 .title(n.getTitle())
                 .content(n.getContent())
                 .type(n.getType())
@@ -193,7 +194,7 @@ public class NotificationService {
             Admin admin = admins.get(i);
             AdminNotification record = saved.get(i);
             AdminNotificationResponse payload = AdminNotificationResponse.builder()
-                    .id(record.getId())
+                    .id(record.getPublicId())
                     .title(record.getTitle())
                     .content(record.getContent())
                     .type(record.getType())
@@ -217,7 +218,7 @@ public class NotificationService {
 
         var notifications = response.stream().map(n ->
                 AdminNotificationResponse.builder()
-                        .id(n.getId())
+                        .id(n.getPublicId())
                         .title(n.getTitle())
                         .content(n.getContent())
                         .type(n.getType())
@@ -328,4 +329,23 @@ public class NotificationService {
     public void deleteAllNotificationsForUser(String email){
         userNotificationRepo.deleteAllByUserEmail(email);
     }
+
+    public void markOneAsRead(UUID relationPublicId, String email){
+        if(!securityService.isUserOwnNotification(relationPublicId, email))
+            throw new AccessDeniedException("You are not the owner of this notification");
+
+        userNotificationRepo.markOneAsReadByPublicId(relationPublicId);
+    }
+
+    public void deleteNotification(UUID relationPublicId, String email){
+        if(!securityService.isUserOwnNotification(relationPublicId, email))
+            throw new AccessDeniedException("You are not the owner of this notification");
+
+        userNotificationRepo.deleteByPublicId(relationPublicId);
+    }
+
+    public void deleteAdminNotification(UUID id){
+        adminNotificationRepo.deleteByPublicId(id);
+    }
+
 }

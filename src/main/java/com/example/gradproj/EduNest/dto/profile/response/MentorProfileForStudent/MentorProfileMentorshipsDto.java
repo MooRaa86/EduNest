@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStuden
 
 import com.example.gradproj.EduNest.enums.mentorShip.DifficultyLevel;
 import lombok.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -9,7 +10,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MentorProfileMentorshipsDto {
-    private Long id;
+    private UUID id;
     private String MentorshipTitle;
     private String MentorshipSubtitle;
     private String Category;

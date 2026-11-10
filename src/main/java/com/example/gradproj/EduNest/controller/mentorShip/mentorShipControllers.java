@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ public class mentorShipControllers {
     @GetMapping("/{id}")
     @Operation(summary = "get a mentorship by id")
     public ResponseEntity<SimpleResponse> getMentorShip(
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         mentorShipFDto mentorShip = mentorShipService.getMentorShipById(id);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("mentorShip", mentorShip);
@@ -100,7 +101,7 @@ public class mentorShipControllers {
     @Operation(summary = "update a mentorship")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateMentorShip(
-            @PathVariable Long mid,
+            @PathVariable UUID mid,
             @RequestBody @Valid mentorShipUpdateDTO dto
     ) {
         mentorShipFDto updated = mentorShipService.updateMentorShip(mid, dto);
@@ -116,7 +117,7 @@ public class mentorShipControllers {
     @Operation(summary = "delete a mentorship by id")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> deleteMentorShip(
-            @PathVariable Long mid) {
+            @PathVariable UUID mid) {
         mentorShipService.deleteMentorShip(mid);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Mentorship deleted successfully");
@@ -126,7 +127,7 @@ public class mentorShipControllers {
     @GetMapping("/{mid}/get-tasks")
     @Operation(summary = "get mentorship tasks")
     public ResponseEntity<SimpleResponse> getTasks(
-            @PathVariable Long mid){
+            @PathVariable UUID mid){
         List<TaskResponse> tasks = mentorShipService.getMentorShipTasks(mid);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("tasks", tasks);
@@ -159,7 +160,7 @@ public class mentorShipControllers {
     @Operation(summary = "update mentorship status (DRAFT,ACTIVE,COMPLETED)")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> changeStatus(
-            @PathVariable long id,
+            @PathVariable UUID id,
             @RequestBody ChangeStatusRequest request
     ) {
         mentorShipService.updateMentorShipStatus(id, request.getStatus());
@@ -178,7 +179,7 @@ public class mentorShipControllers {
     @Operation(summary = "change cover image for mentorship")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> uploadCover(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestParam("image") MultipartFile image
     ) {
         String imageURL = mentorShipService.uploadCoverImage(mentorshipId, image);
@@ -191,7 +192,7 @@ public class mentorShipControllers {
     @Operation(summary = "delete cover image for mentorship")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> deleteCover(
-            @PathVariable Long mentorshipId
+            @PathVariable UUID mentorshipId
     ) {
         mentorShipService.deleteCoverImage(mentorshipId);
         SimpleResponse response = new SimpleResponse();
@@ -203,7 +204,7 @@ public class mentorShipControllers {
     @Operation(summary = "Student join in mentorship")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> joinMentorship(
-            @PathVariable Long mentorshipId
+            @PathVariable UUID mentorshipId
     ) {
         mentorShipService.joinMentorship(mentorshipId);
 
@@ -217,7 +218,7 @@ public class mentorShipControllers {
     @Operation(summary = "rate a mentorship")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> rateMentorship(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestBody @Valid CreateReviewRequest request
     ) {
 

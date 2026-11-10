@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -37,8 +38,11 @@ class QuestionLifecycleGuardTest {
 
     private static final String MENTOR_EMAIL = "mentor@test.org";
     private static final Long QUIZ_ID = 10L;
+    private static final UUID QUIZ_PUBLIC_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID TARGET_QUIZ_PUBLIC_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final Long WEEK_ID = 5L;
     private static final Long QUESTION_ID = 100L;
+    private static final UUID QUESTION_PUBLIC_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @BeforeEach
     void setUp() {
@@ -63,12 +67,12 @@ class QuestionLifecycleGuardTest {
         when(securityService.getCurrentUserEmail()).thenReturn(MENTOR_EMAIL);
     }
 
-    private Quiz buildQuiz(Long id, Long weekId, QuizStatus status) {
+    private Quiz buildQuiz(Long id, UUID publicId, Long weekId, QuizStatus status) {
         Week week = Week.builder().id(weekId).build();
-        return Quiz.builder().id(id).week(week).status(status).title("Test Quiz").build();
+        return Quiz.builder().id(id).publicId(publicId).week(week).status(status).title("Test Quiz").build();
     }
 
-    private Question buildQuestion(Long id, Quiz quiz) {
+    private Question buildQuestion(Long id, UUID publicId, Quiz quiz) {
         Question q = Question.builder()
                 .quiz(quiz)
                 .text("Test Question")
@@ -80,6 +84,7 @@ class QuestionLifecycleGuardTest {
                 .optionD("Option D")
                 .build();
         q.setId(id);
+        q.setPublicId(publicId);
         return q;
     }
 
@@ -87,13 +92,13 @@ class QuestionLifecycleGuardTest {
     @DisplayName("createQuestion: rejects adding question when quiz is PUBLISHED")
     void createQuestion_rejectsWhenQuizPublished() {
         when(securityService.isMentorOwnQuiz(QUIZ_ID, MENTOR_EMAIL)).thenReturn(true);
-        Quiz quiz = buildQuiz(QUIZ_ID, WEEK_ID, QuizStatus.PUBLISHED);
-        when(quizRepository.findById(QUIZ_ID)).thenReturn(Optional.of(quiz));
+        Quiz quiz = buildQuiz(QUIZ_ID, QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.PUBLISHED);
+        when(quizRepository.findByPublicId(QUIZ_PUBLIC_ID)).thenReturn(Optional.of(quiz));
         when(weekRepository.findForUpdateById(WEEK_ID)).thenReturn(Optional.of(quiz.getWeek()));
         when(quizRepository.findForUpdateById(QUIZ_ID)).thenReturn(Optional.of(quiz));
 
         QuestionCreateDTO dto = QuestionCreateDTO.builder()
-                .quizId(QUIZ_ID)
+                .quizId(QUIZ_PUBLIC_ID)
                 .text("Q1")
                 .points(1)
                 .correctAnswer(AnswerChoices.A)
@@ -109,13 +114,13 @@ class QuestionLifecycleGuardTest {
     @DisplayName("createQuestion: rejects adding question when quiz is CLOSED")
     void createQuestion_rejectsWhenQuizClosed() {
         when(securityService.isMentorOwnQuiz(QUIZ_ID, MENTOR_EMAIL)).thenReturn(true);
-        Quiz quiz = buildQuiz(QUIZ_ID, WEEK_ID, QuizStatus.CLOSED);
-        when(quizRepository.findById(QUIZ_ID)).thenReturn(Optional.of(quiz));
+        Quiz quiz = buildQuiz(QUIZ_ID, QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.CLOSED);
+        when(quizRepository.findByPublicId(QUIZ_PUBLIC_ID)).thenReturn(Optional.of(quiz));
         when(weekRepository.findForUpdateById(WEEK_ID)).thenReturn(Optional.of(quiz.getWeek()));
         when(quizRepository.findForUpdateById(QUIZ_ID)).thenReturn(Optional.of(quiz));
 
         QuestionCreateDTO dto = QuestionCreateDTO.builder()
-                .quizId(QUIZ_ID)
+                .quizId(QUIZ_PUBLIC_ID)
                 .text("Q1")
                 .points(1)
                 .correctAnswer(AnswerChoices.A)
@@ -133,17 +138,17 @@ class QuestionLifecycleGuardTest {
         when(securityService.isMentorOwnQuestion(QUESTION_ID, MENTOR_EMAIL)).thenReturn(true);
         when(securityService.isMentorOwnQuiz(QUIZ_ID, MENTOR_EMAIL)).thenReturn(true);
 
-        Quiz quiz = buildQuiz(QUIZ_ID, WEEK_ID, QuizStatus.PUBLISHED);
-        Question question = buildQuestion(QUESTION_ID, quiz);
+        Quiz quiz = buildQuiz(QUIZ_ID, QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.PUBLISHED);
+        Question question = buildQuestion(QUESTION_ID, QUESTION_PUBLIC_ID, quiz);
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
-        when(quizRepository.findById(QUIZ_ID)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findByPublicId(QUIZ_PUBLIC_ID)).thenReturn(Optional.of(quiz));
         when(weekRepository.findForUpdateById(WEEK_ID)).thenReturn(Optional.of(quiz.getWeek()));
         when(quizRepository.findForUpdateById(QUIZ_ID)).thenReturn(Optional.of(quiz));
         when(questionRepository.findForUpdateById(QUESTION_ID)).thenReturn(Optional.of(question));
 
         QuestionUpdateDto dto = QuestionUpdateDto.builder()
-                .quizId(QUIZ_ID)
+                .quizId(QUIZ_PUBLIC_ID)
                 .text("Updated Text")
                 .build();
 
@@ -159,19 +164,19 @@ class QuestionLifecycleGuardTest {
         Long targetQuizId = 20L;
         when(securityService.isMentorOwnQuiz(targetQuizId, MENTOR_EMAIL)).thenReturn(true);
 
-        Quiz sourceQuiz = buildQuiz(QUIZ_ID, WEEK_ID, QuizStatus.DRAFT);
-        Quiz targetQuiz = buildQuiz(targetQuizId, WEEK_ID, QuizStatus.CLOSED);
-        Question question = buildQuestion(QUESTION_ID, sourceQuiz);
+        Quiz sourceQuiz = buildQuiz(QUIZ_ID, QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.DRAFT);
+        Quiz targetQuiz = buildQuiz(targetQuizId, TARGET_QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.CLOSED);
+        Question question = buildQuestion(QUESTION_ID, QUESTION_PUBLIC_ID, sourceQuiz);
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
-        when(quizRepository.findById(targetQuizId)).thenReturn(Optional.of(targetQuiz));
+        when(quizRepository.findByPublicId(TARGET_QUIZ_PUBLIC_ID)).thenReturn(Optional.of(targetQuiz));
         when(weekRepository.findForUpdateById(WEEK_ID)).thenReturn(Optional.of(sourceQuiz.getWeek()));
         when(quizRepository.findForUpdateById(QUIZ_ID)).thenReturn(Optional.of(sourceQuiz));
         when(quizRepository.findForUpdateById(targetQuizId)).thenReturn(Optional.of(targetQuiz));
         when(questionRepository.findForUpdateById(QUESTION_ID)).thenReturn(Optional.of(question));
 
         QuestionUpdateDto dto = QuestionUpdateDto.builder()
-                .quizId(targetQuizId)
+                .quizId(TARGET_QUIZ_PUBLIC_ID)
                 .text("Moving Question")
                 .build();
 
@@ -184,8 +189,8 @@ class QuestionLifecycleGuardTest {
     @DisplayName("deleteQuestion: rejects deleting question when quiz is PUBLISHED")
     void deleteQuestion_rejectsWhenQuizPublished() {
         when(securityService.isMentorOwnQuestion(QUESTION_ID, MENTOR_EMAIL)).thenReturn(true);
-        Quiz quiz = buildQuiz(QUIZ_ID, WEEK_ID, QuizStatus.PUBLISHED);
-        Question question = buildQuestion(QUESTION_ID, quiz);
+        Quiz quiz = buildQuiz(QUIZ_ID, QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.PUBLISHED);
+        Question question = buildQuestion(QUESTION_ID, QUESTION_PUBLIC_ID, quiz);
 
         when(quizRepository.findById(QUIZ_ID)).thenReturn(Optional.of(quiz));
         when(weekRepository.findForUpdateById(WEEK_ID)).thenReturn(Optional.of(quiz.getWeek()));
@@ -201,8 +206,8 @@ class QuestionLifecycleGuardTest {
     @DisplayName("deleteQuestion: rejects deleting question when quiz is CLOSED")
     void deleteQuestion_rejectsWhenQuizClosed() {
         when(securityService.isMentorOwnQuestion(QUESTION_ID, MENTOR_EMAIL)).thenReturn(true);
-        Quiz quiz = buildQuiz(QUIZ_ID, WEEK_ID, QuizStatus.CLOSED);
-        Question question = buildQuestion(QUESTION_ID, quiz);
+        Quiz quiz = buildQuiz(QUIZ_ID, QUIZ_PUBLIC_ID, WEEK_ID, QuizStatus.CLOSED);
+        Question question = buildQuestion(QUESTION_ID, QUESTION_PUBLIC_ID, quiz);
 
         when(quizRepository.findById(QUIZ_ID)).thenReturn(Optional.of(quiz));
         when(weekRepository.findForUpdateById(WEEK_ID)).thenReturn(Optional.of(quiz.getWeek()));

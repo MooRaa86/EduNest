@@ -5,8 +5,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.UUID;
+
 public interface AuthorizationRepository extends JpaRepository<Enrollment, Long> {
 
+    @Query("""
+        SELECT COUNT(s) > 0
+        FROM Session s
+        WHERE s.publicId = :sessionPublicId
+        AND s.week.mentorship.mentor.email = :email
+    """)
+    Boolean isMentorOwnLiveSession(@Param("sessionPublicId") UUID sessionPublicId,
+                                   @Param("email") String email);
 
     @Query("""
         SELECT COUNT(s) > 0
@@ -16,6 +26,17 @@ public interface AuthorizationRepository extends JpaRepository<Enrollment, Long>
     """)
     Boolean isMentorOwnLiveSession(@Param("sessionId") Long sessionId,
                                    @Param("email") String email);
+
+    @Query("""
+        SELECT COUNT(e) > 0
+        FROM Enrollment e
+        JOIN Week w ON w.mentorship.id = e.mentorShip.id
+        JOIN Session s ON s.week.id = w.id
+        WHERE s.publicId = :sessionPublicId
+        AND e.student.email = :studentEmail
+    """)
+    Boolean isStudentEnrolledByLiveSessionId(@Param("studentEmail") String studentEmail,
+                                             @Param("sessionPublicId") UUID sessionPublicId);
 
     @Query("""
         SELECT COUNT(e) > 0
@@ -37,7 +58,6 @@ public interface AuthorizationRepository extends JpaRepository<Enrollment, Long>
     Boolean isMentorOwnQuiz(@Param("quizId") Long quizId,
                             @Param("email") String email);
 
-
     @Query("""
         SELECT COUNT(e) > 0
         FROM Enrollment e
@@ -48,7 +68,6 @@ public interface AuthorizationRepository extends JpaRepository<Enrollment, Long>
     """)
     Boolean isStudentEnrolledByQuizId(@Param("studentEmail") String studentEmail,
                                       @Param("quizId") Long quizId);
-
 
     @Query("""
         SELECT COUNT(q) > 0
@@ -68,6 +87,14 @@ public interface AuthorizationRepository extends JpaRepository<Enrollment, Long>
     Boolean isMentorOwnWeek(@Param("weekId") Long weekId,
                             @Param("email") String email);
 
+    @Query("""
+        SELECT COUNT(un) > 0
+        FROM UserNotification un
+        WHERE un.publicId = :publicId
+        AND un.user.email = :email
+    """)
+    Boolean isUserOwnNotification(@Param("publicId") UUID publicId,
+                                  @Param("email") String email);
 
     @Query("""
         SELECT COUNT(un) > 0
@@ -78,6 +105,18 @@ public interface AuthorizationRepository extends JpaRepository<Enrollment, Long>
     Boolean isUserOwnNotification(@Param("notificationId") Long notificationId,
                                   @Param("email") String email);
 
+    @Query("""
+        SELECT COUNT(e) > 0
+        FROM Enrollment e
+        JOIN ChatRoom cr ON cr.mentorship.id = e.mentorShip.id
+        WHERE cr.publicId = :roomPublicId
+        AND (
+            e.student.email = :email
+            OR e.mentorShip.mentor.email = :email
+        )
+    """)
+    Boolean isUserMemberOfChatRoom(@Param("roomPublicId") UUID roomPublicId,
+                                   @Param("email") String email);
 
     @Query("""
         SELECT COUNT(e) > 0

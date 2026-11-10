@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.security.probes;
 
+import com.example.gradproj.EduNest.entity.contactus.ContactMessageEntity;
 import com.example.gradproj.EduNest.enums.message.MessageStatus;
 import com.example.gradproj.EduNest.repository.contactus.ContactMessageRepository;
 import com.example.gradproj.EduNest.service.register.EmailService;
@@ -112,7 +113,7 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 	}
 
 	/** Public unauthenticated save with a controlled {name,email,phone}; returns the row id. */
-	private Long saveMessage(String email, String name) throws Exception {
+	private ContactMessageEntity saveMessage(String email, String name) throws Exception {
 		mockMvc.perform(post("/api/v1/contact/save-message")
 						.contentType("application/json")
 						.content("{\"name\":\"" + name + "\",\"email\":\"" + email + "\"," +
@@ -121,8 +122,7 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 		return contactMessages.findAll().stream()
 				.filter(m -> email.equals(m.getEmail()))
 				.findFirst()
-				.orElseThrow(() -> new AssertionError("probe: saved contact message not found"))
-				.getId();
+				.orElseThrow(() -> new AssertionError("probe: saved contact message not found"));
 	}
 
 	/** Bounded wait so the @Async dispatch reaches the sentinel either way. */
@@ -152,15 +152,15 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 		auth.admin("probe-eb2-v02-admin@example.org");
 		String hostile = "<img src=x onerror=alert(EduNestV02)>";
 
-		Long id = saveMessage("probe-eb2-v02-name@example.org", hostile);
-		mockMvc.perform(post("/api/v1/contact/message/{id}/reply", id)
+		ContactMessageEntity msg = saveMessage("probe-eb2-v02-name@example.org", hostile);
+		mockMvc.perform(post("/api/v1/contact/message/{id}/reply", msg.getPublicId())
 						.header("Authorization", auth.authToken(
 								"probe-eb2-v02-admin@example.org", AuthFixture.ADMIN))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("Your request has been reviewed."))
 				.andExpect(status().isOk());
 
-		assertThat(contactMessages.findById(id).orElseThrow().getStatus())
+		assertThat(contactMessages.findById(msg.getId()).orElseThrow().getStatus())
 				.as("reply flow ran to completion").isEqualTo(MessageStatus.COMPLETED);
 		String html = awaitCapturedHtml("probe-eb2-v02-name@example.org");
 
@@ -181,8 +181,8 @@ class ContactReplyInjectionPocTest extends ProdChainIntegrationTestBase {
 		auth.admin("probe-eb2-v02-admin2@example.org");
 		String hostile = "<script>alert(document.cookie)</script>";
 
-		Long id = saveMessage("probe-eb2-v02-reply@example.org", "Probe Victim");
-		mockMvc.perform(post("/api/v1/contact/message/{id}/reply", id)
+		ContactMessageEntity msg = saveMessage("probe-eb2-v02-reply@example.org", "Probe Victim");
+		mockMvc.perform(post("/api/v1/contact/message/{id}/reply", msg.getPublicId())
 						.header("Authorization", auth.authToken(
 								"probe-eb2-v02-admin2@example.org", AuthFixture.ADMIN))
 						.contentType(MediaType.APPLICATION_JSON)

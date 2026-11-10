@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -12,9 +13,9 @@ import java.time.LocalDateTime;
 @Setter
 public class TaskSubmissionResponse {
 
-    private Long submissionId;
-    private Long taskId;
-    private Long studentId;
+    private UUID submissionId;
+    private UUID taskId;
+    private UUID studentId;
     private String studentFullName;
 
     private String fileUrl;

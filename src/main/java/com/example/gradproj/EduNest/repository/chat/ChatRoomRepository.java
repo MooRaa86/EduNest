@@ -9,15 +9,33 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
+    Optional<ChatRoom> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT cr.id FROM ChatRoom cr WHERE cr.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("""
+    SELECT COUNT(cr) > 0
+    FROM ChatRoom cr
+    WHERE cr.publicId = :roomPublicId
+    AND cr.mentorship.mentor.email = :email
+""")
+    Boolean isRoomOwnedByMentor(@Param("roomPublicId") UUID roomPublicId,
+                                @Param("email") String email);
+
+
     @Query("""
     select
-        cr.id as roomId,
+        cr.publicId as roomId,
         cr.name as roomName,
         cr.imageUrl as roomImageUrl,
-        m.id as mentorshipId,
+        m.publicId as mentorshipId,
         m.title as mentorshipName,
         c.email as creatorEmail,
         concat(c.firstName, ' ', c.lastName) as creatorName,
@@ -47,10 +65,10 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     @Query("""
     select
-        cr.id as roomId,
+        cr.publicId as roomId,
         cr.name as roomName,
         cr.imageUrl as roomImageUrl,
-        m.id as mentorshipId,
+        m.publicId as mentorshipId,
         m.title as mentorshipName,
         c.email as creatorEmail,
         concat(c.firstName, ' ', c.lastName) as creatorName,
@@ -83,7 +101,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.chat.MentorshipRoomDetailsResponse(
-        cr.id,
+        cr.publicId,
         cr.name,
         cr.imageUrl,
         CASE WHEN EXISTS (

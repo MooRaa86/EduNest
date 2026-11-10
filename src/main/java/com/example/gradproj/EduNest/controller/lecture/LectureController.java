@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/lectures")
@@ -32,7 +33,7 @@ public class LectureController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete lecture from week by it's id")
 
-    public ResponseEntity<SimpleResponse> deleteLecture(@PathVariable Long id){
+    public ResponseEntity<SimpleResponse> deleteLecture(@PathVariable UUID id){
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","lecture deleted successfully");
         lectureService.deleteLecture(id);
@@ -41,7 +42,7 @@ public class LectureController {
     @PatchMapping("/{id}")
     @Operation(summary = "Update lecture from week by it's id")
 
-    public ResponseEntity<SimpleResponse> updateLecture(@PathVariable Long id,@RequestBody UpdeteLectureRequest updeteLectureRequest){
+    public ResponseEntity<SimpleResponse> updateLecture(@PathVariable UUID id,@RequestBody UpdeteLectureRequest updeteLectureRequest){
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","lecture updated successfully");
         simpleResponse.addMessage("lecture",lectureService.updateLecture(id,updeteLectureRequest));
@@ -49,7 +50,7 @@ public class LectureController {
     }
     @GetMapping("/{id}")
     @Operation(summary = "get lecture by it's id")
-    public ResponseEntity<SimpleResponse> getLectureById(@PathVariable Long id){
+    public ResponseEntity<SimpleResponse> getLectureById(@PathVariable UUID id){
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","lecture fetched successfully");
         simpleResponse.addMessage("lecture",lectureService.getLectureById(id));
@@ -57,7 +58,7 @@ public class LectureController {
     }
     @GetMapping("/week/{weekId}")
     @Operation(summary = "Get all lectures by week id")
-    public ResponseEntity<SimpleResponse> getLecturesByWeekId(@PathVariable Long weekId) {
+    public ResponseEntity<SimpleResponse> getLecturesByWeekId(@PathVariable UUID weekId) {
 
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "lectures fetched successfully");
@@ -69,7 +70,7 @@ public class LectureController {
     @GetMapping("/mentorship/{mentorshipId}")
     @Operation(summary = "Get all lectures by mentorship id")
     public ResponseEntity<SimpleResponse> getLecturesByMentorshipId(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         SimpleResponse simpleResponse = new SimpleResponse();

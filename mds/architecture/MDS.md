@@ -169,6 +169,7 @@ Canonical step-by-step flows are documented per domain:
 | File access by path within local `uploads/` directory | `FileStorageService`, `WebConfig`, static-locations | filesystem-coupled; **no volume in Docker** — data loss on redeploy |
 | DTO envelope `SimpleResponse{status, value…}` across many endpoints | `dto/SimpleResponse` + controllers | loose contract shape, mostly stringly maps |
 | Validator layer = service-embedded ownership checks + `AuthorizationRepository` existence queries | `service/security/SecurityService`, `repository/AuthorizationRepository` | works, but usage is **uneven across services** (IDOR debt documented in the legacy audit) |
+| Universal Public UUID Contract (EB-110) | `BaseEntity` (`publicId` UUID), DTOs, Controllers (`@PathVariable UUID`), indexed lookup methods | Eliminates resource enumeration and IDOR guessing; preserves 64-bit `Long id` internally for high-performance joins and zero DB overload — [universal-public-id-standard.md](universal-public-id-standard.md) |
 
 ## 7. Known Issues (cross-cutting, summary)
 
@@ -191,6 +192,7 @@ The consolidated, fully-detailed inventory with IDs, severity, and evidence live
 
 ## 9. Related Documentation
 
+- [universal-public-id-standard.md](universal-public-id-standard.md) — Architectural standard: Universal Public UUID Contract (EB-110)
 - [system-overview.md](system-overview.md) — package map, pipeline details, cross-cutting conventions
 - [../ISSUES.md](../ISSUES.md) — consolidated issue inventory (this document's ARCH-* IDs are defined there)
 - [../api/MDS.md](../api/MDS.md) — API surface conventions and error contract

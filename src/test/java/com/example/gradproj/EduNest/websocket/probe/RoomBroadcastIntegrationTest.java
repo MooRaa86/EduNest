@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -53,11 +54,12 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 
 		Map<String, Object> created = member.awaitFrame(
 				f -> "original text".equals(f.get("message")), 10);
-		Integer messageId = ((Number) created.get("id")).intValue();
+		Object rawMsgId = created.get("id");
+		String messageId = rawMsgId.toString();
 
 		// 2) REST edit by the same sender → updated ChatMessageResponse broadcast
 		rest.perform(MockMvcRequestBuilders
-				.patch("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
+				.patch("/api/v1/chat-room/" + ctx.roomPublicId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(MEMBER_EMAIL, AuthFixture.STUDENT))
 				.queryParam("content", "edited text"))
 			.andExpect(MockMvcResultMatchers.status().isOk());
@@ -70,21 +72,21 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 
 		// 3) REST delete by the same sender → {type: DELETE, messageId} event
 		rest.perform(MockMvcRequestBuilders
-				.delete("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
+				.delete("/api/v1/chat-room/" + ctx.roomPublicId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(MEMBER_EMAIL, AuthFixture.STUDENT)))
 			.andExpect(MockMvcResultMatchers.status().isOk());
 
 		Map<String, Object> event = member.awaitFrame(
 				f -> "DELETE".equals(f.get("type")), 10);
-		int deletedId = ((Number) event.get("messageId")).intValue();
-		if (deletedId != messageId) {
+		String deletedId = event.get("messageId").toString();
+		if (!deletedId.equals(messageId)) {
 			throw new AssertionError("DELETE event references wrong id: " + event);
 		}
 
 		// persistence: row really gone
 		TimeUnit.SECONDS.sleep(1);
 		var rows = messageRepo.findMessagesByRoom(ctx.roomId(), null, PageRequest.of(0, 50));
-		if (rows.stream().anyMatch(m -> m.getMessageId() == messageId.longValue())) {
+		if (rows.stream().anyMatch(m -> m.getMessageId().toString().equals(messageId))) {
 			throw new AssertionError("Deleted message still persisted — sender-only delete broken");
 		}
 	}
@@ -103,18 +105,19 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 		sender.session().send("/app/chat/" + ctxA.roomId(), Map.of("content", "msg in room A"));
 		Map<String, Object> created = sender.awaitFrame(
 				f -> "msg in room A".equals(f.get("message")), 10);
-		Integer messageId = ((Number) created.get("id")).intValue();
+		Object rawMsgId = created.get("id");
+		String messageId = rawMsgId.toString();
 
 		// Attempt to edit messageId belonging to room A using room B path variable
 		rest.perform(MockMvcRequestBuilders
-				.patch("/api/v1/chat-room/" + ctxB.roomId() + "/messages/" + messageId)
+				.patch("/api/v1/chat-room/" + ctxB.roomPublicId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT))
 				.queryParam("content", "spoofed edit"))
 			.andExpect(MockMvcResultMatchers.status().isBadRequest())
 			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Message does not belong to this room")));
 
 		// Content in DB should remain unchanged
-		var msg = messageRepo.findById(messageId.longValue()).orElseThrow();
+		var msg = messageRepo.findByPublicId(UUID.fromString(messageId)).orElseThrow();
 		if (!"msg in room A".equals(msg.getContent())) {
 			throw new AssertionError("Message content was modified despite room mismatch");
 		}
@@ -134,17 +137,18 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 		sender.session().send("/app/chat/" + ctxA.roomId(), Map.of("content", "stay alive in room A"));
 		Map<String, Object> created = sender.awaitFrame(
 				f -> "stay alive in room A".equals(f.get("message")), 10);
-		Integer messageId = ((Number) created.get("id")).intValue();
+		Object rawMsgId = created.get("id");
+		String messageId = rawMsgId.toString();
 
 		// Attempt to delete messageId belonging to room A using room B path variable
 		rest.perform(MockMvcRequestBuilders
-				.delete("/api/v1/chat-room/" + ctxB.roomId() + "/messages/" + messageId)
+				.delete("/api/v1/chat-room/" + ctxB.roomPublicId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(SENDER_EMAIL, AuthFixture.STUDENT)))
 			.andExpect(MockMvcResultMatchers.status().isBadRequest())
 			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Message does not belong to this room")));
 
 		// Message in DB should still exist
-		if (!messageRepo.existsById(messageId.longValue())) {
+		if (!messageRepo.existsByPublicId(UUID.fromString(messageId))) {
 			throw new AssertionError("Message was deleted despite room mismatch");
 		}
 	}
@@ -164,11 +168,12 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 		sender.session().send("/app/chat/" + ctx.roomId(), Map.of("content", "sender own message"));
 		Map<String, Object> created = sender.awaitFrame(
 				f -> "sender own message".equals(f.get("message")), 10);
-		Integer messageId = ((Number) created.get("id")).intValue();
+		Object rawMsgId = created.get("id");
+		String messageId = rawMsgId.toString();
 
 		// 1) Other member attempts edit -> 400 Bad Request
 		rest.perform(MockMvcRequestBuilders
-				.patch("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
+				.patch("/api/v1/chat-room/" + ctx.roomPublicId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(OTHER_MEMBER_EMAIL, AuthFixture.STUDENT))
 				.queryParam("content", "hacked edit"))
 			.andExpect(MockMvcResultMatchers.status().isBadRequest())
@@ -176,13 +181,13 @@ class RoomBroadcastIntegrationTest extends WsStompIntegrationTestBase {
 
 		// 2) Other member attempts delete -> 400 Bad Request
 		rest.perform(MockMvcRequestBuilders
-				.delete("/api/v1/chat-room/" + ctx.roomId() + "/messages/" + messageId)
+				.delete("/api/v1/chat-room/" + ctx.roomPublicId() + "/messages/" + messageId)
 				.header("Authorization", auth.authToken(OTHER_MEMBER_EMAIL, AuthFixture.STUDENT)))
 			.andExpect(MockMvcResultMatchers.status().isBadRequest())
 			.andExpect(MockMvcResultMatchers.jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Not allowed to delete this message")));
 
 		// DB message unchanged
-		var msg = messageRepo.findById(messageId.longValue()).orElseThrow();
+		var msg = messageRepo.findByPublicId(UUID.fromString(messageId)).orElseThrow();
 		if (!"sender own message".equals(msg.getContent())) {
 			throw new AssertionError("Message was tampered by unauthorized user");
 		}

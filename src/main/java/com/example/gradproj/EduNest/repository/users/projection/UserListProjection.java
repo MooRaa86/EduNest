@@ -1,7 +1,7 @@
 package com.example.gradproj.EduNest.repository.users.projection;
 
 public interface UserListProjection {
-    Long getId();
+    java.util.UUID getId();
     String getFirstName();
     String getLastName();
     String getEmail();

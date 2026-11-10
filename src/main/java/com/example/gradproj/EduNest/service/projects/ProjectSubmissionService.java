@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionRespo
 import com.example.gradproj.EduNest.dto.projects.response.ProjectWithSubmissionResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.UUID;
 
 public interface ProjectSubmissionService {
     @PreAuthorize("hasRole('STUDENT')")
@@ -15,4 +16,12 @@ public interface ProjectSubmissionService {
     @PreAuthorize("hasRole('MENTOR')")
     ProjectSubmissionResponse gradeProject(Long submissionId, GradeProjectSubmissionRequest req, String email);
     ProjectWithSubmissionResponse getProjectWithSubmission(Long projectId, String email);
+
+    @PreAuthorize("hasRole('STUDENT')")
+    ProjectSubmissionResponse submit(UUID projectId, MultipartFile file, String fileUrl, String email);
+    @PreAuthorize("hasRole('MENTOR')")
+    PageResponse<ProjectSubmissionResponse> listByProject(UUID projectId, int page, int size, String email);
+    @PreAuthorize("hasRole('MENTOR')")
+    ProjectSubmissionResponse gradeProject(UUID submissionId, GradeProjectSubmissionRequest req, String email);
+    ProjectWithSubmissionResponse getProjectWithSubmission(UUID projectId, String email);
 }

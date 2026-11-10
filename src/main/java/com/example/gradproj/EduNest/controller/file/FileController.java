@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/files")
@@ -72,7 +73,7 @@ public class FileController {
             }
     )
     public ResponseEntity<Resource> serveTaskSubmission(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean download
     ) {
         String filePath = fileAccessService.authorizeTaskSubmission(id);
@@ -85,7 +86,7 @@ public class FileController {
     )
     @Operation(summary = "View task attachment")
     public ResponseEntity<Resource> serveTaskAttachment(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean download
     ) {
         String filePath = fileAccessService.authorizeTask(id);
@@ -98,7 +99,7 @@ public class FileController {
     )
     @Operation(summary = "View project submission")
     public ResponseEntity<Resource> serveProjectSubmission(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean download
     ) {
         String filePath = fileAccessService.authorizeProjectSubmission(id);
@@ -111,7 +112,7 @@ public class FileController {
     )
     @Operation(summary = "View project attachment")
     public ResponseEntity<Resource> serveProjectAttachment(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean download
     ) {
         String filePath = fileAccessService.authorizeProject(id);
@@ -124,6 +125,27 @@ public class FileController {
             @RequestParam(defaultValue = "false") boolean download
     ) {
         return resolveAndServeFile(fileAccessService.authorizeGeneric(filePath), download);
+    }
+
+    
+    public ResponseEntity<Resource> serveTaskSubmission(Long id, boolean download) {
+        String filePath = fileAccessService.authorizeTaskSubmission(id);
+        return resolveAndServeFile(filePath, download);
+    }
+
+    public ResponseEntity<Resource> serveTaskAttachment(Long id, boolean download) {
+        String filePath = fileAccessService.authorizeTask(id);
+        return resolveAndServeFile(filePath, download);
+    }
+
+    public ResponseEntity<Resource> serveProjectSubmission(Long id, boolean download) {
+        String filePath = fileAccessService.authorizeProjectSubmission(id);
+        return resolveAndServeFile(filePath, download);
+    }
+
+    public ResponseEntity<Resource> serveProjectAttachment(Long id, boolean download) {
+        String filePath = fileAccessService.authorizeProject(id);
+        return resolveAndServeFile(filePath, download);
     }
 
     private ResponseEntity<Resource> resolveAndServeFile(String filePath, boolean download) {

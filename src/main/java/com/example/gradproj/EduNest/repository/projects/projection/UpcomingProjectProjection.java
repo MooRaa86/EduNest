@@ -1,14 +1,15 @@
 package com.example.gradproj.EduNest.repository.projects.projection;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface UpcomingProjectProjection {
-    Long getId();
+    UUID getId();
     String getTitle();
     LocalDateTime getEndAt();
     Integer getPoints();
-    Long getWeekId();
+    UUID getWeekId();
     String getWeekTitle();
-    Long getMentorshipId();
+    UUID getMentorshipId();
     String getMentorshipTitle();
 }

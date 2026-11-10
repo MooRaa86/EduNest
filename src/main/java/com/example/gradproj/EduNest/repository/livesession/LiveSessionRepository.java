@@ -17,8 +17,39 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface LiveSessionRepository extends JpaRepository<Session,Long> {
+
+    Optional<Session> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT s.id FROM Session s WHERE s.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Session s WHERE s.publicId = :publicId")
+    Optional<Session> findForUpdateByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("""
+    select new com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse(
+        s.publicId,
+        s.title,
+        s.scheduledAt,
+        w.title,
+        m.title
+    )
+    from Session s
+    join s.week w
+    join w.mentorship m
+    where m.publicId = :mentorshipPublicId
+""")
+    Page<DashboardSessionResponse> findAllByMentorshipPublicId(
+            @Param("mentorshipPublicId") UUID mentorshipPublicId,
+            Pageable pageable
+    );
+
 
     /** EB-51 — L2 session gate lock: ordered row locking (L0 mentorship -> L1 week -> L2 session). */
     /** EB-51 — L2 session gate lock: ordered row locking (L0 mentorship -> L1 week -> L2 session). */
@@ -40,12 +71,12 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse(
-        s.id,
+        s.publicId,
         s.title,
         s.scheduledAt,
-        w.id,
+        w.publicId,
         w.title,
-        m.id,
+        m.publicId,
         m.title
     )
     FROM Session s
@@ -64,7 +95,7 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
 
     @Query("""
     select new com.example.gradproj.EduNest.dto.livesession.response.DashboardSessionResponse(
-        s.id,
+        s.publicId,
         s.title,
         s.scheduledAt,
         w.title,
@@ -82,12 +113,12 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse(
-        s.id,
+        s.publicId,
         s.title,
         CONCAT(mentor.firstName, ' ', mentor.lastName),
-        m.id,
+        m.publicId,
         m.title,
-        w.id,
+        w.publicId,
         w.title,
         s.scheduledAt,
         s.meetingUrl
@@ -112,12 +143,12 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse(
-        s.id,
+        s.publicId,
         s.title,
         CONCAT(mentor.firstName, ' ', mentor.lastName),
-        m.id,
+        m.publicId,
         m.title,
-        w.id,
+        w.publicId,
         w.title,
         s.scheduledAt,
         s.meetingUrl
@@ -142,12 +173,12 @@ public interface LiveSessionRepository extends JpaRepository<Session,Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.livesession.response.StudentUpcomingSessionResponse(
-        s.id,
+        s.publicId,
         s.title,
         CONCAT(mentor.firstName, ' ', mentor.lastName),
-        m.id,
+        m.publicId,
         m.title,
-        w.id,
+        w.publicId,
         w.title,
         s.scheduledAt,
         s.meetingUrl
