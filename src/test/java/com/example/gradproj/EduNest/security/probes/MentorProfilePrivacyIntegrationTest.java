@@ -88,7 +88,7 @@ class MentorProfilePrivacyIntegrationTest extends ProdChainIntegrationTestBase {
                         .param("page", "0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.apiResponse.mentorships.content", hasSize(greaterThanOrEqualTo(1))))
-                .andExpect(jsonPath("$.apiResponse.mentorships.content[0].id").value(mentorshipId));
+                .andExpect(jsonPath("$.apiResponse.mentorships.content[0].id").value(mentorshipPublicId.toString()));
     }
 
     @Test
@@ -135,7 +135,7 @@ class MentorProfilePrivacyIntegrationTest extends ProdChainIntegrationTestBase {
     @Test
     @DisplayName("GET /api/v1/student/mentorships/{id}/overview exposes mentorId as UUID in BeforeEnrollData")
     void getMentorshipOverview_beforeEnroll_containsUuidMentorId() throws Exception {
-        mockMvc.perform(get("/api/v1/student/mentorships/" + mentorshipId + "/overview"))
+        mockMvc.perform(get("/api/v1/student/mentorships/" + mentorshipPublicId + "/overview"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.apiResponse.mentorship.beforeEnroll.mentorId").value(mentorPublicId.toString()))
                 .andExpect(jsonPath("$.apiResponse.mentorship.beforeEnroll.publicId").value(mentorshipPublicId.toString()))

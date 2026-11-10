@@ -22,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
+import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -96,21 +98,22 @@ public class MentorDashboardController {
     @GetMapping("/{id}/stats")
     @Operation(summary = "name, status and cards details for a mentorship")
     public ResponseEntity<MentorshipStatsResponse> getStats(
-            @PathVariable Long id
+            @PathVariable UUID id
     ) {
-        return ResponseEntity.ok(mentorshipDashboardService.getStats(id));
+        Long internalId = mentorshipDashboardService.resolveMentorshipId(id);
+        return ResponseEntity.ok(mentorshipDashboardService.getStats(internalId));
     }
 
     @GetMapping("/{id}/reviews")
     @Operation(summary = "get mentorship dashboard reviews")
     public ResponseEntity<SimpleResponse> getReviews(
-            @PathVariable("id") Long mentorshipId,
+            @PathVariable("id") UUID mentorshipId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size
     ) {
-
+        Long internalId = mentorshipDashboardService.resolveMentorshipId(mentorshipId);
         PageResponse<ReviewsRsponse> reviews =
-                mentorshipDashboardService.getReviewsForMentorship(page, size, mentorshipId);
+                mentorshipDashboardService.getReviewsForMentorship(page, size, internalId);
 
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("reviews", reviews);
@@ -121,12 +124,13 @@ public class MentorDashboardController {
     @GetMapping("/{id}/top-learners")
     @Operation(summary = "find top learners for a mentorship")
     public ResponseEntity<SimpleResponse> findTopLearners(
-            @PathVariable("id") Long mentorshipId,
+            @PathVariable("id") UUID mentorshipId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "3") int size
     ) {
+        Long internalId = mentorshipDashboardService.resolveMentorshipId(mentorshipId);
         PageResponse<TopStudentResponse> students = mentorshipDashboardService
-                .findTopLearnersByMentorshipId(mentorshipId, page, size);
+                .findTopLearnersByMentorshipId(internalId, page, size);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("top-learners", students);
         return ResponseEntity.ok(resp);
@@ -135,12 +139,13 @@ public class MentorDashboardController {
     @GetMapping("/{id}/students-ranks")
     @Operation(summary = "get students with ranks for a mentorship")
     public ResponseEntity<SimpleResponse> getStudentsRanks(
-            @PathVariable("id") Long mentorshipId,
+            @PathVariable("id") UUID mentorshipId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size
     ) {
+        Long internalId = mentorshipDashboardService.resolveMentorshipId(mentorshipId);
         PageResponse<MentorshipStudentRankDto> studentsRanks = mentorshipDashboardService
-                .getStudentsRanksByMentorshipId(mentorshipId, page, size);
+                .getStudentsRanksByMentorshipId(internalId, page, size);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("students-ranks", studentsRanks);
         return ResponseEntity.ok(resp);
@@ -196,7 +201,7 @@ public class MentorDashboardController {
     @Operation(summary = "get full mentorship dashboard")
     public ResponseEntity<SimpleResponse> getMentorshipDashboard(
 
-            @PathVariable Long id,
+            @PathVariable UUID id,
 
             @RequestParam(defaultValue = "0") int reviewsPage,
             @RequestParam(defaultValue = "6") int reviewsSize,
@@ -207,10 +212,11 @@ public class MentorDashboardController {
             @RequestParam(defaultValue = "10") int studentSize
     ) {
 
+        Long internalId = mentorshipDashboardService.resolveMentorshipId(id);
         MentorshipDashboardResponse dashboard =
                 mentorshipDashboardService
                         .getFullMentorshipDashboard(
-                                id,
+                                internalId,
                                 reviewsPage,
                                 reviewsSize,
                                 topPage,

@@ -121,7 +121,7 @@ public class QuizLifecycleFlowIntegrationTest extends ProdChainIntegrationTestBa
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
 		// Step 1: Student opens quiz -> creates attempt row with score = null
-		mockMvc.perform(get("/api/v1/question/student/fetch/{quizId}", quiz.getId())
+		mockMvc.perform(get("/api/v1/question/student/fetch/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.['Quiz Questions']").isArray());
@@ -134,11 +134,11 @@ public class QuizLifecycleFlowIntegrationTest extends ProdChainIntegrationTestBa
 		// Step 2: Student submits correct answers (A for q1, B for q2 -> full 20 points)
 		String submissionJson = "{"
 				+ "\"answers\":["
-				+ "{\"questionId\":" + q1.getId() + ",\"selectedAnswer\":\"A\"},"
-				+ "{\"questionId\":" + q2.getId() + ",\"selectedAnswer\":\"B\"}"
+				+ "{\"questionId\":\"" + q1.getPublicId() + "\",\"selectedAnswer\":\"A\"},"
+				+ "{\"questionId\":\"" + q2.getPublicId() + "\",\"selectedAnswer\":\"B\"}"
 				+ "]}";
 
-		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getId())
+		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(submissionJson))
@@ -156,7 +156,7 @@ public class QuizLifecycleFlowIntegrationTest extends ProdChainIntegrationTestBa
 		assertThat(tp.getTotalPoints()).isEqualTo(20);
 
 		// Step 5: Assert student can review answers with keys visible
-		mockMvc.perform(get("/api/v1/my-answers/{quizId}", quiz.getId())
+		mockMvc.perform(get("/api/v1/my-answers/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.Review").isArray());
@@ -196,21 +196,21 @@ public class QuizLifecycleFlowIntegrationTest extends ProdChainIntegrationTestBa
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
 		// Open quiz
-		mockMvc.perform(get("/api/v1/question/student/fetch/{quizId}", quiz.getId())
+		mockMvc.perform(get("/api/v1/question/student/fetch/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk());
 
-		String submissionJson = "{\"answers\":[{\"questionId\":" + q.getId() + ",\"selectedAnswer\":\"A\"}]}";
+		String submissionJson = "{\"answers\":[{\"questionId\":\"" + q.getPublicId() + "\",\"selectedAnswer\":\"A\"}]}";
 
 		// First submit succeeds
-		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getId())
+		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(submissionJson))
 				.andExpect(status().isCreated());
 
 		// Second submit must fail
-		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getId())
+		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(submissionJson))
@@ -241,12 +241,12 @@ public class QuizLifecycleFlowIntegrationTest extends ProdChainIntegrationTestBa
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
 		// Fetch questions fails with 403 Forbidden
-		mockMvc.perform(get("/api/v1/question/student/fetch/{quizId}", quiz.getId())
+		mockMvc.perform(get("/api/v1/question/student/fetch/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isForbidden());
 
 		// Submitting fails with 403 Forbidden
-		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getId())
+		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", quiz.getPublicId())
 						.header("Authorization", studentToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"answers\":[]}"))

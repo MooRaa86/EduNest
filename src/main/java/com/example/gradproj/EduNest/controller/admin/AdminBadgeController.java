@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 /**
  * P1-10 / EB-17 (SEL-09): every endpoint here was guarded by the URL matrix
@@ -42,7 +43,7 @@ public class AdminBadgeController {
     @PatchMapping("/api/admin/badges/{badgeId}")
     @Operation(summary = "Update an admin badge")
     public ResponseEntity<SimpleResponse> updateBadge(
-            @PathVariable Long badgeId,
+            @PathVariable UUID badgeId,
             @Valid @RequestBody UpdateAdminBadgeRequest req) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Admin badge updated successfully");
@@ -52,7 +53,7 @@ public class AdminBadgeController {
 
     @DeleteMapping("/api/admin/badges/delete/{badgeId}")
     @Operation(summary = "Delete an admin badge (only if never assigned)")
-    public ResponseEntity<SimpleResponse> deleteBadge(@PathVariable Long badgeId) {
+    public ResponseEntity<SimpleResponse> deleteBadge(@PathVariable UUID badgeId) {
         adminBadgeService.deleteAdminBadge(badgeId);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Admin badge deleted successfully");
@@ -71,7 +72,7 @@ public class AdminBadgeController {
 
     @GetMapping("/api/users/{userId}/badges")
     @Operation(summary = "Get all admin badges assigned to a user")
-    public ResponseEntity<SimpleResponse> getUserBadges(@PathVariable Long userId) {
+    public ResponseEntity<SimpleResponse> getUserBadges(@PathVariable UUID userId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "User badges retrieved successfully");
         response.addMessage("badges", adminBadgeService.getUserBadges(userId));
@@ -80,7 +81,7 @@ public class AdminBadgeController {
 
     @DeleteMapping("/api/admin/badges/{userBadgeId}")
     @Operation(summary = "Remove an admin badge from a user")
-    public ResponseEntity<SimpleResponse> removeBadge(@PathVariable Long userBadgeId) {
+    public ResponseEntity<SimpleResponse> removeBadge(@PathVariable UUID userBadgeId) {
         adminBadgeService.removeBadgeFromUser(userBadgeId);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Badge removed successfully");

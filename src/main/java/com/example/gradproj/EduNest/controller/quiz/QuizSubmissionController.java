@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -31,7 +32,7 @@ public class QuizSubmissionController {
     @Operation(summary = "Submit quiz answers", description = "Submit student answers for a specific quiz and calculate the score")
     @PostMapping("/submit-quiz-answer/{quizId}")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<SimpleResponse> submitQuizAnswers(@Valid @RequestBody QuizSubmissionDTO quizSubmissionDTO, @PathVariable Long quizId) {
+    public ResponseEntity<SimpleResponse> submitQuizAnswers(@Valid @RequestBody QuizSubmissionDTO quizSubmissionDTO, @PathVariable UUID quizId) {
         QuizSubmissionResponseDTO quizSubmissionResponseDTO = submissionService.submitQuizAnswers(quizSubmissionDTO, quizId);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Quiz submitted successfully");
@@ -43,8 +44,8 @@ public class QuizSubmissionController {
     @GetMapping("/answer/{studentId}/{quizId}")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getStudentAnswers(
-            @PathVariable Long studentId,
-            @PathVariable Long quizId) {
+            @PathVariable UUID studentId,
+            @PathVariable UUID quizId) {
 
         List<StudentAnswerDTO> allAnswers = submissionService.getStudentAnswers(studentId, quizId);
         SimpleResponse simpleResponse = new SimpleResponse();
@@ -56,7 +57,7 @@ public class QuizSubmissionController {
     @Operation(summary = "Review quiz answers", description = "Allow a student to review their answers for a quiz including correct answers and choices")
     @GetMapping("/my-answers/{quizId}")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<SimpleResponse> getStudentQuizReview(@PathVariable Long quizId) {
+    public ResponseEntity<SimpleResponse> getStudentQuizReview(@PathVariable UUID quizId) {
 
         List<StudentQuizReviewDTO> review = submissionService.getStudentQuizReview(quizId);
         SimpleResponse simpleResponse = new SimpleResponse();
@@ -69,7 +70,7 @@ public class QuizSubmissionController {
     @GetMapping("/submissions/quiz/{quizId}")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getAllSubmissionsByQuiz(
-            @PathVariable Long quizId,
+            @PathVariable UUID quizId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -85,7 +86,7 @@ public class QuizSubmissionController {
     @GetMapping("/submissions/student/{studentId}")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getAllSubmissionsByStudent(
-            @PathVariable Long studentId,
+            @PathVariable UUID studentId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 

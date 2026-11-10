@@ -31,7 +31,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
 
     @Query("""
     SELECT 
-        tp.student.id AS studentId,
+        tp.student.publicId AS studentId,
         tp.student.firstName AS firstName,
         tp.student.lastName AS lastName,
         tp.totalPoints AS totalPoints
@@ -46,7 +46,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto(
-        s.id,
+        s.publicId,
         CONCAT(s.firstName, ' ', s.lastName),
         s.email,
         tp.totalPoints,

@@ -557,7 +557,7 @@ class TotalPointsPostgresIntegrationTest extends ProdChainIntegrationTestBase {
                 chain.mentor().getEmail(), null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
         try {
             QuestionCreateDTO dto = QuestionCreateDTO.builder()
-                    .quizId(quiz.getId())
+                    .quizId(quiz.getPublicId())
                     .text("Question text")
                     .points(2)
                     .correctAnswer(AnswerChoices.A)

@@ -27,6 +27,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -230,6 +232,12 @@ public class MentorshipDashboardService {
                 .studentName(mentorShipReviews.getStudent().getFirstName() + " " + mentorShipReviews.getStudent().getLastName())
                 .reviewDate(mentorShipReviews.getCreatedAt())
                 .build();
+    }
+
+
+    public Long resolveMentorshipId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new EntityNotFoundException("Mentorship not found with UUID: " + publicId));
     }
 
 }

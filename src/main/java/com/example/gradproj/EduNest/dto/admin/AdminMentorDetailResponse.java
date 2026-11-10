@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.dto.admin;
 import lombok.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AdminMentorDetailResponse {
-        private Long id;
+        private UUID id;
         private String firstName;
         private String lastName;
         private String email;
@@ -43,7 +44,7 @@ public class AdminMentorDetailResponse {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class AdminBadgeSummary {
-            private Long id;
+            private UUID id;
             private String name;
             private String description;
             private String type;

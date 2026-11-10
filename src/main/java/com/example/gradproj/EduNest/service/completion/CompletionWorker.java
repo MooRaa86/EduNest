@@ -181,11 +181,11 @@ public class CompletionWorker {
         for (Admin admin : admins) {
             String content = "Mentorship " + job.title() + " has been completed, Mentor : " + job.mentorName();
             LocalDateTime now = LocalDateTime.now();
-            Long id = jdbc.queryForObject("""
+            UUID publicId = jdbc.queryForObject("""
                 INSERT INTO admin_notification (admin_id, title, content, type, created_at, updated_at,
-                  created_by, updated_by, public_id) VALUES (?, 'Mentorship Completed', ?, 'MENTORSHIP', ?, ?, ?, ?, ?) RETURNING id
-                """, Long.class, admin.id(), content, now, now, job.actor(), job.actor(), UUID.randomUUID());
-            pushes.add(new AdminPush(admin.email(), AdminNotificationResponse.builder().id(id)
+                  created_by, updated_by, public_id) VALUES (?, 'Mentorship Completed', ?, 'MENTORSHIP', ?, ?, ?, ?, ?) RETURNING public_id
+                """, UUID.class, admin.id(), content, now, now, job.actor(), job.actor(), UUID.randomUUID());
+            pushes.add(new AdminPush(admin.email(), AdminNotificationResponse.builder().id(publicId)
                 .title("Mentorship Completed").content(content).type(NotificationType.MENTORSHIP).createdAt(now).build()));
         }
         return pushes;
@@ -208,11 +208,11 @@ public class CompletionWorker {
         long cursor = 0;
         while (true) {
             List<UserPush> page = jdbc.query("""
-                SELECT un.id, un.certificate_recipient_email, n.title, n.content, n.type, n.created_at
+                SELECT un.id, un.certificate_recipient_email, n.title, n.content, n.type, n.created_at, un.public_id
                 FROM user_notification un JOIN notification n ON n.id=un.notification_id
                 WHERE un.certificate_issuance_id=? AND un.id>? ORDER BY un.id LIMIT ?
                 """, (rs, n) -> new UserPush(rs.getLong(1), rs.getString(2), NotificationDto.builder()
-                    .id(rs.getLong(1)).title(rs.getString(3)).content(rs.getString(4))
+                    .id(rs.getObject(7, UUID.class)).title(rs.getString(3)).content(rs.getString(4))
                     .type(NotificationType.valueOf(rs.getString(5))).isRead(false)
                     .time(rs.getObject(6, LocalDateTime.class)).build()), issuance, cursor, batchSize);
             if (page.isEmpty()) break;

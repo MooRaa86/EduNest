@@ -49,7 +49,7 @@ class QuizAnswerKeyScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Autowired private QuizSubmissionRepository submissions;
 
 	/** (quizId, questionId, studentId, studentEmail) the probes drive through the live chain. */
-	private record Seed(Long quizId, Long questionId, Long studentId, String studentEmail) {
+	private record Seed(java.util.UUID quizId, java.util.UUID questionId, java.util.UUID studentId, String studentEmail, Long quizInternalId, Long studentInternalId) {
 	}
 
 	/**
@@ -72,8 +72,8 @@ class QuizAnswerKeyScopingProbesTest extends ProdChainIntegrationTestBase {
 				.quiz(quiz).text("P1-18 question " + tag).points(1)
 				.correctAnswer(com.example.gradproj.EduNest.enums.quiz.AnswerChoices.A)
 				.optionA("a").optionB("b").optionC("c").optionD("d").build());
-		Long studentId = auth.enroll(chain.mentorship().getId(), studentEmail).getStudent().getId();
-		return new Seed(quiz.getId(), question.getId(), studentId, studentEmail);
+		var enrolledStudent = auth.enroll(chain.mentorship().getId(), studentEmail).getStudent();
+		return new Seed(quiz.getPublicId(), question.getPublicId(), enrolledStudent.getPublicId(), studentEmail, quiz.getId(), enrolledStudent.getId());
 	}
 
 	/** Student token — raw JWT, no Bearer prefix (AuthFixture contract note). */
@@ -107,7 +107,7 @@ class QuizAnswerKeyScopingProbesTest extends ProdChainIntegrationTestBase {
 		Seed s = seed("opened");
 
 		openQuiz(s);
-		assertThat(submissions.findByStudent_IdAndQuiz_Id(s.studentId(), s.quizId())
+		assertThat(submissions.findByStudent_IdAndQuiz_Id(s.studentInternalId(), s.quizInternalId())
 				.orElseThrow().getScore()).as("opened, never submitted").isNull();
 
 		String body = myAnswers(s);
@@ -132,10 +132,10 @@ class QuizAnswerKeyScopingProbesTest extends ProdChainIntegrationTestBase {
 		mockMvc.perform(post("/api/v1/submit-quiz-answer/{quizId}", s.quizId())
 						.header("Authorization", studentToken(s))
 						.contentType("application/json")
-						.content("{\"answers\":[{\"questionId\":" + s.questionId()
+						.content("{\"answers\":[{\"questionId\":\"" + s.questionId() + "\""
 								+ ",\"selectedAnswer\":\"A\"}]}"))
 				.andExpect(status().isCreated());
-		assertThat(submissions.findByStudent_IdAndQuiz_Id(s.studentId(), s.quizId())
+		assertThat(submissions.findByStudent_IdAndQuiz_Id(s.studentInternalId(), s.quizInternalId())
 				.orElseThrow().getScore()).as("genuinely submitted").isNotNull();
 
 		String body = myAnswers(s);

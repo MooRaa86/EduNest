@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -41,7 +42,7 @@ public class LiveSessionController {
     @PatchMapping("/update/{sessionId}")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> updateSession(
-            @PathVariable Long sessionId,
+            @PathVariable UUID sessionId,
             @RequestBody UpdateSessionDto updateSessionDto) {
 
         SessionResponseDto sessionResponseDto =
@@ -57,7 +58,7 @@ public class LiveSessionController {
             description = "Retrieve details of a live session using session ID"
     )
     @GetMapping("/{sessionId}")
-    public ResponseEntity<SimpleResponse> getSession(@PathVariable Long sessionId) {
+    public ResponseEntity<SimpleResponse> getSession(@PathVariable UUID sessionId) {
 
         SessionResponseDto sessionResponseDto =
                 liveSessionService.getSessionById(sessionId);
@@ -71,7 +72,7 @@ public class LiveSessionController {
     @GetMapping("/mentorship")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> getAllSession(
-            @RequestParam Long mentorshipId,
+            @RequestParam UUID mentorshipId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size) {
 
@@ -86,7 +87,7 @@ public class LiveSessionController {
     @Operation(summary = "Delete live session", description = "Delete a live session by session ID")
     @DeleteMapping("/delete/{sessionId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> deleteSession(@PathVariable Long sessionId) {
+    public ResponseEntity<SimpleResponse> deleteSession(@PathVariable UUID sessionId) {
 
         liveSessionService.deleteSession(sessionId);
 
@@ -98,7 +99,7 @@ public class LiveSessionController {
     @Operation(summary = "Start live session", description = "Start a live session by session ID")
     @PostMapping("/start/{sessionId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> startSession(@PathVariable Long sessionId) {
+    public ResponseEntity<SimpleResponse> startSession(@PathVariable UUID sessionId) {
 
         SessionResponseDto sessionResponseDto =
                 liveSessionService.startLiveSession(sessionId);
@@ -111,7 +112,7 @@ public class LiveSessionController {
     @Operation(summary = "Join live session", description = "Join a live session using session ID")
     @GetMapping("/join/{sessionId}")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<SimpleResponse> joinSession(@PathVariable Long sessionId) {
+    public ResponseEntity<SimpleResponse> joinSession(@PathVariable UUID sessionId) {
 
         SessionResponseDto sessionResponseDto =
                 liveSessionService.joinSession(sessionId);
@@ -124,7 +125,7 @@ public class LiveSessionController {
     @Operation(summary = "End live session", description = "End an ongoing live session by session ID")
     @PostMapping("/end/{sessionId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> endSession(@PathVariable Long sessionId) {
+    public ResponseEntity<SimpleResponse> endSession(@PathVariable UUID sessionId) {
 
         SessionResponseDto sessionResponseDto =
                 liveSessionService.endSession(sessionId);
@@ -137,8 +138,8 @@ public class LiveSessionController {
     @Operation(summary = "Record attendance snapshot", description = "Record attendance snapshot for a session by providing student IDs")
     @PostMapping("/snapshot/{sessionId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> recordSnapshot(@PathVariable Long sessionId,
-                                                         @RequestBody List<Long> studentIds) {
+    public ResponseEntity<SimpleResponse> recordSnapshot(@PathVariable UUID sessionId,
+                                                         @RequestBody List<UUID> studentIds) {
         liveSessionService.recordSnapshot(sessionId, studentIds);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Message", "Snapshots recorded successfully");
@@ -148,7 +149,7 @@ public class LiveSessionController {
     @Operation(summary = "Get session attendance", description = "Fetch attendance report for a session using session ID")
     @GetMapping("/attendance/{sessionId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> getAttendance(@PathVariable Long sessionId) {
+    public ResponseEntity<SimpleResponse> getAttendance(@PathVariable UUID sessionId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("attendance", liveSessionService.getAttendanceResult(sessionId));
         return ResponseEntity.ok(response);
@@ -158,7 +159,7 @@ public class LiveSessionController {
     @GetMapping("/myAttendance/{sessionId}")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> getStudentAttendance(
-            @PathVariable Long sessionId) {
+            @PathVariable UUID sessionId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("attendance", liveSessionService.getStudentAttendanceResult(sessionId));
         return ResponseEntity.ok(response);

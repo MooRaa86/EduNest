@@ -5,15 +5,16 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 public class ProjectSubmissionResponse {
-    private Long submissionId;
-    private Long projectId;
-    private Long studentId;
+    private UUID submissionId;
+    private UUID projectId;
+    private UUID studentId;
     private String studentFullName;
 
     private String fileUrl;

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class TaskResponse {
-    private Long id;
+    private UUID id;
     private String title;
     private String description;
     private Integer points;

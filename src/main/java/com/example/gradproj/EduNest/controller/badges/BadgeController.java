@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/badges")
@@ -25,7 +26,7 @@ public class BadgeController {
     @Operation(summary = "Create a badge for a specific mentorship")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> create(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @Valid @RequestBody CreateBadgeRequest req
     ) {
         SimpleResponse response = new SimpleResponse();
@@ -36,7 +37,7 @@ public class BadgeController {
 
     @GetMapping("/{badgeId}")
     @Operation(summary = "Get a badge by id")
-    public ResponseEntity<SimpleResponse> getById(@PathVariable Long badgeId) {
+    public ResponseEntity<SimpleResponse> getById(@PathVariable UUID badgeId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Badge retrieved successfully");
         response.addMessage("badge", badgeService.getBadgeById(badgeId));
@@ -45,7 +46,7 @@ public class BadgeController {
 
     @GetMapping("/mentorship/{mentorshipId}")
     @Operation(summary = "Get all badges for a specific mentorship")
-    public ResponseEntity<SimpleResponse> getByMentorship(@PathVariable Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getByMentorship(@PathVariable UUID mentorshipId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Badges retrieved successfully");
         response.addMessage("badges", badgeService.getBadgesByMentorship(mentorshipId));
@@ -56,7 +57,7 @@ public class BadgeController {
     @Operation(summary = "Update a badge")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> update(
-            @PathVariable Long badgeId,
+            @PathVariable UUID badgeId,
             @Valid @RequestBody UpdateBadgeRequest req
     ) {
         SimpleResponse response = new SimpleResponse();
@@ -68,7 +69,7 @@ public class BadgeController {
     @DeleteMapping("/{badgeId}")
     @Operation(summary = "Delete a badge (only if never awarded)")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> delete(@PathVariable Long badgeId) {
+    public ResponseEntity<SimpleResponse> delete(@PathVariable UUID badgeId) {
         badgeService.deleteBadge(badgeId);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Badge deleted successfully");

@@ -43,6 +43,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -374,6 +376,7 @@ public class mentorShipServiceI implements mentorShipService{
         imageService.deleteOldCoverImageAfterCommit(oldImageUrl);
 
         mentorship.setCoverImageUrl(imageUrl);
+        MentorShipRepository.save(mentorship);
 
         return imageUrl;
     }
@@ -564,7 +567,7 @@ public class mentorShipServiceI implements mentorShipService{
         double priceAfterDiscount = discount > 0 ? price - (price * discount / 100.0) : price;
 
         return mentorShipFDto.builder()
-                .id(mentorShip.getId())
+                .id(mentorShip.getPublicId())
                 .title(mentorShip.getTitle())
                 .subtitle(mentorShip.getSubtitle())
                 .description(mentorShip.getDescription())
@@ -595,7 +598,7 @@ public class mentorShipServiceI implements mentorShipService{
 
     private TaskResponse mapToTaskResponse(Task task) {
         TaskResponse res = new TaskResponse();
-        res.setId(task.getId());
+        res.setId(task.getPublicId());
         res.setTitle(task.getTitle());
         res.setDescription(task.getDescription());
         res.setPoints(task.getPoints());
@@ -607,5 +610,62 @@ public class mentorShipServiceI implements mentorShipService{
 
         return res;
     }
+    private Long resolveMentorshipId(UUID publicId) {
+        return MentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + publicId));
+    }
 
+    @Override
+    @Transactional
+    public mentorShipFDto updateMentorShip(UUID mentorShipId, mentorShipUpdateDTO dto) {
+        return updateMentorShip(resolveMentorshipId(mentorShipId), dto);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMentorShip(UUID mentorShipId) {
+        deleteMentorShip(resolveMentorshipId(mentorShipId));
+    }
+
+    @Override
+    public mentorShipFDto getMentorShipById(UUID mentorShipId) {
+        return getMentorShipById(resolveMentorshipId(mentorShipId));
+    }
+
+    @Override
+    public List<TaskResponse> getMentorShipTasks(UUID mentorShipId) {
+        Long internalId = MentorShipRepository.findIdByPublicId(mentorShipId).orElse(-1L);
+        return getMentorShipTasks(internalId);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public void updateMentorShipStatus(UUID mentorShipId, Status status) {
+        updateMentorShipStatus(resolveMentorshipId(mentorShipId), status);
+    }
+
+    @Override
+    @Transactional
+    public String uploadCoverImage(UUID mentorshipId, MultipartFile image) {
+        return uploadCoverImage(resolveMentorshipId(mentorshipId), image);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCoverImage(UUID mentorshipId) {
+        deleteCoverImage(resolveMentorshipId(mentorshipId));
+    }
+
+    @Override
+    @Transactional
+    public void joinMentorship(UUID mentorshipId) {
+        joinMentorship(resolveMentorshipId(mentorshipId));
+    }
+
+    @Override
+    @Transactional
+    public void rateMentorship(UUID mentorshipId, CreateReviewRequest request) {
+        rateMentorship(resolveMentorshipId(mentorshipId), request);
+    }
 }

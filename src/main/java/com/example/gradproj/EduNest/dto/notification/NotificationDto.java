@@ -4,12 +4,13 @@ import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Builder
 @Setter @Getter @AllArgsConstructor @NoArgsConstructor
 public class NotificationDto {
 
-    Long id;
+    UUID id;
     String title;
     String content;
     boolean isRead;

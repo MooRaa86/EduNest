@@ -5,7 +5,9 @@ import com.example.gradproj.EduNest.security.probes.AuthFixture;
 import com.example.gradproj.EduNest.service.mentorShip.mentorShipService;
 import com.example.gradproj.EduNest.testing.ProdChainIntegrationTestBase;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,22 +29,27 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
-/** Opt-in only: URL must point at an isolated, disposable V1-V11 PostgreSQL database. */
-@EnabledIfEnvironmentVariable(named = "EB52_DISPOSABLE_PG_URL", matches = "jdbc:postgresql://127\\.0\\.0\\.1:55439/eb52review")
+/** PostgreSQL-backed completion verification using an isolated disposable database. */
+@Testcontainers
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBase {
+    @Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", () -> System.getenv("EB52_DISPOSABLE_PG_URL"));
-        r.add("spring.datasource.username", () -> "eb52test");
-        r.add("spring.datasource.password", () -> "");
+        r.add("spring.datasource.url", postgres::getJdbcUrl);
+        r.add("spring.datasource.username", postgres::getUsername);
+        r.add("spring.datasource.password", postgres::getPassword);
         r.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         r.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.PostgreSQLDialect");
         r.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
         r.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
-        r.add("spring.flyway.enabled", () -> false);
+        r.add("spring.flyway.enabled", () -> true);
+        r.add("spring.flyway.placeholders.defaultCommissionRate", () -> "10.0");
         r.add("app.scheduling.enabled", () -> false);
         r.add("app.completion.worker.enabled", () -> true);
     }
@@ -73,6 +80,65 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
     @Autowired jakarta.persistence.EntityManager entityManager;
 
     @Test
+    void uuidCompletionServiceProxyAndHttpEnforceMentorAuthorization() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        String owner = "eb52-auth-owner-" + suffix + "@example.org";
+        String otherMentor = "eb52-auth-other-" + suffix + "@example.org";
+        String studentEmail = "eb52-auth-student-" + suffix + "@example.org";
+        String adminEmail = "eb52-auth-admin-" + suffix + "@example.org";
+        var chain = auth.mentorship(owner, Status.ACTIVE);
+        auth.mentor(otherMentor);
+        auth.enroll(chain.mentorship().getId(), studentEmail);
+        auth.admin(adminEmail);
+        UUID publicId = chain.mentorship().getPublicId();
+        long id = chain.mentorship().getId();
+        assertThat(org.springframework.aop.support.AopUtils.isAopProxy(mentorship)).isTrue();
+
+        try {
+            for (String role : List.of("ROLE_STUDENT", "ROLE_ADMIN")) {
+                // The owner's email isolates the role check from the separate ownership check.
+                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                    owner, null, List.of(new SimpleGrantedAuthority(role))));
+                assertThatThrownBy(() -> mentorship.updateMentorShipStatus(publicId, Status.COMPLETED))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+                assertThat(jdbc.queryForObject("SELECT status FROM mentorship WHERE id=?", String.class, id)).isEqualTo("ACTIVE");
+                assertThat(jdbc.queryForObject("SELECT count(*) FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id)).isZero();
+            }
+            SecurityContextHolder.clearContext();
+            assertThatThrownBy(() -> mentorship.updateMentorShipStatus(publicId, Status.COMPLETED))
+                .isInstanceOf(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class);
+            assertThat(jdbc.queryForObject("SELECT status FROM mentorship WHERE id=?", String.class, id)).isEqualTo("ACTIVE");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id)).isZero();
+
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                otherMentor, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
+            assertThatThrownBy(() -> mentorship.updateMentorShipStatus(publicId, Status.COMPLETED))
+                .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
+            assertThat(jdbc.queryForObject("SELECT status FROM mentorship WHERE id=?", String.class, id)).isEqualTo("ACTIVE");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id)).isZero();
+        } finally { SecurityContextHolder.clearContext(); }
+
+        String route = "/api/v1/mentorship/update-status/{id}";
+        mockMvc.perform(post(route, publicId).header("Authorization", auth.authToken(studentEmail, AuthFixture.STUDENT))
+            .contentType("application/json").content("{\"status\":\"COMPLETED\"}")).andExpect(status().isForbidden());
+        mockMvc.perform(post(route, publicId).header("Authorization", auth.authToken(adminEmail, AuthFixture.ADMIN))
+            .contentType("application/json").content("{\"status\":\"COMPLETED\"}")).andExpect(status().isForbidden());
+        mockMvc.perform(post(route, publicId).contentType("application/json")
+            .content("{\"status\":\"COMPLETED\"}")).andExpect(status().isUnauthorized());
+        assertThat(jdbc.queryForObject("SELECT status FROM mentorship WHERE id=?", String.class, id)).isEqualTo("ACTIVE");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id)).isZero();
+
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+            owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
+        try { mentorship.updateMentorShipStatus(publicId, Status.COMPLETED); }
+        finally { SecurityContextHolder.clearContext(); }
+        assertThat(jdbc.queryForObject("SELECT status FROM mentorship WHERE id=?", String.class, id)).isEqualTo("COMPLETED");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id)).isEqualTo(1);
+        worker.poll();
+        worker.poll();
+    }
+
+    @Test
     void completionCommitsSnapshotThenWorkerIssuesOnce() {
         String suffix = UUID.randomUUID().toString();
         String mentor = "eb52-mentor-" + suffix + "@example.org";
@@ -87,11 +153,11 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
             mentorship.updateMentorShipStatus(id, Status.COMPLETED);
             mentorship.updateMentorShipStatus(id, Status.COMPLETED);
         } finally { SecurityContextHolder.clearContext(); }
-        assertThat(status.status(id, student)).isEqualTo("PENDING");
+        assertThat(status.status(chain.mentorship().getPublicId(), student)).isEqualTo("PENDING");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM certificates WHERE mentorship_id=?", Long.class, id)).isZero();
         jdbc.update("UPDATE total_points SET total_points=99 WHERE mentorship_id=?", id);
         worker.poll();
-        assertThat(status.status(id, student)).isEqualTo("READY");
+        assertThat(status.status(chain.mentorship().getPublicId(), student)).isEqualTo("READY");
         assertThat(jdbc.queryForObject("SELECT points_at_issuance FROM certificates WHERE mentorship_id=?", Integer.class, id)).isEqualTo(7);
         worker.poll();
         worker.poll();
@@ -111,11 +177,11 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
         jdbc.update("INSERT INTO total_points (student_id, mentorship_id, total_points, created_at, updated_at, created_by, updated_by, public_id, version) VALUES (?, ?, 1, now(), now(), ?, ?, gen_random_uuid(), 0)", student.getId(), id, owner, owner);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 foreign, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
-        assertThatThrownBy(() -> mentorship.updateMentorShipStatus(id, Status.COMPLETED)).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> mentorship.updateMentorShipStatus(chain.mentorship().getPublicId(), Status.COMPLETED)).isInstanceOf(RuntimeException.class);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
         try {
-            tx.executeWithoutResult(t -> { mentorship.updateMentorShipStatus(id, Status.COMPLETED); t.setRollbackOnly(); });
+            tx.executeWithoutResult(t -> { mentorship.updateMentorShipStatus(chain.mentorship().getPublicId(), Status.COMPLETED); t.setRollbackOnly(); });
         } finally { SecurityContextHolder.clearContext(); }
         assertThat(jdbc.queryForObject("SELECT status FROM mentorship WHERE id=?", String.class, id)).isEqualTo("ACTIVE");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id)).isZero();
@@ -174,13 +240,13 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
             assertThat(jdbc.queryForObject("SELECT count(*) FROM certificates WHERE mentorship_id=?", Long.class, id)).isEqualTo(1);
             assertThat(jdbc.queryForObject("SELECT count(*) FROM user_notification un JOIN notification n ON n.id=un.notification_id WHERE un.user_id=? AND n.title='Certificate Issued!'", Long.class, student.getId())).isEqualTo(1);
             String token = auth.authToken(studentEmail, AuthFixture.STUDENT);
-            mockMvc.perform(get("/api/v1/student/certificates/mentorships/{id}/status", id).header("Authorization", token))
+            mockMvc.perform(get("/api/v1/student/certificates/mentorships/{id}/status", chain.mentorship().getPublicId()).header("Authorization", token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.apiResponse.status").value("READY"));
             String outsider = "eb52-outsider-" + suffix + "@example.org";
             var outsiderStudent = auth.student(outsider);
             // An unrelated pre-existing certificate must not bypass a current job's frozen snapshot.
             jdbc.update("INSERT INTO certificates (student_id, mentorship_id, student_rank, issued_at, created_at, updated_at, created_by, updated_by, public_id) VALUES (?, ?, 2, now(), now(), now(), ?, ?, gen_random_uuid())", outsiderStudent.getId(), id, owner, owner);
-            mockMvc.perform(get("/api/v1/student/certificates/mentorships/{id}/status", id)
+            mockMvc.perform(get("/api/v1/student/certificates/mentorships/{id}/status", chain.mentorship().getPublicId())
                 .header("Authorization", auth.authToken(outsider, AuthFixture.STUDENT))).andExpect(status().isNotFound());
         } finally { pool.shutdownNow(); }
     }
@@ -236,16 +302,16 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
         finally { SecurityContextHolder.clearContext(); }
         long job = jdbc.queryForObject("SELECT id FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id);
         jdbc.update("UPDATE mentorship_completion_job SET state='EXHAUSTED', attempt_count=5 WHERE id=?", job);
-        assertThat(status.status(id, email)).isEqualTo("FAILED");
+        assertThat(status.status(chain.mentorship().getPublicId(), email)).isEqualTo("FAILED");
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
-        assertThatThrownBy(() -> reconciliation.retryExhausted(job, "reviewed")).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(() -> reconciliation.retryExhausted(chain.mentorship().getPublicId(), "reviewed")).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("operator@example.org", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
-        try { reconciliation.retryExhausted(job, "verified conflict resolved"); }
+        try { reconciliation.retryExhausted(chain.mentorship().getPublicId(), "verified conflict resolved"); }
         finally { SecurityContextHolder.clearContext(); }
         assertThat(jdbc.queryForObject("SELECT reconciled_by FROM mentorship_completion_job WHERE id=?", String.class, job)).isEqualTo("operator@example.org");
         worker.poll();
         worker.poll();
-        assertThat(status.status(id, email)).isEqualTo("READY");
+        assertThat(status.status(chain.mentorship().getPublicId(), email)).isEqualTo("READY");
     }
 
     @Test
@@ -361,6 +427,63 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
     }
 
     @Test
+    void uuidEndpointsAndNotificationPayloadsUsePersistedPublicIds() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        String owner = "uuid-owner-" + suffix + "@example.org";
+        String studentEmail = "uuid-student-" + suffix + "@example.org";
+        String adminEmail = "uuid-admin-" + suffix + "@example.org";
+        var chain = auth.mentorship(owner, Status.ACTIVE);
+        var student = auth.enroll(chain.mentorship().getId(), studentEmail).getStudent();
+        var admin = auth.admin(adminEmail);
+        UUID publicId = chain.mentorship().getPublicId();
+        long id = chain.mentorship().getId();
+        jdbc.update("INSERT INTO total_points (student_id, mentorship_id, total_points, created_at, updated_at, created_by, updated_by, public_id, version) VALUES (?, ?, 1, now(), now(), ?, ?, gen_random_uuid(), 0)", student.getId(), id, owner, owner);
+        String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
+        String adminToken = auth.authToken(adminEmail, AuthFixture.ADMIN);
+        String route = "/api/v1/student/certificates/mentorships/{id}/status";
+        mockMvc.perform(get(route, publicId).header("Authorization", adminToken)).andExpect(status().isForbidden());
+        mockMvc.perform(get(route, "not-a-uuid").header("Authorization", studentToken)).andExpect(status().isBadRequest());
+        mockMvc.perform(get(route, UUID.randomUUID()).header("Authorization", studentToken)).andExpect(status().isNotFound());
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
+        try { mentorship.updateMentorShipStatus(publicId, Status.COMPLETED); }
+        finally { SecurityContextHolder.clearContext(); }
+        mockMvc.perform(get(route, publicId).header("Authorization", studentToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.apiResponse.status").value("PENDING"));
+        String recovery = "/api/v1/admin/mentorships/{id}/completion-job/retry";
+        mockMvc.perform(post(recovery, "not-a-uuid").header("Authorization", adminToken)
+            .contentType("application/json").content("{\"reason\":\"reviewed\"}")).andExpect(status().isBadRequest());
+        mockMvc.perform(post(recovery, UUID.randomUUID()).header("Authorization", adminToken)
+            .contentType("application/json").content("{\"reason\":\"reviewed\"}")).andExpect(status().isBadRequest());
+        mockMvc.perform(post(recovery, publicId).header("Authorization", studentToken)
+            .contentType("application/json").content("{\"reason\":\"reviewed\"}")).andExpect(status().isForbidden());
+        mockMvc.perform(post(recovery, publicId).header("Authorization", adminToken)
+            .contentType("application/json").content("{\"reason\":\"reviewed\"}")).andExpect(status().isBadRequest());
+        long jobId = jdbc.queryForObject("SELECT id FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id);
+        jdbc.update("UPDATE mentorship_completion_job SET state='EXHAUSTED', attempt_count=5 WHERE id=?", jobId);
+        mockMvc.perform(post(recovery, publicId).header("Authorization", adminToken)
+            .contentType("application/json").content("{\"reason\":\"reviewed\"}")).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT reconciled_by FROM mentorship_completion_job WHERE id=?", String.class, jobId)).isEqualTo(adminEmail);
+        var mockMessaging = org.mockito.Mockito.mock(SimpMessagingTemplate.class);
+        var isolatedWorker = new CompletionWorker(jdbc, mockMessaging, transactionManager, 100, 300);
+        isolatedWorker.poll();
+        isolatedWorker.poll();
+        UUID issuance = UUID.nameUUIDFromBytes(("edunest-completion-" + jobId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        List<UUID> studentIds = jdbc.queryForList("SELECT public_id FROM user_notification WHERE certificate_issuance_id=? AND user_id=?", UUID.class, issuance, student.getId());
+        UUID adminId = jdbc.queryForObject("SELECT public_id FROM admin_notification WHERE admin_id=? AND content LIKE ?", UUID.class, admin.getId(), "%" + chain.mentorship().getTitle() + "%");
+        var invocations = org.mockito.Mockito.mockingDetails(mockMessaging).getInvocations();
+        List<UUID> pushedStudentIds = invocations.stream().filter(i -> i.getMethod().getName().equals("convertAndSendToUser") && studentEmail.equals(i.getArgument(0)))
+            .map(i -> ((com.example.gradproj.EduNest.dto.notification.NotificationDto) i.getArgument(2)).getId()).toList();
+        List<UUID> pushedAdminIds = invocations.stream().filter(i -> i.getMethod().getName().equals("convertAndSendToUser") && adminEmail.equals(i.getArgument(0)))
+            .map(i -> ((com.example.gradproj.EduNest.dto.notification.AdminNotificationResponse) i.getArgument(2)).getId()).toList();
+        assertThat(pushedStudentIds).containsExactlyInAnyOrderElementsOf(studentIds).hasSize(2);
+        assertThat(pushedAdminIds).containsExactly(adminId);
+        for (UUID notificationId : studentIds) mockMvc.perform(get("/api/v1/notifications").header("Authorization", studentToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content[*].id", org.hamcrest.Matchers.hasItem(notificationId.toString())));
+        mockMvc.perform(get("/api/v1/admin/notifications").param("size", "100").header("Authorization", adminToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content[*].id", org.hamcrest.Matchers.hasItem(adminId.toString())));
+    }
+
+    @Test
     void enrollmentCommittedBeforeCompletionAppearsInSnapshot() throws Exception {
         String suffix = UUID.randomUUID().toString();
         String owner = "eb52-joinfirst-" + suffix + "@example.org";
@@ -411,7 +534,7 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
                     SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
                     try {
                         var request = new com.example.gradproj.EduNest.dto.badges.request.AwardBadgeRequest();
-                        request.setStudentId(student.getId()); started.countDown(); badgeAwards.awardBadge(badge.getId(), request);
+                        request.setStudentId(student.getPublicId()); started.countDown(); badgeAwards.awardBadge(badge.getId(), request);
                     } finally { SecurityContextHolder.clearContext(); }
                 });
                 try { assertThat(started.await(5, TimeUnit.SECONDS)).isTrue(); }
@@ -453,7 +576,7 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
                 var quiz = quizzes.saveAndFlush(com.example.gradproj.EduNest.entity.quiz.Quiz.builder().week(week).title("Quiz").description("Test").durationMinutes(60).status(com.example.gradproj.EduNest.enums.quiz.QuizStatus.PUBLISHED).build());
                 var question = questions.saveAndFlush(com.example.gradproj.EduNest.entity.quiz.Question.builder().quiz(quiz).text("Q").points(10).correctAnswer(com.example.gradproj.EduNest.enums.quiz.AnswerChoices.A).optionA("a").optionB("b").optionC("c").optionD("d").build());
                 quizSubmissions.saveAndFlush(com.example.gradproj.EduNest.entity.quiz.QuizSubmission.builder().quiz(quiz).student(student).startDate(java.time.LocalDateTime.now()).endDate(java.time.LocalDateTime.now().plusHours(1)).answers(new java.util.ArrayList<>()).build());
-                var answer = com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO.builder().questionId(question.getId()).selectedAnswer("A").build();
+                var answer = com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO.builder().questionId(question.getPublicId()).selectedAnswer("A").build();
                 var request = com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO.builder().answers(List.of(answer)).build();
                 grade = () -> quizGrading.submitQuizAnswers(request, quiz.getId());
             }

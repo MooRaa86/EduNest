@@ -31,12 +31,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.UUID;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class StudentWeekService {
 
+    private final MentorShipRepository mentorShipRepository;
     private final WeekRepository weekRepository;
     private final TaskRepository taskRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
@@ -73,7 +76,7 @@ public class StudentWeekService {
         }
         String mentorshipTitle = weeks.get(0).getMentorship().getTitle();
         List<WeekResponse> weekResponses = weeks.stream()
-                .map(w -> new WeekResponse(w.getId(), w.getTitle()))
+                .map(w -> new WeekResponse(w.getPublicId(), w.getTitle()))
                 .toList();
         return MentorshipWeeksResponse.builder()
                 .mentorshipTitle(mentorshipTitle)
@@ -124,7 +127,7 @@ public class StudentWeekService {
                 .toList();
 
         return MentorshipWeeksWithContentsResponse.builder()
-                .mentorshipId(mentorshipId)
+                .mentorshipId(weeks.get(0).getMentorship().getPublicId())
                 .mentorshipTitle(mentorshipTitle)
                 .weeks(weekContents)
                 .build();
@@ -158,36 +161,36 @@ public class StudentWeekService {
 
         sessionsByWeek.getOrDefault(weekId, List.of()).forEach(s ->
             items.add(StudentWeekContentItemDTO.builder()
-                    .type("SESSION").id(s.getId()).title(s.getTitle()).createdAt(s.getCreatedAt())
+                    .type("SESSION").id(s.getPublicId()).title(s.getTitle()).createdAt(s.getCreatedAt())
                     .completed(true)
                     .build()));
 
         lecturesByWeek.getOrDefault(weekId, List.of()).forEach(l ->
             items.add(StudentWeekContentItemDTO.builder()
-                    .type("LECTURE").id(l.getId()).title(l.getTitle()).createdAt(l.getCreatedAt())
+                    .type("LECTURE").id(l.getPublicId()).title(l.getTitle()).createdAt(l.getCreatedAt())
                     .completed(true)
                     .build()));
 
         tasksByWeek.getOrDefault(weekId, List.of()).forEach(t ->
             items.add(StudentWeekContentItemDTO.builder()
-                    .type("TASK").id(t.getId()).title(t.getTitle()).createdAt(t.getCreatedAt())
+                    .type("TASK").id(t.getPublicId()).title(t.getTitle()).createdAt(t.getCreatedAt())
                     .completed(submittedTaskIds.contains(t.getId()))
                     .build()));
 
         quizzesByWeek.getOrDefault(weekId, List.of()).forEach(q ->
             items.add(StudentWeekContentItemDTO.builder()
-                    .type("QUIZ").id(q.getId()).title(q.getTitle()).createdAt(q.getCreatedAt())
+                    .type("QUIZ").id(q.getPublicId()).title(q.getTitle()).createdAt(q.getCreatedAt())
                     .completed(submittedQuizIds.contains(q.getId()))
                     .build()));
 
         projectsByWeek.getOrDefault(weekId, List.of()).forEach(p ->
             items.add(StudentWeekContentItemDTO.builder()
-                    .type("PROJECT").id(p.getId()).title(p.getTitle()).createdAt(p.getCreatedAt())
+                    .type("PROJECT").id(p.getPublicId()).title(p.getTitle()).createdAt(p.getCreatedAt())
                     .completed(submittedProjectIds.contains(p.getId()))
                     .build()));
 
         return StudentWeekContentsResponse.builder()
-                .weekId(week.getId())
+                .weekId(week.getPublicId())
                 .weekTitle(week.getTitle())
                 .items(items)
                 .build();
@@ -219,34 +222,56 @@ public class StudentWeekService {
 
         // Build items
         sessions.forEach(s -> items.add(StudentWeekContentItemDTO.builder()
-                .type("SESSION").id(s.getId()).title(s.getTitle()).createdAt(s.getCreatedAt())
+                .type("SESSION").id(s.getPublicId()).title(s.getTitle()).createdAt(s.getCreatedAt())
                 .completed(attendedSessionIds.contains(s.getId()))
                 .build()));
 
         lectures.forEach(l -> items.add(StudentWeekContentItemDTO.builder()
-                .type("LECTURE").id(l.getId()).title(l.getTitle()).createdAt(l.getCreatedAt())
+                .type("LECTURE").id(l.getPublicId()).title(l.getTitle()).createdAt(l.getCreatedAt())
                 .completed(true)
                 .build()));
 
         tasks.forEach(t -> items.add(StudentWeekContentItemDTO.builder()
-                .type("TASK").id(t.getId()).title(t.getTitle()).createdAt(t.getCreatedAt())
+                .type("TASK").id(t.getPublicId()).title(t.getTitle()).createdAt(t.getCreatedAt())
                 .completed(submittedTaskIds.contains(t.getId()))
                 .build()));
 
         quizzes.forEach(q -> items.add(StudentWeekContentItemDTO.builder()
-                .type("QUIZ").id(q.getId()).title(q.getTitle()).createdAt(q.getCreatedAt())
+                .type("QUIZ").id(q.getPublicId()).title(q.getTitle()).createdAt(q.getCreatedAt())
                 .completed(submittedQuizIds.contains(q.getId()))
                 .build()));
 
         projects.forEach(p -> items.add(StudentWeekContentItemDTO.builder()
-                .type("PROJECT").id(p.getId()).title(p.getTitle()).createdAt(p.getCreatedAt())
+                .type("PROJECT").id(p.getPublicId()).title(p.getTitle()).createdAt(p.getCreatedAt())
                 .completed(submittedProjectIds.contains(p.getId()))
                 .build()));
 
         return StudentWeekContentsResponse.builder()
-                .weekId(week.getId())
+                .weekId(week.getPublicId())
                 .weekTitle(week.getTitle())
                 .items(items)
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public MentorshipWeeksResponse getWeeksByMentorship(UUID mentorshipPublicId, String stEmail) {
+        Long internalId = mentorShipRepository.findIdByPublicId(mentorshipPublicId)
+                .orElse(-1L);
+        return getWeeksByMentorship(internalId, stEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public MentorshipWeeksWithContentsResponse getMentorshipWeeksWithContents(UUID mentorshipPublicId, String stEmail) {
+        Long internalId = mentorShipRepository.findIdByPublicId(mentorshipPublicId)
+                .orElse(-1L);
+        return getMentorshipWeeksWithContents(internalId, stEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public StudentWeekContentsResponse getWeekContents(UUID weekPublicId) {
+        Long internalId = weekRepository.findIdByPublicId(weekPublicId)
+                .orElse(-1L);
+        return getWeekContents(internalId);
+    }
+
 }

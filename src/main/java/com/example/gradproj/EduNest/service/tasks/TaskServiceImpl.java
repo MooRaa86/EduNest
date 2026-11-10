@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 
 @Service
@@ -68,7 +69,7 @@ public class TaskServiceImpl implements TaskService {
         if (req.getPassPoints() > req.getPoints()) {
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
-        Week week = weekRepository.findById(req.getWeekId())
+        Week week = weekRepository.findByPublicId(req.getWeekId())
                 .orElseThrow(() -> new globalLogicEx("weekId not found"));
         validateMentorshipOwnership(week.getMentorship().getId(), email);
 
@@ -229,7 +230,7 @@ public class TaskServiceImpl implements TaskService {
 
     private TaskResponse mapToTaskResponse(Task task) {
         return TaskResponse.builder()
-                .id(task.getId())
+                .id(task.getPublicId())
                 .title(task.getTitle())
                 .description(task.getDescription())
                 .points(task.getPoints())
@@ -248,7 +249,7 @@ public class TaskServiceImpl implements TaskService {
         Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status, contentReadGuard.isStudentView(msid), pageable);
         List<TaskResponse> taskDTOs = tasks.getContent().stream()
                 .map(task -> TaskResponse.builder()
-                        .id(task.getId())
+                        .id(task.getPublicId())
                         .title(task.getTitle())
                         .description(task.getDescription())
                         .points(task.getPoints())
@@ -318,9 +319,9 @@ public class TaskServiceImpl implements TaskService {
 
     private TaskSubmissionResponse mapToSubmissionResponseForStats(TaskSubmission s) {
         return TaskSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .taskId(s.getTask().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .taskId(s.getTask().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
@@ -368,5 +369,71 @@ public class TaskServiceImpl implements TaskService {
                 .mentorName(p.getMentorName())
                 .mentorPhoto(p.getMentorPhoto())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskResponse getTaskById(UUID taskId) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getTaskById(internalId);
+    }
+
+    @Override
+    public TaskResponse updateTask(UUID taskId, PatchTaskRequest request, MultipartFile file, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return updateTask(internalId, request, file, email);
+    }
+
+    @Override
+    public void deleteTask(UUID taskId, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        deleteTask(internalId, email);
+    }
+
+    @Override
+    public TaskResponse updateTaskStatus(UUID taskId, UpdateTaskStatusRequest req, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return updateTaskStatus(internalId, req, email);
+    }
+
+    @Override
+    public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, UUID msid, Pageable pageable) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(msid)
+                .orElse(-1L);
+        return getTasks(taskName, status, internalMsid, pageable);
+    }
+
+    @Override
+    public TaskDashboardDTO getTaskDashboard(UUID mentorShipId, String email) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        return getTaskDashboard(internalMsid, email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskStatisticsDTO getTaskStatistics(UUID taskId, Pageable pageable, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return getTaskStatistics(internalId, pageable, email);
+    }
+
+    @Override
+    public FullTaskDashBoardDto getFullTaskDashboard(UUID mentorShipId, String taskName, TaskStatus status, Pageable pageable, String email) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        return getFullTaskDashboard(internalMsid, taskName, status, pageable, email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskWithSubmissionForStudentResponse getTaskWithSubmission(UUID taskId, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getTaskWithSubmission(internalId, email);
     }
 }

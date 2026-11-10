@@ -43,7 +43,7 @@ class RoomProbesTest extends ProdChainIntegrationTestBase {
 		var ownedChain = auth.mentorship("probe-room-owner-mentor@example.org", Status.ACTIVE);
 		auth.mentor(FOREIGN_MENTOR);
 
-		mockMvc.perform(post("/api/v1/chat-room/create/{mentorshipId}", ownedChain.mentorship().getId())
+		mockMvc.perform(post("/api/v1/chat-room/create/{mentorshipId}", ownedChain.mentorship().getPublicId())
 						.header("Authorization", auth.authToken(FOREIGN_MENTOR, AuthFixture.MENTOR))
 						.contentType("application/json")
 						.content("{\"name\":\"probe foreign room\"}"))
@@ -66,7 +66,7 @@ class RoomProbesTest extends ProdChainIntegrationTestBase {
 				.name("probe g13 room").mentorship(chain.mentorship())
 				.creator(chain.mentor()).build());
 
-		mockMvc.perform(get("/api/v1/chat-room/{roomId}/messages", room.getId())
+		mockMvc.perform(get("/api/v1/chat-room/{roomId}/messages", room.getPublicId())
 						.header("Authorization", auth.authToken(ENROLLED_NOT_JOINED, AuthFixture.STUDENT)))
 				.andExpect(status().isOk());
 	}

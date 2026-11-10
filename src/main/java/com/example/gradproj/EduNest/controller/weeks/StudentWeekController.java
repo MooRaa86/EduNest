@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/student/week")
@@ -25,16 +26,16 @@ public class StudentWeekController {
 
     @GetMapping("/{mentorshipId}/weeks")
     @Operation(summary = "Get all weeks for an enrolled mentorship")
-    public ResponseEntity<SimpleResponse> getWeeks(@PathVariable Long mentorshipId, Authentication authentication) {
+    public ResponseEntity<SimpleResponse> getWeeks(@PathVariable UUID mentorshipId, Authentication authentication) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "weeks retrieved successfully");
-        response.addMessage("weeks", studentWeekService.getWeeksByMentorship(mentorshipId,authentication.getName()));
+        response.addMessage("weeks", studentWeekService.getWeeksByMentorship(mentorshipId, authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @GetMapping("/{weekId}/contents")
     @Operation(summary = "Get published contents of a single week")
-    public ResponseEntity<SimpleResponse> getWeekContents(@PathVariable Long weekId) {
+    public ResponseEntity<SimpleResponse> getWeekContents(@PathVariable UUID weekId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "week contents retrieved successfully");
         response.addMessage("week", studentWeekService.getWeekContents(weekId));
@@ -43,10 +44,10 @@ public class StudentWeekController {
 
     @GetMapping("/{mentorshipId}/weeks-with-contents")
     @Operation(summary = "Get all weeks with their published contents for an enrolled mentorship")
-    public ResponseEntity<SimpleResponse> getWeeksWithContents(@PathVariable Long mentorshipId,Authentication authentication) {
+    public ResponseEntity<SimpleResponse> getWeeksWithContents(@PathVariable UUID mentorshipId, Authentication authentication) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "weeks with contents retrieved successfully");
-        response.addMessage("weeks", studentWeekService.getMentorshipWeeksWithContents(mentorshipId,authentication.getName()));
+        response.addMessage("weeks", studentWeekService.getMentorshipWeeksWithContents(mentorshipId, authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

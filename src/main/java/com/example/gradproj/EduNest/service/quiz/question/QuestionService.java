@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.quiz.response.QuestionResponseDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.StudentQuestionResponseDTO;
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
+import java.util.UUID;
 
 public interface QuestionService {
 
@@ -24,4 +25,13 @@ public interface QuestionService {
 
     @PreAuthorize("hasRole('MENTOR')")
      void deleteQuestion(Long quizId, Long questionId);
+
+    List<QuestionResponseDTO> getQuestionsByQuizId(UUID quizId);
+    @PreAuthorize("hasRole('STUDENT')")
+    List<StudentQuestionResponseDTO> getQuestionsByQuizIdForStudent(UUID quizId);
+    QuestionResponseDTO getQuestionById(UUID id);
+    @PreAuthorize("hasRole('MENTOR')")
+    QuestionResponseDTO updateQuestion(UUID id, QuestionUpdateDto dto);
+    @PreAuthorize("hasRole('MENTOR')")
+    void deleteQuestion(UUID quizId, UUID questionId);
 }

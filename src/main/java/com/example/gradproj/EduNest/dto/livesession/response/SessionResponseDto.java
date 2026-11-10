@@ -4,18 +4,18 @@ import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Setter @Getter
 @AllArgsConstructor @NoArgsConstructor
 @Builder
 public class SessionResponseDto {
 
-    private Long sessionId;
+    private UUID sessionId;
     private String sessionTitle;
     private LocalDateTime sessionStartDate;
     private SessionStatus sessionStatus;
     private String meetingUrl;
     private String hostUrl;
     private Long zoomMeetingId;
-
 }

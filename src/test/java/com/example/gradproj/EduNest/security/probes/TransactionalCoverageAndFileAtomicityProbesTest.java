@@ -121,13 +121,14 @@ public class TransactionalCoverageAndFileAtomicityProbesTest extends ProdChainIn
 
         // Create week via service
         CreateWeekrequest createReq = new CreateWeekrequest();
-        createReq.setMentorshipId(chain.mentorship().getId());
+        createReq.setMentorshipId(chain.mentorship().getPublicId());
         createReq.setTitle("Week 1 - " + suffix);
         WeekResponse weekResp = weekService.createWeek(createReq);
-        Long weekId = weekResp.getId();
+        java.util.UUID weekId = weekResp.getId();
 
         // Create a child task under week
-        Week week = weekRepository.findById(weekId).orElseThrow();
+        Week week = weekRepository.findByPublicId(weekId).orElseThrow();
+        Long internalWeekId = week.getId();
         Task task = Task.builder()
                 .title("Task in Week 1")
                 .description("Sample task")
@@ -141,7 +142,7 @@ public class TransactionalCoverageAndFileAtomicityProbesTest extends ProdChainIn
         task = taskRepository.saveAndFlush(task);
         Long taskId = task.getId();
 
-        assertThat(weekRepository.existsById(weekId)).isTrue();
+        assertThat(weekRepository.existsById(internalWeekId)).isTrue();
         assertThat(taskRepository.existsById(taskId)).isTrue();
 
         // Execute deleteWeek inside a rolling-back transaction template
@@ -153,14 +154,14 @@ public class TransactionalCoverageAndFileAtomicityProbesTest extends ProdChainIn
         })).hasMessageContaining("Simulated crash");
 
         // Verify atomicity: week and child task MUST still exist in database
-        assertThat(weekRepository.existsById(weekId)).isTrue();
+        assertThat(weekRepository.existsById(internalWeekId)).isTrue();
         assertThat(taskRepository.existsById(taskId)).isTrue();
 
         // Now call deleteWeek to commit cleanly
         weekService.deleteWeek(weekId);
 
         // Verify both are completely cleaned up
-        assertThat(weekRepository.existsById(weekId)).isFalse();
+        assertThat(weekRepository.existsById(internalWeekId)).isFalse();
         assertThat(taskRepository.existsById(taskId)).isFalse();
     }
 
@@ -239,10 +240,10 @@ public class TransactionalCoverageAndFileAtomicityProbesTest extends ProdChainIn
         authenticateAsMentor(mentorEmail);
 
         CreateWeekrequest createReq = new CreateWeekrequest();
-        createReq.setMentorshipId(chain.mentorship().getId());
+        createReq.setMentorshipId(chain.mentorship().getPublicId());
         createReq.setTitle("Task Attachment Week " + suffix);
         WeekResponse weekResp = weekService.createWeek(createReq);
-        Week week = weekRepository.findById(weekResp.getId()).orElseThrow();
+        Week week = weekRepository.findByPublicId(weekResp.getId()).orElseThrow();
 
         // Upload initial task attachment
         MockMultipartFile initialFile = new MockMultipartFile("file", "initial-task.pdf", "application/pdf", VALID_PDF);

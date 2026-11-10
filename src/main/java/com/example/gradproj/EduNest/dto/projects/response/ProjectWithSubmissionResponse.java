@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class ProjectWithSubmissionResponse {
 
-    private Long projectId;
+    private UUID projectId;
     private String title;
     private String brief;
     private String descriptionUrl;
@@ -25,7 +26,7 @@ public class ProjectWithSubmissionResponse {
     private LocalDateTime endAt;
     private String goal;
 
-    private Long submissionId;
+    private UUID submissionId;
     private SubmissionStatus submissionStatus;
     private Integer score;
     private Integer totalPoints;
@@ -33,7 +34,7 @@ public class ProjectWithSubmissionResponse {
     private String uploadedFilePath;
     private String feedback;
 
-    private Long mentorId;
+    private UUID mentorId;
     private String mentorName;
     private String mentorPhoto;
 }

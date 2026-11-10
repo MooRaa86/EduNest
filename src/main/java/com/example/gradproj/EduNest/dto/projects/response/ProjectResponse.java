@@ -4,13 +4,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 public class ProjectResponse {
-    private Long id;
+    private UUID id;
     private String title;
     private String goal;
 //    private String difficulty;
@@ -23,7 +24,7 @@ public class ProjectResponse {
     private LocalDateTime endAt;
     private Integer points;
     private String status;
-    private Long weekId;
+    private UUID weekId;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 }

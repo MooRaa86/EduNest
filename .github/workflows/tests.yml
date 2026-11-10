@@ -1,7 +1,7 @@
 name: tests
 
 # EB-41 [P2-07 / DEP-01, TST-03] — the merge gate.
-# Tests are fully self-contained (EB-35 test profile / D-27) → no services, no secrets, no Docker.
+# Tests use the EB-35 test profile; PostgreSQL integration gates require Docker.
 # Trigger decision (user, 2026-10-28): every PR to main + every push to main
 # (plan text said `develop`; user merges straight to `main` — recorded in the P2-07 row).
 # Command decision (user): `mvnw package` — full test suite + JAR packaging, catching packaging breakage too.
@@ -34,11 +34,6 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # No-skip enforcement (P2-07 core requirement): skipping is forbidden even if
-      # someone adds -DskipTests locally; failures are never ignored.
-      - name: Build, test, package — skipping forbidden
-        run: ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
-
       # EB-44 [P3-02]: the two Uniqueness*IT classes (PostgreSQL Testcontainers) are
       # OUTSIDE surefire's default includes (Test*, *Test, *Tests, *TestCase) and were
       # therefore never executed by the package step above. Run them explicitly.
@@ -50,6 +45,36 @@ jobs:
             echo "::error::Docker daemon unavailable — the required EB-44 PostgreSQL integration verification (Uniqueness*IT, 16 tests) cannot run."
             exit 1
           fi
+
+      # Delete the prior class report before the package run so the assertion cannot
+      # pass on a stale report. The normal suite executes EB-52 once.
+      - name: Build, test, package — skipping forbidden
+        run: |
+          rm -f target/surefire-reports/TEST-com.example.gradproj.EduNest.service.completion.CompletionLocalPostgresIntegrationTest.xml
+          ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
+
+      - name: Assert EB-52 PostgreSQL integration tests executed without skips
+        run: |
+          python3 - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          report = Path('target/surefire-reports/TEST-com.example.gradproj.EduNest.service.completion.CompletionLocalPostgresIntegrationTest.xml')
+          if not report.is_file():
+              sys.exit('::error::Missing fresh EB-52 Surefire report')
+          try:
+              suite = ET.parse(report).getroot()
+              counts = {key: int(suite.attrib[key]) for key in ('tests', 'failures', 'errors', 'skipped')}
+              cases = suite.findall('testcase')
+          except (ET.ParseError, KeyError, ValueError) as error:
+              sys.exit(f'::error::Invalid EB-52 Surefire report: {error}')
+          print(f'EB-52: {counts}; testcase elements: {len(cases)}')
+          if (counts['tests'] < 14 or len(cases) != counts['tests']
+                  or counts['failures'] or counts['errors'] or counts['skipped']
+                  or any(case.find(tag) is not None for case in cases for tag in ('failure', 'error', 'skipped'))):
+              sys.exit('::error::EB-52 PostgreSQL tests did not all execute successfully')
+          PY
 
       - name: EB-44 PostgreSQL integration tests (Testcontainers — all 16 must execute)
         run: >

@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.security.probes;
 
+import java.util.UUID;
+
 import com.example.gradproj.EduNest.entity.lectures.Lecture;
 import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.quiz.Quiz;
@@ -81,7 +83,7 @@ class PublishedQuizProgressIntegrationTest extends ProdChainIntegrationTestBase 
         assertThat(continuation.get(0).getMentorshipId()).isEqualTo(a.mentorship().getId());
         assertThat(continuation.get(0).getCompletedQuizzes()).isEqualTo(2);
         var dto = myLearning.getMyLearning(email, 0, 10).getMentorships().getContent().stream()
-                .filter(p -> p.getMentorshipId().equals(a.mentorship().getId())).findFirst().orElseThrow();
+                .filter(p -> p.getMentorshipId().equals(a.mentorship().getPublicId())).findFirst().orElseThrow();
         assertThat(dto.getProgressPercentage()).isEqualTo(66);
     }
 }

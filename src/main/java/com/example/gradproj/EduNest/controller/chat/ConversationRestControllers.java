@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.Map;
 
 @RestController
@@ -32,7 +33,7 @@ public class ConversationRestControllers {
     @GetMapping("/{conversationId}/messages")
     @Operation(summary = "Get messages of a conversation")
     public ResponseEntity<SimpleResponse> getMessages(
-            @PathVariable Long conversationId,
+            @PathVariable UUID conversationId,
             @RequestParam(required = false) Long beforeId,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication

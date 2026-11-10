@@ -2,13 +2,14 @@ package com.example.gradproj.EduNest.dto.quiz.request;
 
 import com.example.gradproj.EduNest.enums.quiz.QuizStatus;
 import jakarta.validation.constraints.*;
+import java.util.UUID;
 import lombok.Data;
 
 @Data
 public class QuizCreateDTO {
 
     @NotNull(message = "Week ID is required")
-    private Long weekId;
+    private UUID weekId;
 
     @NotBlank(message = "Title is required")
     @Size(max = 100, message = "Title can't exceed 100 characters")

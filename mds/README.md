@@ -16,7 +16,7 @@ Architecture in one paragraph: stateless JWT auth (prod profile only — see the
 > All teammates and AI agents modifying or adding endpoints must strictly adhere to this rule:
 > 1. **External API Surface:** Requests and responses (URLs, `@PathVariable`, `@RequestParam`, request DTOs, response DTOs) must **strictly use `UUID publicId` (string)**. Internal numeric `Long id`s must never be exposed to clients to eliminate scraping and IDOR enumeration.
 > 2. **Internal Persistence:** Database tables, foreign keys, table joins, entity relationships, and internal services **strictly use `Long id` (BIGINT)**.
-> 3. **Boundary Translation:** Use repository lookup methods (e.g. `findByPublicId`) or interface projections to resolve public UUIDs to internal entities. Details: [api/MDS.md](api/MDS.md) and [architecture/system-overview.md](architecture/system-overview.md).
+> 3. **Boundary Translation:** Use repository lookup methods (e.g. `findByPublicId`, `findIdByPublicId`) or interface projections to resolve public UUIDs to internal entities. Full specification: [architecture/universal-public-id-standard.md](architecture/universal-public-id-standard.md). Details: [api/MDS.md](api/MDS.md) and [architecture/system-overview.md](architecture/system-overview.md).
 
 ## 2. Documentation map
 

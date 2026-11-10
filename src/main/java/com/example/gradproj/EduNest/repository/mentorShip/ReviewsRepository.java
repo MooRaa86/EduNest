@@ -43,7 +43,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
 
     @Query("""
     SELECT 
-        r.id as reviewId,
+        r.publicId as reviewId,
         r.feedBack as feedback,
         r.rating as rating,
         CONCAT(s.firstName, ' ', s.lastName) as studentFullName,
@@ -63,13 +63,13 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
-        r.id,
+        r.publicId,
         CONCAT(r.student.firstName, ' ', r.student.lastName),
         r.student.email,
         r.rating,
         r.feedBack,
         r.student.profileImageUrl,
-        r.mentorShip.id,
+        r.mentorShip.publicId,
         r.mentorShip.title,
         r.updatedAt
     )
@@ -84,13 +84,13 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
-        r.id,
+        r.publicId,
         CONCAT(r.student.firstName, ' ', r.student.lastName),
         r.student.email,
         r.rating,
         r.feedBack,
         r.student.profileImageUrl,
-        r.mentorShip.id,
+        r.mentorShip.publicId,
         r.mentorShip.title,
         r.updatedAt
     )
@@ -105,13 +105,13 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileReviews(
-        r.id,
+        r.publicId,
         CONCAT(r.student.firstName, ' ', r.student.lastName),
         r.student.email,
         r.rating,
         r.feedBack,
         r.student.profileImageUrl,
-        r.mentorShip.id,
+        r.mentorShip.publicId,
         r.mentorShip.title,
         r.updatedAt
     )

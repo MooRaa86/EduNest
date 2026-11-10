@@ -165,7 +165,7 @@ class ChatMessageServiceTest {
 
             assertThat(res).isNotNull();
             assertThat(res.getMessage()).isEqualTo("hello");
-            assertThat(res.getRoomId()).isEqualTo(1L);
+            assertThat(res.getRoomId()).isEqualTo(room.getPublicId());
         }
     }
 
@@ -239,7 +239,7 @@ class ChatMessageServiceTest {
 
             assertThat(response).isNotNull();
             assertThat(response.getMessage()).isEqualTo("new text");
-            assertThat(response.getRoomId()).isEqualTo(10L);
+            assertThat(response.getRoomId()).isEqualTo(room1.getPublicId());
             verify(messageRepo).save(message1);
         }
     }

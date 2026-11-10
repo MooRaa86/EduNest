@@ -15,6 +15,14 @@ import java.util.Optional;
 
 @Repository
 public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, Long> {
+    java.util.Optional<QuizSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT qs.id FROM QuizSubmission qs WHERE qs.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT qs FROM QuizSubmission qs WHERE qs.publicId = :publicId")
+    java.util.Optional<QuizSubmission> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
 
     boolean existsByStudent_IdAndQuiz_Id(Long studentId, Long quizId);
 

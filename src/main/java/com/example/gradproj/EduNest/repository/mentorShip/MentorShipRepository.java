@@ -24,6 +24,16 @@ import java.util.UUID;
 public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     boolean existsByPublicId(UUID publicId);
     Optional<MentorShip> findByPublicId(UUID publicId);
+
+    @Query("SELECT m.id FROM MentorShip m WHERE m.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("SELECT m.publicId FROM MentorShip m WHERE m.id = :id")
+    Optional<UUID> findPublicIdById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MentorShip m WHERE m.publicId = :publicId")
+    Optional<MentorShip> findForUpdateByPublicId(@Param("publicId") UUID publicId);
     boolean existsById(Long id);
     long countByMentor_Id(Long mentorId);
 
@@ -50,7 +60,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT 
-        m.id AS id,
+        m.publicId AS id,
         m.title AS title,
         m.rating AS rating,
         COUNT(e.id) AS totalEnroll,
@@ -113,7 +123,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
-        m.id, m.title, m.subtitle, m.description, m.category,
+        m.publicId, m.title, m.subtitle, m.description, m.category,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.price,
         m.discountPercentage,
@@ -174,7 +184,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query(value = """
     SELECT 
-        m.id AS id,
+        m.publicId AS id,
         m.title AS title,
         m.subtitle AS subtitle,
         m.description AS description,
@@ -220,7 +230,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
-        m.id, m.title, m.subtitle, m.description, m.category,
+        m.publicId, m.title, m.subtitle, m.description, m.category,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
         m.price,
         m.discountPercentage,
@@ -248,7 +258,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT 
-        m.id as id,
+        m.publicId as id,
         m.publicId as publicId,
         m.title as title,
         m.subtitle as subtitle,
@@ -274,7 +284,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
-        m.id,
+        m.publicId,
         m.title,
         m.subtitle,
         m.category,
@@ -298,7 +308,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
-        m.id,
+        m.publicId,
         m.title,
         m.subtitle,
         m.category,
@@ -322,7 +332,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT 
-        m.id as id,
+        m.publicId as id,
         m.publicId as publicId,
         m.title as title,
         m.subtitle as subtitle,
@@ -348,7 +358,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
-        m.id,
+        m.publicId,
         m.title,
         m.subtitle,
         m.category,

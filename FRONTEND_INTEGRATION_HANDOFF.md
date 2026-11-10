@@ -2,11 +2,11 @@
 
 ## EB-52 — Completion and certificate status (local draft; not merged or deployed)
 
-The following describes the current local EB-52 implementation and is **not yet a released contract**. It requires backend verification and review.
+The following describes the current local EB-52 implementation and is **not yet a released contract**. It requires backend verification and review. Historical numeric resource-ID examples elsewhere in this document are superseded by the EB-110 public UUID contract; JSON identifier field names remain unchanged, but their values are UUID strings.
 
 ### Mentor completion
 
-`POST /api/v1/mentorship/update-status/{id}` requires a valid mentor access token and mentorship ownership.
+`POST /api/v1/mentorship/update-status/{id}` requires a valid mentor access token and mentorship ownership. `{id}` is the mentorship's persisted public UUID.
 
 ```json
 {"status":"COMPLETED"}
@@ -22,7 +22,7 @@ Success means the status, ranking snapshot and durable completion job committed.
 
 ### Student certificate status
 
-`GET /api/v1/student/certificates/mentorships/{mentorshipId}/status` requires a valid student access token and checks the caller's own snapshot or legacy certificate. It takes no request body. Example HTTP 200:
+`GET /api/v1/student/certificates/mentorships/{mentorshipId}/status` requires a valid student access token and checks the caller's own snapshot or legacy certificate. `{mentorshipId}` is the mentorship's persisted public UUID. It takes no request body. Example HTTP 200:
 
 ```json
 {"apiResponse":{"status":"PENDING"}}
@@ -32,19 +32,19 @@ Success means the status, ranking snapshot and durable completion job committed.
 
 Frontend should show a pending state and poll with bounded backoff while the page is visible; stop polling on READY, FAILED, NOT_ELIGIBLE, authentication errors or navigation. On READY refresh the existing paginated `GET /api/v1/student/certificates`; its response contract is unchanged. A notification-stage failure does not make an already issued certificate unavailable.
 
-The backend persists completion and certificate notifications after the completion transaction. WebSocket `/queue/notifications` delivery is best effort; reconnecting clients should refresh the persistent notification list instead of assuming every push arrived. Completion can be visible before certificate issuance. Previous completion consumers must not treat HTTP 200 as proof that certificates are immediately downloadable.
+The backend persists completion and certificate notifications after the completion transaction. WebSocket `/queue/notifications` delivery is best effort; reconnecting clients should refresh the persistent notification list instead of assuming every push arrived. The payload's existing `id` field is a UUID string matching the user-notification or admin-notification public ID returned by the corresponding REST list. Completion can be visible before certificate issuance. Previous completion consumers must not treat HTTP 200 as proof that certificates are immediately downloadable.
 
 Frontend action items: handle all four status values and 404/401/403, add bounded polling and retry/support UI, refresh certificates on READY, and reconcile notification lists after reconnect. Existing request and certificate-list response shapes remain compatible; repeated completion is now a successful no-op.
 
 ### Administrator-only recovery
 
-`POST /api/v1/admin/completion-jobs/{jobId}/retry` requires an authenticated ADMIN and accepts an exhausted job only:
+`POST /api/v1/admin/mentorships/{mentorshipId}/completion-job/retry` requires an authenticated ADMIN and accepts an exhausted job only. `{mentorshipId}` is the persisted mentorship public UUID:
 
 ```json
 {"reason":"Verified the failure and resolved its cause"}
 ```
 
-HTTP 200 returns `{"apiResponse":{"status":"Retry scheduled"}}`. A missing or blank reason, a reason longer than 1,000 characters, or a job that is not exhausted returns 400 with the standard business-rule error envelope. Missing authentication returns 401 and a non-admin role returns 403. The backend records the operator, reason and time; this endpoint schedules a retry and does not guarantee immediate completion. The local draft does not provide a frontend job-listing API, so the operator needs the job ID from authorized operational inspection.
+HTTP 200 returns `{"apiResponse":{"status":"Retry scheduled"}}`. A missing or blank reason, a reason longer than 1,000 characters, or a job that is not exhausted returns 400 with the standard business-rule error envelope. Missing authentication returns 401 and a non-admin role returns 403. The backend records the operator, reason and time; this endpoint schedules a retry and does not guarantee immediate completion. The operator needs the mentorship public UUID from authorized operational inspection.
 
 > **Document Version:** 2.0.0 (Final Accuracy & Verification Pass)  
 > **Target Audience:** Frontend Engineering Team, Tech Leads, QA Automation Engineers  

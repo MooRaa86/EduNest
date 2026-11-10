@@ -84,7 +84,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 
     @Query("""
     SELECT
-        e.student.id AS studentId,
+        e.student.publicId AS studentId,
         e.student.firstName AS firstName,
         e.student.lastName AS lastName,
         e.student.email AS email,
@@ -106,7 +106,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 @Query(
         value = """
     SELECT
-        m.id AS mentorshipId,
+        m.publicId AS mentorshipId,
         m.title AS title,
         m.status AS status,
         m.coverImageUrl AS imageUrl,
@@ -131,7 +131,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     LEFT JOIN QuizSubmission qs ON qs.student.id = :studentId AND qs.quiz.id = q.id
     WHERE e.student.id = :studentId
       AND m.mentor.id = :mentorId
-    GROUP BY m.id, m.title, m.status, tp.totalPoints
+    GROUP BY m.id, m.publicId, m.title, m.status, m.coverImageUrl, tp.totalPoints
     """,
         countQuery = """
     SELECT COUNT(e.id)

@@ -84,7 +84,7 @@ public class NotificationDeliveryFlowIntegrationTest extends ProdChainIntegratio
 		UserNotification secondNotif = notifPage.getContent().get(1);
 
 		// Step 4: User marks the first notification as read
-		mockMvc.perform(patch("/api/v1/notifications/{id}/mark-read", firstNotif.getId())
+		mockMvc.perform(patch("/api/v1/notifications/{id}/mark-read", firstNotif.getPublicId())
 						.header("Authorization", userToken))
 				.andExpect(status().isOk());
 
@@ -109,7 +109,7 @@ public class NotificationDeliveryFlowIntegrationTest extends ProdChainIntegratio
 				.andExpect(content().string("0"));
 
 		// Step 6: User deletes a notification
-		mockMvc.perform(delete("/api/v1/notifications/delete/{id}", secondNotif.getId())
+		mockMvc.perform(delete("/api/v1/notifications/delete/{id}", secondNotif.getPublicId())
 						.header("Authorization", userToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.status").value("notification deleted successfully"));
@@ -140,7 +140,7 @@ public class NotificationDeliveryFlowIntegrationTest extends ProdChainIntegratio
 
 		String strangerToken = auth.authToken(strangerEmail, AuthFixture.STUDENT);
 
-		mockMvc.perform(patch("/api/v1/notifications/{id}/mark-read", un.getId())
+		mockMvc.perform(patch("/api/v1/notifications/{id}/mark-read", un.getPublicId())
 						.header("Authorization", strangerToken))
 				.andExpect(status().isForbidden());
 
@@ -171,7 +171,7 @@ public class NotificationDeliveryFlowIntegrationTest extends ProdChainIntegratio
 
 		String strangerToken = auth.authToken(strangerEmail, AuthFixture.STUDENT);
 
-		mockMvc.perform(delete("/api/v1/notifications/delete/{id}", un.getId())
+		mockMvc.perform(delete("/api/v1/notifications/delete/{id}", un.getPublicId())
 						.header("Authorization", strangerToken))
 				.andExpect(status().isForbidden());
 

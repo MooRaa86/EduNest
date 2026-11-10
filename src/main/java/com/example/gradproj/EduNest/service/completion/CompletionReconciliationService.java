@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -19,7 +20,7 @@ public class CompletionReconciliationService {
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public void retryExhausted(long jobId, String reason) {
+    public void retryExhausted(UUID mentorshipId, String reason) {
         if (reason == null || reason.isBlank() || reason.length() > 1000) {
             throw new globalLogicEx("A reconciliation reason of up to 1000 characters is required");
         }
@@ -28,12 +29,12 @@ public class CompletionReconciliationService {
             UPDATE mentorship_completion_job SET state='RETRY', attempt_count=0,
               next_attempt_at=clock_timestamp(), reconciled_at=clock_timestamp(), reconciled_by=?,
               reconciliation_reason=?, claim_generation=claim_generation+1, updated_at=clock_timestamp()
-            WHERE id=? AND state='EXHAUSTED'
-            """, actor, reason, jobId);
+            WHERE mentorship_id=(SELECT id FROM mentorship WHERE public_id=?) AND state='EXHAUSTED'
+            """, actor, reason, mentorshipId);
         if (updated != 1) throw new globalLogicEx("Completion job is not exhausted or does not exist");
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCommit() {
-                log.info("Completion job reconciliation job={} actor={}", jobId, actor.replaceAll("[\\r\\n]", "_"));
+                log.info("Completion job reconciliation mentorship={} actor={}", mentorshipId, actor.replaceAll("[\\r\\n]", "_"));
             }
         });
     }
