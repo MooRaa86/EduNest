@@ -25,11 +25,11 @@ public class ConversationWebSocketControllers {
 
         String email = principal.getName();
 
-        ConversationMessageResponse msg =
-                conversationService.sendMessage(email, request);
+        var delivery = conversationService.sendMessageForDelivery(email, request);
+        ConversationMessageResponse msg = delivery.payload();
 
         // send to receiver (server-derived from persisted message / response)
-        String recipient = msg.getRecipientEmail() != null ? msg.getRecipientEmail() : request.getRecipientEmail();
+        String recipient = delivery.recipientEmail();
         messagingTemplate.convertAndSendToUser(
                 recipient,
                 "/queue/messages",

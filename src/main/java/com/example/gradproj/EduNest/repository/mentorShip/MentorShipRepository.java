@@ -58,6 +58,11 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     @EntityGraph(attributePaths = {"tags"})
     Page<MentorShip> findAllByStatusNot(Status status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"tags"})
+    Page<MentorShip> findByStatusNotAndMentor_DeletedFalse(Status status, Pageable pageable);
+
+    boolean existsByIdAndMentor_DeletedFalse(Long id);
+
     @Query("""
     SELECT 
         m.publicId AS id,
@@ -240,6 +245,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.mentor.email = :mentorEmail
     AND m.status = 'ACTIVE'
+    AND m.mentor.deleted = false
     AND (
         :studentEmail IS NULL
         OR NOT EXISTS (

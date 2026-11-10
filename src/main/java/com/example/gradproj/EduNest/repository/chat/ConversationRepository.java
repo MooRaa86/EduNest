@@ -34,19 +34,23 @@ SELECT
  c.publicId as conversationId,
 
  CASE
+   WHEN c.user1.email = :email AND c.user2.deleted = true THEN NULL
    WHEN c.user1.email = :email THEN c.user2.email
-   ELSE c.user1.email
+   WHEN c.user1.deleted = true THEN NULL ELSE c.user1.email
  END as otherUserEmail,
 
  CASE
+   WHEN c.user1.email = :email AND c.user2.deleted = true THEN 'Deleted user'
+   WHEN c.user1.email <> :email AND c.user1.deleted = true THEN 'Deleted user'
    WHEN c.user1.email = :email
    THEN CONCAT(c.user2.firstName,' ',c.user2.lastName)
    ELSE CONCAT(c.user1.firstName,' ',c.user1.lastName)
  END as otherUserName,
 
  CASE
+   WHEN c.user1.email = :email AND c.user2.deleted = true THEN NULL
    WHEN c.user1.email = :email THEN c.user2.profileImageUrl
-   ELSE c.user1.profileImageUrl
+   WHEN c.user1.deleted = true THEN NULL ELSE c.user1.profileImageUrl
  END as otherUserProfileImageUrl,
 
  m.content as lastMessage,

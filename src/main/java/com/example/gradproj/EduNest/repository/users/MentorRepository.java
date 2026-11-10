@@ -45,7 +45,7 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     LEFT JOIN ms.enrollments e
     LEFT JOIN ms.reviews r
     WHERE m.publicId = :publicId
-    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio, m.yearsOfExperience
     """)
     MentorProfileforStudentDto findMentorProfileByPublicId(@Param("publicId") UUID publicId);
 
@@ -68,7 +68,7 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     LEFT JOIN ms.enrollments e
     LEFT JOIN ms.reviews r
     WHERE m.id = :id
-    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio, m.yearsOfExperience
     """)
     MentorProfileforStudentDto findMentorProfileById(@Param("id") Long id);
 
@@ -91,7 +91,7 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     LEFT JOIN ms.enrollments e
     LEFT JOIN ms.reviews r
     WHERE m.email = :email
-    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio
+    GROUP BY m.publicId, m.profileImageUrl, m.firstName, m.lastName, m.bio, m.yearsOfExperience
     """)
     MentorProfileforStudentDto findMentorProfileByEmail(@Param("email") String email);
 

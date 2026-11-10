@@ -36,9 +36,9 @@ public interface ChatMessageRepository
         m.publicId as messageId,
         m.content as content,
         m.createdAt as createdAt,
-        m.senderEmail as senderEmail,
-        m.senderName as senderName,
-        m.sender.profileImageUrl as senderProfileImageUrl
+        CASE WHEN m.sender.deleted = true AND :revealDeleted = false THEN NULL ELSE m.senderEmail END as senderEmail,
+        CASE WHEN m.sender.deleted = true AND :revealDeleted = false THEN 'Deleted user' ELSE m.senderName END as senderName,
+        CASE WHEN m.sender.deleted = true AND :revealDeleted = false THEN NULL ELSE m.sender.profileImageUrl END as senderProfileImageUrl
     from ChatMessage m
     where m.chatRoom.id = :roomId
       and (:beforeId is null or m.id < :beforeId)
@@ -47,8 +47,13 @@ public interface ChatMessageRepository
     List<ChatMessageProjection> findMessagesByRoom(
             Long roomId,
             Long beforeId,
-            Pageable pageable
+            Pageable pageable,
+            @Param("revealDeleted") boolean revealDeleted
     );
+
+    default List<ChatMessageProjection> findMessagesByRoom(Long roomId, Long beforeId, Pageable pageable) {
+        return findMessagesByRoom(roomId, beforeId, pageable, false);
+    }
 
     @Modifying
     @Query("""

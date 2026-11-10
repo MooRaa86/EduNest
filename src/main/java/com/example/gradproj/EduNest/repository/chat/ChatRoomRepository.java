@@ -37,12 +37,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         cr.imageUrl as roomImageUrl,
         m.publicId as mentorshipId,
         m.title as mentorshipName,
-        c.email as creatorEmail,
-        concat(c.firstName, ' ', c.lastName) as creatorName,
+        CASE WHEN c.deleted = true THEN NULL ELSE c.email END as creatorEmail,
+        CASE WHEN c.deleted = true THEN 'Deleted user' ELSE concat(c.firstName, ' ', c.lastName) END as creatorName,
         lastMsg.content as lastMessageContent,
         lastMsg.createdAt as lastMessageTime,
-        lastMsg.senderEmail as lastMessageSenderEmail,
-        lastMsg.senderName as lastMessageSenderName
+        CASE WHEN lastSender.deleted = true THEN NULL ELSE lastMsg.senderEmail END as lastMessageSenderEmail,
+        CASE WHEN lastSender.deleted = true THEN 'Deleted user' ELSE lastMsg.senderName END as lastMessageSenderName
     from ChatRoom cr
     join cr.mentorship m
     join cr.creator c
@@ -52,6 +52,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             from ChatMessage msg
             where msg.chatRoom.id = cr.id
         )
+    left join lastMsg.sender lastSender
     where m.id = :mentorshipId
 """)
     List<ChatRoomProjection> findRoomsByMentorship(Long mentorshipId);
@@ -70,12 +71,12 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         cr.imageUrl as roomImageUrl,
         m.publicId as mentorshipId,
         m.title as mentorshipName,
-        c.email as creatorEmail,
-        concat(c.firstName, ' ', c.lastName) as creatorName,
+        CASE WHEN c.deleted = true THEN NULL ELSE c.email END as creatorEmail,
+        CASE WHEN c.deleted = true THEN 'Deleted user' ELSE concat(c.firstName, ' ', c.lastName) END as creatorName,
         lastMsg.content as lastMessageContent,
         lastMsg.createdAt as lastMessageTime,
-        lastMsg.senderEmail as lastMessageSenderEmail,
-        lastMsg.senderName as lastMessageSenderName
+        CASE WHEN lastSender.deleted = true THEN NULL ELSE lastMsg.senderEmail END as lastMessageSenderEmail,
+        CASE WHEN lastSender.deleted = true THEN 'Deleted user' ELSE lastMsg.senderName END as lastMessageSenderName
     from ChatRoom cr
     join cr.mentorship m
     join cr.creator c
@@ -86,6 +87,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             from ChatMessage msg
             where msg.chatRoom.id = cr.id
         )
+    left join lastMsg.sender lastSender
     where crm.user.email = :userEmail
 """)
     List<ChatRoomProjection> findRoomsByUserEmail(String userEmail);

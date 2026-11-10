@@ -17,5 +17,7 @@ public interface ConversationMessageProjection {
 
     String getSenderProfileImageUrl();
 
+    Boolean getSenderDeleted();
+
     UUID getConversationId();
 }
