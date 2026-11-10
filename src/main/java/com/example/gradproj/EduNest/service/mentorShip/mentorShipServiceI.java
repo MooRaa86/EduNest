@@ -24,7 +24,7 @@ import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
-import com.example.gradproj.EduNest.service.certificate.CertificateService;
+import com.example.gradproj.EduNest.service.completion.CompletionSnapshotStore;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
@@ -55,7 +55,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
     private final ImageStorageService imageService;
-    private final CertificateService certificateService;
+    private final CompletionSnapshotStore completionSnapshotStore;
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final ReviewsRepository reviewsRepository;
@@ -286,6 +286,7 @@ public class mentorShipServiceI implements mentorShipService{
         }
 
         if (status == mentorShip.getStatus()) {
+            if (status == Status.COMPLETED) return;
             throw new globalLogicEx("Mentorship is already in this status");
         }
 
@@ -312,22 +313,8 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShipRepository.save(mentorShip);
 
         if(status == Status.COMPLETED){
-            certificateService.issueCertificates(mentorShipId);
-
-            notificationService.sendToMentorshipStudents(mentorShipId,
-                    "Mentorship Completed",
-                    "Your mentorship " + mentorShip.getTitle() + " has been completed, " +
-                    "You can now download your certificate, " + "Best regards, " + "EduNest Team",
-                    NotificationType.MENTORSHIP
-            );
-
             String mentorName = currentMentor.getFirstName() + " " + currentMentor.getLastName();
-
-            notificationService.sendToAdmin("Mentorship Completed",
-                    "Mentorship " + mentorShip.getTitle() + " has been completed, " +
-                    "Mentor : " + mentorName,
-                    NotificationType.MENTORSHIP
-            );
+            completionSnapshotStore.create(mentorShipId, mentorShip.getTitle(), getCurrentUserEmail(), mentorName);
 
         }
 
@@ -419,7 +406,7 @@ public class mentorShipServiceI implements mentorShipService{
         Student student = studentRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
-        MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
+        MentorShip mentorShip = MentorShipRepository.findForUpdateById(mentorshipId)
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
 
@@ -653,6 +640,7 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
     public void updateMentorShipStatus(UUID mentorShipId, Status status) {
         updateMentorShipStatus(resolveMentorshipId(mentorShipId), status);
     }

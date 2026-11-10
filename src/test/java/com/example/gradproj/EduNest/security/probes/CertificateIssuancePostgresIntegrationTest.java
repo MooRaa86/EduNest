@@ -48,6 +48,7 @@ import static org.mockito.Mockito.*;
 
 /** Exercises real Spring issuance with Flyway-managed disposable PostgreSQL. */
 @Testcontainers(disabledWithoutDocker = true)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class CertificateIssuancePostgresIntegrationTest extends ProdChainIntegrationTestBase {
     @Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
 

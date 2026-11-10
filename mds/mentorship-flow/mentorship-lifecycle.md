@@ -1,5 +1,11 @@
 # Mentorship Lifecycle & Status Transitions
 
+> **EB-52 local implementation draft:** completion creates a durable job and frozen PostgreSQL ranking snapshot in the status transaction. The worker issues the full certificate cohort in one later transaction, then persists notifications in another. Certificates may not be immediately available after the completion response. This draft has not been merged or deployed.
+>
+> The ranking snapshot sees points committed when its SQL statement begins; grading transactions committing later are not included. Enrollment and completion use the mentorship L0 lock. Repeating an authorized COMPLETED request is a no-op. WebSocket delivery after notification persistence is best effort.
+>
+> Configure `app.completion.worker.enabled` and `app.completion.worker.poll-ms`; global scheduling must also be enabled. Operators must investigate exhausted jobs and existing certificate/notification records before an administrator uses `POST /api/v1/admin/completion-jobs/{jobId}/retry` with JSON `{"reason":"..."}`. The operation accepts only exhausted jobs and records the actor, reason and time; preserve structured logs for prior attempts. Never change points or remove notification records to force a retry.
+
 Verified walkthrough of `service/mentorShip/mentorShipServiceI#updateMentorShipStatus` (lines 253–319) and related flows.
 
 ## 1. States
@@ -15,21 +21,21 @@ Enum: `enums/mentorShip/Status` = `DRAFT, ACTIVE, COMPLETED`. Entity default `DR
 | Guard | Behavior |
 |---|---|
 | Ownership | mentor must own the mentorship (line 261) |
-| Same status | rejected (line 265) |
+| Same status | COMPLETED → COMPLETED is an authorized no-op; other same-status requests are rejected |
 | ACTIVE → DRAFT | **rejected** (line 269) |
 | DRAFT → COMPLETED | **rejected** — publication first (line 273) |
-| COMPLETED → anything | **rejected — terminal** (line 277) |
+| COMPLETED → a different status | **rejected — terminal** |
 | → COMPLETED prerequisite | `enrollmentRepository.countStudentsByMentorship(mentorshipId) > 0` (lines 281–286) — cannot complete with zero students |
 | Allowed | DRAFT → ACTIVE, ACTIVE → COMPLETED |
 
-## 3. Side effects per transition (all inside the status transaction)
+## 3. Side effects per transition (EB-52 local implementation)
 
 | Transition | Effects |
 |---|---|
-| → ACTIVE | `NotificationService.sendToAdmin("Mentorship Published", …)` (admin row + STOMP push to **newest admin only**) |
-| → COMPLETED | 1) `CertificateService.issueCertificates(mentorshipId)` — full leaderboard fetch, rank = index+1, certificate rows, per-student notification; 2) `sendToMentorshipStudents("Mentorship Completed")`; 3) `sendToAdmin("Mentorship Completed")` |
+| → ACTIVE | `NotificationService.sendToAdmin("Mentorship Published", …)` |
+| → COMPLETED | Commit the status, ranking snapshot and completion job; the worker issues all certificates atomically and then persists certificate, student and admin notifications atomically. STOMP pushes are best effort after notification commit. |
 
-⚠️ Transactional entanglement: certificates (DB writes) + fan-out notifications (DB writes + STOMP pushes) occur inside the completion transaction — a rollback after pushes leaves ghost notifications; a slow SMTP/WS addition would hold the transaction. Detail: [../certificates/MDS.md](../certificates/MDS.md) and [../notifications/MDS.md](../notifications/MDS.md).
+The certificate and notification transactions are separate from the completion transaction. A failed stage is retried up to five times; committed earlier stages are not rolled back. Detail: [../certificates/MDS.md](../certificates/MDS.md) and [../notifications/MDS.md](../notifications/MDS.md).
 
 ## 4. Deletion
 
