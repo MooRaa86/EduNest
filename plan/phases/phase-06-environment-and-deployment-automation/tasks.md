@@ -108,7 +108,9 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Docs:** environment/ops docs note; ISSUE-MAPPING FILE-06/DEP-06.
 
 <a id="p6-07"></a>
-### P6-07 — Object storage for uploads (conditional)
+### P6-07 — Object storage for uploads (conditional) [COMPLETED — superseded by ADD-03/D-25, Jira EB-78 closed 2026-11-10]
+
+> Executed under [ADD-03] (Jira EB-83, Done) after **D-25 flipped the default** (2026-10-25, PO-approved): object storage adopted *now* — Supabase Storage (S3) replaces the local-disk upload path. All components below are delivered and verified there (adapter `SupabaseStorageService`/`Impl`, config switch `supabase.storage.*` with fail-closed production, dual-bucket public/private policy, config-only rollback, test trio incl. live smoke). The D-22 Railway amendment (2026-11-02) re-opened the volume question and explicitly kept object storage — no effect.
 
 **Priority:** P2 — D-25 default is **volume first** (P6-05); this task executes object storage only if PO opts in (potentially post-launch).  **Size:** L
 **Owner role:** DevOps Engineer + Backend Developer   **Reviewers:** Eng Lead
