@@ -172,14 +172,15 @@ public class UniquenessHttpPostgresIT {
 		auth.student(studentEmail);
 		var chain = auth.mentorship(mentorEmail, Status.ACTIVE);
 		Long mentorshipId = chain.mentorship().getId();
+		UUID mentorshipPublicId = chain.mentorship().getPublicId();
 		String token = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipPublicId)
 						.header("Authorization", token))
 				.andExpect(status().isOk());
 
 		// second join hits uk_enrollment_student_mentorship -> 409 envelope
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipPublicId)
 						.header("Authorization", token))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.errorCode").value("ERR_DUPLICATE_RESOURCE"))
@@ -202,9 +203,10 @@ public class UniquenessHttpPostgresIT {
 		auth.student(studentEmail);
 		var chain = auth.mentorship(mentorEmail, Status.ACTIVE);
 		Long mentorshipId = chain.mentorship().getId();
+		UUID mentorshipPublicId = chain.mentorship().getPublicId();
 
 		final List<Object> outcomes = runRacing(() -> {
-			mentorShipService.joinMentorship(mentorshipId);
+			mentorShipService.joinMentorship(mentorshipPublicId);
 			return null;
 		}, studentEmail);
 
@@ -258,10 +260,11 @@ public class UniquenessHttpPostgresIT {
 		Student student = auth.student(studentEmail);
 		var chain = auth.mentorship(mentorEmail, Status.ACTIVE);
 		Long mentorshipId = chain.mentorship().getId();
+		UUID mentorshipPublicId = chain.mentorship().getPublicId();
 		auth.enroll(mentorshipId, studentEmail);
 
 		final List<Object> outcomes = runRacing(() -> {
-			mentorShipService.rateMentorship(mentorshipId,
+			mentorShipService.rateMentorship(mentorshipPublicId,
 					new com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest() {{
 						setRating(5);
 						setFeedback("great");
@@ -392,6 +395,7 @@ public class UniquenessHttpPostgresIT {
 		Student student = auth.student(studentEmail);
 		var chain = auth.mentorship(mentorEmail, Status.ACTIVE);
 		Long mentorshipId = chain.mentorship().getId();
+		UUID mentorshipPublicId = chain.mentorship().getPublicId();
 		auth.enroll(mentorshipId, studentEmail);
 		String token = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
@@ -412,7 +416,7 @@ public class UniquenessHttpPostgresIT {
 			try {
 				Future<Boolean> raced = httpPool.submit(() -> {
 					try {
-						mockMvc.perform(post("/api/v1/mentorship/{id}/rate", mentorshipId)
+						mockMvc.perform(post("/api/v1/mentorship/{id}/rate", mentorshipPublicId)
 										.header("Authorization", token)
 										.contentType(MediaType.APPLICATION_JSON)
 										.content("{\"rating\":4,\"feedback\":\"http-race\"}"))
@@ -463,16 +467,17 @@ public class UniquenessHttpPostgresIT {
 		auth.student(studentEmail);
 		var chain = auth.mentorship(mentorEmail, Status.ACTIVE);
 		Long mentorshipId = chain.mentorship().getId();
+		UUID mentorshipPublicId = chain.mentorship().getPublicId();
 		auth.enroll(mentorshipId, studentEmail);
 		String token = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
-		mockMvc.perform(post("/api/v1/mentorship/{id}/rate", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/rate", mentorshipPublicId)
 						.header("Authorization", token)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"rating\":5,\"feedback\":\"first\"}"))
 				.andExpect(status().isOk());
 
-		mockMvc.perform(post("/api/v1/mentorship/{id}/rate", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/rate", mentorshipPublicId)
 						.header("Authorization", token)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"rating\":4,\"feedback\":\"updated\"}"))
@@ -605,6 +610,7 @@ public class UniquenessHttpPostgresIT {
 		Student student = auth.student(studentEmail);
 		var chain = auth.mentorship(mentorEmail, Status.ACTIVE);
 		Long mentorshipId = chain.mentorship().getId();
+		UUID mentorshipPublicId = chain.mentorship().getPublicId();
 		String token = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
 		totalPoints.saveAndFlush(TotalPoints.builder()
@@ -613,7 +619,7 @@ public class UniquenessHttpPostgresIT {
 				.totalPoints(0)
 				.build());
 
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipPublicId)
 						.header("Authorization", token))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.errorCode").value("ERR_DUPLICATE_RESOURCE"))
@@ -652,7 +658,7 @@ public class UniquenessHttpPostgresIT {
 	void x2a_uniquenessConstraintNameKeeps409FriendlyMapping() {
 		org.springframework.mock.web.MockHttpServletRequest request =
 				new org.springframework.mock.web.MockHttpServletRequest();
-		request.setRequestURI("/api/v1/mentorship/500/rate");
+		request.setRequestURI("/api/v1/mentorship/" + UUID.randomUUID() + "/rate");
 
 		org.springframework.http.ResponseEntity<com.example.gradproj.EduNest.exception.ApiError> response =
 				new com.example.gradproj.EduNest.exception.GlobalExceptionHandler()
@@ -679,7 +685,7 @@ public class UniquenessHttpPostgresIT {
 	void x2b_unrelatedConstraintViolationKeepsLegacy400Envelope() {
 		org.springframework.mock.web.MockHttpServletRequest request =
 				new org.springframework.mock.web.MockHttpServletRequest();
-		request.setRequestURI("/api/v1/mentorship/500/join");
+		request.setRequestURI("/api/v1/mentorship/" + UUID.randomUUID() + "/join");
 
 		org.springframework.http.ResponseEntity<com.example.gradproj.EduNest.exception.ApiError> response =
 				new com.example.gradproj.EduNest.exception.GlobalExceptionHandler()
