@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,11 +102,15 @@ class ZoomSessionLifecycleIntegrationTest {
     private Week mockWeek(Long weekId) {
         Mentor mentor = Mentor.builder().email("mentor@test.com").build();
         MentorShip mentorship = MentorShip.builder().id(200L).title("Backend Track").mentor(mentor).build();
-        Week week = Week.builder().id(weekId).mentorship(mentorship).build();
+        UUID weekPublicId = UUID.randomUUID();
+        Week week = Week.builder().id(weekId).publicId(weekPublicId).mentorship(mentorship).build();
         when(weekRepository.findById(weekId)).thenReturn(Optional.of(week));
+        when(weekRepository.findByPublicId(weekPublicId)).thenReturn(Optional.of(week));
         when(securityService.getCurrentUserEmail()).thenReturn("mentor@test.com");
         when(securityService.isMentorOwnWeek(eq(weekId), eq("mentor@test.com"))).thenReturn(true);
+        when(securityService.isMentorOwnWeek(eq(weekPublicId), eq("mentor@test.com"))).thenReturn(true);
         when(securityService.isMentorOwnLiveSession(any(Long.class), eq("mentor@test.com"))).thenReturn(true);
+        when(securityService.isMentorOwnLiveSession(any(UUID.class), eq("mentor@test.com"))).thenReturn(true);
         return week;
     }
 
@@ -116,7 +121,7 @@ class ZoomSessionLifecycleIntegrationTest {
         zoomProperties.setMaxMeetingMinutes(40);
 
         Long weekId = 15L;
-        mockWeek(weekId);
+        Week week = mockWeek(weekId);
 
         when(zoomMeetingClient.createMeeting(any())).thenReturn(
                 new ZoomMeetingResult(9988776655L, "Spring Security Deep Dive",
@@ -127,7 +132,7 @@ class ZoomSessionLifecycleIntegrationTest {
         CreateSessionDto dto = CreateSessionDto.builder()
                 .title("Spring Security Deep Dive")
                 .scheduledAt(scheduledAt)
-                .weekId(weekId)
+                .weekId(week.getPublicId())
                 .build();
 
         SessionResponseDto created = service.createSession(dto);
@@ -203,7 +208,7 @@ class ZoomSessionLifecycleIntegrationTest {
         zoomProperties.setEnabled(true);
         zoomProperties.setMaxMeetingMinutes(40);
         Long weekId = 15L;
-        mockWeek(weekId);
+        Week week = mockWeek(weekId);
 
         Session session = Session.builder()
                 .id(10L)
@@ -232,7 +237,7 @@ class ZoomSessionLifecycleIntegrationTest {
     void deleteSessionDeletesZoomMeeting() {
         zoomProperties.setEnabled(true);
         Long weekId = 15L;
-        mockWeek(weekId);
+        Week week = mockWeek(weekId);
 
         Session session = Session.builder()
                 .id(20L)
@@ -256,13 +261,13 @@ class ZoomSessionLifecycleIntegrationTest {
         zoomProperties.setEnabled(false);
 
         Long weekId = 15L;
-        mockWeek(weekId);
+        Week week = mockWeek(weekId);
 
         LocalDateTime scheduledAt = LocalDateTime.now().plusDays(2);
         CreateSessionDto dto = CreateSessionDto.builder()
                 .title("Intro to Java")
                 .scheduledAt(scheduledAt)
-                .weekId(weekId)
+                .weekId(week.getPublicId())
                 .build();
 
         SessionResponseDto created = service.createSession(dto);

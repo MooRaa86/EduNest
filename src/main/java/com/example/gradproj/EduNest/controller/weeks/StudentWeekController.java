@@ -26,10 +26,10 @@ public class StudentWeekController {
 
     @GetMapping("/{mentorshipId}/weeks")
     @Operation(summary = "Get all weeks for an enrolled mentorship")
-    public ResponseEntity<SimpleResponse> getWeeks(@PathVariable Long mentorshipId, Authentication authentication) {
+    public ResponseEntity<SimpleResponse> getWeeks(@PathVariable UUID mentorshipId, Authentication authentication) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "weeks retrieved successfully");
-        response.addMessage("weeks", studentWeekService.getWeeksByMentorship(mentorshipId,authentication.getName()));
+        response.addMessage("weeks", studentWeekService.getWeeksByMentorship(mentorshipId, authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -44,10 +44,10 @@ public class StudentWeekController {
 
     @GetMapping("/{mentorshipId}/weeks-with-contents")
     @Operation(summary = "Get all weeks with their published contents for an enrolled mentorship")
-    public ResponseEntity<SimpleResponse> getWeeksWithContents(@PathVariable UUID mentorshipId,Authentication authentication) {
+    public ResponseEntity<SimpleResponse> getWeeksWithContents(@PathVariable UUID mentorshipId, Authentication authentication) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "weeks with contents retrieved successfully");
-        response.addMessage("weeks", studentWeekService.getMentorshipWeeksWithContents(mentorshipId,authentication.getName()));
+        response.addMessage("weeks", studentWeekService.getMentorshipWeeksWithContents(mentorshipId, authentication.getName()));
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

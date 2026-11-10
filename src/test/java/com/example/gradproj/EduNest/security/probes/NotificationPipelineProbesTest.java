@@ -192,7 +192,7 @@ public class NotificationPipelineProbesTest extends ProdChainIntegrationTestBase
 		msg = contactMessageRepo.saveAndFlush(msg);
 
 		// 2. Admin triggers in-app notification to the message sender
-		mockMvc.perform(post("/api/v1/contact/message/{id}/notification", msg.getId())
+		mockMvc.perform(post("/api/v1/contact/message/{id}/notification", msg.getPublicId())
 						.header("Authorization", adminToken)
 						.param("title", "Support Follow-up")
 						.contentType(MediaType.TEXT_PLAIN)

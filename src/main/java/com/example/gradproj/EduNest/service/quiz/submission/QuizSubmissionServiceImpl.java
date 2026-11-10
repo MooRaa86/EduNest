@@ -100,13 +100,9 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Quiz already submitted");
         }
 
-        Map<Object, Question> questions = new HashMap<>();
+        Map<UUID, Question> questions = new HashMap<>();
         for (Question q : quiz.getQuestions()) {
             if (q.getPublicId() != null) questions.put(q.getPublicId(), q);
-            if (q.getId() != null) {
-                questions.put(new UUID(0, q.getId()), q);
-                questions.put(q.getId(), q);
-            }
         }
 
         ScoreResult score = calculateScore(quizSubmissionDTO.getAnswers(), questions);
@@ -324,9 +320,6 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         for (StudentAnswerDTO studentAnswer : answers) {
             Question question = questions.get(studentAnswer.getQuestionId());
-            if (question == null && studentAnswer.getQuestionId() != null) {
-                question = questions.get(studentAnswer.getQuestionId().getLeastSignificantBits());
-            }
             if (question == null) continue;
 
             String correctAnswer= String.valueOf(question.getCorrectAnswer());

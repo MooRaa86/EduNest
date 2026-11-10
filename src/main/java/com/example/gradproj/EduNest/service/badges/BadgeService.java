@@ -191,13 +191,11 @@ public class BadgeService {
 
     private Long resolveBadgeInternalId(UUID publicId) {
         return badgeRepository.findIdByPublicId(publicId)
-                .or(() -> badgeRepository.findById(publicId.getLeastSignificantBits()).map(Badge::getId))
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
     }
 
     private Long resolveMentorshipInternalId(UUID publicId) {
         return mentorShipRepository.findIdByPublicId(publicId)
-                .or(() -> mentorShipRepository.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId))
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
     }
 

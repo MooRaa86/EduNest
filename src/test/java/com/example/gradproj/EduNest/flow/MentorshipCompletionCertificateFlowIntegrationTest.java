@@ -104,10 +104,10 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		String student1Token = auth.authToken(student1Email, AuthFixture.STUDENT);
 
 		// Step 1: Mentor awards badge to student1
-		mockMvc.perform(post("/api/v1/badge-awards/{badgeId}/award", badge.getId())
+		mockMvc.perform(post("/api/v1/badge-awards/{badgeId}/award", badge.getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"studentId\":" + student1.getId() + ",\"note\":\"Superb design patterns\"}"))
+						.content("{\"studentId\":\"" + student1.getPublicId() + "\"" + ",\"note\":\"Superb design patterns\"}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.apiResponse.message").value("Badge awarded successfully"));
 
@@ -117,7 +117,7 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		assertThat(tp1.getTotalPoints()).isEqualTo(100);
 
 		// Step 2: Mentor marks mentorship as COMPLETED
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))
@@ -162,7 +162,7 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 
 		String mentorToken = auth.authToken(mentorEmail, AuthFixture.MENTOR);
 
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))
@@ -188,14 +188,14 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		String mentorToken = auth.authToken(mentorEmail, AuthFixture.MENTOR);
 
 		// Successfully complete
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))
 				.andExpect(status().isOk());
 
 		// Attempting to change status back to ACTIVE must fail
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"ACTIVE\"}"))
@@ -217,7 +217,7 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		String foreignMentorToken = auth.authToken(foreignMentorEmail, AuthFixture.MENTOR);
 
 		// Option A doctrine: mentorShipServiceI throws BadCredentialsException -> Spring maps to 401
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getId())
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", foreignMentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))

@@ -65,7 +65,7 @@ class TaskStudentSubmissionIdTest extends ProdChainIntegrationTestBase {
     }
 
     private JsonNode taskDetail(String email) throws Exception {
-        String json = mockMvc.perform(get("/api/v1/task/{taskId}/student", task.getId())
+        String json = mockMvc.perform(get("/api/v1/task/{taskId}/student", task.getPublicId())
                         .header("Authorization", auth.authToken(email, AuthFixture.STUDENT)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return mapper.readTree(json).path("apiResponse").path("data");

@@ -42,16 +42,4 @@ public class QuestionCreateDTO {
     @NotBlank(message = "Option D is required")
     @Size(max = 100)
     private String optionD;
-
-    public static class QuestionCreateDTOBuilder {
-        public QuestionCreateDTOBuilder quizId(Long id) {
-            this.quizId = id != null ? new UUID(0, id) : null;
-            return this;
-        }
-
-        public QuestionCreateDTOBuilder quizId(UUID id) {
-            this.quizId = id;
-            return this;
-        }
-    }
 }

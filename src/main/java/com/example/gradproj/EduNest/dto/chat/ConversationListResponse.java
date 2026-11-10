@@ -22,15 +22,4 @@ public class ConversationListResponse {
     private String otherUserProfileImageUrl;
     private String lastMessage;
     private LocalDateTime lastMessageTime;
-
-    public static class ConversationListResponseBuilder {
-        public ConversationListResponseBuilder conversationId(Long id) {
-            this.conversationId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public ConversationListResponseBuilder conversationId(UUID id) {
-            this.conversationId = id;
-            return this;
-        }
-    }
 }

@@ -119,11 +119,11 @@ class FreshDbEnrollmentRehearsalTest {
         Student student = auth.student("eb7-missing-rate-student@example.org");
         AuthFixture.MentorshipChain chain = auth.mentorship(
                 "eb7-missing-rate-mentor@example.org", Status.ACTIVE);
-        long mentorshipId = chain.mentorship().getId();
+        UUID mentorshipPublicId = chain.mentorship().getPublicId();
 
         assertThat(commissions.count()).isZero();
 
-        mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+        mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipPublicId)
                         .header("Authorization", auth.authToken(
                                 student.getEmail(), AuthFixture.STUDENT)))
                 .andExpect(status().isBadRequest())
@@ -152,7 +152,7 @@ class FreshDbEnrollmentRehearsalTest {
         commissions.saveAndFlush(Commission.builder().rate(10.0).build());
         assertThat(commissions.count()).isEqualTo(1);
 
-        mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorShip.getId())
+        mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorShip.getPublicId())
                         .header("Authorization", auth.authToken(
                                 student.getEmail(), AuthFixture.STUDENT)))
                 .andExpect(status().isOk())

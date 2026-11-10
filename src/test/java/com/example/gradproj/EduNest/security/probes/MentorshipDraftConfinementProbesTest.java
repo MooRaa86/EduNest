@@ -47,8 +47,8 @@ class MentorshipDraftConfinementProbesTest extends ProdChainIntegrationTestBase 
 	private static final String STUDENT = "eb22-student@example.org";
 	private static final String ADMIN = "eb22-admin@example.org";
 
-	private Long draftId;
-	private Long activeId;
+	private java.util.UUID draftId;
+	private java.util.UUID activeId;
 	private String draftTitle;
 	private String activeTitle;
 
@@ -56,10 +56,10 @@ class MentorshipDraftConfinementProbesTest extends ProdChainIntegrationTestBase 
 	void seed() throws Exception {
 		// owner mentor + their DRAFT and ACTIVE mentorships
 		var chain = auth.mentorship(OWNER, Status.DRAFT);
-		draftId = chain.mentorship().getId();
+		draftId = chain.mentorship().getPublicId();
 		draftTitle = chain.mentorship().getTitle(); // "Probe DRAFT <nano>" — unique
-		activeId = auth.mentorship(OWNER, Status.ACTIVE).mentorship().getId();
-		activeTitle = mentorships.findById(activeId).orElseThrow().getTitle();
+		activeId = auth.mentorship(OWNER, Status.ACTIVE).mentorship().getPublicId();
+		activeTitle = mentorships.findByPublicId(activeId).orElseThrow().getTitle();
 
 		auth.mentorship(MENTOR, Status.ACTIVE); // other mentor, no relation
 		auth.student(STUDENT);
@@ -154,7 +154,7 @@ class MentorshipDraftConfinementProbesTest extends ProdChainIntegrationTestBase 
 	void explore_activeOnly() throws Exception {
 		// unique-titled pair on the same mentor so the keyword matches only one
 		String suffix = String.valueOf(System.nanoTime());
-		var mentor = mentorships.findById(activeId).orElseThrow().getMentor();
+		var mentor = mentorships.findByPublicId(activeId).orElseThrow().getMentor();
 		MentorShip draftSearch = MentorShip.builder()
 				.title("eb22-draft-" + suffix).subtitle("probe").description("probe")
 				.category("backEnd").price(0.0).duration(1.0).status(Status.DRAFT).mentor(mentor).build();

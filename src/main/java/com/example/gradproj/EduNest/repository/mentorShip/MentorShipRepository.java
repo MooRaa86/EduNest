@@ -23,31 +23,10 @@ import java.util.UUID;
 @Repository
 public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     boolean existsByPublicId(UUID publicId);
-    @Query("SELECT m FROM MentorShip m WHERE m.publicId = :publicId")
-    Optional<MentorShip> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<MentorShip> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<MentorShip> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<MentorShip> findByPublicId(UUID publicId);
 
     @Query("SELECT m.id FROM MentorShip m WHERE m.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits()).map(MentorShip::getId);
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     @Query("SELECT m.publicId FROM MentorShip m WHERE m.id = :id")
     Optional<UUID> findPublicIdById(@Param("id") Long id);

@@ -161,7 +161,6 @@ public class ContactMessageService {
 
     private Long resolveMessageInternalId(UUID publicId) {
         return contactMessageRepository.findIdByPublicId(publicId)
-                .or(() -> contactMessageRepository.findById(publicId.getLeastSignificantBits()).map(ContactMessageEntity::getId))
                 .orElseThrow(() -> new globalLogicEx("Message not found"));
     }
 

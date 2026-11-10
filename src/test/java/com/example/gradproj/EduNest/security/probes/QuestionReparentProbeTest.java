@@ -61,10 +61,10 @@ class QuestionReparentProbeTest extends ProdChainIntegrationTestBase {
 				.status(com.example.gradproj.EduNest.enums.quiz.QuizStatus.DRAFT).build());
 
 		// mentor A calls the update; quizId points to mentor B's quiz → 403
-		mockMvc.perform(patch("/api/v1/question/{id}", question.getId())
+		mockMvc.perform(patch("/api/v1/question/{id}", question.getPublicId())
 						.header("Authorization", auth.authToken(chainA.mentor().getEmail(), AuthFixture.MENTOR))
 						.contentType("application/json")
-						.content("{\"quizId\":" + quizB.getId() + ",\"text\":\"g15 question\"," +
+						.content("{\"quizId\":\"" + quizB.getPublicId() + "\",\"text\":\"g15 question\"," +
 								"\"points\":1,\"correctAnswer\":\"A\",\"optionA\":\"a\"," +
 								"\"optionB\":\"b\",\"optionC\":\"c\",\"optionD\":\"d\"}"))
 				.andExpect(status().isForbidden());
@@ -96,10 +96,10 @@ class QuestionReparentProbeTest extends ProdChainIntegrationTestBase {
 				.description("g15b").durationMinutes(10)
 				.status(com.example.gradproj.EduNest.enums.quiz.QuizStatus.DRAFT).build());
 
-		mockMvc.perform(patch("/api/v1/question/{id}", question.getId())
+		mockMvc.perform(patch("/api/v1/question/{id}", question.getPublicId())
 						.header("Authorization", auth.authToken(chainA.mentor().getEmail(), AuthFixture.MENTOR))
 						.contentType("application/json")
-						.content("{\"quizId\":" + quizDst.getId() + ",\"text\":\"g15b question\"," +
+						.content("{\"quizId\":\"" + quizDst.getPublicId() + "\",\"text\":\"g15b question\"," +
 								"\"points\":1,\"correctAnswer\":\"A\",\"optionA\":\"a\"," +
 								"\"optionB\":\"b\",\"optionC\":\"c\",\"optionD\":\"d\"}"))
 				.andExpect(status().isOk());

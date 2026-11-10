@@ -61,8 +61,8 @@ public class SnapshotGridAttendancePolicy implements AttendancePolicy {
 
             attendanceReport.add(
                     AttendanceResponse.builder()
-                            .sessionId(session.getPublicId() != null ? session.getPublicId() : (session.getId() != null ? new UUID(0L, session.getId()) : null))
-                            .studentId(student.getPublicId() != null ? student.getPublicId() : (student.getId() != null ? new UUID(0L, student.getId()) : null))
+                            .sessionId(session.getPublicId())
+                            .studentId(student.getPublicId())
                             .attendancePercentage(attendancePercentage)
                             .status(status)
                             .build()

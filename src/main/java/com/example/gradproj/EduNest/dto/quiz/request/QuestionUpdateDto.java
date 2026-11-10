@@ -34,16 +34,4 @@ public class QuestionUpdateDto {
 
     @Size(max = 100)
     private String optionD;
-
-    public static class QuestionUpdateDtoBuilder {
-        public QuestionUpdateDtoBuilder quizId(Long id) {
-            this.quizId = id != null ? new UUID(0, id) : null;
-            return this;
-        }
-
-        public QuestionUpdateDtoBuilder quizId(UUID id) {
-            this.quizId = id;
-            return this;
-        }
-    }
 }

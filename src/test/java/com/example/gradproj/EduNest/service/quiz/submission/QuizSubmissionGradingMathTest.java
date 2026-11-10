@@ -27,6 +27,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -73,8 +75,14 @@ class QuizSubmissionGradingMathTest {
     // ------------------------------------------------------------------
 
 
+    private static final Map<Long, UUID> QUESTION_UUIDS = new ConcurrentHashMap<>();
+
+    private static UUID uuidFor(long id) {
+        return QUESTION_UUIDS.computeIfAbsent(id, k -> UUID.randomUUID());
+    }
+
     private QuizSubmissionServiceImpl.ScoreResult calculateScore(
-            List<StudentAnswerDTO> answers, Map<Long, Question> questions) throws Exception {
+            List<StudentAnswerDTO> answers, Map<UUID, Question> questions) throws Exception {
         Method m = QuizSubmissionServiceImpl.class
                 .getDeclaredMethod("calculateScore", List.class, Map.class);
         m.setAccessible(true);
@@ -84,11 +92,12 @@ class QuizSubmissionGradingMathTest {
     private static Question question(long id, AnswerChoices correct, int points) {
         Question q = Question.builder().correctAnswer(correct).points(points).build();
         q.setId(id);
+        q.setPublicId(uuidFor(id));
         return q;
     }
 
     private static StudentAnswerDTO answer(long questionId, String selected) {
-        return StudentAnswerDTO.builder().questionId(questionId).selectedAnswer(selected).build();
+        return StudentAnswerDTO.builder().questionId(uuidFor(questionId)).selectedAnswer(selected).build();
     }
 
     private Quiz quizWith(Question... questions) {
@@ -97,6 +106,7 @@ class QuizSubmissionGradingMathTest {
         Week week = Week.builder().id(10L).mentorship(mentorship).build();
         return Quiz.builder()
                 .id(1L)
+                .publicId(UUID.randomUUID())
                 .title("Java Basics Quiz")
                 .status(QuizStatus.PUBLISHED)
                 .week(week)
@@ -145,8 +155,8 @@ class QuizSubmissionGradingMathTest {
     void calculateScore_tableDocumentsTodayBehavior(
             String branch, List<StudentAnswerDTO> answers, List<Question> questions,
             double expectedScore, int expectedCorrect) throws Exception {
-        Map<Long, Question> questionMap = questions.stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = questions.stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         QuizSubmissionServiceImpl.ScoreResult result = calculateScore(answers, questionMap);
 
@@ -159,8 +169,8 @@ class QuizSubmissionGradingMathTest {
     void unknownQuestionId_isSkipped_notCounted() throws Exception {
         // Current behavior (calculateScore :310-311): unknown questionId -> `continue`.
         // The extra answer neither adds points nor breaks anything.
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         List<StudentAnswerDTO> answers = List.of(answer(1L, "A"), answer(999L, "A"));
 
@@ -176,8 +186,8 @@ class QuizSubmissionGradingMathTest {
         // Current behavior: no per-question dedupe; the same question answered twice
         // is counted twice (calculateScore :309-318 loops over the raw answer list).
         // Documented as it behaves today; P4-02/05 own any dedupe decision.
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         List<StudentAnswerDTO> answers = List.of(answer(1L, "A"), answer(1L, "A"));
 
@@ -191,8 +201,8 @@ class QuizSubmissionGradingMathTest {
     @DisplayName("Answer matching is CASE-SENSITIVE: 'a' != 'A' (current behavior)")
     void caseMismatch_isWrong() throws Exception {
         // Current behavior: String.equals (:314) — enum name "A" vs lowercase "a" fails.
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         QuizSubmissionServiceImpl.ScoreResult result =
                 calculateScore(List.of(answer(1L, "a")), questionMap);
@@ -205,8 +215,8 @@ class QuizSubmissionGradingMathTest {
     @DisplayName("Null selected answer -> NPE (current behavior; ties to SEL-07 family: missing @Valid on the submit path)")
     void nullSelectedAnswer_throwsNpe_today() {
         // Documented as it behaves today: no null-guard before .equals (:314).
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         // Arrays.asList (not List.of) — List.of rejects null elements.
         List<StudentAnswerDTO> answers = Arrays.asList(answer(1L, null));

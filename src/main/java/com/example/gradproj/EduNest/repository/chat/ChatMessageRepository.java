@@ -15,33 +15,12 @@ import org.springframework.data.repository.query.Param;
 public interface ChatMessageRepository
         extends JpaRepository<ChatMessage, Long> {
 
-    @Query("SELECT e FROM ChatMessage e WHERE e.publicId = :publicId")
-    Optional<ChatMessage> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<ChatMessage> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<ChatMessage> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<ChatMessage> findByPublicId(UUID publicId);
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);
 
     @Query("SELECT m.id FROM ChatMessage m WHERE m.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits()).map(ChatMessage::getId);
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     @Modifying
     @Query("""

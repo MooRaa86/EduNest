@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -310,7 +311,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 	@DisplayName("P1-21: authorized owner via /files/task-submissions/{id} → 200")
 	void typedRoute_ownerAuthorized() throws Exception {
 		String filePath = fixture("submissions", "typed-" + UNIQUE_SUFFIX + ".zip");
-		long id = seedSubmissionChain(STUDENT, MENTOR, filePath);
+		UUID id = seedSubmissionChain(STUDENT, MENTOR, filePath);
 
 		mockMvc.perform(get("/files/task-submissions/" + id)
 						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
@@ -322,7 +323,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 	@DisplayName("P1-21: the owning mentor is authorized via typed route → 200")
 	void typedRoute_mentorAuthorized() throws Exception {
 		String filePath = fixture("submissions", "typed-mentor-" + UNIQUE_SUFFIX + ".zip");
-		long id = seedSubmissionChain(STUDENT, MENTOR, filePath);
+		UUID id = seedSubmissionChain(STUDENT, MENTOR, filePath);
 
 		mockMvc.perform(get("/files/task-submissions/" + id)
 						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
@@ -333,7 +334,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 	@DisplayName("P1-21: stranger student via typed route → denied, file never served")
 	void typedRoute_strangerForbidden() throws Exception {
 		String filePath = fixture("submissions", "typed-stranger-" + UNIQUE_SUFFIX + ".zip");
-		long id = seedSubmissionChain(STUDENT, MENTOR, filePath);
+		UUID id = seedSubmissionChain(STUDENT, MENTOR, filePath);
 
 		// Ownership check denies the stranger with the unified sanitized envelope.
 		MvcResult result = mockMvc.perform(get("/files/task-submissions/" + id)
@@ -352,7 +353,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 	@DisplayName("P1-21: anonymous via typed route → 401")
 	void typedRoute_anonymousUnauthorized() throws Exception {
 		String filePath = fixture("submissions", "typed-anon-" + UNIQUE_SUFFIX + ".zip");
-		long id = seedSubmissionChain(STUDENT, MENTOR, filePath);
+		UUID id = seedSubmissionChain(STUDENT, MENTOR, filePath);
 
 		mockMvc.perform(get("/files/task-submissions/" + id))
 				.andExpect(status().isUnauthorized());
@@ -362,7 +363,7 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 	 * Seeds mentorship → week → task → submission with the fixture path as
 	 * uploadedFilePath relative to the isolated upload root.
 	 */
-	private long seedSubmissionChain(String studentEmail, String mentorEmail, String filePath) {
+	private UUID seedSubmissionChain(String studentEmail, String mentorEmail, String filePath) {
 		MentorShip ms = auth.mentorship(mentorEmail, com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE).mentorship();
 		Week week = weeks.saveAndFlush(Week.builder().mentorship(ms).title("EB-28 probe week").build());
 		Task task = tasks.saveAndFlush(Task.builder()
@@ -379,6 +380,6 @@ class UploadExposurePolicyProbeTest extends ProdChainIntegrationTestBase {
 				.uploadedFilePath(filePath)
 				.submittedAt(LocalDateTime.now())
 				.build());
-		return submission.getId();
+		return submission.getPublicId();
 	}
 }

@@ -20,23 +20,4 @@ public class AssignAdminBadgeRequest {
     private UUID badgeId;
 
     private String recognitionNote;
-
-    public static class AssignAdminBadgeRequestBuilder {
-        public AssignAdminBadgeRequestBuilder userId(Long id) {
-            this.userId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public AssignAdminBadgeRequestBuilder userId(UUID id) {
-            this.userId = id;
-            return this;
-        }
-        public AssignAdminBadgeRequestBuilder badgeId(Long id) {
-            this.badgeId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public AssignAdminBadgeRequestBuilder badgeId(UUID id) {
-            this.badgeId = id;
-            return this;
-        }
-    }
 }

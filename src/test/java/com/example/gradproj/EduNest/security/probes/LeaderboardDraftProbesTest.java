@@ -35,7 +35,7 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 				.student(auth.student(ENROLLED_STUDENT))
 				.mentorship(chain.mentorship()).totalPoints(42).build());
 
-		mockMvc.perform(get("/api/v1/student/mentorships/{mid}/leaderboard", chain.mentorship().getId())
+		mockMvc.perform(get("/api/v1/student/mentorships/{mid}/leaderboard", chain.mentorship().getPublicId())
 						.header("Authorization", auth.authToken(OUTSIDER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}
@@ -55,7 +55,7 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 				com.example.gradproj.EduNest.enums.mentorShip.Status.DRAFT);
 		Long mid = chain.mentorship().getId();
 
-		mockMvc.perform(get("/api/v1/mentorship/{id}", mid)
+		mockMvc.perform(get("/api/v1/mentorship/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", auth.authToken(OUTSIDER, AuthFixture.STUDENT)))
 				.andExpect(status().isNotFound());
 	}
@@ -73,7 +73,7 @@ class LeaderboardDraftProbesTest extends ProdChainIntegrationTestBase {
 		var chain = auth.mentorship("probe-draft-mentor2@example.org",
 				com.example.gradproj.EduNest.enums.mentorShip.Status.DRAFT);
 
-		mockMvc.perform(get("/api/v1/student/mentorships/{mid}/overview", chain.mentorship().getId()))
+		mockMvc.perform(get("/api/v1/student/mentorships/{mid}/overview", chain.mentorship().getPublicId()))
 				.andExpect(status().isNotFound());
 	}
 }

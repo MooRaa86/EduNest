@@ -135,7 +135,7 @@ public class HomePageService {
                     int progressPercentage = totalItems > 0 ? (int)((completedItems * 100) / totalItems) : 0;
 
                     return ContinueLearningDto.builder()
-                            .mentorshipId(mentorShipRepository.findPublicIdById(m.getMentorshipId()).orElseGet(() -> new UUID(0L, m.getMentorshipId())))
+                            .mentorshipId(mentorShipRepository.findPublicIdById(m.getMentorshipId()).orElse(null))
                             .title(m.getTitle())
                             .coverImageUrl(m.getCoverImageUrl())
                             .mentorName(m.getMentorName())

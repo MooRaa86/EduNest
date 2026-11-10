@@ -155,7 +155,6 @@ public class LiveSessionServiceImp implements LiveSessionService {
         }
 
         Week week = weekRepository.findByPublicId(createSessionDto.getWeekId())
-                .or(() -> weekRepository.findById(createSessionDto.getWeekId().getLeastSignificantBits()))
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
 
         String meetingUrl = null;
@@ -643,13 +642,11 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
     private Long resolveSessionInternalId(UUID publicId) {
         return liveSessionRepository.findIdByPublicId(publicId)
-                .or(() -> liveSessionRepository.findById(publicId.getLeastSignificantBits()).map(Session::getId))
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
     }
 
     private Long resolveMentorshipInternalId(UUID publicId) {
         return mentorShipRepository.findIdByPublicId(publicId)
-                .or(() -> mentorShipRepository.findById(publicId.getLeastSignificantBits()).map(m -> m.getId()))
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
     }
 
@@ -695,7 +692,6 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Long internalSessionId = resolveSessionInternalId(sessionId);
         List<Long> internalStudentIds = studentIds.stream()
                 .map(pubId -> studentRepository.findByPublicId(pubId)
-                        .or(() -> studentRepository.findById(pubId.getLeastSignificantBits()))
                         .map(Student::getId)
                         .orElseThrow(() -> new globalLogicEx("Student not found")))
                 .toList();
@@ -730,32 +726,14 @@ public class LiveSessionServiceImp implements LiveSessionService {
     }
 
     private boolean checkMentorOwnWeek(UUID weekId, String email) {
-        try {
-            if (securityService.isMentorOwnWeek(weekId, email)) return true;
-        } catch (Exception ignored) {}
-        try {
-            if (weekId != null && securityService.isMentorOwnWeek(weekId.getLeastSignificantBits(), email)) return true;
-        } catch (Exception ignored) {}
-        return false;
+        return securityService.isMentorOwnWeek(weekId, email);
     }
 
     private boolean checkMentorOwnLiveSession(UUID sessionId, String email) {
-        try {
-            if (checkMentorOwnLiveSession(sessionId, email)) return true;
-        } catch (Exception ignored) {}
-        try {
-            if (sessionId != null && securityService.isMentorOwnLiveSession(sessionId.getLeastSignificantBits(), email)) return true;
-        } catch (Exception ignored) {}
-        return false;
+        return securityService.isMentorOwnLiveSession(sessionId, email);
     }
 
     private boolean checkStudentEnrolledByLiveSessionId(String email, UUID sessionId) {
-        try {
-            if (checkStudentEnrolledByLiveSessionId(email, sessionId)) return true;
-        } catch (Exception ignored) {}
-        try {
-            if (sessionId != null && securityService.isStudentEnrolledByLiveSessionId(email, sessionId.getLeastSignificantBits())) return true;
-        } catch (Exception ignored) {}
-        return false;
+        return securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
     }
 }

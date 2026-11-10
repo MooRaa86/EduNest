@@ -19,23 +19,4 @@ public class ChatMessageResponse {
     String senderProfileImageUrl;
     UUID roomId;
     LocalDateTime time;
-
-    public static class ChatMessageResponseBuilder {
-        public ChatMessageResponseBuilder id(Long id) {
-            this.id = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public ChatMessageResponseBuilder id(UUID id) {
-            this.id = id;
-            return this;
-        }
-        public ChatMessageResponseBuilder roomId(Long id) {
-            this.roomId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public ChatMessageResponseBuilder roomId(UUID id) {
-            this.roomId = id;
-            return this;
-        }
-    }
 }

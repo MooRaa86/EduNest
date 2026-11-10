@@ -58,11 +58,12 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
     private static final String OTHER = "eb21-other@example.org", FOREIGN = "eb21-foreign@example.org";
     private static final String MENTOR = "eb21-mentor-other@example.org", ADMIN = "eb21-admin@example.org";
     private long mentorshipId, weekId, lectureId, taskId, projectId, draftTaskId, draftProjectId;
-    private java.util.UUID weekPublicId;
+    private java.util.UUID mentorshipPublicId, weekPublicId, lecturePublicId, taskPublicId, projectPublicId, draftTaskPublicId, draftProjectPublicId;
 
     @BeforeEach void seed() {
         var course = auth.mentorship(OWNER, Status.ACTIVE).mentorship();
         mentorshipId = course.getId();
+        mentorshipPublicId = course.getPublicId();
         var second = auth.mentorship(MENTOR, Status.ACTIVE).mentorship();
         auth.enroll(mentorshipId, STUDENT);
         auth.enroll(second.getId(), FOREIGN);
@@ -71,27 +72,45 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
         Week week = weeks.saveAndFlush(Week.builder().mentorship(course).title("eb21 week").build());
         weekId = week.getId();
         weekPublicId = week.getPublicId();
-        lectureId = lectures.saveAndFlush(Lecture.builder().week(week).title("eb21-secret").lectureUrl("https://example.org/secret").build()).getId();
-        taskId = task(week, TaskStatus.PUBLISHED);
-        draftTaskId = task(week, TaskStatus.DRAFT);
-        projectId = project(week, ProjectStatus.PUBLISHED);
-        draftProjectId = project(week, ProjectStatus.DRAFT);
+        Lecture lecture = lectures.saveAndFlush(Lecture.builder().week(week).title("eb21-secret").lectureUrl("https://example.org/secret").build());
+        lectureId = lecture.getId();
+        lecturePublicId = lecture.getPublicId();
+        Task tPub = taskEntity(week, TaskStatus.PUBLISHED);
+        taskId = tPub.getId();
+        taskPublicId = tPub.getPublicId();
+        Task tDraft = taskEntity(week, TaskStatus.DRAFT);
+        draftTaskId = tDraft.getId();
+        draftTaskPublicId = tDraft.getPublicId();
+        Project pPub = projectEntity(week, ProjectStatus.PUBLISHED);
+        projectId = pPub.getId();
+        projectPublicId = pPub.getPublicId();
+        Project pDraft = projectEntity(week, ProjectStatus.DRAFT);
+        draftProjectId = pDraft.getId();
+        draftProjectPublicId = pDraft.getPublicId();
     }
 
+    private Task taskEntity(Week week, TaskStatus state) {
+        return tasks.saveAndFlush(Task.builder().week(week).title("eb21-secret-" + state).description("eb21-confidential")
+                .points(10).passPoints(5).estimatedMinutes(30).dueAt(LocalDateTime.now().plusDays(1)).status(state).build());
+    }
     private long task(Week week, TaskStatus state) {
         return tasks.saveAndFlush(Task.builder().week(week).title("eb21-secret-" + state).description("eb21-confidential")
                 .points(10).passPoints(5).estimatedMinutes(30).dueAt(LocalDateTime.now().plusDays(1)).status(state).build()).getId();
+    }
+    private Project projectEntity(Week week, ProjectStatus state) {
+        return projects.saveAndFlush(Project.builder().week(week).title("eb21-secret-" + state).brief("eb21-confidential")
+                .goal("fixture").points(10).startAt(LocalDateTime.now()).endAt(LocalDateTime.now().plusDays(1)).status(state).build());
     }
     private long project(Week week, ProjectStatus state) {
         return projects.saveAndFlush(Project.builder().week(week).title("eb21-secret-" + state).brief("eb21-confidential")
                 .goal("fixture").points(10).startAt(LocalDateTime.now()).endAt(LocalDateTime.now().plusDays(1)).status(state).build()).getId();
     }
     private List<String> routes() {
-        return List.of("/lectures/" + lectureId, "/lectures/week/" + weekId, "/lectures/mentorship/" + mentorshipId,
-                "/api/v1/mentorship/" + mentorshipId + "/get-tasks", "/api/v1/task/" + taskId,
-                "/api/v1/task/filter/" + mentorshipId, "/api/v1/task/" + taskId + "/student",
-                "/api/v1/project/" + projectId, "/api/v1/project/filter/" + mentorshipId,
-                "/api/v1/project/" + projectId + "/student");
+        return List.of("/lectures/" + lecturePublicId, "/lectures/week/" + weekPublicId, "/lectures/mentorship/" + mentorshipPublicId,
+                "/api/v1/mentorship/" + mentorshipPublicId + "/get-tasks", "/api/v1/task/" + taskPublicId,
+                "/api/v1/task/filter/" + mentorshipPublicId, "/api/v1/task/" + taskPublicId + "/student",
+                "/api/v1/project/" + projectPublicId, "/api/v1/project/filter/" + mentorshipPublicId,
+                "/api/v1/project/" + projectPublicId + "/student");
     }
     @Test void fullRoleAndCrossCourseMatrix() throws Exception {
         for (String route : routes()) {
@@ -108,23 +127,24 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
         }
     }
     @Test void draftContentIsHiddenFromStudentsIncludingFilters() throws Exception {
-        for (String route : List.of("/api/v1/task/" + draftTaskId, "/api/v1/task/" + draftTaskId + "/student",
-                "/api/v1/project/" + draftProjectId, "/api/v1/project/" + draftProjectId + "/student")) {
+        for (String route : List.of("/api/v1/task/" + draftTaskPublicId, "/api/v1/task/" + draftTaskPublicId + "/student",
+                "/api/v1/project/" + draftProjectPublicId, "/api/v1/project/" + draftProjectPublicId + "/student")) {
             mockMvc.perform(get(route).header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT))).andExpect(status().isForbidden());
             mockMvc.perform(get(route).header("Authorization", auth.authToken(OWNER, AuthFixture.MENTOR))).andExpect(status().isOk());
         }
-        for (String route : List.of("/api/v1/mentorship/" + mentorshipId + "/get-tasks", "/api/v1/task/filter/" + mentorshipId,
-                "/api/v1/project/filter/" + mentorshipId)) {
+        for (String route : List.of("/api/v1/mentorship/" + mentorshipPublicId + "/get-tasks", "/api/v1/task/filter/" + mentorshipPublicId,
+                "/api/v1/project/filter/" + mentorshipPublicId)) {
             String body = mockMvc.perform(get(route).header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertThat(body).doesNotContain("eb21-secret-DRAFT").contains("eb21-secret-PUBLISHED");
         }
     }
     @Test void missingResourcesDenyWithoutDisclosure() throws Exception {
-        for (String route : List.of("/lectures/999999999", "/lectures/week/999999999", "/lectures/mentorship/999999999",
-                "/api/v1/mentorship/999999999/get-tasks", "/api/v1/task/999999999", "/api/v1/task/filter/999999999",
-                "/api/v1/task/999999999/student", "/api/v1/project/999999999", "/api/v1/project/filter/999999999",
-                "/api/v1/project/999999999/student")) {
+        String nonExistent = java.util.UUID.randomUUID().toString();
+        for (String route : List.of("/lectures/" + nonExistent, "/lectures/week/" + nonExistent, "/lectures/mentorship/" + nonExistent,
+                "/api/v1/mentorship/" + nonExistent + "/get-tasks", "/api/v1/task/" + nonExistent, "/api/v1/task/filter/" + nonExistent,
+                "/api/v1/task/" + nonExistent + "/student", "/api/v1/project/" + nonExistent, "/api/v1/project/filter/" + nonExistent,
+                "/api/v1/project/" + nonExistent + "/student")) {
             mockMvc.perform(get(route).header("Authorization", auth.authToken(OTHER, AuthFixture.STUDENT))).andExpect(status().isForbidden());
         }
     }
@@ -155,9 +175,9 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
 
     @Test void studentCurriculumProductionChainAndResponseContract() throws Exception {
         String token = auth.authToken(STUDENT, AuthFixture.STUDENT);
-        for (String route : List.of("/api/v1/student/week/" + mentorshipId + "/weeks",
-                "/api/v1/student/week/" + mentorshipId + "/weeks-with-contents",
-                "/api/v1/student/week/" + weekId + "/contents")) {
+        for (String route : List.of("/api/v1/student/week/" + mentorshipPublicId + "/weeks",
+                "/api/v1/student/week/" + mentorshipPublicId + "/weeks-with-contents",
+                "/api/v1/student/week/" + weekPublicId + "/contents")) {
             mockMvc.perform(get(route)).andExpect(status().isUnauthorized());
             for (String email : List.of(OTHER, FOREIGN)) {
                 mockMvc.perform(get(route).header("Authorization", auth.authToken(email, AuthFixture.STUDENT)))
@@ -206,7 +226,7 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
     @Test void missingWeekContentsReturnsForbiddenNotBadRequest() throws Exception {
         // Student is enrolled here on purpose: the 403 must be caused by the
         // missing week itself, not by any enrollment/identity outcome.
-        var response = mockMvc.perform(get("/api/v1/student/week/999999999/contents")
+        var response = mockMvc.perform(get("/api/v1/student/week/" + java.util.UUID.randomUUID() + "/contents")
                         .header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
                 .andExpect(status().isForbidden()).andReturn().getResponse();
         assertThat((String) com.jayway.jsonpath.JsonPath.read(response.getContentAsString(), "$.errorCode"))
@@ -221,7 +241,7 @@ class ContentReadProbesTest extends ProdChainIntegrationTestBase {
         student.setEnabled(false);
         students.saveAndFlush(student);
         try {
-            mockMvc.perform(get("/api/v1/student/week/" + mentorshipId + "/weeks-with-contents")
+            mockMvc.perform(get("/api/v1/student/week/" + mentorshipPublicId + "/weeks-with-contents")
                     .header("Authorization", token)).andExpect(status().isUnauthorized());
         } finally {
             student.setEnabled(true);

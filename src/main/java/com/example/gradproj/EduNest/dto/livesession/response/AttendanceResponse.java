@@ -11,23 +11,4 @@ public class AttendanceResponse {
     private UUID studentId;
     private double attendancePercentage;
     private String status;
-
-    public static class AttendanceResponseBuilder {
-        public AttendanceResponseBuilder sessionId(Long id) {
-            this.sessionId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public AttendanceResponseBuilder sessionId(UUID id) {
-            this.sessionId = id;
-            return this;
-        }
-        public AttendanceResponseBuilder studentId(Long id) {
-            this.studentId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public AttendanceResponseBuilder studentId(UUID id) {
-            this.studentId = id;
-            return this;
-        }
-    }
 }

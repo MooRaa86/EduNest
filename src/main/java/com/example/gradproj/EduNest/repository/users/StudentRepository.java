@@ -13,31 +13,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface StudentRepository extends JpaRepository<Student, Long> {
-    @Query("SELECT e FROM Student e WHERE e.publicId = :publicId")
-    Optional<Student> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Student> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Student> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<Student> findByPublicId(UUID publicId);
 
     @Query("select s.id from Student s where s.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return Optional.of(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     @Query("SELECT s FROM Student s LEFT JOIN FETCH s.socialMediaLinks WHERE s.publicId = :publicId")
     Optional<Student> findStudentWithSocialMediaByPublicId(@Param("publicId") UUID publicId);

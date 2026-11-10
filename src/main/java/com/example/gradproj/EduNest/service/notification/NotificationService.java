@@ -334,22 +334,14 @@ public class NotificationService {
         if(!securityService.isUserOwnNotification(relationPublicId, email))
             throw new AccessDeniedException("You are not the owner of this notification");
 
-        if (relationPublicId != null && relationPublicId.getMostSignificantBits() == 0L) {
-            userNotificationRepo.markOneAsRead(relationPublicId.getLeastSignificantBits());
-        } else {
-            userNotificationRepo.markOneAsReadByPublicId(relationPublicId);
-        }
+        userNotificationRepo.markOneAsReadByPublicId(relationPublicId);
     }
 
     public void deleteNotification(UUID relationPublicId, String email){
         if(!securityService.isUserOwnNotification(relationPublicId, email))
             throw new AccessDeniedException("You are not the owner of this notification");
 
-        if (relationPublicId != null && relationPublicId.getMostSignificantBits() == 0L) {
-            userNotificationRepo.deleteById(relationPublicId.getLeastSignificantBits());
-        } else {
-            userNotificationRepo.deleteByPublicId(relationPublicId);
-        }
+        userNotificationRepo.deleteByPublicId(relationPublicId);
     }
 
     public void deleteAdminNotification(UUID id){

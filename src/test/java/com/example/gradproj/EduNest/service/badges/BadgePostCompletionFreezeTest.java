@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -49,6 +50,7 @@ class BadgePostCompletionFreezeTest {
     private static final Long BADGE_ID = 20L;
     private static final Long MENTORSHIP_ID = 100L;
     private static final Long STUDENT_ID = 300L;
+    private static final UUID STUDENT_PUBLIC_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
 
     @BeforeEach
     void setUp() {
@@ -103,7 +105,7 @@ class BadgePostCompletionFreezeTest {
         when(mentorShipRepository.findForUpdateById(MENTORSHIP_ID)).thenReturn(Optional.of(completedMentorship));
 
         AwardBadgeRequest req = new AwardBadgeRequest();
-        req.setStudentId(new java.util.UUID(0L, STUDENT_ID));
+        req.setStudentId(STUDENT_PUBLIC_ID);
         req.setNote("Great performance!");
 
         assertThatThrownBy(() -> badgeAwardService.awardBadge(BADGE_ID, req))
@@ -125,17 +127,18 @@ class BadgePostCompletionFreezeTest {
                 .title("Spring Boot Mastery")
                 .build();
         Badge badge = Badge.builder().id(BADGE_ID).mentorship(activeMentorship).title("Top Solver").points(50).build();
-        Student student = Student.builder().id(STUDENT_ID).email("student@test.org").firstName("Ali").lastName("Hassan").build();
+        Student student = Student.builder().id(STUDENT_ID).publicId(STUDENT_PUBLIC_ID).email("student@test.org").firstName("Ali").lastName("Hassan").build();
 
         when(badgeRepository.findById(BADGE_ID)).thenReturn(Optional.of(badge));
         when(badgeRepository.findForUpdateById(BADGE_ID)).thenReturn(Optional.of(badge));
         when(mentorShipRepository.findForUpdateById(MENTORSHIP_ID)).thenReturn(Optional.of(activeMentorship));
         when(studentRepository.findById(STUDENT_ID)).thenReturn(Optional.of(student));
+        when(studentRepository.findByPublicId(STUDENT_PUBLIC_ID)).thenReturn(Optional.of(student));
         when(enrollmentRepository.existsByMentorShip_IdAndStudent_Id(MENTORSHIP_ID, STUDENT_ID)).thenReturn(true);
         when(badgeAwardRepository.existsByBadge_IdAndStudent_Id(BADGE_ID, STUDENT_ID)).thenReturn(false);
 
         AwardBadgeRequest req = new AwardBadgeRequest();
-        req.setStudentId(new java.util.UUID(0L, STUDENT_ID));
+        req.setStudentId(STUDENT_PUBLIC_ID);
         req.setNote("Great performance!");
 
         assertThatCode(() -> badgeAwardService.awardBadge(BADGE_ID, req)).doesNotThrowAnyException();

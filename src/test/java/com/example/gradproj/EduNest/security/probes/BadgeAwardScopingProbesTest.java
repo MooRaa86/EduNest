@@ -49,8 +49,8 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	private static final String ADMIN = "eb26-admin@example.org";
 	private static final String OTHER_MENTOR = "eb26-other-mentor@example.org";
 
-	private Long studentRowId;
-	private Long badgeId;
+	private java.util.UUID studentPublicId;
+	private java.util.UUID badgePublicId;
 	private String awardNote;
 
 	@BeforeEach
@@ -61,12 +61,12 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 		auth.admin(ADMIN);
 		auth.mentor(OTHER_MENTOR); // a mentor with NO tie to this student
 
-		studentRowId = studentRepo.findByEmail(ENROLLED).orElseThrow().getId();
+		studentPublicId = studentRepo.findByEmail(ENROLLED).orElseThrow().getPublicId();
 
 		Badge badge = badges.saveAndFlush(Badge.builder()
 				.mentorship(chain.mentorship()).title("eb26 badge")
 				.category(BadgeCategory.ACHIEVEMENT).description("eb26").points(50).build());
-		badgeId = badge.getId();
+		badgePublicId = badge.getPublicId();
 		awardNote = "eb26-award-note-" + System.nanoTime();
 		awardRepo.saveAndFlush(BadgeAward.builder()
 				.badge(badge)
@@ -79,14 +79,14 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB26/[1] anonymous → 401 (route is chain-authenticated)")
 	void anonymous_unauthorized() throws Exception {
-		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentRowId))
+		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentPublicId))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	@DisplayName("EB26/[2] the student themself → 200 with their own award")
 	void selfRead_ok() throws Exception {
-		var result = mockMvc.perform(get("/api/v1/badge-awards/student/" + studentRowId)
+		var result = mockMvc.perform(get("/api/v1/badge-awards/student/" + studentPublicId)
 						.header("Authorization", auth.authToken(ENROLLED, AuthFixture.STUDENT)))
 				.andExpect(status().isOk()).andReturn();
 		String body = result.getResponse().getContentAsString();
@@ -97,7 +97,7 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB26/[3] a DIFFERENT student (id enumeration) → 403")
 	void strangerStudent_forbidden() throws Exception {
-		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentRowId)
+		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentPublicId)
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}
@@ -105,7 +105,7 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB26/[4] mentor of one of the student's enrollments → 200")
 	void mentorOfEnrollment_ok() throws Exception {
-		var result = mockMvc.perform(get("/api/v1/badge-awards/student/" + studentRowId)
+		var result = mockMvc.perform(get("/api/v1/badge-awards/student/" + studentPublicId)
 						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
 				.andExpect(status().isOk()).andReturn();
 		String body = result.getResponse().getContentAsString();
@@ -115,7 +115,7 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB26/[5] mentor with NO enrollment tie to the student → 403")
 	void unlinkedMentor_forbidden() throws Exception {
-		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentRowId)
+		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentPublicId)
 						.header("Authorization", auth.authToken(OTHER_MENTOR, AuthFixture.MENTOR)))
 				.andExpect(status().isForbidden());
 	}
@@ -123,7 +123,7 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB26/[6] ADMIN → 200")
 	void admin_ok() throws Exception {
-		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentRowId)
+		mockMvc.perform(get("/api/v1/badge-awards/student/" + studentPublicId)
 						.header("Authorization", auth.authToken(ADMIN, AuthFixture.ADMIN)))
 				.andExpect(status().isOk());
 	}
@@ -131,7 +131,7 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB26/[7] nonexistent student id → 403 (no existence oracle)")
 	void nonexistentId_forbidden() throws Exception {
-		mockMvc.perform(get("/api/v1/badge-awards/student/999999999")
+		mockMvc.perform(get("/api/v1/badge-awards/student/" + java.util.UUID.randomUUID())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}
@@ -140,7 +140,7 @@ class BadgeAwardScopingProbesTest extends ProdChainIntegrationTestBase {
 	@DisplayName("EB26/[8] regression: owner-only award reads stay confined (stranger → 403)")
 	void ownerOnlyReads_stayConfined() throws Exception {
 		// a STUDENT attacker never passes getCurrentMentor() regardless of id
-		mockMvc.perform(get("/api/v1/badge-awards/badge/" + badgeId)
+		mockMvc.perform(get("/api/v1/badge-awards/badge/" + badgePublicId)
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}

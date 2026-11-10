@@ -45,7 +45,6 @@ public class QuestionServiceImp implements QuestionService {
     public QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO) {
         String email = securityService.getCurrentUserEmail();
         Quiz quiz = quizRepository.findByPublicId(questionCreateDTO.getQuizId())
-                .or(() -> quizRepository.findById(questionCreateDTO.getQuizId().getLeastSignificantBits()))
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         if (!securityService.isMentorOwnQuiz(quiz.getId(), email)) {
@@ -150,7 +149,6 @@ public class QuestionServiceImp implements QuestionService {
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
 
         Quiz targetQuiz = quizRepository.findByPublicId(dto.getQuizId())
-                .or(() -> quizRepository.findById(dto.getQuizId().getLeastSignificantBits()))
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         // P1-19 / EB-26 (G15/QZ-06) — the TARGET quiz must also be the

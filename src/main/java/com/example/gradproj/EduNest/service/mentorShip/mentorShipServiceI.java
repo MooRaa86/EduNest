@@ -625,12 +625,6 @@ public class mentorShipServiceI implements mentorShipService{
     }
     private Long resolveMentorshipId(UUID publicId) {
         return MentorShipRepository.findIdByPublicId(publicId)
-                .or(() -> {
-                    if (publicId != null && publicId.getMostSignificantBits() == 0L) {
-                        return MentorShipRepository.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId);
-                    }
-                    return Optional.empty();
-                })
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + publicId));
     }
 

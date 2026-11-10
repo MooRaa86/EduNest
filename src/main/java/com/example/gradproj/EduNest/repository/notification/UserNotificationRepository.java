@@ -13,33 +13,12 @@ import java.util.UUID;
 public interface UserNotificationRepository
         extends JpaRepository<UserNotification, Long> {
 
-    @Query("SELECT e FROM UserNotification e WHERE e.publicId = :publicId")
-    Optional<UserNotification> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<UserNotification> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<UserNotification> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<UserNotification> findByPublicId(UUID publicId);
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);
 
     @Query("SELECT u.id FROM UserNotification u WHERE u.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits()).map(UserNotification::getId);
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     @Modifying
     @Query("""

@@ -12,31 +12,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface LectureRepository extends JpaRepository<Lecture, Long> {
-    @Query("SELECT e FROM Lecture e WHERE e.publicId = :publicId")
-    Optional<Lecture> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Lecture> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Lecture> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<Lecture> findByPublicId(UUID publicId);
 
     @Query("SELECT l.id FROM Lecture l WHERE l.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits()).map(Lecture::getId);
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);

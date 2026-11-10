@@ -198,13 +198,11 @@ public class ChatRoomService {
 
     public Long resolveRoomInternalId(UUID publicId) {
         return roomRepo.findIdByPublicId(publicId)
-                .or(() -> roomRepo.findById(publicId.getLeastSignificantBits()).map(ChatRoom::getId))
                 .orElseThrow(() -> new UsernameNotFoundException("Room not found by id: " + publicId));
     }
 
     private Long resolveMentorshipInternalId(UUID publicId) {
         return mentorshipRepo.findIdByPublicId(publicId)
-                .or(() -> (publicId != null && publicId.getMostSignificantBits() == 0L) ? mentorshipRepo.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId) : java.util.Optional.empty())
                 .orElse(-1L);
     }
 

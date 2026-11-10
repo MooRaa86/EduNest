@@ -21,16 +21,4 @@ public class StudentAnswerDTO {
     @NotBlank(message = "Answer cannot be blank")
     @Size(max = 100)
     private String selectedAnswer;
-
-    public static class StudentAnswerDTOBuilder {
-        public StudentAnswerDTOBuilder questionId(Long id) {
-            this.questionId = id != null ? new UUID(0, id) : null;
-            return this;
-        }
-
-        public StudentAnswerDTOBuilder questionId(UUID id) {
-            this.questionId = id;
-            return this;
-        }
-    }
 }

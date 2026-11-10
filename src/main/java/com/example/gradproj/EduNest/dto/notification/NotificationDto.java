@@ -16,16 +16,4 @@ public class NotificationDto {
     boolean isRead;
     NotificationType type;
     LocalDateTime time;
-
-    public static class NotificationDtoBuilder {
-        public NotificationDtoBuilder id(Long id) {
-            this.id = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public NotificationDtoBuilder id(UUID id) {
-            this.id = id;
-            return this;
-        }
-    }
-
 }

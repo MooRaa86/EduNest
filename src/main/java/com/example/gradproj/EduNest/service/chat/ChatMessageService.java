@@ -131,11 +131,12 @@ public class ChatMessageService {
                         pageable
                 );
 
+        UUID roomPublicId = roomRepo.findById(roomId).map(com.example.gradproj.EduNest.entity.chat.ChatRoom::getPublicId).orElse(null);
         return messages.stream()
                 .map(m -> ChatMessageResponse.builder()
                         .id(m.getMessageId())
                         .message(m.getContent())
-                        .roomId(roomId)
+                        .roomId(roomPublicId)
                         .time(m.getCreatedAt())
                         .senderName(m.getSenderName())
                         .senderEmail(m.getSenderEmail())
@@ -233,13 +234,11 @@ public class ChatMessageService {
 
     private Long resolveRoomInternalId(UUID publicId) {
         return roomRepo.findIdByPublicId(publicId)
-                .or(() -> roomRepo.findById(publicId.getLeastSignificantBits()).map(ChatRoom::getId))
                 .orElseThrow(() -> new globalLogicEx("Room not found with this id"));
     }
 
     private Long resolveMessageInternalId(UUID publicId) {
         return messageRepo.findIdByPublicId(publicId)
-                .or(() -> messageRepo.findById(publicId.getLeastSignificantBits()).map(ChatMessage::getId))
                 .orElseThrow(() -> new globalLogicEx("Message not found"));
     }
 

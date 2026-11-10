@@ -304,7 +304,6 @@ public class ConversationService {
 
     private Long resolveConversationInternalId(UUID publicId) {
         return conversationRepo.findIdByPublicId(publicId)
-                .or(() -> conversationRepo.findById(publicId.getLeastSignificantBits()).map(Conversation::getId))
                 .orElseThrow(() -> new globalLogicEx("Conversation not found"));
     }
 
@@ -316,7 +315,6 @@ public class ConversationService {
             boolean isAdmin
     ) {
         Conversation conversation = conversationRepo.findByPublicId(conversationId)
-                .or(() -> conversationRepo.findById(conversationId.getLeastSignificantBits()))
                 .orElse(null);
         if (conversation == null) {
             if (isAdmin) {

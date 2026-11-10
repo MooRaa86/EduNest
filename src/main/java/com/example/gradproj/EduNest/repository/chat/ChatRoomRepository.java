@@ -13,33 +13,12 @@ import java.util.UUID;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
-    @Query("SELECT e FROM ChatRoom e WHERE e.publicId = :publicId")
-    Optional<ChatRoom> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<ChatRoom> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<ChatRoom> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<ChatRoom> findByPublicId(UUID publicId);
     boolean existsByPublicId(UUID publicId);
     void deleteByPublicId(UUID publicId);
 
     @Query("SELECT cr.id FROM ChatRoom cr WHERE cr.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits()).map(ChatRoom::getId);
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     @Query("""
     SELECT COUNT(cr) > 0

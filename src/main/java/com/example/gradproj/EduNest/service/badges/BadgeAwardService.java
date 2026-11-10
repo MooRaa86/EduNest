@@ -89,7 +89,6 @@ public class BadgeAwardService {
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
 
         Student student = studentRepository.findByPublicId(req.getStudentId())
-                .or(() -> studentRepository.findById(req.getStudentId().getLeastSignificantBits()))
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
         if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(badge.getMentorship().getId(), student.getId()))
@@ -184,19 +183,16 @@ public class BadgeAwardService {
 
     private Long resolveBadgeInternalId(UUID publicId) {
         return badgeRepository.findIdByPublicId(publicId)
-                .or(() -> badgeRepository.findById(publicId.getLeastSignificantBits()).map(Badge::getId))
                 .orElseThrow(() -> new globalLogicEx("Badge not found"));
     }
 
     private Long resolveMentorshipInternalId(UUID publicId) {
         return mentorShipRepository.findIdByPublicId(publicId)
-                .or(() -> mentorShipRepository.findById(publicId.getLeastSignificantBits()).map(MentorShip::getId))
                 .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
     }
 
     private Long resolveStudentInternalId(UUID publicId) {
         return studentRepository.findIdByPublicId(publicId)
-                .or(() -> studentRepository.findById(publicId.getLeastSignificantBits()).map(Student::getId))
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
     }
 
@@ -211,7 +207,8 @@ public class BadgeAwardService {
 
     @Transactional(readOnly = true)
     public List<BadgeAwardResponse> getAwardsByStudent(UUID studentId) {
-        return getAwardsByStudent(resolveStudentInternalId(studentId));
+        Long internalId = studentRepository.findIdByPublicId(studentId).orElse(-1L);
+        return getAwardsByStudent(internalId);
     }
 
     @Transactional(readOnly = true)

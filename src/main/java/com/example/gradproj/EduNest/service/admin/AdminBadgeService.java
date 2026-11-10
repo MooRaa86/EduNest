@@ -214,19 +214,16 @@ public class AdminBadgeService {
 
     private Long resolveUserInternalId(UUID publicId) {
         return userRepository.findIdByPublicId(publicId)
-                .or(() -> userRepository.findById(publicId.getLeastSignificantBits()).map(UserEntity::getId))
                 .orElseThrow(() -> new globalLogicEx("User not found"));
     }
 
     private Long resolveAdminBadgeInternalId(UUID publicId) {
         return adminBadgeRepository.findIdByPublicId(publicId)
-                .or(() -> adminBadgeRepository.findById(publicId.getLeastSignificantBits()).map(AdminBadge::getId))
                 .orElseThrow(() -> new globalLogicEx("Admin badge not found"));
     }
 
     private Long resolveUserAdminBadgeInternalId(UUID publicId) {
         return userAdminBadgeRepository.findIdByPublicId(publicId)
-                .or(() -> userAdminBadgeRepository.findById(publicId.getLeastSignificantBits()).map(UserAdminBadge::getId))
                 .orElseThrow(() -> new globalLogicEx("User admin badge not found"));
     }
 

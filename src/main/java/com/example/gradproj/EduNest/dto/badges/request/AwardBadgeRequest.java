@@ -18,19 +18,4 @@ public class AwardBadgeRequest {
     private UUID studentId;
 
     private String note;
-
-    public static class AwardBadgeRequestBuilder {
-        public AwardBadgeRequestBuilder studentId(Long id) {
-            this.studentId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public AwardBadgeRequestBuilder studentId(UUID id) {
-            this.studentId = id;
-            return this;
-        }
-    }
-
-    public void setStudentId(UUID id) {
-        this.studentId = id;
-    }
 }

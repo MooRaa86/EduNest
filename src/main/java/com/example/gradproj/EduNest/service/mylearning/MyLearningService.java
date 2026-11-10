@@ -31,7 +31,7 @@ public class MyLearningService {
             int progress = totalItems > 0 ? (int) ((submittedItems * 100) / totalItems) : 0;
 
             UUID publicMentorshipId = mentorShipRepository.findPublicIdById(m.getMentorshipId())
-                    .orElseGet(() -> new UUID(0L, m.getMentorshipId()));
+                    .orElse(null);
 
             return EnrolledMentorshipDto.builder()
                     .mentorshipId(publicMentorshipId)

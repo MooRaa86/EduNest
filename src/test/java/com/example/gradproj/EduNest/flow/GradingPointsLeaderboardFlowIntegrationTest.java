@@ -103,7 +103,7 @@ public class GradingPointsLeaderboardFlowIntegrationTest extends ProdChainIntegr
 		String mentorToken = auth.authToken(mentorEmail, AuthFixture.MENTOR);
 
 		// Step 1: Student submits task solution with external URL
-		mockMvc.perform(multipart("/api/v1/task-submission/{taskId}", task.getId())
+		mockMvc.perform(multipart("/api/v1/task-submission/{taskId}", task.getPublicId())
 						.param("fileUrl", "https://github.com/example/edunest-solution")
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
@@ -116,7 +116,7 @@ public class GradingPointsLeaderboardFlowIntegrationTest extends ProdChainIntegr
 		assertThat(sub.getFileUrl()).isEqualTo("https://github.com/example/edunest-solution");
 
 		// Step 2: Mentor grades submission (awards 25 out of 30 points)
-		mockMvc.perform(post("/api/v1/task-submission/{submissionId}/grade", sub.getId())
+		mockMvc.perform(post("/api/v1/task-submission/{submissionId}/grade", sub.getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"score\":25,\"feedback\":\"Excellent error handling!\"}"))
@@ -130,7 +130,7 @@ public class GradingPointsLeaderboardFlowIntegrationTest extends ProdChainIntegr
 		assertThat(tp.getTotalPoints()).isEqualTo(25);
 
 		// Step 4: Assert observable effect on Leaderboard: student is ranked #1 with 25 points
-		mockMvc.perform(get("/api/v1/student/mentorships/{mentorshipId}/leaderboard", mentorshipId)
+		mockMvc.perform(get("/api/v1/student/mentorships/{mentorshipId}/leaderboard", chain.mentorship().getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.leaderboard.userRank").value(1))
@@ -168,7 +168,7 @@ public class GradingPointsLeaderboardFlowIntegrationTest extends ProdChainIntegr
 
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
-		mockMvc.perform(multipart("/api/v1/task-submission/{taskId}", task.getId())
+		mockMvc.perform(multipart("/api/v1/task-submission/{taskId}", task.getPublicId())
 						.param("fileUrl", "https://github.com/example/unauthorized")
 						.header("Authorization", studentToken))
 				.andExpect(status().isBadRequest())
@@ -202,7 +202,7 @@ public class GradingPointsLeaderboardFlowIntegrationTest extends ProdChainIntegr
 
 		String foreignMentorToken = auth.authToken(foreignMentorEmail, AuthFixture.MENTOR);
 
-		mockMvc.perform(post("/api/v1/task-submission/{submissionId}/grade", sub.getId())
+		mockMvc.perform(post("/api/v1/task-submission/{submissionId}/grade", sub.getPublicId())
 						.header("Authorization", foreignMentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"score\":15,\"feedback\":\"Attempt by foreign mentor\"}"))

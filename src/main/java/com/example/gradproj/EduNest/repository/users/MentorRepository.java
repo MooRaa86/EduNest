@@ -18,31 +18,10 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
     Optional<Mentor> findByEmail(String email);
 
     boolean existsByPublicId(UUID publicId);
-    @Query("SELECT e FROM Mentor e WHERE e.publicId = :publicId")
-    Optional<Mentor> findByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Mentor> findByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Mentor> entity = findByPublicIdDirect(publicId);
-        if (entity.isPresent()) return entity;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return findById(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<Mentor> findByPublicId(UUID publicId);
 
     @Query("select m.id from Mentor m where m.publicId = :publicId")
-    Optional<Long> findIdByPublicIdDirect(@Param("publicId") UUID publicId);
-
-    default Optional<Long> findIdByPublicId(UUID publicId) {
-        if (publicId == null) return Optional.empty();
-        Optional<Long> id = findIdByPublicIdDirect(publicId);
-        if (id.isPresent()) return id;
-        if (publicId.getMostSignificantBits() == 0L) {
-            return Optional.of(publicId.getLeastSignificantBits());
-        }
-        return Optional.empty();
-    }
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     @Query("SELECT m FROM Mentor m LEFT JOIN FETCH m.socialMediaLinks WHERE m.publicId = :publicId")
     Optional<Mentor> findMentorWithSocialMediaByPublicId(@Param("publicId") UUID publicId);

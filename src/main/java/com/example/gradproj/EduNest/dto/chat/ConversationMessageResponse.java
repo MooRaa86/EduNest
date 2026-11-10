@@ -25,31 +25,4 @@ public class ConversationMessageResponse {
     private String recipientEmail;
     private String content;
     private LocalDateTime sentAt;
-
-    public static class ConversationMessageResponseBuilder {
-        public ConversationMessageResponseBuilder conversationId(Long id) {
-            this.conversationId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public ConversationMessageResponseBuilder conversationId(UUID id) {
-            this.conversationId = id;
-            return this;
-        }
-        public ConversationMessageResponseBuilder senderId(Long id) {
-            this.senderId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public ConversationMessageResponseBuilder senderId(UUID id) {
-            this.senderId = id;
-            return this;
-        }
-        public ConversationMessageResponseBuilder recipientId(Long id) {
-            this.recipientId = id != null ? new UUID(0L, id) : null;
-            return this;
-        }
-        public ConversationMessageResponseBuilder recipientId(UUID id) {
-            this.recipientId = id;
-            return this;
-        }
-    }
 }

@@ -126,7 +126,7 @@ class FileNotifyBadgeProbesTest extends ProdChainIntegrationTestBase {
 		auth.student(STRANGER); // token-holder must exist in DB (validator checks users table)
 		var victim = auth.student("probe-badge-victim@example.org");
 
-		mockMvc.perform(get("/api/v1/badge-awards/student/{studentId}", victim.getId())
+		mockMvc.perform(get("/api/v1/badge-awards/student/{studentId}", victim.getPublicId())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}
