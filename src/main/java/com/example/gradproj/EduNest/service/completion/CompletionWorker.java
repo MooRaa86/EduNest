@@ -15,7 +15,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,9 +32,7 @@ public class CompletionWorker {
     record Claim(long id, UUID token, long generation) { }
     record Job(long id, long mentorshipId, String actor, String title, String mentorName, long cohort,
                String stage) { }
-    record Student(long id, String email, Long rank) { }
     record AdminPush(String email, AdminNotificationResponse payload) { }
-    record Admin(long id, String email) { }
     record UserPush(long id, String email, NotificationDto payload) { }
 
     public CompletionWorker(JdbcTemplate jdbc, SimpMessagingTemplate messaging, PlatformTransactionManager manager,
@@ -121,49 +118,36 @@ public class CompletionWorker {
     }
 
     private void issue(Job job) {
-        long cursor = 0, count = 0;
         LocalDateTime issuedAt = LocalDateTime.now();
-        while (true) {
-            List<Student> page = jdbc.query("""
-                SELECT student_id, recipient_email, student_rank FROM mentorship_completion_snapshot
-                WHERE job_id=? AND student_rank > ? ORDER BY student_rank LIMIT ?
-                """, (rs, n) -> new Student(rs.getLong(1), rs.getString(2), rs.getLong(3)), job.id(), cursor, batchSize);
-            if (page.isEmpty()) break;
-            for (Student student : page) {
-                int inserted = jdbc.update("""
-                    INSERT INTO certificates (student_id, mentorship_id, student_rank, points_at_issuance,
-                      cohort_size_at_issuance, issued_at, created_at, updated_at, created_by, updated_by, public_id)
-                    SELECT student_id, ?, student_rank, points_at_completion, cohort_size, ?, ?, ?, ?, ?, ?
-                    FROM mentorship_completion_snapshot WHERE job_id=? AND student_id=?
-                    """, job.mentorshipId(), issuedAt, issuedAt, issuedAt, job.actor(), job.actor(), UUID.randomUUID(),
-                        job.id(), student.id());
-                if (inserted != 1) throw new IllegalStateException("Missing completion snapshot row");
-                count++;
-            }
-            cursor = page.get(page.size() - 1).rank();
-        }
+        int count = jdbc.update("""
+            INSERT INTO certificates (student_id, mentorship_id, student_rank, points_at_issuance,
+              cohort_size_at_issuance, issued_at, created_at, updated_at, created_by, updated_by, public_id)
+            SELECT student_id, ?, student_rank, points_at_completion, cohort_size, ?, ?, ?, ?, ?, gen_random_uuid()
+            FROM mentorship_completion_snapshot WHERE job_id=? AND student_rank IS NOT NULL
+            ORDER BY student_rank
+            """, job.mentorshipId(), issuedAt, issuedAt, issuedAt, job.actor(), job.actor(), job.id());
         if (count != job.cohort()) throw new IllegalStateException("Completion snapshot cohort mismatch");
     }
 
     private List<AdminPush> notifications(Job job) {
         UUID issuance = issuanceId(job.id());
-        long cursor = 0;
-        while (true) {
-            List<Student> page = jdbc.query("""
-                SELECT student_id, recipient_email, student_rank FROM mentorship_completion_snapshot
-                WHERE job_id=? AND student_id > ? ORDER BY student_id LIMIT ?
-                """, (rs, n) -> new Student(rs.getLong(1), rs.getString(2), rs.getObject(3, Long.class)),
-                job.id(), cursor, batchSize);
-            if (page.isEmpty()) break;
-            for (Student student : page) {
-                if (student.rank() != null) {
-                    createUserNotification(job, student, "Certificate Issued!",
-                        "Congratulations! You earned a certificate in \"" + job.title() + "\" with rank #" + student.rank(),
-                        "CERTIFICATE", issuance);
-                }
-            }
-            cursor = page.get(page.size()-1).id();
-        }
+        jdbc.update("""
+            WITH recipients AS MATERIALIZED (
+                SELECT student_id, recipient_email, student_rank, gen_random_uuid() AS notification_public_id
+                FROM mentorship_completion_snapshot WHERE job_id=? AND student_rank IS NOT NULL
+            ), created AS (
+                INSERT INTO notification (title, content, type, created_at, updated_at, created_by, updated_by, public_id)
+                SELECT 'Certificate Issued!', 'Congratulations! You earned a certificate in "'
+                    || CAST(? AS text) || '" with rank #' || student_rank, 'CERTIFICATE',
+                    now(), now(), ?, ?, notification_public_id
+                FROM recipients ORDER BY student_id
+                RETURNING id, public_id
+            )
+            INSERT INTO user_notification (user_id, notification_id, is_read, created_at, updated_at,
+                created_by, updated_by, public_id, certificate_issuance_id, certificate_recipient_email)
+            SELECT r.student_id, n.id, false, now(), now(), ?, ?, gen_random_uuid(), ?, r.recipient_email
+            FROM recipients r JOIN created n ON n.public_id=r.notification_public_id ORDER BY r.student_id
+            """, job.id(), job.title(), job.actor(), job.actor(), job.actor(), job.actor(), issuance);
         Long notificationId = jdbc.queryForObject("""
             INSERT INTO notification (title, content, type, created_at, updated_at, created_by, updated_by, public_id)
             VALUES ('Mentorship Completed', ?, 'MENTORSHIP', now(), now(), ?, ?, ?) RETURNING id
@@ -175,32 +159,21 @@ public class CompletionWorker {
             SELECT student_id, ?, false, now(), now(), ?, ?, gen_random_uuid(), ?, recipient_email
             FROM mentorship_completion_snapshot WHERE job_id=? AND was_enrolled
             """, notificationId, job.actor(), job.actor(), issuance, job.id());
-        List<AdminPush> pushes = new ArrayList<>();
-        List<Admin> admins = jdbc.query("SELECT id, email FROM admin ORDER BY id",
-                (rs, n) -> new Admin(rs.getLong(1), rs.getString(2)));
-        for (Admin admin : admins) {
-            String content = "Mentorship " + job.title() + " has been completed, Mentor : " + job.mentorName();
-            LocalDateTime now = LocalDateTime.now();
-            UUID publicId = jdbc.queryForObject("""
+        String content = "Mentorship " + job.title() + " has been completed, Mentor : " + job.mentorName();
+        LocalDateTime now = LocalDateTime.now();
+        return jdbc.query("""
+            WITH created AS (
                 INSERT INTO admin_notification (admin_id, title, content, type, created_at, updated_at,
-                  created_by, updated_by, public_id) VALUES (?, 'Mentorship Completed', ?, 'MENTORSHIP', ?, ?, ?, ?, ?) RETURNING public_id
-                """, UUID.class, admin.id(), content, now, now, job.actor(), job.actor(), UUID.randomUUID());
-            pushes.add(new AdminPush(admin.email(), AdminNotificationResponse.builder().id(publicId)
-                .title("Mentorship Completed").content(content).type(NotificationType.MENTORSHIP).createdAt(now).build()));
-        }
-        return pushes;
-    }
-
-    private void createUserNotification(Job job, Student student, String title, String body, String type, UUID issuance) {
-        Long id = jdbc.queryForObject("""
-            INSERT INTO notification (title, content, type, created_at, updated_at, created_by, updated_by, public_id)
-            VALUES (?, ?, ?, now(), now(), ?, ?, ?) RETURNING id
-            """, Long.class, title, body, type, job.actor(), job.actor(), UUID.randomUUID());
-        jdbc.update("""
-            INSERT INTO user_notification (user_id, notification_id, is_read, created_at, updated_at,
-              created_by, updated_by, public_id, certificate_issuance_id, certificate_recipient_email)
-            VALUES (?, ?, false, now(), now(), ?, ?, ?, ?, ?)
-            """, student.id(), id, job.actor(), job.actor(), UUID.randomUUID(), issuance, student.email());
+                  created_by, updated_by, public_id)
+                SELECT id, 'Mentorship Completed', ?, 'MENTORSHIP', ?, ?, ?, ?, gen_random_uuid()
+                FROM admin ORDER BY id
+                RETURNING admin_id, public_id
+            )
+            SELECT a.email, c.public_id FROM created c JOIN admin a ON a.id=c.admin_id ORDER BY a.id
+            """, (rs, n) -> new AdminPush(rs.getString(1), AdminNotificationResponse.builder()
+                .id(rs.getObject(2, UUID.class)).title("Mentorship Completed").content(content)
+                .type(NotificationType.MENTORSHIP).createdAt(now).build()),
+            content, now, now, job.actor(), job.actor());
     }
 
     private void deliver(long jobId, List<AdminPush> admins) {

@@ -285,7 +285,106 @@ class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBas
         long notificationsMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
         System.out.printf("EB52 cohort=12001 snapshot_ms=%d certificates_ms=%d notifications_ms=%d%n", snapshotMs, certificatesMs, notificationsMs);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM certificates WHERE mentorship_id=?", Long.class, id)).isEqualTo(12001);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM mentorship_completion_snapshot s
+            JOIN mentorship_completion_job j ON j.id=s.job_id
+            LEFT JOIN certificates c ON c.mentorship_id=j.mentorship_id AND c.student_id=s.student_id
+            WHERE j.mentorship_id=? AND (c.id IS NULL OR c.student_rank<>s.student_rank
+              OR c.points_at_issuance<>s.points_at_completion OR c.cohort_size_at_issuance<>s.cohort_size)
+            """, Long.class, id)).isZero();
+        assertThat(jdbc.queryForObject("""
+            WITH ranked AS (
+              SELECT student_id, row_number() OVER (ORDER BY total_points DESC, student_id ASC) AS expected_rank
+              FROM total_points WHERE mentorship_id=?
+            )
+            SELECT count(*) FROM ranked r JOIN certificates c ON c.student_id=r.student_id AND c.mentorship_id=?
+            WHERE c.student_rank<>r.expected_rank
+            """, Long.class, id, id)).isZero();
+        long jobId = jdbc.queryForObject("SELECT id FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id);
+        UUID issuance = UUID.nameUUIDFromBytes(("edunest-completion-" + jobId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_notification WHERE certificate_issuance_id=?", Long.class, issuance)).isEqualTo(24002);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM (
+              SELECT un.user_id, n.type, count(*) AS copies FROM user_notification un
+              JOIN notification n ON n.id=un.notification_id WHERE un.certificate_issuance_id=?
+              GROUP BY un.user_id,n.type HAVING count(*)<>1
+            ) duplicates
+            """, Long.class, issuance)).isZero();
         assertThat(jdbc.queryForObject("SELECT state FROM mentorship_completion_job WHERE mentorship_id=?", String.class, id)).isEqualTo("DONE");
+    }
+
+    @Test
+    void databaseWriteExecutionsDoNotGrowWithCohortSize() {
+        List<Long> writeExecutions = new java.util.ArrayList<>();
+        for (int size : List.of(1, 25)) {
+            String suffix = UUID.randomUUID().toString();
+            String owner = "eb52-write-owner-" + suffix + "@example.org";
+            String prefix = "eb52-write-student-" + suffix + "-";
+            var chain = auth.mentorship(owner, Status.ACTIVE);
+            long id = chain.mentorship().getId();
+            Long role = jdbc.queryForObject("SELECT id FROM roles WHERE name='STUDENT'", Long.class);
+            jdbc.update("""
+                INSERT INTO users (deleted, enabled, created_at, updated_at, created_by, updated_by, email, first_name, role_id)
+                SELECT false, true, now(), now(), ?, ?, ? || n || '@example.org', 'WriteCount', ? FROM generate_series(1,?) n
+                """, owner, owner, prefix, role, size);
+            jdbc.update("INSERT INTO students (student_id, educational_level) SELECT id, 'FRESH' FROM users WHERE email LIKE ?", prefix + "%");
+            jdbc.update("""
+                INSERT INTO enrollments (created_at, updated_at, created_by, updated_by, joined_at, mentorship_id, student_id)
+                SELECT now(), now(), ?, ?, now(), ?, id FROM users WHERE email LIKE ?
+                """, owner, owner, id, prefix + "%");
+            jdbc.update("""
+                INSERT INTO total_points (created_at, updated_at, created_by, updated_by, total_points, mentorship_id, student_id)
+                SELECT now(), now(), ?, ?, 5, ?, id FROM users WHERE email LIKE ?
+                """, owner, owner, id, prefix + "%");
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
+            try { mentorship.updateMentorShipStatus(chain.mentorship().getPublicId(), Status.COMPLETED); }
+            finally { SecurityContextHolder.clearContext(); }
+            JdbcTemplate tracked = org.mockito.Mockito.spy(new JdbcTemplate(dataSource));
+            var localWorker = new CompletionWorker(tracked, org.mockito.Mockito.mock(SimpMessagingTemplate.class), transactionManager, 10, 300);
+            localWorker.poll();
+            localWorker.poll();
+            long count = org.mockito.Mockito.mockingDetails(tracked).getInvocations().stream()
+                .filter(invocation -> List.of("update", "query", "queryForObject").contains(invocation.getMethod().getName()))
+                .filter(invocation -> invocation.getArguments().length > 0 && invocation.getArgument(0) instanceof String)
+                .map(invocation -> ((String) invocation.getArgument(0)).toLowerCase(java.util.Locale.ROOT))
+                .filter(sql -> sql.contains("insert into certificates") || sql.contains("insert into notification")
+                    || sql.contains("insert into user_notification") || sql.contains("insert into admin_notification"))
+                .count();
+            writeExecutions.add(count);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM certificates WHERE mentorship_id=?", Long.class, id)).isEqualTo(size);
+            assertThat(jdbc.queryForObject("SELECT state FROM mentorship_completion_job WHERE mentorship_id=?", String.class, id)).isEqualTo("DONE");
+        }
+        // The spy includes nested JdbcTemplate overloads, so this is a conservative
+        // upper bound on SQL-bearing invocations rather than a literal wire count.
+        assertThat(writeExecutions.get(0)).isGreaterThanOrEqualTo(4).isLessThanOrEqualTo(20);
+        assertThat(writeExecutions.get(1)).isEqualTo(writeExecutions.get(0));
+    }
+
+    @Test
+    void bulkNotificationsRespectFrozenRankingAndEnrollmentRecipients() {
+        String suffix = UUID.randomUUID().toString();
+        String owner = "eb52-recipients-owner-" + suffix + "@example.org";
+        String enrolledEmail = "eb52-enrolled-" + suffix + "@example.org";
+        String rankedEmail = "eb52-ranked-" + suffix + "@example.org";
+        var chain = auth.mentorship(owner, Status.ACTIVE);
+        long id = chain.mentorship().getId();
+        var enrolled = auth.enroll(id, enrolledEmail).getStudent();
+        var ranked = auth.student(rankedEmail);
+        jdbc.update("INSERT INTO total_points (student_id, mentorship_id, total_points, created_at, updated_at, created_by, updated_by, public_id, version) VALUES (?, ?, 7, now(), now(), ?, ?, gen_random_uuid(), 0)", ranked.getId(), id, owner, owner);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(owner, null, List.of(new SimpleGrantedAuthority("ROLE_MENTOR"))));
+        try { mentorship.updateMentorShipStatus(chain.mentorship().getPublicId(), Status.COMPLETED); }
+        finally { SecurityContextHolder.clearContext(); }
+        worker.poll();
+        worker.poll();
+        assertThat(status.status(chain.mentorship().getPublicId(), enrolledEmail)).isEqualTo("NOT_ELIGIBLE");
+        assertThat(status.status(chain.mentorship().getPublicId(), rankedEmail)).isEqualTo("READY");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM certificates WHERE mentorship_id=? AND student_id=?", Long.class, id, ranked.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM certificates WHERE mentorship_id=? AND student_id=?", Long.class, id, enrolled.getId())).isZero();
+        long jobId = jdbc.queryForObject("SELECT id FROM mentorship_completion_job WHERE mentorship_id=?", Long.class, id);
+        UUID issuance = UUID.nameUUIDFromBytes(("edunest-completion-" + jobId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_notification un JOIN notification n ON n.id=un.notification_id WHERE un.certificate_issuance_id=? AND un.user_id=? AND n.type='MENTORSHIP'", Long.class, issuance, enrolled.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_notification un JOIN notification n ON n.id=un.notification_id WHERE un.certificate_issuance_id=? AND un.user_id=? AND n.type='CERTIFICATE'", Long.class, issuance, ranked.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM user_notification WHERE certificate_issuance_id=?", Long.class, issuance)).isEqualTo(2);
     }
 
     @Test
