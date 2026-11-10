@@ -42,6 +42,12 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     Double calculateAverageRating(@Param("mentorshipId") Long mentorshipId);
 
     @Query("""
+    SELECT AVG(r.rating) FROM MentorShipReviews r
+    WHERE r.mentorShip.id = :mentorshipId AND r.student.deleted = false
+    """)
+    Double calculateVisibleAverageRating(@Param("mentorshipId") Long mentorshipId);
+
+    @Query("""
     SELECT 
         r.publicId as reviewId,
         r.feedBack as feedback,
@@ -52,6 +58,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     FROM MentorShipReviews r
     JOIN r.student s
     WHERE r.mentorShip.id = :mentorshipId
+    AND s.deleted = false
     AND (:studentEmail IS NULL OR s.email != :studentEmail)
     ORDER BY r.rating DESC
 """)
@@ -75,6 +82,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     )
     FROM MentorShipReviews r
     WHERE r.mentorShip.mentor.email = :email
+    AND r.student.deleted = false
     ORDER BY r.rating DESC
     """)
     Page<MentorProfileReviews> findReviewsByMentorEmail(
@@ -96,6 +104,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     )
     FROM MentorShipReviews r
     WHERE r.mentorShip.mentor.id = :mentorId
+    AND r.student.deleted = false
     ORDER BY r.rating DESC
     """)
     Page<MentorProfileReviews> findReviewsByMentorId(
@@ -117,6 +126,7 @@ public interface ReviewsRepository extends JpaRepository<MentorShipReviews, Long
     )
     FROM MentorShipReviews r
     WHERE r.mentorShip.mentor.publicId = :publicId
+    AND r.student.deleted = false
     ORDER BY r.rating DESC
     """)
     Page<MentorProfileReviews> findReviewsByMentorPublicId(

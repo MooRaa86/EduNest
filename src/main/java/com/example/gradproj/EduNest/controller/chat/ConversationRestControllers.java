@@ -61,11 +61,12 @@ public class ConversationRestControllers {
             @RequestBody EditMessageRequest request,
             Authentication authentication
     ) {
-        ConversationMessageResponse messageResponse = conversationService.editMessage(
+        var delivery = conversationService.editMessageForDelivery(
                 messageId,
                 authentication.getName(),
                 request
         );
+        ConversationMessageResponse messageResponse = delivery.payload();
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message after update", messageResponse);
 
@@ -76,9 +77,9 @@ public class ConversationRestControllers {
         );
         
         // CHAT-04: recipient email derived from conversation, not client DTO
-        if (messageResponse.getRecipientEmail() != null) {
+        if (delivery.recipientEmail() != null) {
             messagingTemplate.convertAndSendToUser(
-                    messageResponse.getRecipientEmail(),
+                    delivery.recipientEmail(),
                     "/queue/messages",
                     messageResponse
             );

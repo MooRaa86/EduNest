@@ -56,7 +56,7 @@ public class MentorshipOverviewService {
     }
 
     public Double getMentorshipAverageRating(Long mentorshipId) {
-        return reviewsRepository.calculateAverageRating(mentorshipId);
+        return reviewsRepository.calculateVisibleAverageRating(mentorshipId);
     }
 
     public List<MentorshipExploreDto> getTopMentorshipsByMentorEmail(String mentorEmail, String studentEmail, int limit) {
@@ -76,6 +76,11 @@ public class MentorshipOverviewService {
         
         if (mentorship == null) {
             throw new UsernameNotFoundException("Mentorship not found");
+        }
+
+        if (!mentorShipRepository.existsByIdAndMentor_DeletedFalse(mentorshipId)
+                && !contentReadGuard.isOwnerMentorOrAdmin(mentorshipId)) {
+            throw new jakarta.persistence.EntityNotFoundException("Mentorship not found");
         }
 
         // P1-15 / EB-22 — D-02 default (a): DRAFT is confined to the

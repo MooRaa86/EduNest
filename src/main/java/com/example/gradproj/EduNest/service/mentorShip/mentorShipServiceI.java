@@ -221,7 +221,7 @@ public class mentorShipServiceI implements mentorShipService{
         // P1-15 / EB-22 — D-02 default (a): the public overview excludes DRAFT
         // for every caller; owners see their drafts only in the mentor
         // dashboard (findMentorMentorships, mentor-scoped).
-        Page<MentorShip> mentorShipsPage = MentorShipRepository.findAllByStatusNot(Status.DRAFT, pageable);
+        Page<MentorShip> mentorShipsPage = MentorShipRepository.findByStatusNotAndMentor_DeletedFalse(Status.DRAFT, pageable);
 
         List<mentorShipFDto> content = mentorShipsPage.getContent()
                 .stream()
@@ -241,6 +241,11 @@ public class mentorShipServiceI implements mentorShipService{
     public mentorShipFDto getMentorShipById(Long mentorShipId) {
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
+
+        if (mentorShip.getMentor() != null && mentorShip.getMentor().isDeleted()
+                && !contentReadGuard.isOwnerMentorOrAdmin(mentorShipId)) {
+            throw new jakarta.persistence.EntityNotFoundException("MentorShip not found");
+        }
 
         // P1-15 / EB-22 — D-02 default (a): DRAFT detail is confined to its
         // owner-mentor and ADMIN. Everyone else (including anonymous) gets the

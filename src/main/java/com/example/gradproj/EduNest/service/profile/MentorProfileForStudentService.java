@@ -46,7 +46,17 @@ public class MentorProfileForStudentService {
         return str.chars().allMatch(Character::isDigit);
     }
 
+    private void requireVisibleMentor(String identifier) {
+        var mentor = isUuid(identifier) ? mentorRepository.findByPublicId(UUID.fromString(identifier))
+                : isNumeric(identifier) ? mentorRepository.findById(Long.parseLong(identifier))
+                : mentorRepository.findByEmail(identifier);
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (mentor.isEmpty() || (mentor.get().isDeleted() && !admin)) throw new EntityNotFoundException("Mentor not found");
+    }
+
     public MentorProfileforStudentDto getMentorProfile(String identifier) {
+        requireVisibleMentor(identifier);
         MentorProfileforStudentDto mentorProfile;
         List<SocialMedia> socialMedia;
 
@@ -83,6 +93,7 @@ public class MentorProfileForStudentService {
     }
 
     public PageResponse<MentorProfileMentorshipsDto> getMentorMentorships(String identifier, int size, int page) {
+        requireVisibleMentor(identifier);
         Pageable pageable = Pageable.ofSize(size).withPage(page);
         Page<MentorProfileMentorshipsDto> mentorshipsPage;
 
@@ -115,6 +126,7 @@ public class MentorProfileForStudentService {
     }
 
     public PageResponse<MentorProfileReviews> getMentorReviews(String identifier, int size, int page) {
+        requireVisibleMentor(identifier);
         Pageable pageable = Pageable.ofSize(size).withPage(page);
         Page<MentorProfileReviews> reviewsPage;
 

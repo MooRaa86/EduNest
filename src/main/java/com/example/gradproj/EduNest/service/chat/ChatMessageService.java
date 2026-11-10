@@ -128,7 +128,7 @@ public class ChatMessageService {
                 messageRepo.findMessagesByRoom(
                         roomId,
                         beforeId,
-                        pageable
+                        pageable, isAdmin()
                 );
 
         UUID roomPublicId = roomRepo.findById(roomId).map(com.example.gradproj.EduNest.entity.chat.ChatRoom::getPublicId).orElse(null);
@@ -253,7 +253,7 @@ public class ChatMessageService {
         }
         Long internalRoomId = resolveRoomInternalId(roomId);
         Pageable pageable = PageRequest.of(0, size);
-        List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, beforeId, pageable);
+        List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, beforeId, pageable, isAdmin());
         return messages.stream()
                 .map(m -> ChatMessageResponse.builder()
                         .id(m.getMessageId())
@@ -265,6 +265,11 @@ public class ChatMessageService {
                         .senderProfileImageUrl(m.getSenderProfileImageUrl())
                         .build())
                 .toList();
+    }
+
+    private boolean isAdmin() {
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
     @Transactional

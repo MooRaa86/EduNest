@@ -16,16 +16,16 @@ public interface MembersRepo extends JpaRepository<ChatRoomMember, Long> {
 
     @Query("""
     SELECT
-        m.user.publicId as userId,
-        m.user.email as email,
-        m.user.firstName as firstName,
-        m.user.lastName as lastName,
-        m.user.role.name as role,
-        m.user.profileImageUrl as userImageUrl
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.publicId END as userId,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.email END as email,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN 'Deleted user' ELSE m.user.firstName END as firstName,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.lastName END as lastName,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.role.name END as role,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.profileImageUrl END as userImageUrl
     FROM ChatRoomMember m
     WHERE m.chatRoom.publicId = :roomPublicId
 """)
-    List<RoomMemberProjection> findRoomMembersByPublicId(UUID roomPublicId);
+    List<RoomMemberProjection> findRoomMembersByPublicId(UUID roomPublicId, boolean revealDeleted);
 
     boolean existsByChatRoom_IdAndUser_Email(
             Long roomId,
@@ -34,14 +34,14 @@ public interface MembersRepo extends JpaRepository<ChatRoomMember, Long> {
 
     @Query("""
     SELECT
-        m.user.publicId as userId,
-        m.user.email as email,
-        m.user.firstName as firstName,
-        m.user.lastName as lastName,
-        m.user.role.name as role,
-        m.user.profileImageUrl as userImageUrl
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.publicId END as userId,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.email END as email,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN 'Deleted user' ELSE m.user.firstName END as firstName,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.lastName END as lastName,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.role.name END as role,
+        CASE WHEN m.user.deleted = true AND :revealDeleted = false THEN NULL ELSE m.user.profileImageUrl END as userImageUrl
     FROM ChatRoomMember m
     WHERE m.chatRoom.id = :roomId
 """)
-    List<RoomMemberProjection> findRoomMembers(Long roomId);
+    List<RoomMemberProjection> findRoomMembers(Long roomId, boolean revealDeleted);
 }

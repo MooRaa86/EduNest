@@ -142,7 +142,9 @@ public class ChatRoomService {
         if(!securityService.isUserMemberOfChatRoom(roomId, email)){
             throw new AccessDeniedException("User is not a member of this room");
         }
-        return membersRepo.findRoomMembers(roomId);
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        return membersRepo.findRoomMembers(roomId, admin);
     }
 
 

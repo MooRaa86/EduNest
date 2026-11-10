@@ -37,7 +37,8 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
         tp.totalPoints AS totalPoints
     FROM TotalPoints tp
     WHERE tp.mentorship.id = :mentorshipId
-    ORDER BY tp.totalPoints DESC
+    AND tp.student.deleted = false
+    ORDER BY tp.totalPoints DESC, tp.student.id ASC
 """)
     Page<TopStudentResponse> findTopStudentsByMentorship(
             @Param("mentorshipId") Long mentorshipId,
@@ -50,12 +51,13 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
         CONCAT(s.firstName, ' ', s.lastName),
         s.email,
         tp.totalPoints,
-        CAST(ROW_NUMBER() OVER (ORDER BY tp.totalPoints DESC) AS int)
+        CAST(ROW_NUMBER() OVER (ORDER BY tp.totalPoints DESC, s.id ASC) AS int)
     )
     FROM TotalPoints tp
     JOIN tp.student s
     WHERE tp.mentorship.id = :mentorshipId
-    ORDER BY tp.totalPoints DESC
+    AND s.deleted = false
+    ORDER BY tp.totalPoints DESC, s.id ASC
     """)
     Page<MentorshipStudentRankDto> findStudentsWithRanksByMentorshipId(@Param("mentorshipId") Long mentorshipId, Pageable pageable);
 
@@ -83,6 +85,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
         )
     LEFT JOIN ba.badge b
     WHERE tp.mentorship.id = :mentorshipId
+    AND s.deleted = false
     ORDER BY tp.totalPoints DESC, s.id ASC
 """)
     Page<StudentInLeaderboardDto> findLeaderboardByMentorshipId(
@@ -102,6 +105,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             FROM TotalPoints tp2
             JOIN tp2.student s2
             WHERE tp2.mentorship.id = :mentorshipId
+            AND s2.deleted = false
             AND (
                 tp2.totalPoints > tp.totalPoints OR
                 (tp2.totalPoints = tp.totalPoints AND s2.id < s.id)
@@ -117,6 +121,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
     LEFT JOIN ba.badge b 
         ON b.mentorship.id = :mentorshipId
     WHERE tp.mentorship.id = :mentorshipId
+    AND s.deleted = false
     AND s.email = :studentEmail
     AND (
         ba.id IS NULL OR

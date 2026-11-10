@@ -34,6 +34,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ConversationService {
 
+    /** Internal routing destination is never serialized into the response payload. */
+    public record MessageDelivery(ConversationMessageResponse payload, String recipientEmail) { }
+
     private final ConversationRepository conversationRepo;
     private final MessageRepository messageRepo;
     private final UserRepository userRepo;
@@ -67,16 +70,17 @@ public class ConversationService {
         Conversation c = msg.getConversation();
         String recipientEmail = null;
         UUID recipientId = null;
-        UUID senderId = msg.getSender() != null ? msg.getSender().getPublicId() : null;
+        boolean senderDeleted = msg.getSender() != null && msg.getSender().isDeleted();
+        UUID senderId = msg.getSender() != null && !senderDeleted ? msg.getSender().getPublicId() : null;
 
         if (c != null && msg.getSender() != null) {
             String senderEmail = msg.getSender().getEmail();
             if (c.getUser1() != null && senderEmail.equals(c.getUser1().getEmail())) {
-                recipientEmail = c.getUser2() != null ? c.getUser2().getEmail() : null;
-                recipientId = c.getUser2() != null ? c.getUser2().getPublicId() : null;
+                recipientEmail = c.getUser2() != null && !c.getUser2().isDeleted() ? c.getUser2().getEmail() : null;
+                recipientId = c.getUser2() != null && !c.getUser2().isDeleted() ? c.getUser2().getPublicId() : null;
             } else if (c.getUser2() != null && senderEmail.equals(c.getUser2().getEmail())) {
-                recipientEmail = c.getUser1() != null ? c.getUser1().getEmail() : null;
-                recipientId = c.getUser1() != null ? c.getUser1().getPublicId() : null;
+                recipientEmail = c.getUser1() != null && !c.getUser1().isDeleted() ? c.getUser1().getEmail() : null;
+                recipientId = c.getUser1() != null && !c.getUser1().isDeleted() ? c.getUser1().getPublicId() : null;
             }
         }
 
@@ -84,9 +88,9 @@ public class ConversationService {
                 .id(msg.getId())
                 .conversationId(c != null ? c.getPublicId() : null)
                 .senderId(senderId)
-                .senderEmail(msg.getSender().getEmail())
-                .senderName(msg.getSender().getFirstName() + " " + msg.getSender().getLastName())
-                .senderProfileImageUrl(msg.getSender().getProfileImageUrl())
+                .senderEmail(senderDeleted ? null : msg.getSender().getEmail())
+                .senderName(senderDeleted ? "Deleted user" : msg.getSender().getFirstName() + " " + msg.getSender().getLastName())
+                .senderProfileImageUrl(senderDeleted ? null : msg.getSender().getProfileImageUrl())
                 .recipientId(recipientId)
                 .recipientEmail(recipientEmail)
                 .sentAt(msg.getSentAt())
@@ -98,6 +102,10 @@ public class ConversationService {
             String senderEmail,
             ConversationMessageRequest request
     ) {
+        return sendMessageForDelivery(senderEmail, request).payload();
+    }
+
+    public MessageDelivery sendMessageForDelivery(String senderEmail, ConversationMessageRequest request) {
         UserEntity receiver = resolveReceiver(request);
         chatAuthorization.validatePrivatePair(senderEmail, receiver.getEmail());
 
@@ -128,7 +136,18 @@ public class ConversationService {
 
         Message savedMessage =  messageRepo.save(msg);
 
-        return mapToResponse(savedMessage);
+        return new MessageDelivery(mapToResponse(savedMessage), conversationRecipient(savedMessage));
+    }
+
+    private String conversationRecipient(Message message) {
+        Conversation conversation = message.getConversation();
+        if (conversation == null || message.getSender() == null || conversation.getUser1() == null || conversation.getUser2() == null) {
+            throw new IllegalStateException("Message has no valid conversation participants");
+        }
+        Long senderId = message.getSender().getId();
+        if (senderId.equals(conversation.getUser1().getId())) return conversation.getUser2().getEmail();
+        if (senderId.equals(conversation.getUser2().getId())) return conversation.getUser1().getEmail();
+        throw new IllegalStateException("Message sender is not a conversation participant");
     }
 
     private UserEntity resolveReceiver(ConversationMessageRequest request) {
@@ -191,6 +210,8 @@ public class ConversationService {
         String user2Email = conversation.getUser2() != null ? conversation.getUser2().getEmail() : null;
         UUID user1Id = conversation.getUser1() != null ? conversation.getUser1().getPublicId() : null;
         UUID user2Id = conversation.getUser2() != null ? conversation.getUser2().getPublicId() : null;
+        boolean user1Deleted = conversation.getUser1() != null && conversation.getUser1().isDeleted();
+        boolean user2Deleted = conversation.getUser2() != null && conversation.getUser2().isDeleted();
 
         return messages.stream()
                 .map(m -> {
@@ -198,17 +219,20 @@ public class ConversationService {
                     String recipient = (sender != null && sender.equals(user1Email)) ? user2Email : user1Email;
                     UUID senderUid = (sender != null && sender.equals(user1Email)) ? user1Id : user2Id;
                     UUID recipientUid = (sender != null && sender.equals(user1Email)) ? user2Id : user1Id;
+                    boolean recipientDeleted = sender != null && sender.equals(user1Email) ? user2Deleted : user1Deleted;
+                    boolean redactSender = !isAdmin && Boolean.TRUE.equals(m.getSenderDeleted());
+                    boolean redactRecipient = !isAdmin && recipientDeleted;
                     return ConversationMessageResponse.builder()
                             .id(m.getMessageId())
                             .conversationId(m.getConversationId())
-                            .senderId(senderUid)
-                            .recipientId(recipientUid)
+                            .senderId(redactSender ? null : senderUid)
+                            .recipientId(redactRecipient ? null : recipientUid)
                             .content(m.getContent())
                             .sentAt(m.getSentAt())
-                            .senderEmail(sender)
-                            .senderName(m.getSenderName())
-                            .senderProfileImageUrl(m.getSenderProfileImageUrl())
-                            .recipientEmail(recipient)
+                            .senderEmail(redactSender ? null : sender)
+                            .senderName(redactSender ? "Deleted user" : m.getSenderName())
+                            .senderProfileImageUrl(redactSender ? null : m.getSenderProfileImageUrl())
+                            .recipientEmail(redactRecipient ? null : recipient)
                             .build();
                 })
                 .toList();
@@ -224,6 +248,11 @@ public class ConversationService {
             String senderEmail,
             EditMessageRequest request
     ) {
+        return editMessageForDelivery(messageId, senderEmail, request).payload();
+    }
+
+    @Transactional
+    public MessageDelivery editMessageForDelivery(Long messageId, String senderEmail, EditMessageRequest request) {
 
         Message msg = messageRepo.findById(messageId).orElse(null);
         if (msg == null) {
@@ -237,7 +266,7 @@ public class ConversationService {
         msg.setContent(request.getContent());
         msg.setUpdated(true);
 
-        return mapToResponse(msg);
+        return new MessageDelivery(mapToResponse(msg), conversationRecipient(msg));
     }
 
     /**
@@ -339,20 +368,24 @@ public class ConversationService {
 
         String user1Email = conversation.getUser1() != null ? conversation.getUser1().getEmail() : null;
         String user2Email = conversation.getUser2() != null ? conversation.getUser2().getEmail() : null;
+        boolean user1Deleted = conversation.getUser1() != null && conversation.getUser1().isDeleted();
+        boolean user2Deleted = conversation.getUser2() != null && conversation.getUser2().isDeleted();
 
         return messages.stream()
                 .map(m -> {
                     String sender = m.getSenderEmail();
                     String recipient = (sender != null && sender.equals(user1Email)) ? user2Email : user1Email;
+                    boolean recipientDeleted = sender != null && sender.equals(user1Email) ? user2Deleted : user1Deleted;
+                    boolean redactSender = !isAdmin && Boolean.TRUE.equals(m.getSenderDeleted());
                     return ConversationMessageResponse.builder()
                             .id(m.getMessageId())
                             .conversationId(conversationId)
                             .content(m.getContent())
                             .sentAt(m.getSentAt())
-                            .senderEmail(sender)
-                            .senderName(m.getSenderName())
-                            .senderProfileImageUrl(m.getSenderProfileImageUrl())
-                            .recipientEmail(recipient)
+                            .senderEmail(redactSender ? null : sender)
+                            .senderName(redactSender ? "Deleted user" : m.getSenderName())
+                            .senderProfileImageUrl(redactSender ? null : m.getSenderProfileImageUrl())
+                            .recipientEmail(!isAdmin && recipientDeleted ? null : recipient)
                             .build();
                 })
                 .toList();

@@ -1,5 +1,11 @@
 # Entity Relationships — Full Catalog (43 classes)
 
+## Soft-deleted user read policy (EB-46 / D-18)
+
+User-facing review and live leaderboard rows exclude users marked `deleted=true`; disabled but non-deleted users are not filtered solely because they are disabled. Live leaderboard ranks are recomputed over visible users, ordered by points descending and internal student ID ascending. Previously issued certificates and completion snapshots retain their original ranks. Review averages on the mentorship overview use non-deleted reviewers, while stored review and rating data remain unchanged.
+
+Historical room and private messages are retained. For ordinary readers a deleted participant is displayed as `Deleted user`, with email, image and public user ID suppressed; room membership and conversation authorization remain unchanged. Private message delivery destinations are derived from persisted conversation participants and kept separate from the response payload. Deleted mentors are excluded from user-facing mentorship discovery and details; authorized administrative detail reads remain available. Administrative user-directory reads retain deleted users. No records are deleted by these read policies.
+
 Verified from `src/main/java/com/example/gradproj/EduNest/entity/**`. Convention: `[audit]` = extends `BaseEntity` (id, createdAt, updatedAt, createdBy, updatedBy). `PK` inheritance noted where JOINED tables apply.
 
 ## 1. Users & identity
