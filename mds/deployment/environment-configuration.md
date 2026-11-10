@@ -69,7 +69,7 @@ Additional prod-profile-only hardcoding: none for JWT (see §1).
 
 ## 7. Supabase PostgreSQL — implemented state ([ADD-01]/EB-81, `feat/add-01-supabase-pg`, PR #68)
 
-Implemented in code: `postgresql` JDBC driver (Spring Boot-managed version) replaces `mysql-connector-j` in `pom.xml`; `org.postgresql.Driver` + `org.hibernate.dialect.PostgreSQLDialect` set in **both** `application.properties` and `application-prod.properties`; `DATABASE_URL`/`DATABASE_NAME`/`DATABASE_PASSWORD` env contract unchanged. The changes are **committed and pushed on `feat/add-01-supabase-pg` and under review via PR #68** — EB-81 closes only after that review/merge.
+Implemented in code: `postgresql` JDBC driver (Spring Boot-managed version) replaces `mysql-connector-j` in `pom.xml`; `org.postgresql.Driver` + `org.hibernate.dialect.PostgreSQLDialect` set in **both** `application.properties` and `application-prod.properties`; `DATABASE_URL`/`DATABASE_NAME`/`DATABASE_PASSWORD` env contract unchanged. **Merged via PR #68 (EB-81 Done).**
 
 **Verified evidence (development integration test, 2026-11-02) — against the Hazem-approved DEVELOPMENT Supabase project (`ciogysvcykzxrjuskxmk`):**
 - ✅ PostgreSQL Session Pooler connection successful: authentication ok via `aws-0-eu-west-1.pooler.supabase.com:5432` (`sslmode=require`; TLS terminates at the Supavisor edge — `pg_stat_ssl` reports `ssl=f` server-side, standard pooler behavior).
@@ -119,4 +119,34 @@ Implemented in code: `postgresql` JDBC driver (Spring Boot-managed version) repl
 
 **Migration-era note (updated):** the PostgreSQL boot blocker was **resolved**: `entity/mentorship/Enrollment.java` now uses `columnDefinition = "double precision default 0.0"` (portable across PostgreSQL / MySQL / H2; verified live in the development database). The **broader** schema-compatibility sweep (`@Lob` field wire-format, MySQL-dialect native queries, constraint-naming deltas for the converted dump) remains owned by **EB-82**.
 
-**File storage:** unchanged — still `uploads/` local path ([ADD-03]/Supabase Storage decision recorded in D-25, **NOT yet implemented**). §1–§6 remain the operating contract except where §7 overrides the database rows.
+**File storage:** **implemented via [ADD-03]/EB-83 (Done)** — `supabase.storage.*` / `SUPABASE_*` contract, dual buckets, fail-closed prod; see `mds/deployment` coverage above. §1–§6 remain the operating contract except where §7 overrides the database rows.
+
+## 8. Canonical environment-variable matrix (P5-04 / EB-70, synced 2026-11-10)
+
+Single canonical list, cross-checked against `.env.example` and `ops/environments.md` (the deployment-facing matrix). Classification per plan: **Required** / Optional / **Dev-only-secret**.
+
+| Class | Variable | Binding | Default | Notes |
+|---|---|---|---|---|
+| Req | `DATABASE_URL` / `DATABASE_NAME` (holds user) / `DATABASE_PASSWORD` | `spring.datasource.*` | – | Postgres JDBC URL; password env-injected only |
+| Req | `JWT_SECRET` | `JwtSecretProvider` | – | ≥32 bytes; boot fails fast (P1-01/SEL-01) |
+| Req | `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD` | `spring.mail.*` | – | SMTP creds |
+| Req (container) | `SPRING_PROFILES_ACTIVE` | profile selection | – | `prod` in Dockerfile; must never be unset in real deployments |
+| Opt | `PORT` | `server.port` | `8080` | Railway/Render injects |
+| Opt | `APP_AUTH_RETURN_TOKEN_IN_BODY` | `app.auth.return-token-in-body` | `true` | Transitional flag; clear at JWT v2 |
+| Opt | `APP_COMMISSION_DEFAULT` | `app.commission.default` | `10.0` | Flyway V4 seed (EB-47 / D-17) |
+| Opt | `ZOOM_ENABLED` / `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET` / `ZOOM_BASE_URL` | `app.zoom.*` | `false`/blank | S2S OAuth (EB-85/D-29); secret = client secret |
+| Opt | `APP_ZOOM_HOST_USER_ID` / `APP_ZOOM_MAX_MEETING_MINUTES` / `APP_ZOOM_OAUTH_TOKEN_URL` | `app.zoom.*` | `me` / `40` / zoom.us | EB-66 runtime knobs |
+| Opt | `SUPABASE_STORAGE_ENABLED` / `SUPABASE_URL` / `SUPABASE_S3_ENDPOINT` / `SUPABASE_S3_REGION` / `SUPABASE_S3_ACCESS_KEY` / `SUPABASE_S3_SECRET_KEY` / `SUPABASE_STORAGE_PUBLIC_BUCKET` / `SUPABASE_STORAGE_PRIVATE_BUCKET` | `supabase.storage.*` | per `SupabaseStorageProperties` | EB-83/D-25; secrets = access/secret keys |
+| Opt | `APP_LIVESESSION_AUTO_CLOSE_*` (enabled, grace-minutes, max-duration-minutes, sweep-rate-ms) | `app.livesession.auto-close.*` | `true` / `10` / `40` / `300000` | Active sweep (EB-57/D-15/Omar grace=10) |
+| Opt (dormant) | `APP_LIVESESSION_ATTENDANCE_*` (enforced, pass-threshold, snapshot-grid-minutes, bonus-points, absence-floor) | `app.livesession.attendance.*` | `false` / `75` / `5` / `5` / `0` | **Dormant** per D-15 — built, compiled, off |
+| Opt | `APP_RATE_LIMIT_ENABLED` (+ per-bucket `…_LIMIT` / `…_WINDOW_SECONDS`) | `app.rate-limit.*` | `true` (8/60; lockout 5/300) | EB-15/P1-08, no library (D-27-safe) |
+| Opt | `APP_UPLOAD_BASE_DIR` | `app.upload.base-dir` | `uploads` | local-disk rollback lane (D-25) |
+| Opt | `APP_AUTH_RESET_TOKEN_TTL` | `app.auth.reset-token-ttl` | `PT5M` | reset-token lifetime |
+| Opt | `APP_CERTIFICATE_ISSUANCE_BATCH_SIZE` | `app.certificate.issuance-batch-size` | `100` (clamped 1..1000) | EB-54 issuance |
+| Dev-only | `EDUNEST_UNSAFE_DEV` | `ProjectSecurityConfig` gate | `false` | Boot refusal without it when `prod` absent; **never set true outside local dev** |
+
+**Not env-configurable (inventory facts):** CORS (`ProjectSecurityConfig`, `*` in both chains), Jackson prod strictness (`application-prod.properties`), multipart caps (10MB in files), `springdoc` UI settings.
+
+**Deferred vars (documented contracts, not wired yet):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (D-28 / EB-108, sprint-3) — land in `.env.example` and this matrix when EB-108 implements.
+
+**Guard:** `EnvContractGuardTest` keeps this list in sync with `.env.example` — `${ENV_VAR}` placeholders found in `application*.properties` must exist there, secret shapes must never appear, and dormant defaults are pinned.
