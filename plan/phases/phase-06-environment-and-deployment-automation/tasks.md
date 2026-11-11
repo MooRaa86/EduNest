@@ -126,7 +126,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** adapter IT against localstack-ish container + prod-like config.
 
 <a id="p6-08"></a>
-### P6-08 — Deployment verification & failure handling
+### P6-08 — Deployment verification & failure handling [COMPLETED — PR #110 merged, EB-79 closed 2026-11-11]
 
 **Priority:** P2 — deploys need an *automatic* post-deploy check (health + smoke) instead of a human peeking, and a defined abort path.  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Eng Lead
