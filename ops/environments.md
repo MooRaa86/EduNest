@@ -201,7 +201,9 @@ gitGraph
 * **WebSocket STOMP Handshake:** `wss://backend.edunest.dpdns.org/ws` (SockJS info: `https://backend.edunest.dpdns.org/ws/info`)
 
 ### 7.2 Database Backups & Recovery
-* **Automated Daily Snapshots:** Handled natively by Supabase with 7-day retention on free tier.
+* **Two-tier backup policy (P6-02 / EB-73, 2026-11-11):** **Tier 1** — Supabase native daily snapshots, 7-day retention on the current free tier (extend retention when real user data accrues; PO cost decision). **Tier 2** — offline `pg_dump` copies via [`ops/backups/Invoke-Backup.ps1`](../ops/backups/Invoke-Backup.ps1) / [`invoke-backup.sh`](../ops/backups/invoke-backup.sh) (custom format, 14-dump retention, gitignored `ops/backups/local/`) — the vendor-independent layer that removes the same-vendor single point of failure. Full policy: [`ops/backups/backup-policy.md`](../ops/backups/backup-policy.md).
+* **Restore drills:** weekly, per [`ops/backups/restore-procedure.md`](../ops/backups/restore-procedure.md) — restore into a disposable target, verify data + boot (`ddl-auto=validate`), then act. A backup never restored is a hypothesis.
+* **Storage note:** DB snapshots do not include Supabase Storage objects (uploaded files); storage durability rides on Supabase Storage replication, with a storage-sync backup step deferred until file volume justifies it.
 * **Disposable Migration Rehearsal:** All schema changes must pass the automated disposable PostgreSQL rehearsal test (`UniquenessPostgresMigrationIT` / `ops/rehearsals/Invoke-MigrationRehearsal.ps1`) before deployment.
 * **Rollback Standard:** Database migrations are strictly **forward-only**. In the event of an issue, a roll-forward Flyway script (`V{N+1}__...sql`) must be applied.
 

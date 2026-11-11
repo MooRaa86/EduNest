@@ -44,3 +44,6 @@ tools/migration/snapshots/
 *.pem
 # Scratch values during rotation windows (rollback lane, transient - never committed)
 ops/secrets/local/
+
+# Offline database backups (P6-02/EB-73) - real data dumps, never in git
+ops/backups/local/
