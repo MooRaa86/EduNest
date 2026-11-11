@@ -284,13 +284,15 @@ class QuizSubmissionGradingMathTest {
                 question(2L, AnswerChoices.B, 10));
         Student student = Student.builder().id(5L).firstName("Rahma").lastName("Ismail")
                 .email("rahma@test.com").build();
-        // Ended 10.5 minutes ago -> 10 whole minutes late (ChronoUnit.MINUTES truncates).
-        // +30s buffer keeps the minute count stable even if the test runs slowly.
+        // Ended 9 min + 20 s ago -> 9 whole minutes late (ChronoUnit.MINUTES truncates),
+        // safely inside the 10-minute grace. +20 s head-room keeps the minute count
+        // stable even if the test runs slowly (EB-53 exact-boundary: 10 min + 1 s late
+        // is now REJECTED, so the penalty fixture must stay under deadline + grace).
         LocalDateTime now = LocalDateTime.now();
         QuizSubmission submission = QuizSubmission.builder()
                 .id(9L).quiz(quiz).student(student).score(null)
                 .startDate(now.minusMinutes(40))
-                .endDate(now.minusSeconds(630)) // 10 min + 30 s in the past
+                .endDate(now.minusSeconds(560)) // 9 min + 20 s in the past
                 .answers(new ArrayList<>())
                 .build();
 
@@ -308,9 +310,9 @@ class QuizSubmissionGradingMathTest {
 
         QuizSubmissionResponseDTO resp = service.submitQuizAnswers(dto, 1L);
 
-        // 20 raw - 10 late minutes = 10 (Math.max(0, 20-10) = 10, :115)
-        assertThat(resp.getScore()).isEqualTo(10.0);
-        verify(totalPointsService).applyDelta(student, quiz.getWeek().getMentorship(), 10);
+        // 20 raw - 9 late minutes = 11 (Math.max(0, 20-9) = 11, :115)
+        assertThat(resp.getScore()).isEqualTo(11.0);
+        verify(totalPointsService).applyDelta(student, quiz.getWeek().getMentorship(), 11);
     }
 
     @Test
