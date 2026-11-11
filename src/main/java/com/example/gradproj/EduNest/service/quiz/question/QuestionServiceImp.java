@@ -13,6 +13,8 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.quiz.QuestionRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.gradproj.EduNest.service.quiz.quiz.QuizService;
 import com.example.gradproj.EduNest.service.quiz.submission.QuizSubmissionService;
 import com.example.gradproj.EduNest.service.security.SecurityService;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,16 +37,24 @@ public class QuestionServiceImp implements QuestionService {
     private final QuizService quizService;
     private final QuizSubmissionService quizSubmissionService;
     private final QuizSubmissionRepository quizSubmissionRepository;
+    private final WeekRepository weekRepository;
 
 
     @Override
+    @Transactional
     public QuestionResponseDTO createQuestion(QuestionCreateDTO questionCreateDTO) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnQuiz(questionCreateDTO.getQuizId(), email)) {
+        Quiz quiz = quizRepository.findByPublicId(questionCreateDTO.getQuizId())
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (!securityService.isMentorOwnQuiz(quiz.getId(), email)) {
             throw new AccessDeniedException("You are not authorized to add questions to this quiz");
         }
 
-        Quiz quiz = quizRepository.findById(questionCreateDTO.getQuizId())
+        // EB-51 — L1 -> L2 shared gate: lock week -> lock quiz to serialize against concurrent status transitions
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quiz = quizRepository.findForUpdateById(quiz.getId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         if (quiz.getStatus() != QuizStatus.DRAFT) {
@@ -98,6 +109,17 @@ public class QuestionServiceImp implements QuestionService {
         boolean alreadyStarted = quizSubmissionRepository
                 .existsByStudent_IdAndQuiz_Id(securityService.getCurrentStudent().getId(), quizId);
 
+        /*
+         * EB-53 / D-08 — new attempts are stopped once closeAt is reached.
+         * Attempts started before closeAt keep their full window (endDate +
+         * grace) and are still served here and accepted at submit.
+         */
+        if (!alreadyStarted
+                && quiz.getCloseAt() != null
+                && !LocalDateTime.now().isBefore(quiz.getCloseAt())) {
+            throw new globalLogicEx("Quiz is closed for new attempts");
+        }
+
         if (!alreadyStarted) {
             QuizSubmission quizSubmission = new QuizSubmission();
             quizSubmission.setQuiz(quiz);
@@ -127,6 +149,7 @@ public class QuestionServiceImp implements QuestionService {
     }
 
     @Override
+    @Transactional
     public QuestionResponseDTO updateQuestion(Long id, QuestionUpdateDto dto) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnQuestion(id, email)) {
@@ -136,19 +159,56 @@ public class QuestionServiceImp implements QuestionService {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
 
-        Quiz quiz = quizRepository.findById(dto.getQuizId())
+        Quiz targetQuiz = quizRepository.findByPublicId(dto.getQuizId())
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         // P1-19 / EB-26 (G15/QZ-06) — the TARGET quiz must also be the
         // caller's own. Checked BEFORE the status check so a foreign quiz's
         // DRAFT status is not leaked ("already published" would be an
         // existence/status oracle for another mentor's quizzes).
-        if (!Boolean.TRUE.equals(securityService.isMentorOwnQuiz(dto.getQuizId(), email))) {
+        if (!Boolean.TRUE.equals(securityService.isMentorOwnQuiz(targetQuiz.getId(), email))) {
             throw new AccessDeniedException("You are not authorized to move this question to this quiz");
         }
 
-        if (quiz.getStatus() != QuizStatus.DRAFT) {
+        // EB-51 — L1 -> L2 -> L3 ordered locking:
+        // When moving across quizzes/weeks, lock in deterministic ascending ID order to prevent deadlock.
+        Long sourceWeekId = question.getQuiz().getWeek().getId();
+        Long targetWeekId = targetQuiz.getWeek().getId();
+        if (sourceWeekId.equals(targetWeekId)) {
+            weekRepository.findForUpdateById(sourceWeekId)
+                    .orElseThrow(() -> new globalLogicEx("Week not found"));
+        } else {
+            Long w1 = Math.min(sourceWeekId, targetWeekId);
+            Long w2 = Math.max(sourceWeekId, targetWeekId);
+            weekRepository.findForUpdateById(w1).orElseThrow(() -> new globalLogicEx("Week not found"));
+            weekRepository.findForUpdateById(w2).orElseThrow(() -> new globalLogicEx("Week not found"));
+        }
+
+        Long sourceQuizId = question.getQuiz().getId();
+        Long targetQuizId = targetQuiz.getId();
+        Quiz lockedSource;
+        Quiz lockedTarget;
+        if (sourceQuizId.equals(targetQuizId)) {
+            lockedSource = quizRepository.findForUpdateById(sourceQuizId)
+                    .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+            lockedTarget = lockedSource;
+        } else {
+            Long q1 = Math.min(sourceQuizId, targetQuizId);
+            Long q2 = Math.max(sourceQuizId, targetQuizId);
+            Quiz r1 = quizRepository.findForUpdateById(q1).orElseThrow(() -> new globalLogicEx("Quiz not found"));
+            Quiz r2 = quizRepository.findForUpdateById(q2).orElseThrow(() -> new globalLogicEx("Quiz not found"));
+            lockedSource = q1.equals(sourceQuizId) ? r1 : r2;
+            lockedTarget = q1.equals(targetQuizId) ? r1 : r2;
+        }
+
+        question = questionRepository.findForUpdateById(id)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+
+        if (lockedSource.getStatus() != QuizStatus.DRAFT) {
             throw new globalLogicEx("Cannot update question. Quiz is already published or closed.");
+        }
+        if (lockedTarget.getStatus() != QuizStatus.DRAFT) {
+            throw new globalLogicEx("Cannot move question. Target quiz is already published or closed.");
         }
 
         if (dto.getText() != null)
@@ -172,8 +232,8 @@ public class QuestionServiceImp implements QuestionService {
         if (dto.getOptionD() != null)
             question.setOptionD(dto.getOptionD());
 
-        if (!question.getQuiz().getId().equals(dto.getQuizId())) {
-            question.setQuiz(quiz);
+        if (!question.getQuiz().getId().equals(targetQuiz.getId())) {
+            question.setQuiz(lockedTarget);
         }
 
         Question updated = questionRepository.save(question);
@@ -181,6 +241,7 @@ public class QuestionServiceImp implements QuestionService {
     }
 
     @Override
+    @Transactional
     public void deleteQuestion(Long quizId, Long questionId) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnQuestion(questionId, email)) {
@@ -190,24 +251,29 @@ public class QuestionServiceImp implements QuestionService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        // EB-51 — L1 -> L2 -> L3 shared gate: lock week -> lock quiz -> lock question
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quiz = quizRepository.findForUpdateById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
         if (!quiz.getStatus().equals(QuizStatus.DRAFT)) {
             throw new globalLogicEx("Cannot delete question. Quiz is already published or closed.");
         }
 
-        Question question = questionRepository.findById(questionId)
+        Question question = questionRepository.findForUpdateById(questionId)
                 .orElseThrow(() -> new globalLogicEx("Question not found"));
 
         if (!question.getQuiz().getId().equals(quizId)) {
             throw new globalLogicEx("Question does not belong to this quiz");
         }
 
-
         questionRepository.delete(question);
     }
 
     private QuestionResponseDTO mapToResponseDTO(Question question) {
         return QuestionResponseDTO.builder()
-                .id(question.getId())
+                .id(question.getPublicId())
                 .text(question.getText())
                 .points(question.getPoints())
                 .correctAnswer(question.getCorrectAnswer())
@@ -220,7 +286,7 @@ public class QuestionServiceImp implements QuestionService {
 
     private StudentQuestionResponseDTO mapToStudentResponseDTO(Question question) {
         return StudentQuestionResponseDTO.builder()
-                .id(question.getId())
+                .id(question.getPublicId())
                 .text(question.getText())
                 .points(question.getPoints())
                 .optionA(question.getOptionA())
@@ -228,5 +294,44 @@ public class QuestionServiceImp implements QuestionService {
                 .optionC(question.getOptionC())
                 .optionD(question.getOptionD())
                 .build();
+    }
+
+    @Override
+    public List<QuestionResponseDTO> getQuestionsByQuizId(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuestionsByQuizId(internalId);
+    }
+
+    @Override
+    public List<StudentQuestionResponseDTO> getQuestionsByQuizIdForStudent(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuestionsByQuizIdForStudent(internalId);
+    }
+
+    @Override
+    public QuestionResponseDTO getQuestionById(UUID id) {
+        Long internalId = questionRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+        return getQuestionById(internalId);
+    }
+
+    @Override
+    @Transactional
+    public QuestionResponseDTO updateQuestion(UUID id, QuestionUpdateDto dto) {
+        Long internalId = questionRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+        return updateQuestion(internalId, dto);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuestion(UUID quizId, UUID questionId) {
+        Long internalQuizId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        Long internalQuestionId = questionRepository.findIdByPublicId(questionId)
+                .orElseThrow(() -> new globalLogicEx("Question not found"));
+        deleteQuestion(internalQuizId, internalQuestionId);
     }
 }

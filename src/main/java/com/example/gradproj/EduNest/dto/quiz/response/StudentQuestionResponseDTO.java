@@ -2,12 +2,13 @@ package com.example.gradproj.EduNest.dto.quiz.response;
 
 import lombok.Builder;
 import lombok.Data;
+import java.util.UUID;
 
 @Data
 @Builder
 public class StudentQuestionResponseDTO {
 
-    private Long id;
+    private UUID id;
 
     private String text;
 

@@ -4,14 +4,17 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 public class QuizSubmissionResponseDTO {
-    private Long id;
-    private Long studentId;
+    private UUID id;
+    private UUID studentId;
     private String studentName;
     private Double score;
     private int totalPoints;
     private String status;
+    /** EB-53 / D-08 — additive: true when the submission landed after the attempt window (within grace). */
+    private Boolean isLate;
 }

@@ -7,6 +7,7 @@ import lombok.*;
 import org.hibernate.validator.constraints.URL;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,7 +19,7 @@ public class CreateProjectRequest {
     private String title;
 
     @NotNull(message = "weekId is required")
-    private Long weekId;
+    private UUID weekId;
 
     @NotBlank(message = "goal is required")
     @Size(min = 5, max = 255, message = "goal must be between 5 and 255 characters")

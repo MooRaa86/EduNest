@@ -8,6 +8,7 @@ import com.example.gradproj.EduNest.entity.mentorship.MentorShip;
 import com.example.gradproj.EduNest.entity.users.Mentor;
 import com.example.gradproj.EduNest.entity.users.Student;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.badges.BadgeRepository;
@@ -17,6 +18,8 @@ import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -40,6 +44,7 @@ public class BadgeAwardService {
     private final TotalPointsServiceImp totalPointsService;
     private final MentorShipRepository mentorShipRepository;
     private final NotificationService notificationService;
+    private final EntityManager entityManager;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -67,13 +72,33 @@ public class BadgeAwardService {
         if (!badge.getMentorship().getMentor().getId().equals(mentor.getId()))
             throw new AccessDeniedException("You are not authorized to award badges for this mentorship");
 
-        Student student = studentRepository.findById(req.getStudentId())
+        // EB-51 — L0 shared gate taken before any eligibility check or ledger
+        // mutation: badge point edits and the COMPLETED transition are
+        // serialised against this award so the CREDITED points snapshot
+        // (badge.getPoints()) is stable while applyDelta runs.
+        MentorShip l0Gate = mentorShipRepository.findForUpdateById(badge.getMentorship().getId())
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+
+        // The ownership check above may already have loaded this entity before the lock
+        // was obtained. Refresh under L0 so a concurrent completion cannot be missed.
+        entityManager.refresh(l0Gate);
+
+        // EB-51 / D-09 (CERT-04) — post-completion badge freeze: cannot award badge once mentorship is COMPLETED
+        if (l0Gate.getStatus() == Status.COMPLETED) {
+            throw new globalLogicEx("Cannot award badge once the mentorship is completed");
+        }
+
+        // EB-51 — acquire locked badge from repository under the L0 gate
+        badge = badgeRepository.findForUpdateById(badgeId)
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
+
+        Student student = studentRepository.findByPublicId(req.getStudentId())
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
-        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(badge.getMentorship().getId(), req.getStudentId()))
+        if (!enrollmentRepository.existsByMentorShip_IdAndStudent_Id(badge.getMentorship().getId(), student.getId()))
             throw new globalLogicEx("Student is not enrolled in the mentorship that owns this badge");
 
-        if (badgeAwardRepository.existsByBadge_IdAndStudent_Id(badgeId, req.getStudentId()))
+        if (badgeAwardRepository.existsByBadge_IdAndStudent_Id(badgeId, student.getId()))
             throw new globalLogicEx("Student has already been awarded this badge");
 
         BadgeAward award = BadgeAward.builder()
@@ -85,7 +110,7 @@ public class BadgeAwardService {
 
         badgeAwardRepository.save(award);
 
-        totalPointsService.applyDelta(student, badge.getMentorship(), badge.getPoints());
+        totalPointsService.applyDelta(student, l0Gate, badge.getPoints());
 
         // Notify the student that they received a badge
         notificationService.sendToUserByEmail(
@@ -148,15 +173,51 @@ public class BadgeAwardService {
 
     private BadgeAwardResponse toDto(BadgeAward a) {
         return BadgeAwardResponse.builder()
-                .id(a.getId())
-                .badgeId(a.getBadge().getId())
+                .id(a.getPublicId())
+                .badgeId(a.getBadge().getPublicId())
                 .badgeTitle(a.getBadge().getTitle())
-                .studentId(a.getStudent().getId())
+                .studentId(a.getStudent().getPublicId())
                 .studentFullName(a.getStudent().getFirstName() + " " + a.getStudent().getLastName())
-                .awardedById(a.getAwardedBy().getId())
+                .awardedById(a.getAwardedBy().getPublicId())
                 .awardedAt(a.getCreatedAt())
                 .note(a.getNote())
                 .badgePoints(a.getBadge().getPoints())
                 .build();
     }
+
+    private Long resolveBadgeInternalId(UUID publicId) {
+        return badgeRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Badge not found"));
+    }
+
+    private Long resolveMentorshipInternalId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+    }
+
+    private Long resolveStudentInternalId(UUID publicId) {
+        return studentRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Student not found"));
+    }
+
+    public BadgeAwardResponse awardBadge(UUID badgeId, AwardBadgeRequest req) {
+        return awardBadge(resolveBadgeInternalId(badgeId), req);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeAwardResponse> getAwardsByMentorship(UUID mentorshipId) {
+        return getAwardsByMentorship(resolveMentorshipInternalId(mentorshipId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeAwardResponse> getAwardsByStudent(UUID studentId) {
+        Long internalId = studentRepository.findIdByPublicId(studentId).orElse(-1L);
+        return getAwardsByStudent(internalId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BadgeAwardResponse> getAwardsByBadge(UUID badgeId) {
+        return getAwardsByBadge(resolveBadgeInternalId(badgeId));
+    }
+
 }

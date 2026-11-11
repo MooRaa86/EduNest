@@ -41,12 +41,15 @@ class PublicRouteMatrixProbeTest extends ProdChainIntegrationTestBase {
 	private static final String GARBAGE_TOKEN = "totally-malformed-garbage-header-token";
 
 	private Long activeMentorshipId;
+	private java.util.UUID activeMentorshipPublicId;
 
 	@BeforeEach
 	void seed() {
 		auth.student(STUDENT_ANY);
 		auth.admin(ADMIN_ANY);
-		activeMentorshipId = auth.mentorship(MENTOR_ANY, Status.ACTIVE).mentorship().getId();
+		var ms = auth.mentorship(MENTOR_ANY, Status.ACTIVE).mentorship();
+		activeMentorshipId = ms.getId();
+		activeMentorshipPublicId = ms.getPublicId();
 	}
 
 	// ---------- ANONYMOUS boundaries (matrix: permitAll) ----------
@@ -190,7 +193,7 @@ class PublicRouteMatrixProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("P1-03: dual-mode overview with anonymous caller → 200 and unauthenticated view")
 	void mentorshipOverviewAnonymous() throws Exception {
-		mockMvc.perform(get("/api/v1/student/mentorships/" + activeMentorshipId + "/overview"))
+		mockMvc.perform(get("/api/v1/student/mentorships/" + activeMentorshipPublicId + "/overview"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.mentorship.beforeEnroll").exists())
 				.andExpect(jsonPath("$.apiResponse.mentorship.afterEnroll").doesNotExist());
@@ -199,7 +202,7 @@ class PublicRouteMatrixProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("P1-03: dual-mode overview with stale token → 200 graceful fallback to unauthenticated view")
 	void mentorshipOverviewStaleTokenFallback() throws Exception {
-		mockMvc.perform(get("/api/v1/student/mentorships/" + activeMentorshipId + "/overview")
+		mockMvc.perform(get("/api/v1/student/mentorships/" + activeMentorshipPublicId + "/overview")
 						.header("Authorization", STALE_RAW_JWT))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.mentorship.beforeEnroll").exists())
@@ -210,7 +213,7 @@ class PublicRouteMatrixProbeTest extends ProdChainIntegrationTestBase {
 	@DisplayName("P1-03: dual-mode overview with valid token for enrolled student → 200 and authenticated view")
 	void mentorshipOverviewValidTokenEnrolled() throws Exception {
 		auth.enroll(activeMentorshipId, STUDENT_ANY);
-		mockMvc.perform(get("/api/v1/student/mentorships/" + activeMentorshipId + "/overview")
+		mockMvc.perform(get("/api/v1/student/mentorships/" + activeMentorshipPublicId + "/overview")
 						.header("Authorization", auth.authToken(STUDENT_ANY, AuthFixture.STUDENT)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.mentorship.afterEnroll").exists())

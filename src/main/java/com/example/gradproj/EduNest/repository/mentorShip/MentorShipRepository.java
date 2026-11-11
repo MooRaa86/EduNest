@@ -10,16 +10,44 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
+    boolean existsByPublicId(UUID publicId);
+    Optional<MentorShip> findByPublicId(UUID publicId);
+
+    @Query("SELECT m.id FROM MentorShip m WHERE m.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("SELECT m.publicId FROM MentorShip m WHERE m.id = :id")
+    Optional<UUID> findPublicIdById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MentorShip m WHERE m.publicId = :publicId")
+    Optional<MentorShip> findForUpdateByPublicId(@Param("publicId") UUID publicId);
     boolean existsById(Long id);
     long countByMentor_Id(Long mentorId);
+
+    /**
+     * EB-51 — shared gate lock (L0). Acquired at validation time by every
+     * convergence-coin mentorship-axis flow (badge CRUD radial boundary,
+     * badge award, mentorship completion) so eligibility checks run while the
+     * gate is held and no two mentorship-axis writers can interleave.
+     * Does NOT contain L4 (total_points): the ledger row lock is taken last,
+     * inside applyDelta's own statement, closing the hierarchy.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ms FROM MentorShip ms WHERE ms.id = :id")
+    Optional<MentorShip> findForUpdateById(@Param("id") Long id);
 
     boolean existsByIdAndMentor_Email(Long id, String email);
 
@@ -30,9 +58,14 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     @EntityGraph(attributePaths = {"tags"})
     Page<MentorShip> findAllByStatusNot(Status status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"tags"})
+    Page<MentorShip> findByStatusNotAndMentor_DeletedFalse(Status status, Pageable pageable);
+
+    boolean existsByIdAndMentor_DeletedFalse(Long id);
+
     @Query("""
     SELECT 
-        m.id AS id,
+        m.publicId AS id,
         m.title AS title,
         m.rating AS rating,
         COUNT(e.id) AS totalEnroll,
@@ -95,7 +128,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
-        m.id, m.title, m.subtitle, m.description, m.category,
+        m.publicId, m.title, m.subtitle, m.description, m.category,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.price,
         m.discountPercentage,
@@ -156,7 +189,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query(value = """
     SELECT 
-        m.id AS id,
+        m.publicId AS id,
         m.title AS title,
         m.subtitle AS subtitle,
         m.description AS description,
@@ -202,7 +235,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
-        m.id, m.title, m.subtitle, m.description, m.category,
+        m.publicId, m.title, m.subtitle, m.description, m.category,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName),
         m.price,
         m.discountPercentage,
@@ -212,6 +245,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     FROM MentorShip m
     WHERE m.mentor.email = :mentorEmail
     AND m.status = 'ACTIVE'
+    AND m.mentor.deleted = false
     AND (
         :studentEmail IS NULL
         OR NOT EXISTS (
@@ -230,7 +264,8 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT 
-        m.id as id,
+        m.publicId as id,
+        m.publicId as publicId,
         m.title as title,
         m.subtitle as subtitle,
         m.description as description,
@@ -242,7 +277,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
         m.coverImageUrl as coverImageUrl,
         m.status as status,
         m.rating as rating,
-        m.mentor.id as mentorId,
+        m.mentor.publicId as mentorId,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.mentor.email as mentorEmail,
         m.mentor.profileImageUrl as mentorProfileImageUrl,
@@ -255,7 +290,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
-        m.id,
+        m.publicId,
         m.title,
         m.subtitle,
         m.category,
@@ -279,7 +314,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
-        m.id,
+        m.publicId,
         m.title,
         m.subtitle,
         m.category,
@@ -298,6 +333,56 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     """)
     Page<MentorProfileMentorshipsDto> findMentorshipsByMentorId(
             @Param("mentorId") Long mentorId,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT 
+        m.publicId as id,
+        m.publicId as publicId,
+        m.title as title,
+        m.subtitle as subtitle,
+        m.description as description,
+        m.category as category,
+        m.difficultyLevel as difficultyLevel,
+        m.duration as duration,
+        m.price as price,
+        m.discountPercentage as discountPercentage,
+        m.coverImageUrl as coverImageUrl,
+        m.status as status,
+        m.rating as rating,
+        m.mentor.publicId as mentorId,
+        CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
+        m.mentor.email as mentorEmail,
+        m.mentor.profileImageUrl as mentorProfileImageUrl,
+        m.mentor.jobTitle as mentorJobTitle,
+        m.mentor.yearsOfExperience as mentorYearsOfExperience
+    FROM MentorShip m
+    WHERE m.publicId = :publicId
+    """)
+    MentorshipDetailsProjection findMentorshipDetailsByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("""
+    SELECT new com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.MentorProfileMentorshipsDto(
+        m.publicId,
+        m.title,
+        m.subtitle,
+        m.category,
+        m.difficultyLevel,
+        m.price,
+        m.discountPercentage,
+        m.duration,
+        m.coverImageUrl
+    )
+    FROM MentorShip m
+    LEFT JOIN m.enrollments e
+    WHERE m.mentor.publicId = :publicId
+    AND m.status = 'ACTIVE'
+    GROUP BY m.id, m.title, m.subtitle, m.category, m.difficultyLevel, m.price, m.discountPercentage, m.duration, m.coverImageUrl, m.rating
+    ORDER BY m.rating DESC, COUNT(e.id) DESC
+    """)
+    Page<MentorProfileMentorshipsDto> findMentorshipsByMentorPublicId(
+            @Param("publicId") UUID publicId,
             Pageable pageable
     );
 }

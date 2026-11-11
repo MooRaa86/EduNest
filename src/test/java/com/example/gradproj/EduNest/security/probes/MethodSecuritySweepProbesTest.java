@@ -52,17 +52,17 @@ class MethodSecuritySweepProbesTest extends ProdChainIntegrationTestBase {
 	private static final String STUDENT = "eb17-student@example.org";
 	private static final String ADMIN = "eb17-admin@example.org";
 
-	private Long mentorshipId;
-	private Long studentId;
+	private java.util.UUID mentorshipPublicId;
+	private java.util.UUID studentPublicId;
 
 	@BeforeEach
 	void seed() {
 		var chain = auth.mentorship(OWNER, Status.ACTIVE);
-		mentorshipId = chain.mentorship().getId();
-		auth.enroll(mentorshipId, STUDENT);
+		mentorshipPublicId = chain.mentorship().getPublicId();
+		auth.enroll(chain.mentorship().getId(), STUDENT);
 		auth.mentor(FOREIGN);
 		auth.admin(ADMIN);
-		studentId = studentRepo.findByEmail(STUDENT).orElseThrow().getId();
+		studentPublicId = studentRepo.findByEmail(STUDENT).orElseThrow().getPublicId();
 	}
 
 	/* ---------- G12 / TD-07: room creation ownership ---------- */
@@ -71,7 +71,7 @@ class MethodSecuritySweepProbesTest extends ProdChainIntegrationTestBase {
 	@DisplayName("EB17/[1] G12: FOREIGN mentor-room create → 403, no room row persisted")
 	void foreignMentor_roomCreate_forbidden() throws Exception {
 		long before = roomRepo.count();
-		mockMvc.perform(post("/api/v1/chat-room/create/" + mentorshipId)
+		mockMvc.perform(post("/api/v1/chat-room/create/" + mentorshipPublicId)
 						.header("Authorization", auth.authToken(FOREIGN, AuthFixture.MENTOR))
 						.contentType("application/json")
 						.content("{\"name\":\"foreign room attempt\"}"))
@@ -83,7 +83,7 @@ class MethodSecuritySweepProbesTest extends ProdChainIntegrationTestBase {
 	@DisplayName("EB17/[2] G12: owner mentor-room create → 200 and the row IS persisted")
 	void ownerMentor_roomCreate_ok() throws Exception {
 		long before = roomRepo.count();
-		mockMvc.perform(post("/api/v1/chat-room/create/" + mentorshipId)
+		mockMvc.perform(post("/api/v1/chat-room/create/" + mentorshipPublicId)
 						.header("Authorization", auth.authToken(OWNER, AuthFixture.MENTOR))
 						.contentType("application/json")
 						.content("{\"name\":\"owner room\"}"))
@@ -94,7 +94,7 @@ class MethodSecuritySweepProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB17/[3] G12: non-existent mentorship id → 403 (uniform denial — no id-space oracle)")
 	void unknownMentorship_roomCreate_forbidden() throws Exception {
-		mockMvc.perform(post("/api/v1/chat-room/create/99999999")
+		mockMvc.perform(post("/api/v1/chat-room/create/" + java.util.UUID.randomUUID())
 						.header("Authorization", auth.authToken(FOREIGN, AuthFixture.MENTOR))
 						.contentType("application/json")
 						.content("{\"name\":\"probe\"}"))
@@ -122,7 +122,7 @@ class MethodSecuritySweepProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB17/[6] SEL-09: student (even ENROLLED in this mentorship) → 403 on GET /{id}/stats")
 	void student_dashboardStats_forbidden() throws Exception {
-		mockMvc.perform(get("/api/v1/dashboard/" + mentorshipId + "/stats")
+		mockMvc.perform(get("/api/v1/dashboard/" + mentorshipPublicId + "/stats")
 						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}
@@ -160,7 +160,7 @@ class MethodSecuritySweepProbesTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB17/[10] SEL-09: student → 403 on GET /api/users/{id}/badges (URL-admin route, now also method-gated)")
 	void student_userBadgesRead_forbidden() throws Exception {
-		mockMvc.perform(get("/api/users/" + studentId + "/badges")
+		mockMvc.perform(get("/api/users/" + studentPublicId + "/badges")
 						.header("Authorization", auth.authToken(STUDENT, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}

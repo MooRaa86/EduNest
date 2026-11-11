@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.weeks;
 
 import lombok.*;
+import java.util.UUID;
 
 import java.util.List;
 
@@ -10,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class MentorshipWeeksWithContentsResponse {
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String mentorshipTitle;
     private List<StudentWeekContentsResponse> weeks;
 }

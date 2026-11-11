@@ -4,6 +4,8 @@ import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +16,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmission,Long> {
+    java.util.Optional<ProjectSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT ps.id FROM ProjectSubmission ps WHERE ps.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ps FROM ProjectSubmission ps WHERE ps.publicId = :publicId")
+    java.util.Optional<ProjectSubmission> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     @Query("""
         SELECT ps.id AS id,
                s.email AS studentEmail,
@@ -29,13 +39,23 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
     """)
     Optional<ProjectSubmissionAuthProjection> findAuthProjectionById(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ps FROM ProjectSubmission ps WHERE ps.id = :id")
+    Optional<ProjectSubmission> findForUpdateById(@Param("id") Long id);
+
     Page<ProjectSubmission> findByProject_Id(Long projectId, Pageable pageable);
     Optional<ProjectSubmission> findByProject_IdAndStudent_Id(Long projectId, Long studentId);
     boolean existsByProject_IdAndStudent_Id(Long projectId, Long studentId);
+    boolean existsByProject_Id(Long projectId);
+    /** EB-51 / D-09 — freeze predicate: at least one qualifying (GRADED) submission exists. */
+    boolean existsByProject_IdAndStatus(Long projectId, SubmissionStatus status);
+    /** EB-51 — cascade-delete protection: rejects deleting week if submissions exist. */
+    boolean existsByProject_Week_Id(Long weekId);
+    boolean existsByProject_Week_IdAndStatus(Long weekId, SubmissionStatus status);
 
     @Query("""
         SELECT
-            p.id                                    AS projectId,
+            p.publicId                              AS projectId,
             p.title                                 AS title,
             p.brief                                 AS brief,
             p.descriptionUrl                        AS descriptionUrl,
@@ -44,14 +64,14 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
             p.startAt                               AS startAt,
             p.endAt                                 AS endAt,
             p.goal                                  AS goal,
-            ps.id                                   AS submissionId,
+            ps.publicId                             AS submissionId,
             ps.status                               AS submissionStatus,
             ps.finalScore                           AS finalScore,
             p.points                                AS totalPoints,
             ps.fileUrl                              AS fileUrl,
             ps.uploadedFilePath                     AS uploadedFilePath,
             ps.feedBack                             AS feedback,
-            m.id                                    AS mentorId,
+            m.publicId                              AS mentorId,
             CONCAT(m.firstName, ' ', m.lastName)    AS mentorName,
             m.profileImageUrl                       AS mentorPhoto
         FROM Project p
@@ -133,4 +153,15 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
         WHERE ps.project.id = :projectId
     """)
     List<Long> findStudentIdsByProjectId(@Param("projectId") Long projectId);
+
+    @Query("""
+        SELECT ps
+        FROM ProjectSubmission ps
+        JOIN ps.project p
+        JOIN p.week w
+        WHERE ps.student.id = :studentId
+          AND w.mentorship.id = :mentorshipId
+    """)
+    List<ProjectSubmission> findByStudentIdAndMentorshipId(@Param("studentId") Long studentId,
+                                                           @Param("mentorshipId") Long mentorshipId);
 }

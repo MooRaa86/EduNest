@@ -27,6 +27,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -65,7 +67,8 @@ class QuizSubmissionGradingMathTest {
 
         service = new QuizSubmissionServiceImpl(
                 quizRepository, quizSubmissionRepository, studentRepository,
-                totalPointsService, notificationService, securityService);
+                totalPointsService, notificationService, securityService,
+                new com.example.gradproj.EduNest.config.learning.LateSubmissionProperties());
     }
 
     // ------------------------------------------------------------------
@@ -73,8 +76,14 @@ class QuizSubmissionGradingMathTest {
     // ------------------------------------------------------------------
 
 
+    private static final Map<Long, UUID> QUESTION_UUIDS = new ConcurrentHashMap<>();
+
+    private static UUID uuidFor(long id) {
+        return QUESTION_UUIDS.computeIfAbsent(id, k -> UUID.randomUUID());
+    }
+
     private QuizSubmissionServiceImpl.ScoreResult calculateScore(
-            List<StudentAnswerDTO> answers, Map<Long, Question> questions) throws Exception {
+            List<StudentAnswerDTO> answers, Map<UUID, Question> questions) throws Exception {
         Method m = QuizSubmissionServiceImpl.class
                 .getDeclaredMethod("calculateScore", List.class, Map.class);
         m.setAccessible(true);
@@ -84,11 +93,12 @@ class QuizSubmissionGradingMathTest {
     private static Question question(long id, AnswerChoices correct, int points) {
         Question q = Question.builder().correctAnswer(correct).points(points).build();
         q.setId(id);
+        q.setPublicId(uuidFor(id));
         return q;
     }
 
     private static StudentAnswerDTO answer(long questionId, String selected) {
-        return StudentAnswerDTO.builder().questionId(questionId).selectedAnswer(selected).build();
+        return StudentAnswerDTO.builder().questionId(uuidFor(questionId)).selectedAnswer(selected).build();
     }
 
     private Quiz quizWith(Question... questions) {
@@ -97,6 +107,7 @@ class QuizSubmissionGradingMathTest {
         Week week = Week.builder().id(10L).mentorship(mentorship).build();
         return Quiz.builder()
                 .id(1L)
+                .publicId(UUID.randomUUID())
                 .title("Java Basics Quiz")
                 .status(QuizStatus.PUBLISHED)
                 .week(week)
@@ -145,8 +156,8 @@ class QuizSubmissionGradingMathTest {
     void calculateScore_tableDocumentsTodayBehavior(
             String branch, List<StudentAnswerDTO> answers, List<Question> questions,
             double expectedScore, int expectedCorrect) throws Exception {
-        Map<Long, Question> questionMap = questions.stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = questions.stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         QuizSubmissionServiceImpl.ScoreResult result = calculateScore(answers, questionMap);
 
@@ -159,8 +170,8 @@ class QuizSubmissionGradingMathTest {
     void unknownQuestionId_isSkipped_notCounted() throws Exception {
         // Current behavior (calculateScore :310-311): unknown questionId -> `continue`.
         // The extra answer neither adds points nor breaks anything.
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         List<StudentAnswerDTO> answers = List.of(answer(1L, "A"), answer(999L, "A"));
 
@@ -176,8 +187,8 @@ class QuizSubmissionGradingMathTest {
         // Current behavior: no per-question dedupe; the same question answered twice
         // is counted twice (calculateScore :309-318 loops over the raw answer list).
         // Documented as it behaves today; P4-02/05 own any dedupe decision.
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         List<StudentAnswerDTO> answers = List.of(answer(1L, "A"), answer(1L, "A"));
 
@@ -191,8 +202,8 @@ class QuizSubmissionGradingMathTest {
     @DisplayName("Answer matching is CASE-SENSITIVE: 'a' != 'A' (current behavior)")
     void caseMismatch_isWrong() throws Exception {
         // Current behavior: String.equals (:314) — enum name "A" vs lowercase "a" fails.
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         QuizSubmissionServiceImpl.ScoreResult result =
                 calculateScore(List.of(answer(1L, "a")), questionMap);
@@ -205,8 +216,8 @@ class QuizSubmissionGradingMathTest {
     @DisplayName("Null selected answer -> NPE (current behavior; ties to SEL-07 family: missing @Valid on the submit path)")
     void nullSelectedAnswer_throwsNpe_today() {
         // Documented as it behaves today: no null-guard before .equals (:314).
-        Map<Long, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
-                .collect(Collectors.toMap(Question::getId, Function.identity()));
+        Map<UUID, Question> questionMap = List.of(question(1L, AnswerChoices.A, 5)).stream()
+                .collect(Collectors.toMap(Question::getPublicId, Function.identity()));
 
         // Arrays.asList (not List.of) — List.of rejects null elements.
         List<StudentAnswerDTO> answers = Arrays.asList(answer(1L, null));
@@ -241,8 +252,9 @@ class QuizSubmissionGradingMathTest {
         when(securityService.getCurrentUserEmail()).thenReturn("rahma@test.com");
         when(securityService.isStudentEnrolledByQuizId("rahma@test.com", 1L)).thenReturn(true);
         when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findForUpdateById(1L)).thenReturn(Optional.of(quiz));
         when(studentRepository.findByEmail("rahma@test.com")).thenReturn(Optional.of(student));
-        when(quizSubmissionRepository.findByStudent_IdAndQuiz_Id(5L, 1L))
+        when(quizSubmissionRepository.findByStudentIdAndQuizIdForUpdate(5L, 1L))
                 .thenReturn(Optional.of(submission));
 
         QuizSubmissionDTO dto = QuizSubmissionDTO.builder()
@@ -272,21 +284,24 @@ class QuizSubmissionGradingMathTest {
                 question(2L, AnswerChoices.B, 10));
         Student student = Student.builder().id(5L).firstName("Rahma").lastName("Ismail")
                 .email("rahma@test.com").build();
-        // Ended 10.5 minutes ago -> 10 whole minutes late (ChronoUnit.MINUTES truncates).
-        // +30s buffer keeps the minute count stable even if the test runs slowly.
+        // Ended 9 min + 20 s ago -> 9 whole minutes late (ChronoUnit.MINUTES truncates),
+        // safely inside the 10-minute grace. +20 s head-room keeps the minute count
+        // stable even if the test runs slowly (EB-53 exact-boundary: 10 min + 1 s late
+        // is now REJECTED, so the penalty fixture must stay under deadline + grace).
         LocalDateTime now = LocalDateTime.now();
         QuizSubmission submission = QuizSubmission.builder()
                 .id(9L).quiz(quiz).student(student).score(null)
                 .startDate(now.minusMinutes(40))
-                .endDate(now.minusSeconds(630)) // 10 min + 30 s in the past
+                .endDate(now.minusSeconds(560)) // 9 min + 20 s in the past
                 .answers(new ArrayList<>())
                 .build();
 
         when(securityService.getCurrentUserEmail()).thenReturn("rahma@test.com");
         when(securityService.isStudentEnrolledByQuizId("rahma@test.com", 1L)).thenReturn(true);
         when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findForUpdateById(1L)).thenReturn(Optional.of(quiz));
         when(studentRepository.findByEmail("rahma@test.com")).thenReturn(Optional.of(student));
-        when(quizSubmissionRepository.findByStudent_IdAndQuiz_Id(5L, 1L))
+        when(quizSubmissionRepository.findByStudentIdAndQuizIdForUpdate(5L, 1L))
                 .thenReturn(Optional.of(submission));
 
         QuizSubmissionDTO dto = QuizSubmissionDTO.builder()
@@ -295,31 +310,32 @@ class QuizSubmissionGradingMathTest {
 
         QuizSubmissionResponseDTO resp = service.submitQuizAnswers(dto, 1L);
 
-        // 20 raw - 10 late minutes = 10 (Math.max(0, 20-10) = 10, :115)
-        assertThat(resp.getScore()).isEqualTo(10.0);
-        verify(totalPointsService).applyDelta(student, quiz.getWeek().getMentorship(), 10);
+        // 20 raw - 9 late minutes = 11 (Math.max(0, 20-9) = 11, :115)
+        assertThat(resp.getScore()).isEqualTo(11.0);
+        verify(totalPointsService).applyDelta(student, quiz.getWeek().getMentorship(), 11);
     }
 
     @Test
-    @DisplayName("Very late submission: penalty floors at 0, score never negative (:115 Math.max)")
-    void veryLateSubmission_floorsAtZero() {
+    @DisplayName("Late within grace: penalty floors at 0, score never negative (:115 Math.max)")
+    void lateWithinGrace_floorsAtZero() {
         Quiz quiz = quizWith(question(1L, AnswerChoices.A, 5));
         Student student = Student.builder().id(5L).firstName("Rahma").lastName("Ismail")
                 .email("rahma@test.com").build();
-        // Ended ~12.5 minutes ago; raw score only 5 -> penalty floors at 0.
+        // Ended ~9.5 minutes ago (inside the 10-minute grace); raw score only 5 -> penalty floors at 0.
         LocalDateTime now = LocalDateTime.now();
         QuizSubmission submission = QuizSubmission.builder()
                 .id(9L).quiz(quiz).student(student).score(null)
                 .startDate(now.minusMinutes(40))
-                .endDate(now.minusSeconds(750)) // 12 min + 30 s in the past
+                .endDate(now.minusSeconds(570)) // 9 min + 30 s in the past
                 .answers(new ArrayList<>())
                 .build();
 
         when(securityService.getCurrentUserEmail()).thenReturn("rahma@test.com");
         when(securityService.isStudentEnrolledByQuizId("rahma@test.com", 1L)).thenReturn(true);
         when(quizRepository.findById(1L)).thenReturn(Optional.of(quiz));
+        when(quizRepository.findForUpdateById(1L)).thenReturn(Optional.of(quiz));
         when(studentRepository.findByEmail("rahma@test.com")).thenReturn(Optional.of(student));
-        when(quizSubmissionRepository.findByStudent_IdAndQuiz_Id(5L, 1L))
+        when(quizSubmissionRepository.findByStudentIdAndQuizIdForUpdate(5L, 1L))
                 .thenReturn(Optional.of(submission));
 
         QuizSubmissionDTO dto = QuizSubmissionDTO.builder()
@@ -328,8 +344,9 @@ class QuizSubmissionGradingMathTest {
 
         QuizSubmissionResponseDTO resp = service.submitQuizAnswers(dto, 1L);
 
-        // max(0, 5 - 12) = 0
+        // max(0, 5 - 9) = 0
         assertThat(resp.getScore()).isEqualTo(0.0);
+        assertThat(resp.getIsLate()).isTrue();
         verify(totalPointsService).applyDelta(student, quiz.getWeek().getMentorship(), 0);
     }
 }

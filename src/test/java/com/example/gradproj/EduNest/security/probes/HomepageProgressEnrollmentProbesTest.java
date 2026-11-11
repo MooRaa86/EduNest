@@ -44,12 +44,13 @@ class HomepageProgressEnrollmentProbesTest extends ProdChainIntegrationTestBase 
 	private static final String STRANGER = "eb24-stranger@example.org";
 	private static final String ADMIN = "eb24-admin@example.org";
 
-	private Long activeId;
+	private java.util.UUID activePublicId;
 
 	@BeforeEach
 	void seed() throws Exception {
-		activeId = auth.mentorship(MENTOR, Status.ACTIVE).mentorship().getId();
-		auth.enroll(activeId, ENROLLED);
+		var ms = auth.mentorship(MENTOR, Status.ACTIVE).mentorship();
+		activePublicId = ms.getPublicId();
+		auth.enroll(ms.getId(), ENROLLED);
 		auth.student(STRANGER);
 		auth.admin(ADMIN);
 	}
@@ -57,14 +58,14 @@ class HomepageProgressEnrollmentProbesTest extends ProdChainIntegrationTestBase 
 	@Test
 	@DisplayName("EB24/[1] anonymous → 401 (route is chain-authenticated, before any logic)")
 	void anonymous_unauthorized() throws Exception {
-		mockMvc.perform(get("/api/v1/homepage/progress/" + activeId))
+		mockMvc.perform(get("/api/v1/homepage/progress/" + activePublicId))
 				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	@DisplayName("EB24/[2] non-enrolled STUDENT → 403 (no curriculum-structure leak)")
 	void strangerStudent_forbidden() throws Exception {
-		String body = mockMvc.perform(get("/api/v1/homepage/progress/" + activeId)
+		String body = mockMvc.perform(get("/api/v1/homepage/progress/" + activePublicId)
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden()).andReturn().getResponse().getContentAsString();
 		// the secret totals must not ride along in the error response
@@ -74,7 +75,7 @@ class HomepageProgressEnrollmentProbesTest extends ProdChainIntegrationTestBase 
 	@Test
 	@DisplayName("EB24/[3] enrolled STUDENT → 200 with progress payload")
 	void enrolledStudent_ok() throws Exception {
-		String body = mockMvc.perform(get("/api/v1/homepage/progress/" + activeId)
+		String body = mockMvc.perform(get("/api/v1/homepage/progress/" + activePublicId)
 						.header("Authorization", auth.authToken(ENROLLED, AuthFixture.STUDENT)))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		assertThat(body).contains("progressPercentage");
@@ -83,10 +84,10 @@ class HomepageProgressEnrollmentProbesTest extends ProdChainIntegrationTestBase 
 	@Test
 	@DisplayName("EB24/[4] MENTOR → 403 and ADMIN → 403 (STUDENT-only endpoint, by role)")
 	void mentorAndAdmin_forbidden() throws Exception {
-		mockMvc.perform(get("/api/v1/homepage/progress/" + activeId)
+		mockMvc.perform(get("/api/v1/homepage/progress/" + activePublicId)
 						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
 				.andExpect(status().isForbidden());
-		mockMvc.perform(get("/api/v1/homepage/progress/" + activeId)
+		mockMvc.perform(get("/api/v1/homepage/progress/" + activePublicId)
 						.header("Authorization", auth.authToken(ADMIN, AuthFixture.ADMIN)))
 				.andExpect(status().isForbidden());
 	}
@@ -94,7 +95,7 @@ class HomepageProgressEnrollmentProbesTest extends ProdChainIntegrationTestBase 
 	@Test
 	@DisplayName("EB24/[5] nonexistent mentorship id → 403 (no existence oracle)")
 	void nonexistentId_forbidden() throws Exception {
-		mockMvc.perform(get("/api/v1/homepage/progress/999999999")
+		mockMvc.perform(get("/api/v1/homepage/progress/" + java.util.UUID.randomUUID())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}

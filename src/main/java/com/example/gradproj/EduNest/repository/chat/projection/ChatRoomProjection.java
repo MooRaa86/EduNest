@@ -1,16 +1,17 @@
 package com.example.gradproj.EduNest.repository.chat.projection;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface ChatRoomProjection {
 
-    Long getRoomId();
+    UUID getRoomId();
 
     String getRoomName();
 
     String getRoomImageUrl();
 
-    Long getMentorshipId();
+    UUID getMentorshipId();
 
     String getMentorshipName();
 

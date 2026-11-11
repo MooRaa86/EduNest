@@ -16,6 +16,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Collection;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +48,8 @@ public class EduNestUserDetailsService implements UserDetailsService {
             }
             String roleName = "ROLE_" + user.getRoleName();
             List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));
-            return new User(user.getEmail(), user.getPassword(), authorities);
+            return new IdentityDetails(user.getEmail(), user.getPassword(), authorities,
+                    PrincipalIdentity.Type.USER, user.getId());
         }
 
         // If not found in UserRepository, try AdminRepository
@@ -59,10 +62,41 @@ public class EduNestUserDetailsService implements UserDetailsService {
             }
             String roleName = "ROLE_" + admin.getRole().getName();
             List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));
-            return new User(admin.getEmail(), admin.getPassword(), authorities);
+            return new IdentityDetails(admin.getEmail(), admin.getPassword(), authorities,
+                    PrincipalIdentity.Type.ADMIN, admin.getId());
         }
 
         throw new UsernameNotFoundException("User not found for this email : " + username);
     }
 
+    /** Password-bearing details are never exposed as the authenticated principal. */
+    static final class IdentityDetails extends User {
+        private final PrincipalIdentity.Type type;
+        private final long id;
+
+        IdentityDetails(String email, String password, Collection<? extends GrantedAuthority> authorities,
+                        PrincipalIdentity.Type type, long id) {
+            super(email, password, authorities);
+            this.type = type;
+            this.id = id;
+        }
+
+        PrincipalIdentity principal(String presentedEmail) {
+            return new PrincipalIdentity(type, id, presentedEmail);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            if (!super.equals(o)) return false;
+            IdentityDetails that = (IdentityDetails) o;
+            return id == that.id && type == that.type;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), type, id);
+        }
+    }
 }

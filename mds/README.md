@@ -11,6 +11,12 @@ EduNest is a **mentor-led structured learning platform** (Java 21 · Spring Boot
 Architecture in one paragraph: stateless JWT auth (prod profile only — see the warning below) → `@PreAuthorize` + service-level ownership checks → hand-rolled services writing through Spring Data repositories (43 entity classes, `ddl-auto=update`) → real-time pushes over an in-memory simple broker → local-disk file storage (`uploads/`, publicly served) → SMTP for account flows. There is **no payment gateway** (enrollments are free claims with a commission *snapshot*), **no CI/CD**, and **one scheduled job** (OTP cleanup).
 
 > ⚠️ **Read this first:** the `!prod` security profile exposes **every endpoint** with `permitAll()`, and the JWT signing falls back to a **hardcoded secret**. If you run the app locally, set `SPRING_PROFILES_ACTIVE=prod` — [details](authentication-security/security-risks.md).
+> 
+> 🆔 **Architecture Directive — Dual Identifier Pattern (D-04 / EB-109):**
+> All teammates and AI agents modifying or adding endpoints must strictly adhere to this rule:
+> 1. **External API Surface:** Requests and responses (URLs, `@PathVariable`, `@RequestParam`, request DTOs, response DTOs) must **strictly use `UUID publicId` (string)**. Internal numeric `Long id`s must never be exposed to clients to eliminate scraping and IDOR enumeration.
+> 2. **Internal Persistence:** Database tables, foreign keys, table joins, entity relationships, and internal services **strictly use `Long id` (BIGINT)**.
+> 3. **Boundary Translation:** Use repository lookup methods (e.g. `findByPublicId`, `findIdByPublicId`) or interface projections to resolve public UUIDs to internal entities. Full specification: [architecture/universal-public-id-standard.md](architecture/universal-public-id-standard.md). Details: [api/MDS.md](api/MDS.md) and [architecture/system-overview.md](architecture/system-overview.md).
 
 ## 2. Documentation map
 

@@ -87,13 +87,13 @@ public class MentorshipEnrollmentFlowIntegrationTest extends ProdChainIntegratio
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
 		// Step 1: Student views mentorship details
-		mockMvc.perform(get("/api/v1/mentorship/{id}", ms.getId())
+		mockMvc.perform(get("/api/v1/mentorship/{id}", ms.getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.mentorShip.title").value("Architecture Mastery " + unique));
 
 		// Step 2: Student joins mentorship
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", ms.getId())
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", ms.getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.message").value("Mentorship joined successfully"));
@@ -138,12 +138,12 @@ public class MentorshipEnrollmentFlowIntegrationTest extends ProdChainIntegratio
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
 		// First join succeeds
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", chain.mentorship().getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isOk());
 
 		// Second join must fail with a conflict (EB-44/P3-02: uniqueness -> 409)
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", chain.mentorship().getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.errorCode").value("ERR_DUPLICATE_RESOURCE"))
@@ -169,7 +169,7 @@ public class MentorshipEnrollmentFlowIntegrationTest extends ProdChainIntegratio
 
 		String studentToken = auth.authToken(studentEmail, AuthFixture.STUDENT);
 
-		mockMvc.perform(post("/api/v1/mentorship/{id}/join", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/{id}/join", chain.mentorship().getPublicId())
 						.header("Authorization", studentToken))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.errorCode").value("ERR_BUSINESS_RULE"))

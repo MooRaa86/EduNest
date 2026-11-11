@@ -69,7 +69,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 
 		assertThat(sentMsg.getId()).isNotNull();
 		assertThat(sentMsg.getConversationId()).isNotNull();
-		Long conversationId = sentMsg.getConversationId();
+		UUID conversationId = sentMsg.getConversationId();
 		Long messageId = sentMsg.getId();
 
 		// Step 2: User B lists conversations and sees User A
@@ -77,7 +77,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 						.header("Authorization", tokenB))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.conversations").isArray())
-				.andExpect(jsonPath("$.apiResponse.conversations[0].conversationId").value(conversationId));
+				.andExpect(jsonPath("$.apiResponse.conversations[0].conversationId").value(conversationId.toString()));
 
 		// Step 3: User B reads message history
 		mockMvc.perform(get("/api/v1/conversation/{conversationId}/messages", conversationId)

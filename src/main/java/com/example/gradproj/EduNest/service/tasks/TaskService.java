@@ -9,6 +9,7 @@ import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.UUID;
 
 public interface TaskService {
     @PreAuthorize("hasRole('MENTOR')")
@@ -28,4 +29,20 @@ public interface TaskService {
     @PreAuthorize("hasRole('MENTOR')")
     FullTaskDashBoardDto getFullTaskDashboard(Long mentorShipId, String taskName, TaskStatus status, Pageable pageable, String email);
     TaskWithSubmissionForStudentResponse getTaskWithSubmission(Long taskId, String email);
+
+    TaskResponse getTaskById(UUID taskId);
+    @PreAuthorize("hasRole('MENTOR')")
+    TaskResponse updateTask(UUID taskId, PatchTaskRequest request, MultipartFile file, String email);
+    @PreAuthorize("hasRole('MENTOR')")
+    void deleteTask(UUID taskId, String email);
+    @PreAuthorize("hasRole('MENTOR')")
+    TaskResponse updateTaskStatus(UUID taskId, UpdateTaskStatusRequest req, String email);
+    PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, UUID msid, Pageable pageable);
+    @PreAuthorize("hasRole('MENTOR')")
+    TaskDashboardDTO getTaskDashboard(UUID mentorShipId, String email);
+    @PreAuthorize("hasRole('MENTOR')")
+    TaskStatisticsDTO getTaskStatistics(UUID taskId, Pageable pageable, String email);
+    @PreAuthorize("hasRole('MENTOR')")
+    FullTaskDashBoardDto getFullTaskDashboard(UUID mentorShipId, String taskName, TaskStatus status, Pageable pageable, String email);
+    TaskWithSubmissionForStudentResponse getTaskWithSubmission(UUID taskId, String email);
 }

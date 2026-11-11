@@ -5,9 +5,11 @@ import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskDashboardProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.UpcomingTaskProjection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,19 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task,Long> {
+    java.util.Optional<Task> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT t.id FROM Task t WHERE t.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    void deleteByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Task t WHERE t.publicId = :publicId")
+    java.util.Optional<Task> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
+    /** EB-51 — shared gate lock (L2) for task points-edit/delete and grading gates. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Task t WHERE t.id = :id")
+    Optional<Task> findForUpdateById(@Param("id") Long id);
     @Query("""
         SELECT t.id AS id,
                m.email AS mentorEmail,
@@ -80,9 +95,9 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
 
 
     @Query("""
-    SELECT t.id as id, t.title as title, t.dueAt as dueAt, t.points as points,
-           w.id as weekId, w.title as weekTitle,
-           m.id as mentorshipId, m.title as mentorshipTitle
+    SELECT t.publicId as id, t.title as title, t.dueAt as dueAt, t.points as points,
+           w.publicId as weekId, w.title as weekTitle,
+           m.publicId as mentorshipId, m.title as mentorshipTitle
     FROM Task t
     JOIN t.week w
     JOIN w.mentorship m
@@ -107,9 +122,9 @@ List<Task> findByWeek_Mentorship_Id(Long mentorshipId);
     );
 
     @Query("""
-    SELECT t.id as id, t.title as title, t.dueAt as dueAt, t.points as points,
-           w.id as weekId, w.title as weekTitle,
-           m.id as mentorshipId, m.title as mentorshipTitle
+    SELECT t.publicId as id, t.title as title, t.dueAt as dueAt, t.points as points,
+           w.publicId as weekId, w.title as weekTitle,
+           m.publicId as mentorshipId, m.title as mentorshipTitle
     FROM Task t
     JOIN t.week w
     JOIN w.mentorship m

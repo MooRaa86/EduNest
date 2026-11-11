@@ -213,4 +213,28 @@ public class FileAccessService {
         }
         return projection.getFilePath();
     }
+
+    public String authorizeTaskSubmission(java.util.UUID publicId) {
+        Long id = taskSubmissionRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Submission not found"));
+        return authorizeTaskSubmission(id);
+    }
+
+    public String authorizeTask(java.util.UUID publicId) {
+        Long id = taskRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Task not found"));
+        return authorizeTask(id);
+    }
+
+    public String authorizeProject(java.util.UUID publicId) {
+        Long id = projectRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Project not found"));
+        return authorizeProject(id);
+    }
+
+    public String authorizeProjectSubmission(java.util.UUID publicId) {
+        Long id = projectSubmissionRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Project submission not found"));
+        return authorizeProjectSubmission(id);
+    }
 }

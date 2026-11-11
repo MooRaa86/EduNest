@@ -3,6 +3,7 @@ package com.example.gradproj.EduNest.dto.homepage;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -10,13 +11,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class UpcomingItemDto {
-    private Long id;
+    private UUID id;
     private String title;
     private String type; // SESSION, TASK, PROJECT
     private LocalDateTime dueDate;
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String mentorshipTitle;
-    private Long weekId;
+    private UUID weekId;
     private String weekTitle;
     private Integer points;
 }

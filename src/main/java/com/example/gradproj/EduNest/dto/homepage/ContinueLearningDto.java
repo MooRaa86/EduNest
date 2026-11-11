@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.homepage;
 
 import lombok.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -8,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class ContinueLearningDto {
-    private Long mentorshipId;
+    private UUID mentorshipId;
     private String title;
     private String coverImageUrl;
     private String mentorName;

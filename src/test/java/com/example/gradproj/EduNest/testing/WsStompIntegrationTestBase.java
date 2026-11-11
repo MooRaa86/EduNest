@@ -28,6 +28,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.UUID;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -261,7 +262,10 @@ public abstract class WsStompIntegrationTestBase {
 	}
 
 	/** Real-JWT minting + seeding helpers (AuthFixture contract). */
-	protected record RoomCtx(Long roomId, Long mentorshipId, String mentorEmail) {
+	protected record RoomCtx(Long roomId, Long mentorshipId, String mentorEmail, UUID roomPublicId, UUID mentorshipPublicId) {
+		public RoomCtx(Long roomId, Long mentorshipId, String mentorEmail) {
+			this(roomId, mentorshipId, mentorEmail, null, null);
+		}
 	}
 
 	protected RoomCtx seedRoom(String label, String mentorEmail) {
@@ -271,7 +275,7 @@ public abstract class WsStompIntegrationTestBase {
 				.mentorship(chain.mentorship())
 				.creator(chain.mentor())
 				.build());
-		return new RoomCtx(room.getId(), chain.mentorship().getId(), mentorEmail);
+		return new RoomCtx(room.getId(), chain.mentorship().getId(), mentorEmail, room.getPublicId(), chain.mentorship().getPublicId());
 	}
 
 	protected void enroll(Long mentorshipId, String studentEmail) {

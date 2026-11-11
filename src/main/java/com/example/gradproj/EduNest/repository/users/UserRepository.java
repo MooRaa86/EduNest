@@ -17,9 +17,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByEmail(String email);
+
+    Optional<UserEntity> findByPublicId(UUID publicId);
+
+    @Query("SELECT u.id FROM UserEntity u WHERE u.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
     // OTP operations lock the users row first inside their transaction, even when no OTP exists yet.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -43,6 +49,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     @Query("""
     select
+        u.publicId as publicId,
         u.email as email,
         concat(u.firstName, ' ', u.lastName) as fullName
     from UserEntity u
@@ -98,7 +105,7 @@ where u.email = :email
 
     @Query("""
         SELECT
-            u.id as id,
+            u.publicId as id,
             u.firstName as firstName,
             u.lastName as lastName,
             u.email as email,
@@ -112,7 +119,7 @@ where u.email = :email
 
     @Query("""
         SELECT
-            u.id as id,
+            u.publicId as id,
             u.firstName as firstName,
             u.lastName as lastName,
             u.email as email,

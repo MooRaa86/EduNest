@@ -71,6 +71,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .outOfOrder(true)
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
         }
@@ -87,18 +88,18 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute exactly 4 scripts (V1, V2, V3, V4 — EB-47/P3-05 commission seed)")
-                .isEqualTo(4);
+                .as("Initial migration must execute scripts V1 through V12")
+                .isEqualTo(12);
     }
 
     @Test
     @Order(2)
-    @DisplayName("2. Migration history: exactly 3 applied migrations (V1, V2, V3), SUCCESS, non-null checksums")
+    @DisplayName("2. Migration history: applied migrations (V1, V2, V3, V4, V6), SUCCESS, non-null checksums")
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Exactly 4 migrations must be registered in flyway_schema_history")
-                .hasSize(4);
+                .as("Twelve migrations must be registered in flyway_schema_history")
+                .hasSize(12);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -129,6 +130,51 @@ public class PostgreSqlMigrationIntegrationTest {
         assertThat(v4.getType().name()).isEqualTo("SQL");
         assertThat(v4.getState().isApplied()).isTrue();
         assertThat(v4.getChecksum()).isNotNull();
+
+        // [EB-91] V5 refresh token sessions
+        MigrationInfo v5 = applied[4];
+        assertThat(v5.getVersion().getVersion()).isEqualTo("5");
+        assertThat(v5.getDescription()).isEqualTo("refresh token sessions");
+        assertThat(v5.getType().name()).isEqualTo("SQL");
+        assertThat(v5.getState().isApplied()).isTrue();
+        assertThat(v5.getChecksum()).isNotNull();
+
+        // [EB-109] V6 public uuid identifiers
+        MigrationInfo v6 = applied[5];
+        assertThat(v6.getVersion().getVersion()).isEqualTo("6");
+        assertThat(v6.getDescription()).isEqualTo("add public uuid identifiers");
+        assertThat(v6.getType().name()).isEqualTo("SQL");
+        assertThat(v6.getState().isApplied()).isTrue();
+        assertThat(v6.getChecksum()).isNotNull();
+        MigrationInfo v7 = applied[6];
+        assertThat(v7.getVersion().getVersion()).isEqualTo("7");
+        assertThat(v7.getDescription()).isEqualTo("certificate issuance snapshot");
+        assertThat(v7.getType().name()).isEqualTo("SQL");
+        assertThat(v7.getState().isApplied()).isTrue();
+        assertThat(v7.getChecksum()).isNotNull();
+        // [EB-62] V8 failed email attempts
+        MigrationInfo v8 = applied[7];
+        assertThat(v8.getVersion().getVersion()).isEqualTo("8");
+        assertThat(v8.getDescription()).isEqualTo("failed email attempts");
+        assertThat(v8.getType().name()).isEqualTo("SQL");
+        assertThat(v8.getState().isApplied()).isTrue();
+        assertThat(v8.getChecksum()).isNotNull();
+
+        // [EB-51] V9 badge and total points versions
+        MigrationInfo v9 = applied[8];
+        assertThat(v9.getVersion().getVersion()).isEqualTo("9");
+        assertThat(v9.getDescription()).isEqualTo("badge and total points versions");
+        assertThat(v9.getType().name()).isEqualTo("SQL");
+        assertThat(v9.getState().isApplied()).isTrue();
+        assertThat(v9.getChecksum()).isNotNull();
+
+        // [EB-51] V10 unique session attendance result
+        MigrationInfo v10 = applied[9];
+        assertThat(v10.getVersion().getVersion()).isEqualTo("10");
+        assertThat(v10.getDescription()).isEqualTo("unique session attendance result");
+        assertThat(v10.getType().name()).isEqualTo("SQL");
+        assertThat(v10.getState().isApplied()).isTrue();
+        assertThat(v10.getChecksum()).isNotNull();
     }
 
     @Test
@@ -153,12 +199,12 @@ public class PostgreSqlMigrationIntegrationTest {
                     tables.add(rs.getString("table_name"));
                 }
                 assertThat(tables)
-                        .as("Schema must contain exactly 46 application tables: 42 entity tables matching EB-82 reconciliation + 4 EB-44 archive tables")
-                        .hasSize(46);
+                        .as("Schema must contain 51 application and support tables through V12")
+                        .hasSize(51);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
                         .contains("eb44_archive_enrollments", "eb44_archive_mentorship_reviews",
-                                "eb44_archive_conversations", "eb44_archive_messages");
+                                "eb44_archive_conversations", "eb44_archive_messages", "refresh_token_sessions", "failed_email_attempts", "eb51_archive_session_attendance_result");
             }
 
             // B. Verify all 5 text columns are data_type = 'text' (no OID or bytea)
@@ -328,6 +374,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(false)
                     .cleanDisabled(true)
+                    .outOfOrder(true)
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
@@ -409,9 +456,12 @@ public class PostgreSqlMigrationIntegrationTest {
                     .schemas(testSchema)
                     .defaultSchema(testSchema)
                     .locations("classpath:db/migration")
+                    // This deliberately synthetic unmanaged schema does not contain V1 tables.
+                    .target("8")
                     .baselineOnMigrate(false) // Must be false
                     .baselineVersion("1")
                     .cleanDisabled(true)
+                    .outOfOrder(true)
                     .placeholders(Map.of("defaultCommissionRate", "10.0"))
                     .load();
 
@@ -432,8 +482,8 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult postBaselineResult = unmanagedFlyway.migrate();
             assertThat(postBaselineResult.success).isTrue();
             assertThat(postBaselineResult.migrationsExecuted)
-                    .as("Post-baseline migrate must apply pending migrations above version 1 (V2, V3, V4 — EB-47/P3-05)")
-                    .isEqualTo(3);
+                    .as("Post-baseline migrate must apply pending migrations V2 through V8")
+                    .isEqualTo(7);
         } finally {
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                  Statement stmt = conn.createStatement()) {
@@ -547,6 +597,170 @@ public class PostgreSqlMigrationIntegrationTest {
                         .as("Admin dynamic update must take precedence over Day-1 10% seed")
                         .isEqualTo(25.0);
                 assertThat(rs.getString("created_by")).isEqualTo("admin@example.com");
+            }
+        }
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("13. Upgrade from previous release: V6-shaped database migrates to V7 and preserves legacy rows")
+    void testUpgradeFromPreviousReleaseAppliesV7AndPreservesLegacyRows() throws Exception {
+        String testSchema = "upgrade_from_v6";
+        try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS " + testSchema);
+        }
+
+        try {
+            // 1. Stage a database at the previous release (V1..V6, before certificate snapshot columns).
+            Flyway previousRelease = Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas(testSchema)
+                    .defaultSchema(testSchema)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(false)
+                    .cleanDisabled(true)
+                    .target("6")
+                    .placeholders(Map.of("defaultCommissionRate", "10.0"))
+                    .load();
+
+            MigrateResult staged = previousRelease.migrate();
+            assertThat(staged.success).isTrue();
+            assertThat(staged.migrationsExecuted)
+                    .as("Staging must apply exactly the previous-release migrations V1 through V6")
+                    .isEqualTo(6);
+
+            // 2. Insert legacy rows down the real FK chain (user -> student, mentorship) so the
+            //    old certificate and notification rows persist through the upgrade.
+            try (Statement stmt = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).createStatement()) {
+                stmt.executeUpdate(
+                    "INSERT INTO " + testSchema + ".users "
+                    + "(deleted, enabled, created_at, updated_at, created_by, updated_by, email, role_id) "
+                    + "SELECT false, true, NOW(), NOW(), 'legacy', 'legacy', 'legacy@example.org', id "
+                    + "FROM " + testSchema + ".roles WHERE name = 'ADMIN'");
+
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".students (student_id, educational_level) "
+                    + "SELECT id, 'FRESH' FROM " + testSchema + ".users WHERE email = 'legacy@example.org'");
+
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".mentorship "
+                    + "(created_at, updated_at, created_by, updated_by, duration, title) "
+                    + "VALUES (NOW(), NOW(), 'legacy', 'legacy', 6, 'legacy-mt')");
+
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".certificates "
+                    + "(created_at, issued_at, updated_at, created_by, updated_by, mentorship_id, student_id, student_rank) "
+                    + "SELECT NOW(), NOW(), NOW(), 'legacy', 'legacy', m.id, s.student_id, 3 "
+                    + "FROM " + testSchema + ".mentorship m, " + testSchema + ".students s "
+                    + "WHERE m.title = 'legacy-mt' "
+                    + "AND s.student_id = (SELECT id FROM " + testSchema + ".users WHERE email = 'legacy@example.org')");
+
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".badges "
+                    + "(created_at, updated_at, created_by, updated_by, mentorship_id, title, category, description, points) "
+                    + "SELECT NOW(), NOW(), 'legacy', 'legacy', m.id, 'legacy-badge', 'ACHIEVEMENT', 'legacy', 17 "
+                    + "FROM " + testSchema + ".mentorship m WHERE m.title = 'legacy-mt'");
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".total_points "
+                    + "(created_at, updated_at, created_by, updated_by, mentorship_id, student_id, total_points) "
+                    + "SELECT NOW(), NOW(), 'legacy', 'legacy', m.id, s.student_id, 23 "
+                    + "FROM " + testSchema + ".mentorship m, " + testSchema + ".students s "
+                    + "WHERE m.title = 'legacy-mt' AND s.student_id = "
+                    + "(SELECT id FROM " + testSchema + ".users WHERE email = 'legacy@example.org')");
+
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".notification "
+                    + "(title, content, type, created_at, updated_at, created_by, updated_by) "
+                    + "VALUES ('Legacy title', 'body', 'CERTIFICATE', NOW(), NOW(), 'legacy', 'legacy')");
+
+                stmt.executeUpdate("INSERT INTO " + testSchema + ".user_notification "
+                    + "(is_read, created_at, updated_at, created_by, updated_by, user_id, notification_id) "
+                    + "SELECT false, NOW(), NOW(), 'legacy', 'legacy', u.id, n.id "
+                    + "FROM " + testSchema + ".users u, " + testSchema + ".notification n "
+                    + "WHERE u.email = 'legacy@example.org' AND n.title = 'Legacy title'");
+            }
+
+            // 3. Upgrade to the current local branch: V7 and V8 must be pending.
+            Flyway upgrade = Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .schemas(testSchema)
+                    .defaultSchema(testSchema)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(false)
+                    .cleanDisabled(true)
+                    .placeholders(Map.of("defaultCommissionRate", "10.0"))
+                    .load();
+
+            MigrateResult upgraded = upgrade.migrate();
+            assertThat(upgraded.success).isTrue();
+            assertThat(upgraded.migrationsExecuted)
+                    .as("Upgrade from the V6-shaped database must apply V7 through V12")
+                    .isEqualTo(6);
+            assertThat(upgrade.info().applied())
+                    .as("Upgraded schema history must hold all twelve migrations")
+                    .hasSize(12);
+
+            // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT points, version FROM " + testSchema + ".badges WHERE title = 'legacy-badge'")) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getInt("points")).isEqualTo(17);
+                    assertThat(rs.getLong("version")).isZero();
+                }
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT total_points, version FROM " + testSchema + ".total_points")) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getInt("total_points")).isEqualTo(23);
+                    assertThat(rs.getLong("version")).isZero();
+                }
+                var snapshotColumns = Map.of(
+                        "certificates", List.of("points_at_issuance", "cohort_size_at_issuance"),
+                        "user_notification", List.of("certificate_issuance_id", "certificate_recipient_email"));
+                for (Map.Entry<String, List<String>> entry : snapshotColumns.entrySet()) {
+                    for (String column : entry.getValue()) {
+                        try (PreparedStatement ps = conn.prepareStatement("""
+                            SELECT is_nullable, data_type
+                            FROM information_schema.columns
+                            WHERE table_schema = ? AND table_name = ? AND column_name = ?
+                        """)) {
+                            ps.setString(1, testSchema);
+                            ps.setString(2, entry.getKey());
+                            ps.setString(3, column);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                assertThat(rs.next())
+                                        .as("Upgraded schema must expose " + entry.getKey() + "." + column)
+                                        .isTrue();
+                                assertThat(rs.getString("is_nullable"))
+                                        .as(entry.getKey() + "." + column + " must remain nullable for V6-era rows")
+                                        .isEqualTo("YES");
+                            }
+                        }
+                    }
+                }
+
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT student_rank, points_at_issuance, cohort_size_at_issuance FROM " + testSchema + ".certificates")) {
+                    assertThat(rs.next()).as("Legacy certificate row must survive the upgrade").isTrue();
+                    assertThat(rs.getLong("student_rank")).isEqualTo(3);
+                    assertThat(rs.getObject("points_at_issuance")).isNull();
+                    assertThat(rs.getObject("cohort_size_at_issuance")).isNull();
+                    assertThat(rs.next()).isFalse();
+                }
+
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT is_read, certificate_issuance_id, certificate_recipient_email FROM " + testSchema + ".user_notification WHERE notification_id = 1")) {
+                    assertThat(rs.next()).as("Legacy user_notification row must survive the upgrade").isTrue();
+                    assertThat(rs.getBoolean("is_read")).isFalse();
+                    assertThat(rs.getObject("certificate_issuance_id")).isNull();
+                    assertThat(rs.getString("certificate_recipient_email")).isNull();
+                }
+
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT indexname FROM pg_indexes WHERE schemaname = '" + testSchema
+                             + "' AND indexname = 'idx_certificate_notification_issuance'")) {
+                    assertThat(rs.next()).as("V7 dispatch index must exist after upgrade").isTrue();
+                }
+            }
+        } finally {
+            try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                 Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP SCHEMA IF EXISTS " + testSchema + " CASCADE");
             }
         }
     }

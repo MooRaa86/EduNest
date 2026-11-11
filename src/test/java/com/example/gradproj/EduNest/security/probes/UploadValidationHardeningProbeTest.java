@@ -346,11 +346,11 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 		}
 	}
 
-	private Long seedMentorshipForCover() {
-		return auth.mentorship(MENTOR, Status.ACTIVE).mentorship().getId();
+	private java.util.UUID seedMentorshipForCover() {
+		return auth.mentorship(MENTOR, Status.ACTIVE).mentorship().getPublicId();
 	}
 
-	private Long seedChatRoomForMentor() {
+	private java.util.UUID seedChatRoomForMentor() {
 		MentorShip ms = auth.mentorship(MENTOR, Status.ACTIVE).mentorship();
 		Mentor mentor = auth.mentor(MENTOR);
 		ChatRoom room = chatRooms.saveAndFlush(ChatRoom.builder()
@@ -358,10 +358,10 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 				.mentorship(ms)
 				.creator(mentor)
 				.build());
-		return room.getId();
+		return room.getPublicId();
 	}
 
-	private long seedPublishedTaskWithEnrollment() {
+	private java.util.UUID seedPublishedTaskWithEnrollment() {
 		MentorShip ms = auth.mentorship(MENTOR, Status.ACTIVE).mentorship();
 		auth.enroll(ms.getId(), STUDENT);
 		Week week = weeks.saveAndFlush(Week.builder().mentorship(ms).title("EB-29 probe week").build());
@@ -373,7 +373,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 				.dueAt(LocalDateTime.now().plusDays(1))
 				.status(TaskStatus.PUBLISHED)
 				.build());
-		return task.getId();
+		return task.getPublicId();
 	}
 
 	// ------------------------------------------------------------------
@@ -397,7 +397,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@ParameterizedTest(name = "cover accepts real {0} and stores the detection-derived extension")
 	@MethodSource("realImageFixtures")
 	void coverEndpoint_acceptsRealImages(String format, String extension, MockMultipartFile upload, byte[] rawBytes) throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		MvcResult result = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
@@ -423,7 +423,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("FILE-02: HTML bytes under a .jpg name and image/jpeg declaration are rejected")
 	void coverEndpoint_rejectsSpoofedHtml() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		MockMultipartFile spoof = new MockMultipartFile("image", "photo.jpg", "image/jpeg", HTML);
@@ -443,7 +443,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("FILE-02/MSH-06: garbage bytes named .png and double-extension HTML are rejected")
 	void coverEndpoint_rejectsGarbageAndDoubleExtension() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
@@ -463,7 +463,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("empty cover upload is rejected with no file or temp remnant")
 	void coverEndpoint_rejectsEmptyUpload() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
@@ -478,7 +478,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("oversized (>5MB) cover upload is rejected")
 	void coverEndpoint_rejectsOversizedUpload() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		byte[] oversized = new byte[(int) MAX_IMAGE_BYTES + 16]; // zeros — not a decodable image either
@@ -493,7 +493,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("FILE-03: a valid JPEG under a .exe filename is normalized — stored extension comes from detection, not the filename")
 	void coverEndpoint_mislabelledFilenameStoredWithDerivedExtension() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 
 		MvcResult result = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
 						.file(new MockMultipartFile("image", "photo.exe", "image/jpeg", JPEG))
@@ -515,7 +515,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("a JPEG declared as a non-image MIME type never reaches validation (caller guard)")
 	void coverEndpoint_rejectsNonImageContentType() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
@@ -863,7 +863,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("task submission endpoint: spoofed .zip rejected with NO metadata and NO file")
 	void taskSubmissionEndpoint_spoofedZipRejectedWithoutMetadata() throws Exception {
-		long taskId = seedPublishedTaskWithEnrollment();
+		java.util.UUID taskId = seedPublishedTaskWithEnrollment();
 		long rowsBefore = submissions.count();
 		long filesBefore = countFiles("submissions");
 
@@ -884,7 +884,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("task submission endpoint: a genuine .zip still flows end-to-end")
 	void taskSubmissionEndpoint_acceptsGenuineZip() throws Exception {
-		long taskId = seedPublishedTaskWithEnrollment();
+		java.util.UUID taskId = seedPublishedTaskWithEnrollment();
 		long rowsBefore = submissions.count();
 
 		MvcResult result = mockMvc.perform(multipart("/api/v1/task-submission/" + taskId)
@@ -907,7 +907,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@ParameterizedTest(name = "EB-87: cover endpoint rejects disallowed format {0} with 400 ERR_BUSINESS_RULE")
 	@MethodSource("disallowedImageFixtures")
 	void coverEndpoint_rejectsDisallowedFormats(String format, MockMultipartFile upload) throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		MvcResult result = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
@@ -943,7 +943,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB-87: chat room endpoint accepts real JPEG/PNG but rejects WebP with 400 ERR_BUSINESS_RULE")
 	void chatRoomEndpoint_verdictOnWebpAndAllowedFormats() throws Exception {
-		long roomId = seedChatRoomForMentor();
+		java.util.UUID roomId = seedChatRoomForMentor();
 		long before = countFiles("chatroom");
 
 		// 1. WebP is rejected on chatroom surface (restricted to jpg/png per D-27/P1-22)
@@ -987,7 +987,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB-87: replace failure on chat room endpoint preserves old image file and DB reference")
 	void chatRoomEndpoint_replaceFailurePreservesExistingImage() throws Exception {
-		long roomId = seedChatRoomForMentor();
+		java.util.UUID roomId = seedChatRoomForMentor();
 		MvcResult initial = mockMvc.perform(multipart("/api/v1/chat-room/" + roomId + "/image")
 						.file(new MockMultipartFile("image", "photo.jpg", "image/jpeg", JPEG))
 						.with(request -> { request.setMethod("PUT"); return request; })
@@ -1012,14 +1012,14 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 		assertThat(Files.exists(originalPath)).as("original file must remain untouched").isTrue();
 		assertThat(Files.readAllBytes(originalPath)).isEqualTo(JPEG);
 		assertThat(countFiles("chatroom")).isEqualTo(filesBefore);
-		ChatRoom room = chatRooms.findById(roomId).orElseThrow();
+		ChatRoom room = chatRooms.findByPublicId(roomId).orElseThrow();
 		assertThat(room.getImageUrl()).isEqualTo(originalUrl);
 	}
 
 	@Test
 	@DisplayName("EB-87: replace failure on cover endpoint preserves old cover file and DB reference")
 	void coverEndpoint_replaceFailurePreservesExistingCover() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		MvcResult initial = mockMvc.perform(multipart("/api/v1/mentorship/" + mentorshipId + "/change-cover-image")
 						.file(new MockMultipartFile("image", "photo.jpg", "image/jpeg", JPEG))
 						.header("Authorization", auth.authToken(MENTOR, AuthFixture.MENTOR)))
@@ -1042,7 +1042,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 		assertThat(Files.exists(originalPath)).as("original cover file must remain on disk").isTrue();
 		assertThat(Files.readAllBytes(originalPath)).isEqualTo(JPEG);
 		assertThat(countFiles("mentorship-cover-images")).isEqualTo(filesBefore);
-		MentorShip ms = mentorshipRepo.findById(mentorshipId).orElseThrow();
+		MentorShip ms = mentorshipRepo.findByPublicId(mentorshipId).orElseThrow();
 		assertThat(ms.getCoverImageUrl()).isEqualTo(originalUrl);
 	}
 
@@ -1080,7 +1080,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB-87: exact 5 MiB (5,242,880 bytes) image is accepted on cover endpoint")
 	void coverEndpoint_acceptsExact5MbImage() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		byte[] exact5Mb = exact5MbWebp();
@@ -1106,7 +1106,7 @@ class UploadValidationHardeningProbeTest extends ProdChainIntegrationTestBase {
 	@Test
 	@DisplayName("EB-87: 5 MiB + 1 byte (5,242,881 bytes) image is rejected with 400 ERR_BUSINESS_RULE mentioning 5 MB cap")
 	void coverEndpoint_rejects5MbPlusOneByte() throws Exception {
-		long mentorshipId = seedMentorshipForCover();
+		java.util.UUID mentorshipId = seedMentorshipForCover();
 		long before = countFiles("mentorship-cover-images");
 
 		byte[] oversized = new byte[(int) MAX_IMAGE_BYTES + 1];

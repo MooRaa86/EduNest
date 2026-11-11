@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -49,7 +50,7 @@ public class ContactMessageController {
 
     @GetMapping("/message/{id}")
     @Operation(summary = "get specific message by ID")
-    public ResponseEntity<SimpleResponse> getSpecificMessage(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> getSpecificMessage(@PathVariable UUID id) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status", "Message retrieved successfully");
         response.addMessage("Data", contactMessageService.getSpecificMessage(id));
@@ -59,7 +60,7 @@ public class ContactMessageController {
     @PutMapping("/message/{id}/status")
     @Operation(summary = "update message status")
     public ResponseEntity<SimpleResponse> updateMessageStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam MessageStatus status) {
         contactMessageService.updateMessageStatus(id, status);
         SimpleResponse response = new SimpleResponse();
@@ -83,7 +84,7 @@ public class ContactMessageController {
     @PostMapping("/message/{id}/reply")
     @Operation(summary = "send admin reply via email")
     public ResponseEntity<SimpleResponse> sendAdminReply(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody String reply) {
         contactMessageService.sendAdminReply(id, reply);
         SimpleResponse response = new SimpleResponse();
@@ -94,7 +95,7 @@ public class ContactMessageController {
     @PostMapping("/message/{id}/notification")
     @Operation(summary = "send notification to message sender")
     public ResponseEntity<SimpleResponse> sendNotificationToMessageSender(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String title,
             @RequestBody String content) {
         boolean sent = contactMessageService.sendNotificationToMessageSender(id, title, content);
@@ -109,7 +110,7 @@ public class ContactMessageController {
 
     @DeleteMapping("/message/{id}")
     @Operation(summary = "delete specific message")
-    public ResponseEntity<SimpleResponse> deleteMessage(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> deleteMessage(@PathVariable UUID id) {
         contactMessageService.deleteMessage(id);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status", "Message deleted successfully");

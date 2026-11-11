@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.UUID;
+import org.springframework.data.repository.query.Param;
 
 public interface MessageRepository
         extends JpaRepository<Message, Long> {
@@ -20,7 +22,8 @@ public interface MessageRepository
         m.sender.email as senderEmail,
         CONCAT(m.sender.firstName,' ',m.sender.lastName) as senderName,
         m.sender.profileImageUrl as senderProfileImageUrl,
-        m.conversation.id as conversationId
+        m.sender.deleted as senderDeleted,
+        m.conversation.publicId as conversationId
     FROM Message m
     WHERE m.conversation.id = :conversationId
       AND (:beforeId IS NULL OR m.id < :beforeId)

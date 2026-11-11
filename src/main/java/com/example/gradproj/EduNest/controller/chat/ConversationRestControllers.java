@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.Map;
 
 @RestController
@@ -32,7 +33,7 @@ public class ConversationRestControllers {
     @GetMapping("/{conversationId}/messages")
     @Operation(summary = "Get messages of a conversation")
     public ResponseEntity<SimpleResponse> getMessages(
-            @PathVariable Long conversationId,
+            @PathVariable UUID conversationId,
             @RequestParam(required = false) Long beforeId,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
@@ -60,11 +61,12 @@ public class ConversationRestControllers {
             @RequestBody EditMessageRequest request,
             Authentication authentication
     ) {
-        ConversationMessageResponse messageResponse = conversationService.editMessage(
+        var delivery = conversationService.editMessageForDelivery(
                 messageId,
                 authentication.getName(),
                 request
         );
+        ConversationMessageResponse messageResponse = delivery.payload();
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message after update", messageResponse);
 
@@ -75,9 +77,9 @@ public class ConversationRestControllers {
         );
         
         // CHAT-04: recipient email derived from conversation, not client DTO
-        if (messageResponse.getRecipientEmail() != null) {
+        if (delivery.recipientEmail() != null) {
             messagingTemplate.convertAndSendToUser(
-                    messageResponse.getRecipientEmail(),
+                    delivery.recipientEmail(),
                     "/queue/messages",
                     messageResponse
             );

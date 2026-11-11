@@ -30,6 +30,7 @@ import java.time.format.TextStyle;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +42,21 @@ public class AdminUserDirectory {
     private final UserAdminBadgeRepository userAdminBadgeRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
+
+    @Transactional(readOnly = true)
+    public Object getUserById(UUID id) {
+        Optional<Mentor> mentorOpt = mentorRepository.findMentorWithSocialMediaByPublicId(id);
+        if (mentorOpt.isPresent()) {
+            return buildMentorResponse(mentorOpt.get());
+        }
+
+        Optional<Student> studentOpt = studentRepository.findStudentWithSocialMediaByPublicId(id);
+        if (studentOpt.isPresent()) {
+            return buildStudentResponse(studentOpt.get());
+        }
+
+        throw new globalLogicEx("User not found");
+    }
 
     @Transactional(readOnly = true)
     public Object getUserById(Long id) {
@@ -78,7 +94,7 @@ public class AdminUserDirectory {
                 .toList();
 
         return AdminMentorDetailResponse.builder()
-                .id(mentor.getId())
+                .id(mentor.getPublicId())
                 .firstName(mentor.getFirstName())
                 .lastName(mentor.getLastName())
                 .email(mentor.getEmail())
@@ -118,7 +134,7 @@ public class AdminUserDirectory {
                 .toList();
 
         return AdminStudentDetailResponse.builder()
-                .id(student.getId())
+                .id(student.getPublicId())
                 .firstName(student.getFirstName())
                 .lastName(student.getLastName())
                 .email(student.getEmail())
@@ -190,6 +206,32 @@ public class AdminUserDirectory {
         }
         return userRepository.findById(userId)
                 .orElseThrow(() -> new globalLogicEx("User not found"));
+    }
+
+    private UserEntity findUserByPublicId(UUID userId) {
+        if (userId == null) {
+            throw new globalLogicEx("userId must be provided");
+        }
+        return userRepository.findByPublicId(userId)
+                .orElseThrow(() -> new globalLogicEx("User not found"));
+    }
+
+    @Transactional
+    public void sendEmailToUser(UUID userId, String subject, String message) {
+        UserEntity user = findUserByPublicId(userId);
+        String template = emailService.getEmailTemplate("admin-message.html");
+        String userName = user.getFirstName() + " " + user.getLastName();
+        String emailBody = template
+                .replace("{{name}}", userName)
+                .replace("{{subject}}", subject)
+                .replace("{{message}}", message);
+        emailService.sendEmail(user.getEmail(), subject, emailBody);
+    }
+
+    @Transactional
+    public void sendNotificationToUser(UUID userId, String title, String content) {
+        UserEntity user = findUserByPublicId(userId);
+        notificationService.sendToUserByEmail(user.getEmail(), title, content, NotificationType.SUPPORT);
     }
 
     @Transactional

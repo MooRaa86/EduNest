@@ -12,6 +12,7 @@ import com.example.gradproj.EduNest.service.chat.ChatRoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -21,11 +22,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.UUID;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/chat-room")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(
         name = "Chat Rooms",
         description = "create, join room, get messages..."
@@ -38,7 +41,7 @@ public class chatRestControllers {
     @PostMapping("/create/{mentorshipId}")
     @Operation(summary = "create room for mentorship by it's id")
     public ResponseEntity<SimpleResponse> createRoom(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             @RequestBody roomCreateDto dto,
             Principal principal
     ) {
@@ -60,7 +63,7 @@ public class chatRestControllers {
     @GetMapping("/{mid}")
     @Operation(summary = "get rooms for the mentorship by it's id")
     public ResponseEntity<SimpleResponse> getRoomsByMid(
-            @PathVariable Long mid,
+            @PathVariable UUID mid,
             Authentication authentication
     ){
         String email = authentication.getName();
@@ -74,7 +77,7 @@ public class chatRestControllers {
     @GetMapping("/{roomId}/messages")
     @Operation(summary = "get latest messages of the room")
     public ResponseEntity<SimpleResponse> getMessages(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             @RequestParam(required = false) Long beforeId,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
@@ -91,7 +94,7 @@ public class chatRestControllers {
     @GetMapping("/{roomId}/members")
     @Operation(summary = "get room members")
     public ResponseEntity<SimpleResponse> getRoomMembers(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             Authentication authentication
     ) {
         List<RoomMemberProjection> members =  chatRoomService.getRoomMembers(roomId,authentication.getName());
@@ -104,7 +107,7 @@ public class chatRestControllers {
     @GetMapping("/mentorship/{mentorshipId}/rooms-with-status")
     @Operation(summary = "get rooms for mentorship with student join status")
     public ResponseEntity<SimpleResponse> getMentorshipRoomsWithStatus(
-            @PathVariable Long mentorshipId,
+            @PathVariable UUID mentorshipId,
             Authentication authentication
     ) {
         List<MentorshipRoomDetailsResponse> rooms = chatRoomService.getRoomsWithJoinStatus(
@@ -120,7 +123,7 @@ public class chatRestControllers {
     @PostMapping("/{roomId}/join")
     @Operation(summary = "join room")
     public ResponseEntity<SimpleResponse> joinRoom(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             Authentication authentication
     ) {
 
@@ -149,7 +152,7 @@ public class chatRestControllers {
     @PutMapping(value = "/{roomId}/image",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "update chat room image")
     public ResponseEntity<SimpleResponse> updateRoomImage(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             @RequestParam("image") MultipartFile image,
             Authentication authentication
     ) {
@@ -173,7 +176,7 @@ public class chatRestControllers {
     @DeleteMapping("/{roomId}")
     @Operation(summary = "delete chat room (creator only)")
     public ResponseEntity<SimpleResponse> deleteRoom(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             Authentication authentication
     ) {
         chatRoomService.deleteRoom(roomId, authentication.getName());
@@ -185,21 +188,33 @@ public class chatRestControllers {
     @PatchMapping("/{roomId}/messages/{messageId}")
     @Operation(summary = "edit chat message (sender only)")
     public ResponseEntity<SimpleResponse> editMessage(
-            @PathVariable Long roomId,
-            @PathVariable Long messageId,
+            @PathVariable UUID roomId,
+            @PathVariable UUID messageId,
             @RequestParam String content,
             Authentication authentication
     ) {
         ChatMessageResponse updated = chatMessageService.editMessage(
+                roomId,
                 messageId,
                 authentication.getName(),
                 content
         );
         
         messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+                "/topic/room/" + updated.getRoomId(),
                 updated
         );
+        try {
+            Long internalId = chatRoomService.resolveRoomInternalId(roomId);
+            if (internalId != null) {
+                messagingTemplate.convertAndSend(
+                        "/topic/room/" + internalId,
+                        updated
+                );
+            }
+        } catch (Exception ex) {
+            log.debug("Internal room id broadcast bypassed: {}", ex.getMessage());
+        }
         
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("message", updated);
@@ -210,21 +225,33 @@ public class chatRestControllers {
     @DeleteMapping("/{roomId}/messages/{messageId}")
     @Operation(summary = "delete chat message (sender only)")
     public ResponseEntity<SimpleResponse> deleteMessage(
-            @PathVariable Long roomId,
-            @PathVariable Long messageId,
+            @PathVariable UUID roomId,
+            @PathVariable UUID messageId,
             Authentication authentication
     ) {
-        chatMessageService.deleteMessage(messageId, authentication.getName());
+        UUID targetRoomId = chatMessageService.deleteMessage(roomId, messageId, authentication.getName());
         
         Map<String, Object> event = Map.of(
                 "type", "DELETE",
-                "messageId", messageId
+                "messageId", messageId,
+                "roomId", targetRoomId
         );
         
         messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId,
+                "/topic/room/" + targetRoomId,
                 event
         );
+        try {
+            Long internalId = chatRoomService.resolveRoomInternalId(roomId);
+            if (internalId != null) {
+                messagingTemplate.convertAndSend(
+                        "/topic/room/" + internalId,
+                        event
+                );
+            }
+        } catch (Exception ex) {
+            log.debug("Internal room id broadcast bypassed: {}", ex.getMessage());
+        }
         
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("status", "message deleted successfully");

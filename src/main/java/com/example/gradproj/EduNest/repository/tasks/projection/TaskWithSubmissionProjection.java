@@ -3,9 +3,10 @@ package com.example.gradproj.EduNest.repository.tasks.projection;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface TaskWithSubmissionProjection {
-    Long getTaskId();
+    UUID getTaskId();
     String getTaskTitle();
     Integer getPoints();
     LocalDateTime getDueAt();
@@ -14,7 +15,7 @@ public interface TaskWithSubmissionProjection {
     String getUploadedAttachmentPath();
     Integer getEstimatedMinutes();
 
-    Long getSubmissionId();
+    UUID getSubmissionId();
     String getFileUrl();
     Integer getFinalScore();
     Integer getTotalPoints();

@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.service.projects;
 
+import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
+import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
 import com.example.gradproj.EduNest.dto.projects.response.ProjectSubmissionResponse;
@@ -11,16 +13,19 @@ import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
+import com.example.gradproj.EduNest.exception.LegacySubmissionAuditRequiredException;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectRepository;
 import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectWithSubmissionProjection;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,6 +53,9 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final ContentReadGuard contentReadGuard;
+    private final WeekRepository weekRepository;
+    private final EntityManager entityManager;
+    private final LateSubmissionProperties lateSubmissionProperties;
 
     private void validateEnrolled(Long projectId, String email) {
         if (!enrollmentRepository.isStudentEnrolledForProjectByEmail(projectId, email)) {
@@ -82,13 +91,28 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
         LocalDateTime now = LocalDateTime.now();
-        boolean isLate = now.isAfter(project.getEndAt());
+        /*
+         * EB-53 / D-08 — late policy: a first submission within the configured
+         * grace (app.submission.late-grace-minutes, default 10) after the
+         * project deadline is accepted with isLate=true; grading stays
+         * mentor-assigned (no automatic deduction). Beyond the grace the first
+         * submission is rejected. Late resubmissions stay rejected. A null
+         * deadline never blocks submission.
+         *
+         * The grace boundary is compared on exact timestamps so that a
+         * submission even one second past deadline + grace is rejected.
+         */
+        boolean isLate = project.getEndAt() != null && now.isAfter(project.getEndAt());
 
         Optional<ProjectSubmission> existingOpt =
                 projectSubmissionRepository.findByProject_IdAndStudent_Id(projectId, studentId);
 
         if (existingOpt.isPresent() && isLate) {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        }
+
+        if (isLate && now.isAfter(project.getEndAt().plusMinutes(lateSubmissionProperties.getLateGraceMinutes()))) {
+            throw new globalLogicEx("Submission deadline plus grace period has passed. This project no longer accepts first submissions.");
         }
 
         String uploadedPath = null;
@@ -108,6 +132,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
             s.setProject(projectRepository.getReferenceById(projectId));
             s.setStudent(studentRepository.getReferenceById(studentId));
             s.setStatus(SubmissionStatus.SUBMITTED);
+            s.setPointsApplied(0);
             return s;
         });
 
@@ -162,7 +187,25 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
     @Override
     public ProjectSubmissionResponse gradeProject(Long submissionId, GradeProjectSubmissionRequest req, String email) {
         ProjectSubmission sub = validateMentorOwnsSubmission(submissionId, email);
-        Project project = sub.getProject();
+
+        // EB-51 — L1 -> L2 -> L3 ordered locking: week -> project -> submission
+        Long weekId = sub.getProject().getWeek().getId();
+        Long projectId = sub.getProject().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Project project = projectRepository.findForUpdateById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        sub = projectSubmissionRepository.findForUpdateById(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        if (entityManager != null) {
+            entityManager.refresh(sub);
+        }
+
+        // EB-51 D-09a: Strict integrity gate - reject grading if points provenance is null
+        if (sub.getPointsApplied() == null) {
+            throw new LegacySubmissionAuditRequiredException(
+                    "Project submission " + submissionId + " lacks recorded points provenance. Grading requires administrative reconciliation.");
+        }
 
         if (req.getScore() > project.getPoints()) {
             throw new globalLogicEx("score must be less than or equal to project points " + project.getPoints());
@@ -175,7 +218,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
         sub.setGradedAt(LocalDateTime.now());
 
         MentorShip mentorship = project.getWeek().getMentorship();
-        int delta = sub.getFinalScore() - (sub.getPointsApplied() == null ? 0 : sub.getPointsApplied());
+        int delta = sub.getFinalScore() - sub.getPointsApplied();
         if (delta != 0) totalPointsService.applyDelta(sub.getStudent(), mentorship, delta);
         sub.setPointsApplied(sub.getFinalScore());
 
@@ -225,9 +268,9 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
 
     private ProjectSubmissionResponse mapToSubmissionResponse(ProjectSubmission s) {
         return ProjectSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .projectId(s.getProject().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .projectId(s.getProject().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
                 .status(s.getStatus())
@@ -237,5 +280,34 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
                 .submittedAt(s.getSubmittedAt())
                 .feedback(s.getFeedBack())
                 .build();
+    }
+
+    @Override
+    public ProjectSubmissionResponse submit(UUID projectId, MultipartFile file, String fileUrl, String email) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("project not found"));
+        return submit(internalId, file, fileUrl, email);
+    }
+
+    @Override
+    public PageResponse<ProjectSubmissionResponse> listByProject(UUID projectId, int page, int size, String email) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("project not found"));
+        return listByProject(internalId, page, size, email);
+    }
+
+    @Override
+    public ProjectSubmissionResponse gradeProject(UUID submissionId, GradeProjectSubmissionRequest req, String email) {
+        Long internalId = projectSubmissionRepository.findIdByPublicId(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        return gradeProject(internalId, req, email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectWithSubmissionResponse getProjectWithSubmission(UUID projectId, String email) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getProjectWithSubmission(internalId, email);
     }
 }

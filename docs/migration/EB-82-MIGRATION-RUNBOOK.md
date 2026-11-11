@@ -151,19 +151,12 @@ To validate the live Supabase development database safely without starting the f
 
 ---
 
-## 6. Flyway Baseline Handoff Specification (EB-82 → EB-43)
+## 6. Flyway Baseline Handoff Specification (historical EB-82 → EB-43)
 
 Task **EB-43** owns introducing Flyway runtime dependencies and migration management.
 EB-82 provides the clean, verified PostgreSQL schema baseline:
 
-1. **Populated Database Baselining (Supabase Development):**
-   ```properties
-   spring.flyway.enabled=true
-   spring.flyway.baseline-on-migrate=true
-   spring.flyway.baseline-version=1
-   spring.flyway.baseline-description=PostgreSQL schema baseline (EB-82)
-   spring.jpa.hibernate.ddl-auto=validate
-   ```
+1. **Populated Database Baselining (Supabase Development):** The original handoff predated EB-43 and PR #97. Its proposed automatic baseline-on-migrate is superseded: normal runtime Flyway is disabled, and baselining/migrations require the separately authorized standalone procedure in [the Flyway migration README](../../src/main/resources/db/migration/README.md). Never enable ambient `baseline-on-migrate`.
 2. **Fresh Environment Initialization:**
-   `V1__init_schema.sql` will contain the DDL for the 42 public tables (incorporating `platform_profit double precision` and `TEXT` column definitions).
-3. **Execution Rule:** No Flyway runtime dependencies or migration files are added under EB-82.
+   EB-43 subsequently added `V1__initial_schema.sql` for the 42 public tables (incorporating `platform_profit double precision` and `TEXT` column definitions).
+3. **Historical scope:** EB-82 itself did not add Flyway runtime dependencies or migration files.

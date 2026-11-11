@@ -10,6 +10,7 @@
 
 | Concern | Convention | Notes |
 |---|---|---|
+| Identifier Architecture | **Dual Identifier Pattern (EB-109 / D-04)** | **External API Surface:** All request path/query params (`@PathVariable`, `@RequestParam`) and request/response DTOs must strictly accept and serialize opaque `UUID publicId` (string). **Internal Layer:** Database tables, foreign keys, joins, and internal services exclusively use high-performance `Long id` (BIGINT). Controllers/services translate between `publicId` and internal entities via `findByPublicId(...)`. Never expose sequential `Long id`s externally (prevents IDOR guessing and scraping). |
 | Versioning | `/api/v1/**` for most modern routes | Legacy/inconsistent prefixes remain: `/login-api`, `/forget-password/**`, `/settings/**`, `/files/**`, `/lectures`, `/student/profile`, `/mentor/profile`, `/student/skills`, `/profile/students`, `/admin/*` (no `/api`), admin badges fully absolute (`/api/admin/badges`, `/api/users/{id}/badges`) — URL-match lists in the security config reflect each |
 | Response envelope | `dto/SimpleResponse` (map-ish: `status`, `jwt`, `mentorShip`, …) for many writes/lists; typed response DTOs for newer features; `PageResponse<T>` wraps paged data | No single uniform envelope (API-01) |
 | Pagination | `page` + `size` request params → `Pageable` | Common defaults: page 0, size 5/6/10 depending on endpoint; **no global cap** (`size` unbounded — API-02). One in-memory paginating aggregator exists ([../mentorship-flow/explore-and-homepage.md](../mentorship-flow/explore-and-homepage.md)). **Contract pinned by P2-06/EB-40** (`contract/PaginationContractTest`, 2026-11-02, on `/api/v1/mentorship/explore`): beyond-range page → 200 empty; but `size<=0` / `page=-1` → raw `IllegalArgumentException` → **500 ERR_INTERNAL_SYSTEM** (no clamp anywhere — every controller inherits this quirk; the cap/clamp fix stays P4-09) |
@@ -20,6 +21,7 @@
 
 ## 3. Documents
 
+- [../architecture/universal-public-id-standard.md](../architecture/universal-public-id-standard.md) — Universal Public UUID Standard (EB-110)
 - [endpoints.md](endpoints.md) — complete endpoint inventory (route-verified)
 - [error-responses.md](error-responses.md) — exception → status → body contract
 

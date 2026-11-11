@@ -8,4 +8,5 @@ import java.util.List;
 public interface AttendanceRepository extends JpaRepository<SessionAttendance, Long> {
     List<SessionAttendance> findBySession_Id(Long sessionId);
     boolean existsBySession_IdAndStudent_Id(Long sessionId, Long studentId);
+    boolean existsBySession_Week_Id(Long weekId);
 }

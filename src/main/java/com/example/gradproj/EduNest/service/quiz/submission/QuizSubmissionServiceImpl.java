@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.quiz.submission;
 
 
+import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
@@ -35,6 +36,8 @@ import java.security.PublicKey;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -49,6 +52,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final NotificationService notificationService;
     private final SecurityService securityService;
+    private final LateSubmissionProperties lateSubmissionProperties;
 
 
 
@@ -84,31 +88,51 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Quiz is not available");
         }
 
-//        if (quizSubmissionDTO.getAnswers() == null
-//                || quizSubmissionDTO.getAnswers().isEmpty()) {
-//            throw new globalLogicEx("Answers are required");
-//        }
+        // EB-51 — L2 (quiz row) -> L3 (submission row) shared gate: with both
+        // locks held there is no window in which a concurrent double submit
+        // passes the score!=null eligibility check, and quiz deletion is
+        // serialised against this award path.
+        quizRepository.findForUpdateById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
         QuizSubmission quizSubmission = quizSubmissionRepository
-                .findByStudent_IdAndQuiz_Id(student.getId(), quizId)
+                .findByStudentIdAndQuizIdForUpdate(student.getId(), quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not started yet"));
         if (quizSubmission.getScore() != null) {
             throw new globalLogicEx("Quiz already submitted");
         }
 
-        Map<Long, Question> questions =
-                quiz.getQuestions().stream()
-                        .collect(Collectors.toMap(Question::getId, q -> q));
+        /*
+         * EB-53 / D-08 — late policy: the attempt window may be exceeded by at
+         * most the configured grace (app.submission.late-grace-minutes, default 10).
+         * Beyond the grace the submission is rejected BEFORE any mutation —
+         * answers, score, points and notifications are untouched. Within the
+         * grace the submission is accepted, flagged isLate=true, with the
+         * existing -1 pt/minute penalty (floored at 0).
+         *
+         * The grace boundary is compared on exact timestamps so that a
+         * submission even one second past deadline + grace is rejected;
+         * ChronoUnit.MINUTES is kept only for the per-minute penalty.
+         */
+        LocalDateTime now = LocalDateTime.now();
+        boolean late = quizSubmission.getEndDate() != null && now.isAfter(quizSubmission.getEndDate());
+        long minutesLate = late ? ChronoUnit.MINUTES.between(quizSubmission.getEndDate(), now) : 0;
+        if (late && now.isAfter(
+                quizSubmission.getEndDate().plusMinutes(lateSubmissionProperties.getLateGraceMinutes()))) {
+            throw new globalLogicEx(
+                    "Quiz submission window has closed (deadline was " + quizSubmission.getEndDate() + ")");
+        }
+
+        Map<UUID, Question> questions = new HashMap<>();
+        for (Question q : quiz.getQuestions()) {
+            if (q.getPublicId() != null) questions.put(q.getPublicId(), q);
+        }
 
         ScoreResult score = calculateScore(quizSubmissionDTO.getAnswers(), questions);
 
 
         double finalScore = score.getTotalScore();
-        if (LocalDateTime.now().isAfter(quizSubmission.getEndDate())) {
-            long minutesLate = ChronoUnit.MINUTES.between(
-                    quizSubmission.getEndDate(),
-                    LocalDateTime.now()
-            );
+        if (late) {
             finalScore = Math.max(0, finalScore - minutesLate);
 //            penaltyMessage = " (Late submission: -" + minutesLate + " points penalty)";
         }
@@ -134,6 +158,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         quizSubmission.getAnswers().clear();
         quizSubmission.getAnswers().addAll(studentAnswers);
         quizSubmission.setScore(finalScore);
+        quizSubmission.setIsLate(late);
 
 
         quizSubmissionRepository.save(quizSubmission);
@@ -159,12 +184,13 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         );
 
         return QuizSubmissionResponseDTO.builder()
-                .id(quizSubmission.getId())
-                .studentId(student.getId())
+                .id(quizSubmission.getPublicId())
+                .studentId(student.getPublicId())
                 .studentName(student.getFirstName() + " " + student.getLastName())
                 .score(finalScore)
                 .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                 .status("Submitted")
+                .isLate(quizSubmission.getIsLate())
                 .build();
 
     }
@@ -184,7 +210,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         return submission.getAnswers().stream()
                 .map(ans -> StudentAnswerDTO.builder()
-                        .questionId(ans.getQuestion().getId())
+                        .questionId(ans.getQuestion().getPublicId())
                         .selectedAnswer(ans.getSelectedAnswer())
                         .build())
                 .toList();
@@ -207,7 +233,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
 //        return submission.getAnswers().stream()
 //                .map(ans -> StudentQuizReviewDTO.builder()
-//                        .questionId(ans.getQuestion().getId())
+//                        .questionId(ans.getQuestion().getPublicId())
 //                        .text(ans.getQuestion().getText())
 //                        .optionA(ans.getQuestion().getOptionA())
 //                        .optionB(ans.getQuestion().getOptionB())
@@ -236,7 +262,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                      * StudentQuizReviewDTO omits it from the JSON entirely.
                      */
                     return StudentQuizReviewDTO.builder()
-                            .questionId(question.getId())
+                            .questionId(question.getPublicId())
                             .text(question.getText())
                             .optionA(question.getOptionA())
                             .optionB(question.getOptionB())
@@ -262,10 +288,11 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         return quizSubmissionRepository.findAllByStudentAndMentor(studentId, mentorId, PageRequest.of(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
-                        .id(sub.getId())
-                        .studentId(studentId)
+                        .id(sub.getPublicId())
+                        .studentId(sub.getStudent().getPublicId())
                         .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                         .score(sub.getScore())
+                        .isLate(sub.getIsLate())
                         .build())
                 .toList();
     }
@@ -288,7 +315,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .stream()
                 .map(sub -> {
                     String status;
-                    if (sub.getScore() == null && sub.getStartDate()!=null) {
+                    if (sub.getScore() == null) {
                         status = "Not Submitted";
                     } else if (sub.getScore() >= (fullMark / 2)) {
                         status = "Passed";
@@ -297,19 +324,20 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                     }
 
                     return QuizSubmissionResponseDTO.builder()
-                            .id(sub.getId())
-                            .studentId(sub.getStudent().getId())
+                            .id(sub.getPublicId())
+                            .studentId(sub.getStudent().getPublicId())
                             .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                             .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                             .score(sub.getScore())
                             .status(status)
+                            .isLate(sub.getIsLate())
                             .build();
                 })
                 .toList();
     }
 
 
-    private ScoreResult calculateScore(List<StudentAnswerDTO> answers, Map<Long, Question> questions) {
+    private ScoreResult calculateScore(List<StudentAnswerDTO> answers, Map<?, Question> questions) {
         double score = 0;
         int numOfCorrect = 0;
 
@@ -339,6 +367,44 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
     }
 
+
+    @Override
+    @Transactional
+    public QuizSubmissionResponseDTO submitQuizAnswers(QuizSubmissionDTO quizSubmissionDTO, UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return submitQuizAnswers(quizSubmissionDTO, internalId);
+    }
+
+    @Override
+    public List<StudentAnswerDTO> getStudentAnswers(UUID studentId, UUID quizId) {
+        Long internalStudentId = studentRepository.findIdByPublicId(studentId)
+                .orElseThrow(() -> new globalLogicEx("Student not found"));
+        Long internalQuizId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getStudentAnswers(internalStudentId, internalQuizId);
+    }
+
+    @Override
+    public List<StudentQuizReviewDTO> getStudentQuizReview(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getStudentQuizReview(internalId);
+    }
+
+    @Override
+    public List<QuizSubmissionResponseDTO> getAllSubmissionsByQuiz(UUID quizId, int page, int size) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getAllSubmissionsByQuiz(internalId, page, size);
+    }
+
+    @Override
+    public List<QuizSubmissionResponseDTO> getAllSubmissionsByStudent(UUID studentId, int page, int size) {
+        Long internalId = studentRepository.findIdByPublicId(studentId)
+                .orElseThrow(() -> new globalLogicEx("Student not found"));
+        return getAllSubmissionsByStudent(internalId, page, size);
+    }
 }
 
 

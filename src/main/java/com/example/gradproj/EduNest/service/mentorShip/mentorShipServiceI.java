@@ -24,7 +24,7 @@ import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
-import com.example.gradproj.EduNest.service.certificate.CertificateService;
+import com.example.gradproj.EduNest.service.completion.CompletionSnapshotStore;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
@@ -43,6 +43,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,7 +55,7 @@ public class mentorShipServiceI implements mentorShipService{
     private final TaskRepository taskRepository;
     private final MentorRepository mentorRepository;
     private final ImageStorageService imageService;
-    private final CertificateService certificateService;
+    private final CompletionSnapshotStore completionSnapshotStore;
     private final EnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final ReviewsRepository reviewsRepository;
@@ -219,7 +221,7 @@ public class mentorShipServiceI implements mentorShipService{
         // P1-15 / EB-22 — D-02 default (a): the public overview excludes DRAFT
         // for every caller; owners see their drafts only in the mentor
         // dashboard (findMentorMentorships, mentor-scoped).
-        Page<MentorShip> mentorShipsPage = MentorShipRepository.findAllByStatusNot(Status.DRAFT, pageable);
+        Page<MentorShip> mentorShipsPage = MentorShipRepository.findByStatusNotAndMentor_DeletedFalse(Status.DRAFT, pageable);
 
         List<mentorShipFDto> content = mentorShipsPage.getContent()
                 .stream()
@@ -239,6 +241,11 @@ public class mentorShipServiceI implements mentorShipService{
     public mentorShipFDto getMentorShipById(Long mentorShipId) {
         MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
+
+        if (mentorShip.getMentor() != null && mentorShip.getMentor().isDeleted()
+                && !contentReadGuard.isOwnerMentorOrAdmin(mentorShipId)) {
+            throw new jakarta.persistence.EntityNotFoundException("MentorShip not found");
+        }
 
         // P1-15 / EB-22 — D-02 default (a): DRAFT detail is confined to its
         // owner-mentor and ADMIN. Everyone else (including anonymous) gets the
@@ -269,7 +276,11 @@ public class mentorShipServiceI implements mentorShipService{
     @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public void updateMentorShipStatus(long mentorShipId, Status status) {
-        MentorShip mentorShip = MentorShipRepository.findById(mentorShipId).orElseThrow(
+        // EB-51 — L0 shared gate acquired at method start: the COMPLETED
+        // transition and its certificate fan-out are serialised against
+        // badge point edits and new badge awards so no award (ledger) can
+        // interleave between the final certificate truth and the freeze.
+        MentorShip mentorShip = MentorShipRepository.findForUpdateById(mentorShipId).orElseThrow(
                 () -> new globalLogicEx("MentorShip not found"));
 
         Mentor currentMentor = mentorRepository.findByEmail(getCurrentUserEmail())
@@ -280,6 +291,7 @@ public class mentorShipServiceI implements mentorShipService{
         }
 
         if (status == mentorShip.getStatus()) {
+            if (status == Status.COMPLETED) return;
             throw new globalLogicEx("Mentorship is already in this status");
         }
 
@@ -306,22 +318,8 @@ public class mentorShipServiceI implements mentorShipService{
         MentorShipRepository.save(mentorShip);
 
         if(status == Status.COMPLETED){
-            certificateService.issueCertificates(mentorShipId);
-
-            notificationService.sendToMentorshipStudents(mentorShipId,
-                    "Mentorship Completed",
-                    "Your mentorship " + mentorShip.getTitle() + " has been completed, " +
-                    "You can now download your certificate, " + "Best regards, " + "EduNest Team",
-                    NotificationType.MENTORSHIP
-            );
-
             String mentorName = currentMentor.getFirstName() + " " + currentMentor.getLastName();
-
-            notificationService.sendToAdmin("Mentorship Completed",
-                    "Mentorship " + mentorShip.getTitle() + " has been completed, " +
-                    "Mentor : " + mentorName,
-                    NotificationType.MENTORSHIP
-            );
+            completionSnapshotStore.create(mentorShipId, mentorShip.getTitle(), getCurrentUserEmail(), mentorName);
 
         }
 
@@ -383,6 +381,7 @@ public class mentorShipServiceI implements mentorShipService{
         imageService.deleteOldCoverImageAfterCommit(oldImageUrl);
 
         mentorship.setCoverImageUrl(imageUrl);
+        MentorShipRepository.save(mentorship);
 
         return imageUrl;
     }
@@ -412,7 +411,7 @@ public class mentorShipServiceI implements mentorShipService{
         Student student = studentRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
-        MentorShip mentorShip = MentorShipRepository.findById(mentorshipId)
+        MentorShip mentorShip = MentorShipRepository.findForUpdateById(mentorshipId)
                 .orElseThrow(() -> new UsernameNotFoundException("Mentorship not found"));
 
 
@@ -573,7 +572,7 @@ public class mentorShipServiceI implements mentorShipService{
         double priceAfterDiscount = discount > 0 ? price - (price * discount / 100.0) : price;
 
         return mentorShipFDto.builder()
-                .id(mentorShip.getId())
+                .id(mentorShip.getPublicId())
                 .title(mentorShip.getTitle())
                 .subtitle(mentorShip.getSubtitle())
                 .description(mentorShip.getDescription())
@@ -604,7 +603,7 @@ public class mentorShipServiceI implements mentorShipService{
 
     private TaskResponse mapToTaskResponse(Task task) {
         TaskResponse res = new TaskResponse();
-        res.setId(task.getId());
+        res.setId(task.getPublicId());
         res.setTitle(task.getTitle());
         res.setDescription(task.getDescription());
         res.setPoints(task.getPoints());
@@ -616,5 +615,62 @@ public class mentorShipServiceI implements mentorShipService{
 
         return res;
     }
+    private Long resolveMentorshipId(UUID publicId) {
+        return MentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found with UUID: " + publicId));
+    }
 
+    @Override
+    @Transactional
+    public mentorShipFDto updateMentorShip(UUID mentorShipId, mentorShipUpdateDTO dto) {
+        return updateMentorShip(resolveMentorshipId(mentorShipId), dto);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMentorShip(UUID mentorShipId) {
+        deleteMentorShip(resolveMentorshipId(mentorShipId));
+    }
+
+    @Override
+    public mentorShipFDto getMentorShipById(UUID mentorShipId) {
+        return getMentorShipById(resolveMentorshipId(mentorShipId));
+    }
+
+    @Override
+    public List<TaskResponse> getMentorShipTasks(UUID mentorShipId) {
+        Long internalId = MentorShipRepository.findIdByPublicId(mentorShipId).orElse(-1L);
+        return getMentorShipTasks(internalId);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public void updateMentorShipStatus(UUID mentorShipId, Status status) {
+        updateMentorShipStatus(resolveMentorshipId(mentorShipId), status);
+    }
+
+    @Override
+    @Transactional
+    public String uploadCoverImage(UUID mentorshipId, MultipartFile image) {
+        return uploadCoverImage(resolveMentorshipId(mentorshipId), image);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCoverImage(UUID mentorshipId) {
+        deleteCoverImage(resolveMentorshipId(mentorshipId));
+    }
+
+    @Override
+    @Transactional
+    public void joinMentorship(UUID mentorshipId) {
+        joinMentorship(resolveMentorshipId(mentorshipId));
+    }
+
+    @Override
+    @Transactional
+    public void rateMentorship(UUID mentorshipId, CreateReviewRequest request) {
+        rateMentorship(resolveMentorshipId(mentorshipId), request);
+    }
 }

@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AdminNotificationResponse {
-    private Long id;
+    private UUID id;
     private String title;
     private String content;
     private NotificationType type;

@@ -130,6 +130,23 @@ All variables conform to the canonical template in `.env.example`. In production
 | `SUPABASE_STORAGE_PRIVATE_BUCKET`| Optional | `edunest-private` | Private bucket name (student task submissions). |
 | `APP_LIVESESSION_AUTO_CLOSE_ENABLED` | Optional | `true` | Enables background sweep for abandoned live sessions. |
 | `APP_LIVESESSION_AUTO_CLOSE_SWEEP_RATE_MS` | Optional | `300000` | Sweep execution interval in milliseconds (default: 5 min). |
+| `APP_ZOOM_HOST_USER_ID` | Optional | `me` | Zoom host account id (`me` = API plan owner) for meeting creation (EB-66). |
+| `APP_ZOOM_MAX_MEETING_MINUTES` | Optional | `40` | Meeting-length hard cap (Zoom Basic plan). |
+| `APP_ZOOM_OAUTH_TOKEN_URL` | Optional | `https://zoom.us/oauth/token` | S2S OAuth token endpoint override. |
+| `APP_LIVESESSION_AUTO_CLOSE_GRACE_MINUTES` | Optional | `10` | Grace period before the auto-close sweep ends/cancels sessions (EB-57 / D-15). |
+| `APP_LIVESESSION_AUTO_CLOSE_MAX_DURATION_MINUTES` | Optional | `40` | Max nominal session duration used by the sweep. |
+| `APP_LIVESESSION_ATTENDANCE_ENFORCED` | Optional | `false` | **Dormant** per D-15: attendance enforcement master switch. |
+| `APP_LIVESESSION_ATTENDANCE_PASS_THRESHOLD` | Optional | `75` | Dormant: pass threshold %. |
+| `APP_LIVESESSION_ATTENDANCE_SNAPSHOT_GRID_MINUTES` | Optional | `5` | Dormant: snapshot grid step. |
+| `APP_LIVESESSION_ATTENDANCE_BONUS_POINTS` | Optional | `5` | Dormant: gamification bonus (no-op while dormant). |
+| `APP_LIVESESSION_ATTENDANCE_ABSENCE_FLOOR` | Optional | `0` | Dormant: absence penalty floor. |
+| `EDUNEST_UNSAFE_DEV` | Dev-only | `false` | **DEV ONLY, never in staging/prod** (SEL-02): the app refuses to boot without either `prod` profile or this flag `true`; activates the insecure permissive dev chain. |
+| `APP_RATE_LIMIT_ENABLED` | Optional | `true` | Auth throttling/lockout master switch (EB-15); per-bucket overrides resolvable via relaxed binding. |
+| `APP_UPLOAD_BASE_DIR` | Optional | `uploads` | Local-disk upload root (active when Supabase storage is disabled). |
+| `APP_AUTH_RESET_TOKEN_TTL` | Optional | `PT5M` | Password-reset token lifetime (ISO-8601 duration). |
+| `APP_CERTIFICATE_ISSUANCE_BATCH_SIZE` | Optional | `100` | Certificate issuance snapshot batch size (clamped 1..1000; EB-54). |
+
+> CORS is **not** env-configurable: allowed origins/methods are fixed to `*` in both security chains (`ProjectSecurityConfig`) — recorded as configuration debt for P6-03 review.
 
 ---
 
@@ -184,7 +201,9 @@ gitGraph
 * **WebSocket STOMP Handshake:** `wss://backend.edunest.dpdns.org/ws` (SockJS info: `https://backend.edunest.dpdns.org/ws/info`)
 
 ### 7.2 Database Backups & Recovery
-* **Automated Daily Snapshots:** Handled natively by Supabase with 7-day retention on free tier.
+* **Two-tier backup policy (P6-02 / EB-73, 2026-11-11):** **Tier 1** — Supabase native daily snapshots, 7-day retention on the current free tier (extend retention when real user data accrues; PO cost decision). **Tier 2** — offline `pg_dump` copies via [`ops/backups/Invoke-Backup.ps1`](../ops/backups/Invoke-Backup.ps1) / [`invoke-backup.sh`](../ops/backups/invoke-backup.sh) (custom format, 14-dump retention, gitignored `ops/backups/local/`) — the vendor-independent layer that removes the same-vendor single point of failure. Full policy: [`ops/backups/backup-policy.md`](../ops/backups/backup-policy.md).
+* **Restore drills:** weekly, per [`ops/backups/restore-procedure.md`](../ops/backups/restore-procedure.md) — restore into a disposable target, verify data + boot (`ddl-auto=validate`), then act. A backup never restored is a hypothesis.
+* **Storage note:** DB snapshots do not include Supabase Storage objects (uploaded files); storage durability rides on Supabase Storage replication, with a storage-sync backup step deferred until file volume justifies it.
 * **Disposable Migration Rehearsal:** All schema changes must pass the automated disposable PostgreSQL rehearsal test (`UniquenessPostgresMigrationIT` / `ops/rehearsals/Invoke-MigrationRehearsal.ps1`) before deployment.
 * **Rollback Standard:** Database migrations are strictly **forward-only**. In the event of an issue, a roll-forward Flyway script (`V{N+1}__...sql`) must be applied.
 

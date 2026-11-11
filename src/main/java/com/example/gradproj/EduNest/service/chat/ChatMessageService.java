@@ -13,6 +13,7 @@ import com.example.gradproj.EduNest.repository.users.UserRepository;
 import com.example.gradproj.EduNest.service.chat.ChatAuthorization;
 import com.example.gradproj.EduNest.service.security.SecurityService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -23,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -73,9 +76,15 @@ public class ChatMessageService {
 
         ChatRoom room = roomRepo.getReferenceById(roomId);
 
-        UserEntity sender = userRepo.findByEmail(principal.email()).orElseThrow(
-                () -> new UsernameNotFoundException("User not found")
-        );
+        UserEntity sender = userRepo.findByEmail(principal.email()).orElse(null);
+        if (sender == null) {
+            messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    "User not found"
+            );
+            return null;
+        }
 
         ChatMessage message = ChatMessage.builder()
                 .content(content)
@@ -85,7 +94,18 @@ public class ChatMessageService {
                 .sender(sender)
                 .build();
 
-        ChatMessage saved = messageRepo.save(message);
+        ChatMessage saved;
+        try {
+            saved = messageRepo.save(message);
+        } catch (Exception ex) {
+            log.error("Failed to save chat message in room {} for user {}", roomId, principal.email(), ex);
+            messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    "Failed to save message. Please try again."
+            );
+            return null;
+        }
 
         return messageMapper(saved, roomId);
     }
@@ -108,14 +128,15 @@ public class ChatMessageService {
                 messageRepo.findMessagesByRoom(
                         roomId,
                         beforeId,
-                        pageable
+                        pageable, isAdmin()
                 );
 
+        UUID roomPublicId = roomRepo.findById(roomId).map(com.example.gradproj.EduNest.entity.chat.ChatRoom::getPublicId).orElse(null);
         return messages.stream()
                 .map(m -> ChatMessageResponse.builder()
                         .id(m.getMessageId())
                         .message(m.getContent())
-                        .roomId(roomId)
+                        .roomId(roomPublicId)
                         .time(m.getCreatedAt())
                         .senderName(m.getSenderName())
                         .senderEmail(m.getSenderEmail())
@@ -126,16 +147,21 @@ public class ChatMessageService {
 
 
 
-    private ChatMessageResponse messageMapper(ChatMessage message,Long roomId) {
+    private ChatMessageResponse messageMapper(ChatMessage message, UUID roomId) {
         return ChatMessageResponse.builder()
-                .id(message.getId())
+                .id(message.getPublicId())
                 .message(message.getContent())
                 .roomId(roomId)
                 .time(message.getCreatedAt())
                 .senderName(message.getSenderName())
                 .senderEmail(message.getSenderEmail())
-                .senderProfileImageUrl(message.getSender().getProfileImageUrl())
+                .senderProfileImageUrl(message.getSender() != null ? message.getSender().getProfileImageUrl() : null)
                 .build();
+    }
+
+    private ChatMessageResponse messageMapper(ChatMessage message, Long roomId) {
+        UUID roomPublicId = message.getChatRoom() != null ? message.getChatRoom().getPublicId() : null;
+        return messageMapper(message, roomPublicId);
     }
 
     @Transactional
@@ -144,8 +170,26 @@ public class ChatMessageService {
             String senderEmail,
             String newContent
     ) {
+        return editMessage(null, messageId, senderEmail, newContent);
+    }
+
+    @Transactional
+    public ChatMessageResponse editMessage(
+            Long roomId,
+            Long messageId,
+            String senderEmail,
+            String newContent
+    ) {
+        if (newContent == null || newContent.isBlank()) {
+            throw new globalLogicEx("Message content must not be blank");
+        }
+
         ChatMessage msg = messageRepo.findById(messageId)
-                .orElseThrow(() -> new UsernameNotFoundException("Message not found"));
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+
+        if (roomId != null && !msg.getChatRoom().getId().equals(roomId)) {
+            throw new globalLogicEx("Message does not belong to this room");
+        }
 
         if (!msg.getSenderEmail().equals(senderEmail)) {
             throw new globalLogicEx("Not allowed to edit this message");
@@ -162,11 +206,98 @@ public class ChatMessageService {
             Long messageId,
             String senderEmail
     ) {
-        int deleted = messageRepo.deleteByIdAndSender(messageId, senderEmail);
+        deleteMessage(null, messageId, senderEmail);
+    }
 
-        if (deleted == 0) {
-            throw new BadCredentialsException("Not allowed to delete this message");
+    @Transactional
+    public Long deleteMessage(
+            Long roomId,
+            Long messageId,
+            String senderEmail
+    ) {
+        ChatMessage msg = messageRepo.findById(messageId)
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+
+        if (roomId != null && !msg.getChatRoom().getId().equals(roomId)) {
+            throw new globalLogicEx("Message does not belong to this room");
         }
+
+        if (!msg.getSenderEmail().equals(senderEmail)) {
+            throw new globalLogicEx("Not allowed to delete this message");
+        }
+
+        Long actualRoomId = msg.getChatRoom().getId();
+        messageRepo.delete(msg);
+        return actualRoomId;
+    }
+
+
+    private Long resolveRoomInternalId(UUID publicId) {
+        return roomRepo.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Room not found with this id"));
+    }
+
+    private Long resolveMessageInternalId(UUID publicId) {
+        return messageRepo.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
+    }
+
+    public List<ChatMessageResponse> getRoomMessages(
+            UUID roomId,
+            Long beforeId,
+            int size,
+            String senderEmail
+    ) {
+        if (!securityService.isUserMemberOfChatRoom(roomId, senderEmail)) {
+            throw new AccessDeniedException("You are not a member of this room");
+        }
+        Long internalRoomId = resolveRoomInternalId(roomId);
+        Pageable pageable = PageRequest.of(0, size);
+        List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, beforeId, pageable, isAdmin());
+        return messages.stream()
+                .map(m -> ChatMessageResponse.builder()
+                        .id(m.getMessageId())
+                        .message(m.getContent())
+                        .roomId(roomId)
+                        .time(m.getCreatedAt())
+                        .senderName(m.getSenderName())
+                        .senderEmail(m.getSenderEmail())
+                        .senderProfileImageUrl(m.getSenderProfileImageUrl())
+                        .build())
+                .toList();
+    }
+
+    private boolean isAdmin() {
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    @Transactional
+    public ChatMessageResponse editMessage(
+            UUID roomId,
+            UUID messageId,
+            String senderEmail,
+            String newContent
+    ) {
+        Long internalRoomId = roomId != null ? resolveRoomInternalId(roomId) : null;
+        Long internalMsgId = resolveMessageInternalId(messageId);
+        ChatMessageResponse resp = editMessage(internalRoomId, internalMsgId, senderEmail, newContent);
+        if (roomId != null) {
+            resp.setRoomId(roomId);
+        }
+        return resp;
+    }
+
+    @Transactional
+    public UUID deleteMessage(
+            UUID roomId,
+            UUID messageId,
+            String senderEmail
+    ) {
+        Long internalRoomId = roomId != null ? resolveRoomInternalId(roomId) : null;
+        Long internalMsgId = resolveMessageInternalId(messageId);
+        deleteMessage(internalRoomId, internalMsgId, senderEmail);
+        return roomId;
     }
 
 }

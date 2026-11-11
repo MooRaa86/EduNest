@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionReques
 import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.UUID;
 
 public interface TaskSubmissionService {
     @PreAuthorize("hasRole('STUDENT')")
@@ -17,4 +18,15 @@ public interface TaskSubmissionService {
     );
     @PreAuthorize("hasRole('MENTOR')")
     TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req);
+
+    @PreAuthorize("hasRole('STUDENT')")
+    TaskSubmissionResponse submit(UUID taskId, MultipartFile file, String fileUrl);
+    @PreAuthorize("hasRole('MENTOR')")
+    PageResponse<TaskSubmissionResponse> listByTask(
+            UUID taskId,
+            int page,
+            int size
+    );
+    @PreAuthorize("hasRole('MENTOR')")
+    TaskSubmissionResponse grade(UUID submissionId, GradeTaskSubmissionRequest req);
 }

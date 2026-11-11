@@ -10,8 +10,16 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface StudentRepository extends JpaRepository<Student, Long> {
+    Optional<Student> findByPublicId(UUID publicId);
+
+    @Query("select s.id from Student s where s.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("SELECT s FROM Student s LEFT JOIN FETCH s.socialMediaLinks WHERE s.publicId = :publicId")
+    Optional<Student> findStudentWithSocialMediaByPublicId(@Param("publicId") UUID publicId);
     Optional<Student> findByEmail(String email);
     @Query("select s.id from Student s where s.email = :email")
     Optional<Long> findIdByEmail(@Param("email") String email);

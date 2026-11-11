@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 
 public interface ProjectAuthProjection {
     Long getId();
+    Long getWeekId();
     String getMentorEmail();
     Long getMentorshipId();
     ProjectStatus getStatus();

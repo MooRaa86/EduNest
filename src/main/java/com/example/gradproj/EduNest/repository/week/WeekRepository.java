@@ -1,15 +1,35 @@
 package com.example.gradproj.EduNest.repository.week;
 
 import com.example.gradproj.EduNest.entity.mentorship.Week;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface WeekRepository extends JpaRepository<Week,Long> {
+    Optional<Week> findByPublicId(UUID publicId);
+
+    @Query("SELECT w.id FROM Week w WHERE w.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Week w WHERE w.publicId = :publicId")
+    Optional<Week> findForUpdateByPublicId(@Param("publicId") UUID publicId);
     void deleteById(Long id);
     List<Week> findByMentorship_IdOrderByIdAsc(Long mentorshipId);
+
+    /** EB-51 — shared gate lock (L1) for task/project points-edit and grading gates. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Week w WHERE w.id = :id")
+    Optional<Week> findForUpdateById(@Param("id") Long id);
 
     @Query("""
     SELECT COUNT(DISTINCT w.id)

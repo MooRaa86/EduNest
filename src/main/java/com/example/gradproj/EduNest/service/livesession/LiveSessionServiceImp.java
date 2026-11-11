@@ -21,6 +21,7 @@ import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
 import com.example.gradproj.EduNest.repository.livesession.LiveSessionRepository;
 import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResultRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
+import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.integration.zoom.ZoomMeetingClient;
@@ -39,6 +40,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,10 +52,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LiveSessionServiceImp implements LiveSessionService {
 
     private final WeekRepository weekRepository;
@@ -71,6 +73,67 @@ public class LiveSessionServiceImp implements LiveSessionService {
     private final AttendancePolicy attendancePolicy;
     private final PointsAwardingPolicy pointsAwardingPolicy;
     private final LiveSessionProperties liveSessionProperties;
+    private final MentorShipRepository mentorShipRepository;
+
+    @Autowired
+    public LiveSessionServiceImp(
+            WeekRepository weekRepository,
+            LiveSessionRepository liveSessionRepository,
+            EnrollmentRepository enrollmentRepository,
+            StudentRepository studentRepository,
+            AttendanceRepository attendanceRepository,
+            SessionAttendanceResultRepository sessionAttendanceResultRepository,
+            JitsiService jitsiService,
+            TotalPointsServiceImp totalPointsService,
+            NotificationService notificationService,
+            SecurityService securityService,
+            ZoomMeetingClient zoomMeetingClient,
+            ZoomProperties zoomProperties,
+            AttendancePolicy attendancePolicy,
+            PointsAwardingPolicy pointsAwardingPolicy,
+            LiveSessionProperties liveSessionProperties,
+            MentorShipRepository mentorShipRepository
+    ) {
+        this.weekRepository = weekRepository;
+        this.liveSessionRepository = liveSessionRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.studentRepository = studentRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.sessionAttendanceResultRepository = sessionAttendanceResultRepository;
+        this.jitsiService = jitsiService;
+        this.totalPointsService = totalPointsService;
+        this.notificationService = notificationService;
+        this.securityService = securityService;
+        this.zoomMeetingClient = zoomMeetingClient;
+        this.zoomProperties = zoomProperties;
+        this.attendancePolicy = attendancePolicy;
+        this.pointsAwardingPolicy = pointsAwardingPolicy;
+        this.liveSessionProperties = liveSessionProperties;
+        this.mentorShipRepository = mentorShipRepository;
+    }
+
+    public LiveSessionServiceImp(
+            WeekRepository weekRepository,
+            LiveSessionRepository liveSessionRepository,
+            EnrollmentRepository enrollmentRepository,
+            StudentRepository studentRepository,
+            AttendanceRepository attendanceRepository,
+            SessionAttendanceResultRepository sessionAttendanceResultRepository,
+            JitsiService jitsiService,
+            TotalPointsServiceImp totalPointsService,
+            NotificationService notificationService,
+            SecurityService securityService,
+            ZoomMeetingClient zoomMeetingClient,
+            ZoomProperties zoomProperties,
+            AttendancePolicy attendancePolicy,
+            PointsAwardingPolicy pointsAwardingPolicy,
+            LiveSessionProperties liveSessionProperties
+    ) {
+        this(weekRepository, liveSessionRepository, enrollmentRepository, studentRepository,
+             attendanceRepository, sessionAttendanceResultRepository, jitsiService, totalPointsService,
+             notificationService, securityService, zoomMeetingClient, zoomProperties,
+             attendancePolicy, pointsAwardingPolicy, liveSessionProperties, null);
+    }
 
     @Override
     @Transactional
@@ -78,7 +141,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         String email = securityService.getCurrentUserEmail();
 
-        if (!securityService.isMentorOwnWeek(createSessionDto.getWeekId(), email)) {
+        if (!checkMentorOwnWeek(createSessionDto.getWeekId(), email)) {
             throw new AccessDeniedException("You are not authorized to create session for this week");
         }
 
@@ -91,7 +154,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             throw new globalLogicEx("Scheduled date/time must be in the future");
         }
 
-        Week week = weekRepository.findById(createSessionDto.getWeekId())
+        Week week = weekRepository.findByPublicId(createSessionDto.getWeekId())
                 .orElseThrow(() -> new globalLogicEx("Week not found"));
 
         String meetingUrl = null;
@@ -141,7 +204,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public SessionResponseDto updateSession(Long sessionId, UpdateSessionDto updateSessionDto) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+        if (!checkMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to update this session");
         }
 
@@ -201,8 +264,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public SessionResponseDto getSessionById(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
-        boolean isMentor = securityService.isMentorOwnLiveSession(sessionId, email);
-        boolean isStudent = securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
+        boolean isMentor = checkMentorOwnLiveSession(sessionId, email);
+        boolean isStudent = checkStudentEnrolledByLiveSessionId(email, sessionId);
 
         if (!isMentor && !isStudent) {
             throw new AccessDeniedException("You are not authorized to access this session");
@@ -260,7 +323,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public void deleteSession(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+        if (!checkMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to delete this session");
         }
 
@@ -293,7 +356,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public SessionResponseDto startLiveSession(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+        if (!checkMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to start this session");
         }
 
@@ -348,10 +411,10 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
 
         boolean isStudent =
-                securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
+                checkStudentEnrolledByLiveSessionId(email, sessionId);
 
         boolean isMentor =
-                securityService.isMentorOwnLiveSession(sessionId, email);
+                checkMentorOwnLiveSession(sessionId, email);
 
         if (!isStudent && !isMentor) {
             throw new AccessDeniedException("You are not authorized to join this session");
@@ -385,12 +448,28 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public SessionResponseDto endSession(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+        if (!checkMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to end this session");
         }
 
-        Session session = liveSessionRepository.findById(sessionId)
+        Session uncommitted = liveSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new globalLogicEx("Session not found"));
+
+        Long mentorshipId = uncommitted.getWeek().getMentorship().getId();
+        Long weekId = uncommitted.getWeek().getId();
+
+        // EB-51: Canonical ordered row locking (L0 mentorship -> L1 week -> L2 session)
+        if (mentorShipRepository != null) {
+            mentorShipRepository.findForUpdateById(mentorshipId)
+                    .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        }
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Session session = liveSessionRepository.findForUpdateById(sessionId)
+                .orElse(null);
+        if (session == null) {
+            session = uncommitted;
+        }
 
         if (session.getStatus() != SessionStatus.LIVE) {
             throw new globalLogicEx("Session must be live");
@@ -408,12 +487,16 @@ public class LiveSessionServiceImp implements LiveSessionService {
             }
         }
 
-        notificationService.sendToMentorshipStudents(
-                session.getWeek().getMentorship().getId(),
-                "Session Ended",
-                "Session " + session.getTitle() + " has ended.",
-                NotificationType.LIVE_SESSION
-        );
+        try {
+            notificationService.sendToMentorshipStudents(
+                    mentorshipId,
+                    "Session Ended",
+                    "Session " + session.getTitle() + " has ended.",
+                    NotificationType.LIVE_SESSION
+            );
+        } catch (Exception e) {
+            log.warn("Notice on student notification for ended session {}: {}", sessionId, e.getMessage());
+        }
 
         calculateAttendancePoints(session);
         return mapToDto(session);
@@ -423,7 +506,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
     @Transactional
     public void recordSnapshot(Long sessionId, List<Long> studentIds) {
         String email = securityService.getCurrentUserEmail();
-        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+        if (!checkMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to record attendance for this session");
         }
 
@@ -465,7 +548,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
         String email = securityService.getCurrentUserEmail();
 
-        if (!securityService.isStudentEnrolledByLiveSessionId(email, sessionId)) {
+        if (!checkStudentEnrolledByLiveSessionId(email, sessionId)) {
             throw new AccessDeniedException("You are not authorized to access this attendance result");
         }
 
@@ -477,8 +560,8 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 .orElseThrow(() -> new globalLogicEx("Attendance not found"));
 
         return AttendanceResponse.builder()
-                .sessionId(result.getSession().getId())
-                .studentId(result.getStudent().getId())
+                .sessionId(result.getSession().getPublicId())
+                .studentId(result.getStudent().getPublicId())
                 .status(result.isAttended() ? "Present" : "Absent")
                 .build();
     }
@@ -488,15 +571,15 @@ public class LiveSessionServiceImp implements LiveSessionService {
     public List<AttendanceResponse> getAttendanceResult(Long sessionId) {
         String email = securityService.getCurrentUserEmail();
 
-        if (!securityService.isMentorOwnLiveSession(sessionId, email)) {
+        if (!checkMentorOwnLiveSession(sessionId, email)) {
             throw new AccessDeniedException("You are not authorized to view attendance for this session");
         }
 
         List<SessionAttendanceResult> results = sessionAttendanceResultRepository.findBySession_Id(sessionId);
         return results.stream()
                 .map(r -> AttendanceResponse.builder()
-                        .sessionId(r.getSession().getId())
-                        .studentId(r.getStudent().getId())
+                        .sessionId(r.getSession().getPublicId())
+                        .studentId(r.getStudent().getPublicId())
                         .status(r.isAttended() ? "Present" : "Absent")
                         .build())
                 .toList();
@@ -526,7 +609,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
 
     private SessionResponseDto mapToDto(Session session) {
         return SessionResponseDto.builder()
-                .sessionId(session.getId())
+                .sessionId(session.getPublicId())
                 .sessionTitle(session.getTitle())
                 .sessionStartDate(session.getScheduledAt())
                 .meetingUrl(session.getMeetingUrl())
@@ -556,4 +639,101 @@ public class LiveSessionServiceImp implements LiveSessionService {
                 .build();
     }
 
+
+    private Long resolveSessionInternalId(UUID publicId) {
+        return liveSessionRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Session not found"));
+    }
+
+    private Long resolveMentorshipInternalId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+    }
+
+    @Override
+    @Transactional
+    public SessionResponseDto updateSession(UUID sessionId, UpdateSessionDto updateSessionDto) {
+        return updateSession(resolveSessionInternalId(sessionId), updateSessionDto);
+    }
+
+    @Override
+    @Transactional
+    public SessionResponseDto getSessionById(UUID id) {
+        return getSessionById(resolveSessionInternalId(id));
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(UUID id) {
+        deleteSession(resolveSessionInternalId(id));
+    }
+
+    @Override
+    @Transactional
+    public SessionResponseDto startLiveSession(UUID sessionId) {
+        return startLiveSession(resolveSessionInternalId(sessionId));
+    }
+
+    @Override
+    @Transactional
+    public SessionResponseDto joinSession(UUID sessionId) {
+        return joinSession(resolveSessionInternalId(sessionId));
+    }
+
+    @Override
+    @Transactional
+    public SessionResponseDto endSession(UUID sessionId) {
+        return endSession(resolveSessionInternalId(sessionId));
+    }
+
+    @Override
+    @Transactional
+    public void recordSnapshot(UUID sessionId, List<UUID> studentIds) {
+        Long internalSessionId = resolveSessionInternalId(sessionId);
+        List<Long> internalStudentIds = studentIds.stream()
+                .map(pubId -> studentRepository.findByPublicId(pubId)
+                        .map(Student::getId)
+                        .orElseThrow(() -> new globalLogicEx("Student not found")))
+                .toList();
+        recordSnapshot(internalSessionId, internalStudentIds);
+    }
+
+    @Override
+    @Transactional
+    public List<AttendanceResponse> getAttendanceResult(UUID sessionId) {
+        return getAttendanceResult(resolveSessionInternalId(sessionId));
+    }
+
+    @Override
+    @Transactional
+    public AttendanceResponse getStudentAttendanceResult(UUID sessionId) {
+        return getStudentAttendanceResult(resolveSessionInternalId(sessionId));
+    }
+
+    @Override
+    @Transactional
+    public PageResponse<DashboardSessionResponse> getAllSessions(UUID mentorshipId, int page, int size) {
+        return getAllSessions(resolveMentorshipInternalId(mentorshipId), page, size);
+    }
+
+
+    private boolean checkMentorOwnLiveSession(Long sessionId, String email) {
+        return securityService.isMentorOwnLiveSession(sessionId, email);
+    }
+
+    private boolean checkStudentEnrolledByLiveSessionId(String email, Long sessionId) {
+        return securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
+    }
+
+    private boolean checkMentorOwnWeek(UUID weekId, String email) {
+        return securityService.isMentorOwnWeek(weekId, email);
+    }
+
+    private boolean checkMentorOwnLiveSession(UUID sessionId, String email) {
+        return securityService.isMentorOwnLiveSession(sessionId, email);
+    }
+
+    private boolean checkStudentEnrolledByLiveSessionId(String email, UUID sessionId) {
+        return securityService.isStudentEnrolledByLiveSessionId(email, sessionId);
+    }
 }

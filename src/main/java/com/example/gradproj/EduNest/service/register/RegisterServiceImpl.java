@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.example.gradproj.EduNest.utils.SystemUtils.*;
+import com.example.gradproj.EduNest.service.auth.RefreshTokenService;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,7 @@ public class RegisterServiceImpl implements RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final ResetTokenService resetTokenService;
+    private final RefreshTokenService refreshTokenService;
     private final int expiryTime = 2;
 
     @Override
@@ -269,6 +271,7 @@ public class RegisterServiceImpl implements RegistrationService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         otpRepository.delete(otp);
+        refreshTokenService.revokeAllForUser(user.getId());
 
     }
 

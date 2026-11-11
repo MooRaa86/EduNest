@@ -1,8 +1,11 @@
 package com.example.gradproj.EduNest.repository.tasks;
 
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskWithSubmissionProjection;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +16,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,Long> {
+    java.util.Optional<TaskSubmission> findByPublicId(java.util.UUID publicId);
+    @Query("SELECT ts.id FROM TaskSubmission ts WHERE ts.publicId = :publicId")
+    java.util.Optional<Long> findIdByPublicId(@Param("publicId") java.util.UUID publicId);
+    boolean existsByPublicId(java.util.UUID publicId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ts FROM TaskSubmission ts WHERE ts.publicId = :publicId")
+    java.util.Optional<TaskSubmission> findForUpdateByPublicId(@Param("publicId") java.util.UUID publicId);
+
     @Query("""
         SELECT ts.id AS id,
                s.email AS studentEmail,
@@ -28,14 +39,25 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
     """)
     Optional<TaskSubmissionAuthProjection> findAuthProjectionById(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ts FROM TaskSubmission ts WHERE ts.id = :id")
+    Optional<TaskSubmission> findForUpdateById(@Param("id") Long id);
+
     @Query("SELECT s FROM TaskSubmission s JOIN FETCH s.student WHERE s.task.id = :taskId")
     Page<TaskSubmission> findByTask_Id(Long taskId, Pageable pageable);
+    long countByTask_IdAndStatus(Long taskId, SubmissionStatus status);
     Optional<TaskSubmission> findByTask_IdAndStudent_Id(Long taskId, Long studentId);
     boolean existsByTask_IdAndStudent_Id(Long taskId, Long studentId);
+    boolean existsByTask_Id(Long taskId);
+    /** EB-51 / D-09 — freeze predicate: at least one qualifying (GRADED) submission exists. */
+    boolean existsByTask_IdAndStatus(Long taskId, SubmissionStatus status);
+    /** EB-51 — cascade-delete protection: rejects deleting week if submissions exist. */
+    boolean existsByTask_Week_Id(Long weekId);
+    boolean existsByTask_Week_IdAndStatus(Long weekId, SubmissionStatus status);
 
     @Query("""
         SELECT
-            t.id                                    AS taskId,
+            t.publicId                              AS taskId,
             t.title                                 AS taskTitle,
             t.points                                AS points,
             t.dueAt                                 AS dueAt,
@@ -43,7 +65,7 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
             t.attachmentUrl                         AS attachmentUrl,
             t.uploadedAttachmentPath                AS uploadedAttachmentPath,
             t.estimatedMinutes                      AS estimatedMinutes,
-            ts.id                                   AS submissionId,
+            ts.publicId                             AS submissionId,
             ts.fileUrl                              AS fileUrl,
             ts.finalScore                           AS finalScore,
             t.points                                AS totalPoints,
@@ -90,4 +112,15 @@ public interface TaskSubmissionRepository extends JpaRepository<TaskSubmission,L
         WHERE ts.task.id = :taskId
     """)
     List<Long> findStudentIdsByTaskId(@Param("taskId") Long taskId);
+
+    @Query("""
+        SELECT ts
+        FROM TaskSubmission ts
+        JOIN ts.task t
+        JOIN t.week w
+        WHERE ts.student.id = :studentId
+          AND w.mentorship.id = :mentorshipId
+    """)
+    List<TaskSubmission> findByStudentIdAndMentorshipId(@Param("studentId") Long studentId,
+                                                        @Param("mentorshipId") Long mentorshipId);
 }

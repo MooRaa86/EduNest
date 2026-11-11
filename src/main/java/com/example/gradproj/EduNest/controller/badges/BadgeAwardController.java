@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/badge-awards")
@@ -24,7 +25,7 @@ public class BadgeAwardController {
     @Operation(summary = "Award a badge to a student")
     @PreAuthorize("hasRole('MENTOR')")
     public ResponseEntity<SimpleResponse> award(
-            @PathVariable Long badgeId,
+            @PathVariable UUID badgeId,
             @Valid @RequestBody AwardBadgeRequest req
     ) {
         SimpleResponse response = new SimpleResponse();
@@ -35,7 +36,7 @@ public class BadgeAwardController {
 
     @GetMapping("/mentorship/{mentorshipId}")
     @Operation(summary = "Get all awards for a mentorship")
-    public ResponseEntity<SimpleResponse> getByMentorship(@PathVariable Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getByMentorship(@PathVariable UUID mentorshipId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Awards retrieved successfully");
         response.addMessage("awards", badgeAwardService.getAwardsByMentorship(mentorshipId));
@@ -44,7 +45,7 @@ public class BadgeAwardController {
 
     @GetMapping("/student/{studentId}")
     @Operation(summary = "Get all badge awards for a student")
-    public ResponseEntity<SimpleResponse> getByStudent(@PathVariable Long studentId) {
+    public ResponseEntity<SimpleResponse> getByStudent(@PathVariable UUID studentId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Awards retrieved successfully");
         response.addMessage("awards", badgeAwardService.getAwardsByStudent(studentId));
@@ -53,7 +54,7 @@ public class BadgeAwardController {
 
     @GetMapping("/badge/{badgeId}")
     @Operation(summary = "Get all students awarded a specific badge")
-    public ResponseEntity<SimpleResponse> getByBadge(@PathVariable Long badgeId) {
+    public ResponseEntity<SimpleResponse> getByBadge(@PathVariable UUID badgeId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("message", "Awards retrieved successfully");
         response.addMessage("awards", badgeAwardService.getAwardsByBadge(badgeId));

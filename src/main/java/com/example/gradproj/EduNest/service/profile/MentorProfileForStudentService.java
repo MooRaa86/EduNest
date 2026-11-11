@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +27,18 @@ public class MentorProfileForStudentService {
     private final ReviewsRepository reviewsRepository;
     private final SocialMediaRepository socialMediaRepository;
 
+    private boolean isUuid(String str) {
+        if (str == null || str.length() != 36) {
+            return false;
+        }
+        try {
+            UUID.fromString(str);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     private boolean isNumeric(String str) {
         if (str == null || str.isBlank()) {
             return false;
@@ -33,11 +46,28 @@ public class MentorProfileForStudentService {
         return str.chars().allMatch(Character::isDigit);
     }
 
+    private void requireVisibleMentor(String identifier) {
+        var mentor = isUuid(identifier) ? mentorRepository.findByPublicId(UUID.fromString(identifier))
+                : isNumeric(identifier) ? mentorRepository.findById(Long.parseLong(identifier))
+                : mentorRepository.findByEmail(identifier);
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (mentor.isEmpty() || (mentor.get().isDeleted() && !admin)) throw new EntityNotFoundException("Mentor not found");
+    }
+
     public MentorProfileforStudentDto getMentorProfile(String identifier) {
+        requireVisibleMentor(identifier);
         MentorProfileforStudentDto mentorProfile;
         List<SocialMedia> socialMedia;
 
-        if (isNumeric(identifier)) {
+        if (isUuid(identifier)) {
+            UUID mentorPublicId = UUID.fromString(identifier);
+            mentorProfile = mentorRepository.findMentorProfileByPublicId(mentorPublicId);
+            if (mentorProfile == null) {
+                throw new EntityNotFoundException("Mentor not found with UUID: " + mentorPublicId);
+            }
+            socialMedia = socialMediaRepository.findByUser_PublicId(mentorPublicId);
+        } else if (isNumeric(identifier)) {
             Long mentorId = Long.parseLong(identifier);
             mentorProfile = mentorRepository.findMentorProfileById(mentorId);
             if (mentorProfile == null) {
@@ -63,10 +93,17 @@ public class MentorProfileForStudentService {
     }
 
     public PageResponse<MentorProfileMentorshipsDto> getMentorMentorships(String identifier, int size, int page) {
+        requireVisibleMentor(identifier);
         Pageable pageable = Pageable.ofSize(size).withPage(page);
         Page<MentorProfileMentorshipsDto> mentorshipsPage;
 
-        if (isNumeric(identifier)) {
+        if (isUuid(identifier)) {
+            UUID mentorPublicId = UUID.fromString(identifier);
+            if (!mentorRepository.existsByPublicId(mentorPublicId)) {
+                throw new EntityNotFoundException("Mentor not found with UUID: " + mentorPublicId);
+            }
+            mentorshipsPage = mentorShipRepository.findMentorshipsByMentorPublicId(mentorPublicId, pageable);
+        } else if (isNumeric(identifier)) {
             Long mentorId = Long.parseLong(identifier);
             if (!mentorRepository.existsById(mentorId)) {
                 throw new EntityNotFoundException("Mentor not found with ID: " + mentorId);
@@ -89,10 +126,17 @@ public class MentorProfileForStudentService {
     }
 
     public PageResponse<MentorProfileReviews> getMentorReviews(String identifier, int size, int page) {
+        requireVisibleMentor(identifier);
         Pageable pageable = Pageable.ofSize(size).withPage(page);
         Page<MentorProfileReviews> reviewsPage;
 
-        if (isNumeric(identifier)) {
+        if (isUuid(identifier)) {
+            UUID mentorPublicId = UUID.fromString(identifier);
+            if (!mentorRepository.existsByPublicId(mentorPublicId)) {
+                throw new EntityNotFoundException("Mentor not found with UUID: " + mentorPublicId);
+            }
+            reviewsPage = reviewsRepository.findReviewsByMentorPublicId(mentorPublicId, pageable);
+        } else if (isNumeric(identifier)) {
             Long mentorId = Long.parseLong(identifier);
             if (!mentorRepository.existsById(mentorId)) {
                 throw new EntityNotFoundException("Mentor not found with ID: " + mentorId);

@@ -8,18 +8,37 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.repository.query.Param;
 
 public interface ChatMessageRepository
         extends JpaRepository<ChatMessage, Long> {
 
+    Optional<ChatMessage> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT m.id FROM ChatMessage m WHERE m.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Modifying
+    @Query("""
+    DELETE FROM ChatMessage m
+    WHERE m.publicId = :messagePublicId
+      AND m.sender.email = :senderEmail
+""")
+    int deleteByPublicIdAndSender(@Param("messagePublicId") UUID messagePublicId, @Param("senderEmail") String senderEmail);
+
+
     @Query("""
     select
-        m.id as messageId,
+        m.publicId as messageId,
         m.content as content,
         m.createdAt as createdAt,
-        m.senderEmail as senderEmail,
-        m.senderName as senderName,
-        m.sender.profileImageUrl as senderProfileImageUrl
+        CASE WHEN m.sender.deleted = true AND :revealDeleted = false THEN NULL ELSE m.senderEmail END as senderEmail,
+        CASE WHEN m.sender.deleted = true AND :revealDeleted = false THEN 'Deleted user' ELSE m.senderName END as senderName,
+        CASE WHEN m.sender.deleted = true AND :revealDeleted = false THEN NULL ELSE m.sender.profileImageUrl END as senderProfileImageUrl
     from ChatMessage m
     where m.chatRoom.id = :roomId
       and (:beforeId is null or m.id < :beforeId)
@@ -28,8 +47,13 @@ public interface ChatMessageRepository
     List<ChatMessageProjection> findMessagesByRoom(
             Long roomId,
             Long beforeId,
-            Pageable pageable
+            Pageable pageable,
+            @Param("revealDeleted") boolean revealDeleted
     );
+
+    default List<ChatMessageProjection> findMessagesByRoom(Long roomId, Long beforeId, Pageable pageable) {
+        return findMessagesByRoom(roomId, beforeId, pageable, false);
+    }
 
     @Modifying
     @Query("""

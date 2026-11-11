@@ -15,6 +15,7 @@ import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.SecurityService;
@@ -27,7 +28,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,7 @@ public class QuizServiceImpl implements QuizService {
     private final QuizSubmissionService quizSubmissionService;
     private final NotificationService notificationService;
     private final SecurityService securityService;
+    private final QuizSubmissionRepository quizSubmissionRepository;
 
 
     @Override
@@ -50,16 +54,21 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to create quiz for this week");
         }
 
-        Week week = weekRepository.findById(quizCreateDTO.getWeekId()).orElseThrow(
+        Week week = weekRepository.findByPublicId(quizCreateDTO.getWeekId()).orElseThrow(
                 () -> new globalLogicEx("Week not found")
         );
 
+        if (quizCreateDTO.getStatus() == QuizStatus.PUBLISHED) {
+            // EB-53 / D-08 — a quiz published at creation time must carry a valid closeAt.
+            requireValidCloseAt(quizCreateDTO.getCloseAt());
+        }
 
         Quiz quiz = Quiz.builder()
                 .title(quizCreateDTO.getTitle())
                 .durationMinutes(quizCreateDTO.getDurationMinutes())
                 .description(quizCreateDTO.getDescription())
                 .week(week)
+                .closeAt(quizCreateDTO.getCloseAt())
                 .status(quizCreateDTO.getStatus() != null ? quizCreateDTO.getStatus() : QuizStatus.DRAFT)
                 .build();
 
@@ -75,11 +84,12 @@ public class QuizServiceImpl implements QuizService {
         }
 
         return QuizResponseDTO.builder()
-                .id(quiz.getId())
+                .id(quiz.getPublicId())
                 .title(quiz.getTitle())
                 .durationMinutes(quiz.getDurationMinutes())
                 .description(quiz.getDescription())
                 .status(quiz.getStatus())
+                .closeAt(quiz.getCloseAt())
                 .submissions(0)
                 .averageScore(0.0)
                 .build();
@@ -93,8 +103,17 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to delete this quiz");
         }
 
-        if (!quizRepository.existsById(id)) {
-            throw new globalLogicEx("Quiz not found");
+        Quiz quiz = quizRepository.findById(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        // EB-51 — L1 (week) -> L2 (quiz) shared gate: serialised against quiz-submit and cascade deletes
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quizRepository.findForUpdateById(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quizSubmissionRepository.existsByQuiz_IdAndScoreIsNotNull(id)) {
+            throw new globalLogicEx("Cannot delete a quiz that has scored submissions");
         }
 
         quizRepository.deleteById(id);
@@ -112,6 +131,12 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        // EB-51 — L1 (week) -> L2 (quiz) shared gate
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quizRepository.findForUpdateById(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
         if (quiz.getStatus() == QuizStatus.PUBLISHED || quiz.getStatus() == QuizStatus.CLOSED) {
             throw new globalLogicEx("Cannot update published or closed quiz");
         }
@@ -120,7 +145,13 @@ public class QuizServiceImpl implements QuizService {
         if (quizUpdateDto.getTitle() != null) quiz.setTitle(quizUpdateDto.getTitle());
         if (quizUpdateDto.getDescription() != null) quiz.setDescription(quizUpdateDto.getDescription());
         if (quizUpdateDto.getDurationMinutes() != null) quiz.setDurationMinutes(quizUpdateDto.getDurationMinutes());
+        if (quizUpdateDto.getCloseAt() != null) quiz.setCloseAt(quizUpdateDto.getCloseAt());
         if (quizUpdateDto.getStatus() != null) quiz.setStatus(quizUpdateDto.getStatus());
+
+        if (oldStatus != QuizStatus.PUBLISHED && quiz.getStatus() == QuizStatus.PUBLISHED) {
+            // EB-53 / D-08 — publishing through the update endpoint requires a valid closeAt.
+            requireValidCloseAt(quiz.getCloseAt());
+        }
 
 
         quiz = quizRepository.save(quiz);
@@ -136,11 +167,12 @@ public class QuizServiceImpl implements QuizService {
         }
 
         return QuizResponseDTO.builder()
-                .id(quiz.getId())
+                .id(quiz.getPublicId())
                 .title(quiz.getTitle())
                 .durationMinutes(quiz.getDurationMinutes())
                 .description(quiz.getDescription())
                 .status(quiz.getStatus())
+                .closeAt(quiz.getCloseAt())
                 .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .averageScore(calculateAverageScore(quiz))
                 .build();
@@ -164,11 +196,12 @@ public class QuizServiceImpl implements QuizService {
         }
 
         return QuizResponseDTO.builder()
-                .id(quiz.getId())
+                .id(quiz.getPublicId())
                 .title(quiz.getTitle())
                 .durationMinutes(quiz.getDurationMinutes())
                 .description(quiz.getDescription())
                 .status(quiz.getStatus())
+                .closeAt(quiz.getCloseAt())
                 .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .averageScore(calculateAverageScore(quiz))
                 .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
@@ -188,11 +221,12 @@ public class QuizServiceImpl implements QuizService {
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
                 .map(quiz -> QuizResponseDTO.builder()
-                        .id(quiz.getId())
+                        .id(quiz.getPublicId())
                         .title(quiz.getTitle())
                         .durationMinutes(quiz.getDurationMinutes())
                         .description(quiz.getDescription())
                         .status(quiz.getStatus())
+                        .closeAt(quiz.getCloseAt())
                         .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                         .averageScore(calculateAverageScore(quiz))
                         .build())
@@ -221,11 +255,12 @@ public class QuizServiceImpl implements QuizService {
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
                 .map(quiz -> QuizResponseDTO.builder()
-                        .id(quiz.getId())
+                        .id(quiz.getPublicId())
                         .title(quiz.getTitle())
                         .durationMinutes(quiz.getDurationMinutes())
                         .description(quiz.getDescription())
                         .status(quiz.getStatus())
+                        .closeAt(quiz.getCloseAt())
                         .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                         .averageScore(calculateAverageScore(quiz))
                         .build())
@@ -360,6 +395,7 @@ public class QuizServiceImpl implements QuizService {
     }
 
     @Override
+    @Transactional
     public void changeStatus(Long quizId, QuizStatus quizStatus) {
         String email = securityService.getCurrentUserEmail();
         if (!securityService.isMentorOwnQuiz(quizId, email)) {
@@ -369,12 +405,37 @@ public class QuizServiceImpl implements QuizService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new globalLogicEx("Quiz not found"));
 
+        // EB-51 — L1 (week) -> L2 (quiz) shared gate: serialize status transitions against concurrent submissions
+        weekRepository.findForUpdateById(quiz.getWeek().getId())
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        quiz = quizRepository.findForUpdateById(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+
+        if (quiz.getStatus() == QuizStatus.CLOSED) {
+            throw new globalLogicEx("Cannot change status of a closed quiz");
+        }
+
         if (quizStatus == QuizStatus.CLOSED && quiz.getStatus() != QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Only published quizzes can be closed");
         }
 
         if (quizStatus == QuizStatus.PUBLISHED && quiz.getStatus() == QuizStatus.PUBLISHED) {
             throw new globalLogicEx("Quiz is already published");
+        }
+
+        if (quizStatus == QuizStatus.DRAFT && (quizSubmissionRepository.existsByQuiz_Id(quizId)
+                || quizSubmissionRepository.existsByQuiz_IdAndScoreIsNotNull(quizId))) {
+            throw new globalLogicEx("Cannot revert quiz with submissions to draft");
+        }
+
+        if (quizStatus == QuizStatus.PUBLISHED && (quiz.getQuestions() == null || quiz.getQuestions().isEmpty())) {
+            throw new globalLogicEx("Cannot publish a quiz with no questions");
+        }
+
+        if (quizStatus == QuizStatus.PUBLISHED) {
+            // EB-53 / D-08 — publishing requires a valid closeAt. Legacy PUBLISHED
+            // quizzes with closeAt == null keep their manual-close-only behavior.
+            requireValidCloseAt(quiz.getCloseAt());
         }
 
         if (quizStatus == QuizStatus.CLOSED) {
@@ -400,6 +461,20 @@ public class QuizServiceImpl implements QuizService {
     }
 
 
+    /**
+     * EB-53 / D-08 — a valid closeAt is non-null and in the future at publish
+     * time; the attempt window (durationMinutes) and grace still govern each
+     * individual submission inside that deadline.
+     */
+    private void requireValidCloseAt(LocalDateTime closeAt) {
+        if (closeAt == null) {
+            throw new globalLogicEx("closeAt is required when publishing a quiz");
+        }
+        if (!closeAt.isAfter(LocalDateTime.now())) {
+            throw new globalLogicEx("closeAt must be in the future when publishing a quiz");
+        }
+    }
+
     private double calculateAverageScore(Quiz quiz) {
 
         if (quiz.getSubmissions() == null || quiz.getSubmissions().isEmpty()) {
@@ -407,7 +482,8 @@ public class QuizServiceImpl implements QuizService {
         }
 
         double average = quiz.getSubmissions().stream()
-                .mapToDouble(s -> s.getScore() != null ? s.getScore() : 0)
+                .filter(s -> s.getScore() != null)
+                .mapToDouble(s -> s.getScore())
                 .average()
                 .orElse(0.0);
 
@@ -416,11 +492,84 @@ public class QuizServiceImpl implements QuizService {
 
     private QuizOverviewDto mapToQuizOverviewDto(Quiz quiz) {
         return QuizOverviewDto.builder()
-                .id(quiz.getId())
+                .id(quiz.getPublicId())
                 .title(quiz.getTitle())
                 .averageScore(calculateAverageScore(quiz))
                 .status(quiz.getStatus())
                 .submissions(quiz.getSubmissions().size())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuiz(UUID id) {
+        Long internalId = quizRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        deleteQuiz(internalId);
+    }
+
+    @Override
+    @Transactional
+    public QuizResponseDTO updateQuiz(UUID id, QuizUpdateDto quizUpdateDto) {
+        Long internalId = quizRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return updateQuiz(internalId, quizUpdateDto);
+    }
+
+    @Override
+    public QuizResponseDTO getQuizDetails(UUID id) {
+        Long internalId = quizRepository.findIdByPublicId(id)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuizDetails(internalId);
+    }
+
+    @Override
+    public PageResponse<QuizResponseDTO> getQuizzes(String quizName, QuizStatus status, UUID msid, Pageable pageable) {
+        Long internalMsid = mentorshipRepository.findIdByPublicId(msid)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        return getQuizzes(quizName, status, internalMsid, pageable);
+    }
+
+    @Override
+    public PageResponse<QuizResponseDTO> getStudentQuizzes(String quizName, QuizStatus status, UUID msid, Pageable pageable) {
+        Long internalMsid = mentorshipRepository.findIdByPublicId(msid)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        return getStudentQuizzes(quizName, status, internalMsid, pageable);
+    }
+
+    @Override
+    public QuizDashboardDTO getQuizDashboard(UUID mentorshipID) {
+        Long internalMsid = mentorshipRepository.findIdByPublicId(mentorshipID)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        return getQuizDashboard(internalMsid);
+    }
+
+    @Override
+    public QuizStatisticsDTO getQuizStatistics(UUID quizId) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuizStatistics(internalId);
+    }
+
+    @Override
+    public QuizOverviewResponseDto getQuizOverviewDto(UUID quizId, int page, int size) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        return getQuizOverviewDto(internalId, page, size);
+    }
+
+    @Override
+    @Transactional
+    public void changeStatus(UUID quizId, QuizStatus quizStatus) {
+        Long internalId = quizRepository.findIdByPublicId(quizId)
+                .orElseThrow(() -> new globalLogicEx("Quiz not found"));
+        changeStatus(internalId, quizStatus);
+    }
+
+    @Override
+    public MentorshipQuizzesOverviewResponseDto getMentorshipQuizzesOverview(UUID mentorShipId, int page, int size) {
+        Long internalMsid = mentorshipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("MentorShip not found"));
+        return getMentorshipQuizzesOverview(internalMsid, page, size);
     }
 }

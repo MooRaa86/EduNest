@@ -57,7 +57,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		messages.saveAndFlush(Message.builder().conversation(conv).sender(owner)
 				.content("private message content").sentAt(LocalDateTime.now()).build());
 
-		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getId())
+		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getPublicId())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT)))
 				.andExpect(status().isForbidden());
 	}
@@ -73,7 +73,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		messages.saveAndFlush(Message.builder().conversation(conv).sender(owner)
 				.content("hello partner").sentAt(LocalDateTime.now()).build());
 
-		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getId())
+		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getPublicId())
 						.header("Authorization", auth.authToken(partner.getEmail(), AuthFixture.STUDENT)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.messages[0].content").value("hello partner"))
@@ -92,7 +92,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		messages.saveAndFlush(Message.builder().conversation(conv).sender(owner)
 				.content("confidential chat").sentAt(LocalDateTime.now()).build());
 
-		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getId())
+		mockMvc.perform(get("/api/v1/conversation/{id}/messages", conv.getPublicId())
 						.header("Authorization", auth.authToken(ADMIN, AuthFixture.ADMIN)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.messages[0].content").value("confidential chat"));
@@ -207,7 +207,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		ChatMessage msg = chatMessages.saveAndFlush(ChatMessage.builder().content("hi owner").sender(owner)
 				.senderEmail(owner.getEmail()).senderName("owner").chatRoom(room).build());
 
-		mockMvc.perform(patch("/api/v1/chat-room/{roomId}/messages/{messageId}", room.getId(), msg.getId())
+		mockMvc.perform(patch("/api/v1/chat-room/{roomId}/messages/{messageId}", room.getPublicId(), msg.getPublicId())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT))
 						.param("content", "tampered by stranger"))
 				.andExpect(status().isBadRequest());

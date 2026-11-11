@@ -11,6 +11,7 @@ import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 
 public interface mentorShipService {
@@ -18,28 +19,37 @@ public interface mentorShipService {
     mentorShipFDto createMentorShip(mentorShipCreateDTO dto);
 
     mentorShipFDto updateMentorShip(Long mentorShipId, mentorShipUpdateDTO dto);
+    mentorShipFDto updateMentorShip(UUID mentorShipId, mentorShipUpdateDTO dto);
 
     void deleteMentorShip(Long mentorShipId);
+    void deleteMentorShip(UUID mentorShipId);
 
     PageResponse<mentorShipFDto> getMentorShips(int page, int size);
 
     mentorShipFDto getMentorShipById(Long mentorShipId);
+    mentorShipFDto getMentorShipById(UUID mentorShipId);
 
     List<TaskResponse> getMentorShipTasks(Long mentorShipId);
+    List<TaskResponse> getMentorShipTasks(UUID mentorShipId);
 
     void updateMentorShipStatus(long mentorShipId, Status status);
+    void updateMentorShipStatus(UUID mentorShipId, Status status);
 
     long countMentorShipsForMentorId();
 
     long countStudentsforMentor();
 
     String uploadCoverImage(Long mentorshipId, MultipartFile image);
+    String uploadCoverImage(UUID mentorshipId, MultipartFile image);
 
     void deleteCoverImage(Long mentorshipId);
+    void deleteCoverImage(UUID mentorshipId);
 
     void joinMentorship(Long mentorshipId);
+    void joinMentorship(UUID mentorshipId);
 
     void rateMentorship(Long mentorshipId, CreateReviewRequest request);
+    void rateMentorship(UUID mentorshipId, CreateReviewRequest request);
 
     PageResponse<MentorshipExploreDto> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size);
 

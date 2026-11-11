@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.projects;
 
+import com.example.gradproj.EduNest.repository.projects.projection.ProjectAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.CreateProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
@@ -15,6 +16,7 @@ import com.example.gradproj.EduNest.entity.projects.Project;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.enums.project.ProjectStatus;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -26,6 +28,7 @@ import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +57,7 @@ public class ProjectServiceImpl implements ProjectService{
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final ContentReadGuard contentReadGuard;
+    private final EntityManager entityManager;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -89,7 +94,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest req, MultipartFile file) {
-        Week week=weekRepository.findById(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
+        Week week=weekRepository.findByPublicId(req.getWeekId()).orElseThrow(() -> new globalLogicEx("week not found"));
         Long mentorId = week.getMentorship().getMentor().getId();
         if (!mentorId.equals(getCurrentMentorId())) {
             throw new AccessDeniedException("You are not authorized to create projects for this mentorship");
@@ -142,10 +147,19 @@ public class ProjectServiceImpl implements ProjectService{
     public ProjectResponse updateProject(long projectId, PatchProjectRequest req, MultipartFile file) {
         Project project = validateMentorOwnershipAndGetProject(projectId);
 
+        // EB-51 — L1 -> L2 shared gate + D-09 content freeze (mirrors the task
+        // edit gate): gates are held across the value mutation and the freeze
+        // eligibility check, so an in-flight grade cannot interleave.
+        Long weekId = project.getWeek().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        project = projectRepository.findForUpdateById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
         if (project.getStatus() == ProjectStatus.CLOSED) {
             throw new globalLogicEx("Cannot update closed project");
         }
 
+        int oldPoints = project.getPoints();
         ProjectStatus oldStatus = project.getStatus();
         if (req != null) {
             if (req.getTitle() != null) project.setTitle(req.getTitle());
@@ -164,6 +178,12 @@ public class ProjectServiceImpl implements ProjectService{
 
             if (req.getStartAt() != null) project.setStartAt(req.getStartAt());
             if (req.getEndAt() != null) project.setEndAt(req.getEndAt());
+        }
+
+        // Any existing submission may contain unrecoverable legacy grade history.
+        if (project.getPoints() != oldPoints
+                && submissionRepository.existsByProject_Id(project.getId())) {
+            throw new globalLogicEx("Project points are locked while submissions exist");
         }
 
         if (file != null && !file.isEmpty()) {
@@ -193,6 +213,19 @@ public class ProjectServiceImpl implements ProjectService{
     @Override
     public void deleteProject(Long projectId) {
         Project project = validateMentorOwnershipAndGetProject(projectId);
+
+        // EB-51 — L1 -> L2 shared gate + D-09 delete freeze: a graded project
+        // carries reconstruction-relevant award history, so deleting it is
+        // rejected while the gate is held.
+        Long weekId = project.getWeek().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        project = projectRepository.findForUpdateById(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+
+        if (submissionRepository.existsByProject_Id(project.getId())) {
+            throw new globalLogicEx("Cannot delete a project that has submissions");
+        }
 
         String filePath = project.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {
@@ -282,7 +315,7 @@ public class ProjectServiceImpl implements ProjectService{
 
     private ProjectResponse mapToProjectResponse(Project project) {
         return ProjectResponse.builder()
-                .id(project.getId())
+                .id(project.getPublicId())
                 .title(project.getTitle())
                 .goal(project.getGoal())
                 .brief(project.getBrief())
@@ -292,7 +325,7 @@ public class ProjectServiceImpl implements ProjectService{
                 .endAt(project.getEndAt())
                 .points(project.getPoints())
                 .status(project.getStatus().name())
-                .weekId(project.getWeek().getId())
+                .weekId(project.getWeek().getPublicId())
                 .createdAt(project.getCreatedAt())
                 .build();
     }
@@ -343,9 +376,9 @@ public class ProjectServiceImpl implements ProjectService{
     }
     private ProjectSubmissionResponse mapToProjectSubmissionResponse(ProjectSubmission s) {
         return ProjectSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .projectId(s.getProject().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .projectId(s.getProject().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
@@ -368,5 +401,62 @@ public class ProjectServiceImpl implements ProjectService{
                 .projectDashboardDTO(dashboard)
                 .projectResponsePageResponse(projects)
                 .build();
+    }
+
+    @Override
+    public ProjectResponse getProjectById(UUID projectId) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getProjectById(internalId);
+    }
+
+    @Override
+    public ProjectResponse updateProject(UUID projectId, PatchProjectRequest req, MultipartFile file) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        return updateProject(internalId, req, file);
+    }
+
+    @Override
+    public void deleteProject(UUID projectId) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        deleteProject(internalId);
+    }
+
+    @Override
+    public ProjectResponse updateProjectStatus(UUID projectId, UpdateProjectStatusRequest req) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        return updateProjectStatus(internalId, req);
+    }
+
+    @Override
+    public PageResponse<ProjectWithStatsResponse> getProject(String projectName, ProjectStatus status, UUID msid, Pageable pageable) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(msid)
+                .orElse(-1L);
+        return getProject(projectName, status, internalMsid, pageable);
+    }
+
+    @Override
+    public ProjectDashboardDTO getProjectDashboard(UUID mentorShipId) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
+        return getProjectDashboard(internalMsid);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectStatisticsDTO getProjectStatistics(UUID projectId, Pageable pageable) {
+        Long internalId = projectRepository.findIdByPublicId(projectId)
+                .orElseThrow(() -> new globalLogicEx("Project not found"));
+        return getProjectStatistics(internalId, pageable);
+    }
+
+    @Override
+    public FullProjectDashBoardDto getFullProjectDashboard(UUID mentorShipId, String projectName, ProjectStatus status, Pageable pageable) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
+        return getFullProjectDashboard(internalMsid, projectName, status, pageable);
     }
 }

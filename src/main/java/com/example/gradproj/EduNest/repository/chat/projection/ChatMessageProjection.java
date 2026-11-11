@@ -1,10 +1,11 @@
 package com.example.gradproj.EduNest.repository.chat.projection;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public interface ChatMessageProjection {
 
-    Long getMessageId();
+    UUID getMessageId();
 
     String getContent();
 

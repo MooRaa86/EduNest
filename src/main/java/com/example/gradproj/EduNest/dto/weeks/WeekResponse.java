@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.weeks;
 
 import lombok.*;
+import java.util.UUID;
 
 @Builder
 @AllArgsConstructor
@@ -8,6 +9,6 @@ import lombok.*;
 @Getter
 @Setter
 public class WeekResponse {
-    private Long id;
+    private UUID id;
     private String title;
 }

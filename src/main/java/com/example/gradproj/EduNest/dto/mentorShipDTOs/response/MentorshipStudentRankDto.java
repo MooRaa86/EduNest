@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.dto.mentorShipDTOs.response;
 
 import lombok.*;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -8,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MentorshipStudentRankDto {
-    private Long studentId;
+    private UUID studentId;
     private String studentName;
     private String studentEmail;
     private Integer totalPoints;

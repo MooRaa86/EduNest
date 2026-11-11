@@ -27,6 +27,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import com.example.gradproj.EduNest.service.completion.CompletionWorker;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +56,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @Tag("critical")
 @Tag("business-flow")
+@Testcontainers(disabledWithoutDocker = true)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChainIntegrationTestBase {
+	@Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+	@DynamicPropertySource
+	static void postgres(DynamicPropertyRegistry r) {
+		r.add("spring.datasource.url", postgres::getJdbcUrl);
+		r.add("spring.datasource.username", postgres::getUsername);
+		r.add("spring.datasource.password", postgres::getPassword);
+		r.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+		r.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.PostgreSQLDialect");
+		r.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
+		r.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+		r.add("spring.flyway.enabled", () -> true);
+		r.add("spring.flyway.placeholders.defaultCommissionRate", () -> "10.0");
+		r.add("app.scheduling.enabled", () -> false);
+		r.add("app.completion.worker.enabled", () -> true);
+	}
 
 	@Autowired private AuthFixture auth;
 	@Autowired private MentorShipRepository mentorships;
@@ -60,6 +83,7 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 	@Autowired private CertificateRepository certificates;
 	@Autowired private CommissionRepository commissions;
 	@Autowired private UserNotificationRepository userNotifications;
+	@Autowired private CompletionWorker completionWorker;
 
 	@BeforeEach
 	void ensureCommission() {
@@ -104,10 +128,10 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		String student1Token = auth.authToken(student1Email, AuthFixture.STUDENT);
 
 		// Step 1: Mentor awards badge to student1
-		mockMvc.perform(post("/api/v1/badge-awards/{badgeId}/award", badge.getId())
+		mockMvc.perform(post("/api/v1/badge-awards/{badgeId}/award", badge.getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"studentId\":" + student1.getId() + ",\"note\":\"Superb design patterns\"}"))
+						.content("{\"studentId\":\"" + student1.getPublicId() + "\"" + ",\"note\":\"Superb design patterns\"}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.apiResponse.message").value("Badge awarded successfully"));
 
@@ -117,12 +141,14 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		assertThat(tp1.getTotalPoints()).isEqualTo(100);
 
 		// Step 2: Mentor marks mentorship as COMPLETED
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.status").value("Status updated successfully"));
+		completionWorker.poll();
+		completionWorker.poll();
 
 		// Step 3: Observable effect on Certificates: certificates issued for both students ordered by leaderboard rank
 		List<Certificate> certList = certificates.findAll().stream()
@@ -162,7 +188,7 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 
 		String mentorToken = auth.authToken(mentorEmail, AuthFixture.MENTOR);
 
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))
@@ -188,14 +214,14 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		String mentorToken = auth.authToken(mentorEmail, AuthFixture.MENTOR);
 
 		// Successfully complete
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))
 				.andExpect(status().isOk());
 
 		// Attempting to change status back to ACTIVE must fail
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", mentorshipId)
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", mentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"ACTIVE\"}"))
@@ -217,7 +243,7 @@ public class MentorshipCompletionCertificateFlowIntegrationTest extends ProdChai
 		String foreignMentorToken = auth.authToken(foreignMentorEmail, AuthFixture.MENTOR);
 
 		// Option A doctrine: mentorShipServiceI throws BadCredentialsException -> Spring maps to 401
-		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getId())
+		mockMvc.perform(post("/api/v1/mentorship/update-status/{id}", chain.mentorship().getPublicId())
 						.header("Authorization", foreignMentorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\":\"COMPLETED\"}"))

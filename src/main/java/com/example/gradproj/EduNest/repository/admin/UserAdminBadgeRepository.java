@@ -9,15 +9,42 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface UserAdminBadgeRepository extends JpaRepository<UserAdminBadge, Long> {
+
+    Optional<UserAdminBadge> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT uab.id FROM UserAdminBadge uab WHERE uab.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
+    @Query("""
+        SELECT
+            uab.publicId as id,
+            uab.user.publicId as userId,
+            CONCAT(uab.user.firstName, ' ', uab.user.lastName) as userFullName,
+            uab.adminBadge.publicId as badgeId,
+            uab.adminBadge.name as badgeName,
+            uab.adminBadge.description as badgeDescription,
+            CAST(uab.adminBadge.type as string) as badgeType,
+            uab.recognitionNote as recognitionNote,
+            uab.awardedAt as awardedAt
+        FROM UserAdminBadge uab
+        WHERE uab.user.publicId = :userPublicId
+        ORDER BY uab.awardedAt DESC
+        """)
+    List<UserAdminBadgeDetailProjection> findUserAdminBadgesByUserPublicIdOptimized(@Param("userPublicId") UUID userPublicId);
+
     boolean existsByUserIdAndAdminBadgeId(Long userId, Long badgeId);
     boolean existsByAdminBadgeId(Long badgeId);
 
     @Query("""
         SELECT
-            uab.adminBadge.id as id,
+            uab.adminBadge.publicId as id,
             uab.adminBadge.name as name,
             uab.adminBadge.description as description,
             uab.adminBadge.type as type
@@ -28,10 +55,10 @@ public interface UserAdminBadgeRepository extends JpaRepository<UserAdminBadge, 
 
     @Query("""
         SELECT
-            uab.id as id,
-            uab.user.id as userId,
+            uab.publicId as id,
+            uab.user.publicId as userId,
             CONCAT(uab.user.firstName, ' ', uab.user.lastName) as userFullName,
-            uab.adminBadge.id as badgeId,
+            uab.adminBadge.publicId as badgeId,
             uab.adminBadge.name as badgeName,
             uab.adminBadge.description as badgeDescription,
             CAST(uab.adminBadge.type as string) as badgeType,

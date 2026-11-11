@@ -16,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,7 +49,7 @@ public class QuestionController {
     )
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> updateQuestion(@Valid @RequestBody QuestionUpdateDto questionUpdateDto, @PathVariable Long id){
+    public ResponseEntity<SimpleResponse> updateQuestion(@Valid @RequestBody QuestionUpdateDto questionUpdateDto, @PathVariable UUID id){
         QuestionResponseDTO  questionResponseDTO=questionService.updateQuestion(id, questionUpdateDto );
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Question updated successfully");
@@ -62,7 +63,7 @@ public class QuestionController {
     )
     @DeleteMapping("/{quizId}/{questionId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable Long quizId,@PathVariable Long questionId){
+    public ResponseEntity<SimpleResponse> deleteQuestion(@PathVariable UUID quizId,@PathVariable UUID questionId){
         questionService.deleteQuestion(quizId,questionId);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Question deleted successfully");
@@ -75,7 +76,7 @@ public class QuestionController {
     )
     @GetMapping("/student/fetch/{quizId}")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<SimpleResponse> getQuestionByQuizIdForStudent(@PathVariable Long quizId){
+    public ResponseEntity<SimpleResponse> getQuestionByQuizIdForStudent(@PathVariable UUID quizId){
         List<StudentQuestionResponseDTO> allQuestions = questionService.getQuestionsByQuizIdForStudent(quizId);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Questions retrieved successfully");
@@ -89,7 +90,7 @@ public class QuestionController {
     )
     @GetMapping("/fetch/{quizId}")
     @PreAuthorize("hasRole('MENTOR')")
-    public  ResponseEntity<SimpleResponse> getQuestionByQuizId(@PathVariable Long quizId){
+    public  ResponseEntity<SimpleResponse> getQuestionByQuizId(@PathVariable UUID quizId){
         List<QuestionResponseDTO>AllQuestions=questionService.getQuestionsByQuizId(quizId);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Questions retrieved successfully");
@@ -103,7 +104,7 @@ public class QuestionController {
     )
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse> getQuestionById(@PathVariable Long id){
+    public ResponseEntity<SimpleResponse> getQuestionById(@PathVariable UUID id){
         QuestionResponseDTO questionResponseDTO=questionService.getQuestionById(id);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message","Question retrieved successfully");

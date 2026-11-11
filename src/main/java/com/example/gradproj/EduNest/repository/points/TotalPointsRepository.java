@@ -31,13 +31,14 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
 
     @Query("""
     SELECT 
-        tp.student.id AS studentId,
+        tp.student.publicId AS studentId,
         tp.student.firstName AS firstName,
         tp.student.lastName AS lastName,
         tp.totalPoints AS totalPoints
     FROM TotalPoints tp
     WHERE tp.mentorship.id = :mentorshipId
-    ORDER BY tp.totalPoints DESC
+    AND tp.student.deleted = false
+    ORDER BY tp.totalPoints DESC, tp.student.id ASC
 """)
     Page<TopStudentResponse> findTopStudentsByMentorship(
             @Param("mentorshipId") Long mentorshipId,
@@ -46,16 +47,17 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
 
     @Query("""
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto(
-        s.id,
+        s.publicId,
         CONCAT(s.firstName, ' ', s.lastName),
         s.email,
         tp.totalPoints,
-        CAST(ROW_NUMBER() OVER (ORDER BY tp.totalPoints DESC) AS int)
+        CAST(ROW_NUMBER() OVER (ORDER BY tp.totalPoints DESC, s.id ASC) AS int)
     )
     FROM TotalPoints tp
     JOIN tp.student s
     WHERE tp.mentorship.id = :mentorshipId
-    ORDER BY tp.totalPoints DESC
+    AND s.deleted = false
+    ORDER BY tp.totalPoints DESC, s.id ASC
     """)
     Page<MentorshipStudentRankDto> findStudentsWithRanksByMentorshipId(@Param("mentorshipId") Long mentorshipId, Pageable pageable);
 
@@ -83,6 +85,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
         )
     LEFT JOIN ba.badge b
     WHERE tp.mentorship.id = :mentorshipId
+    AND s.deleted = false
     ORDER BY tp.totalPoints DESC, s.id ASC
 """)
     Page<StudentInLeaderboardDto> findLeaderboardByMentorshipId(
@@ -102,6 +105,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             FROM TotalPoints tp2
             JOIN tp2.student s2
             WHERE tp2.mentorship.id = :mentorshipId
+            AND s2.deleted = false
             AND (
                 tp2.totalPoints > tp.totalPoints OR
                 (tp2.totalPoints = tp.totalPoints AND s2.id < s.id)
@@ -117,6 +121,7 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
     LEFT JOIN ba.badge b 
         ON b.mentorship.id = :mentorshipId
     WHERE tp.mentorship.id = :mentorshipId
+    AND s.deleted = false
     AND s.email = :studentEmail
     AND (
         ba.id IS NULL OR
@@ -134,19 +139,21 @@ public interface TotalPointsRepository extends JpaRepository<TotalPoints,Long> {
             @Param("studentEmail") String studentEmail
     );
 
+
+    /** Insert-only initialization; callers must then lock and mutate the managed row. */
     @Modifying
-    @Query("""
-        UPDATE TotalPoints tp
-        SET tp.totalPoints = tp.totalPoints + :delta
-        WHERE tp.student.id IN (
-            SELECT ba.student.id 
-            FROM BadgeAward ba 
-            WHERE ba.badge.id = :badgeId
-        )
-        AND tp.mentorship.id = :mentorshipId
-    """)
-    int updatePointsForBadgeAwards(@Param("badgeId") Long badgeId, 
-                                    @Param("mentorshipId") Long mentorshipId, 
-                                    @Param("delta") int delta);
+    @Query(value = """
+        INSERT INTO total_points
+            (student_id, mentorship_id, total_points, version, public_id,
+             created_at, updated_at, created_by, updated_by)
+        VALUES
+            (:studentId, :mentorshipId, 0, 0,
+             gen_random_uuid(), now(), now(), :actorEmail, :actorEmail)
+        ON CONFLICT (student_id, mentorship_id)
+        DO NOTHING
+        """, nativeQuery = true)
+    int insertEmptyIfAbsentPostgres(@Param("studentId") Long studentId,
+                                    @Param("mentorshipId") Long mentorshipId,
+                                    @Param("actorEmail") String actorEmail);
 
 }

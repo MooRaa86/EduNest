@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/notifications")
@@ -30,10 +31,10 @@ public class AdminNotificationController {
         return ResponseEntity.ok(notifications);
     }
 
-    @DeleteMapping("/{id:\\d+}")
+    @DeleteMapping("/{id:[0-9a-fA-F\\-]+}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete admin notification by id", description = "Delete a specific admin notification by its ID")
-    public ResponseEntity<SimpleResponse> deleteAdminNotification(@PathVariable Long id) {
+    public ResponseEntity<SimpleResponse> deleteAdminNotification(@PathVariable UUID id) {
         notificationService.deleteAdminNotification(id);
         SimpleResponse response = new SimpleResponse();
         response.addMessage("status", "Admin notification deleted successfully");

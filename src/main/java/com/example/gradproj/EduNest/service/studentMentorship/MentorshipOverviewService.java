@@ -8,6 +8,9 @@ import com.example.gradproj.EduNest.dto.studentMentorship.MentorshipDetailsDto;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
+import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.entity.users.Mentor;
+import java.util.UUID;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipDetailsProjection;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.MentorshipReviewProjection;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
@@ -29,6 +32,7 @@ public class MentorshipOverviewService {
     private final EnrollmentRepository enrollmentRepository;
     private final HomePageService homePageService;
     private final ContentReadGuard contentReadGuard;
+    private final MentorRepository mentorRepository;
 
     public PageResponse<MentorshipReviewProjection> getMentorshipReviews(
             Long mentorshipId, 
@@ -52,7 +56,7 @@ public class MentorshipOverviewService {
     }
 
     public Double getMentorshipAverageRating(Long mentorshipId) {
-        return reviewsRepository.calculateAverageRating(mentorshipId);
+        return reviewsRepository.calculateVisibleAverageRating(mentorshipId);
     }
 
     public List<MentorshipExploreDto> getTopMentorshipsByMentorEmail(String mentorEmail, String studentEmail, int limit) {
@@ -74,6 +78,11 @@ public class MentorshipOverviewService {
             throw new UsernameNotFoundException("Mentorship not found");
         }
 
+        if (!mentorShipRepository.existsByIdAndMentor_DeletedFalse(mentorshipId)
+                && !contentReadGuard.isOwnerMentorOrAdmin(mentorshipId)) {
+            throw new jakarta.persistence.EntityNotFoundException("Mentorship not found");
+        }
+
         // P1-15 / EB-22 — D-02 default (a): DRAFT is confined to the
         // owner-mentor and ADMIN on every surface; anonymous/students get the
         // same 404 shape (EntityNotFoundException → ERR_RESOURCE_NOT_FOUND).
@@ -91,7 +100,8 @@ public class MentorshipOverviewService {
                     mentorship.getMentorEmail(), studentEmail, PageRequest.of(0, topMentorshipLimit));
             
             BeforeEnrollData beforeEnroll = BeforeEnrollData.builder()
-                    .id(mentorship.getId())
+                    .id(mentorship.getPublicId())
+                    .publicId(mentorship.getPublicId())
                     .title(mentorship.getTitle())
                     .subtitle(mentorship.getSubtitle())
                     .description(mentorship.getDescription())
@@ -121,7 +131,8 @@ public class MentorshipOverviewService {
                     .build();
         } else {
             AfterEnrollData afterEnroll = AfterEnrollData.builder()
-                    .id(mentorship.getId())
+                    .id(mentorship.getPublicId())
+                    .publicId(mentorship.getPublicId())
                     .title(mentorship.getTitle())
                     .subtitle(mentorship.getSubtitle())
                     .description(mentorship.getDescription())
@@ -144,6 +155,18 @@ public class MentorshipOverviewService {
                     .afterEnroll(afterEnroll)
                     .build();
         }
+    }
+
+
+    public List<MentorshipExploreDto> getTopMentorshipsByMentorIdentifier(String identifier, String studentEmail, int limit) {
+        try {
+            UUID mentorPublicId = UUID.fromString(identifier);
+            Mentor mentor = mentorRepository.findByPublicId(mentorPublicId).orElse(null);
+            if (mentor != null) {
+                return getTopMentorshipsByMentorEmail(mentor.getEmail(), studentEmail, limit);
+            }
+        } catch (IllegalArgumentException ignored) {}
+        return getTopMentorshipsByMentorEmail(identifier, studentEmail, limit);
     }
 
 }

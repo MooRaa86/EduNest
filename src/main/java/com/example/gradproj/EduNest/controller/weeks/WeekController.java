@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/week")
@@ -37,7 +38,7 @@ public class WeekController {
     @DeleteMapping("/{id}")
     @Operation(summary = "delete week by id")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse>delete(@PathVariable Long id){
+    public ResponseEntity<SimpleResponse>delete(@PathVariable UUID id){
         weekService.deleteWeek(id);
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("message", "week deleted successfully");
@@ -46,7 +47,7 @@ public class WeekController {
     @PatchMapping("/{id}")
     @Operation(summary = "update the week title")
     @PreAuthorize("hasRole('MENTOR')")
-    public ResponseEntity<SimpleResponse>update(@PathVariable Long id,@Valid @RequestBody UpdateWeekRequest updateWeekRequest) {
+    public ResponseEntity<SimpleResponse>update(@PathVariable UUID id,@Valid @RequestBody UpdateWeekRequest updateWeekRequest) {
         WeekResponse update = weekService.updateWeekTitle(id, updateWeekRequest);
 
         SimpleResponse response = new SimpleResponse();
@@ -57,7 +58,7 @@ public class WeekController {
 
     @GetMapping("/{mentorshipId}/weeks")
     @Operation(summary = "get weeks for a specific mentorship by its id")
-    public ResponseEntity<SimpleResponse> getWeeksByMentorship( @PathVariable Long mentorshipId) {
+    public ResponseEntity<SimpleResponse> getWeeksByMentorship( @PathVariable UUID mentorshipId) {
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status","all weeks retrieved successfully");
         response.addMessage("weeks",weekService.getWeeksByMentorship(mentorshipId));
@@ -65,7 +66,7 @@ public class WeekController {
     }
     @GetMapping("/{weekId}/contents")
     @Operation(summary = "get the content of the week")
-    public ResponseEntity<SimpleResponse>getContents(@PathVariable Long weekId){
+    public ResponseEntity<SimpleResponse>getContents(@PathVariable UUID weekId){
         SimpleResponse simpleResponse=new SimpleResponse();
         simpleResponse.addMessage("Status","all weeks retrieved successfully");
         simpleResponse.addMessage("week",weekService.getWeekContents(weekId));

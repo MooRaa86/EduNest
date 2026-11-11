@@ -17,6 +17,12 @@ import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
+import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
+import com.example.gradproj.EduNest.repository.projects.ProjectSubmissionRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizSubmissionRepository;
+import com.example.gradproj.EduNest.repository.livesession.SessionAttendanceResultRepository;
+import com.example.gradproj.EduNest.repository.livesession.AttendanceRepository;
+import com.example.gradproj.EduNest.enums.livesession.SessionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 
 @Service
@@ -40,6 +47,11 @@ public class WeekService {
     private final LiveSessionRepository sessionRepository;
     private final LectureRepository lectureRepository;
     private final MentorRepository mentorRepository;
+    private final TaskSubmissionRepository taskSubmissionRepository;
+    private final ProjectSubmissionRepository projectSubmissionRepository;
+    private final QuizSubmissionRepository quizSubmissionRepository;
+    private final SessionAttendanceResultRepository sessionAttendanceResultRepository;
+    private final AttendanceRepository attendanceRepository;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -77,8 +89,9 @@ public class WeekService {
     @Transactional
     @PreAuthorize("hasRole('MENTOR')")
     public WeekResponse createWeek(CreateWeekrequest createWeekrequest) {
-        validateMentorOwnership(createWeekrequest.getMentorshipId());
-        MentorShip mentorShip = mentorShipRepository.findById(createWeekrequest.getMentorshipId())
+        Long mentorshipId = resolveMentorshipId(createWeekrequest.getMentorshipId());
+        validateMentorOwnership(mentorshipId);
+        MentorShip mentorShip = mentorShipRepository.findById(mentorshipId)
                 .orElseThrow(() -> new globalLogicEx("mentorShip not found"));
         Week week = Week.builder()
                 .title(createWeekrequest.getTitle())
@@ -93,6 +106,17 @@ public class WeekService {
     @PreAuthorize("hasRole('MENTOR')")
     public void deleteWeek(Long weekId) {
         validateMentorOwnsWeek(weekId);
+        // EB-51 — L1 shared gate: prevent cascade deletion while submission / attendance exists
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        if (taskSubmissionRepository.existsByTask_Week_Id(weekId)
+                || projectSubmissionRepository.existsByProject_Week_Id(weekId)
+                || quizSubmissionRepository.existsByQuiz_Week_IdAndScoreIsNotNull(weekId)
+                || sessionAttendanceResultRepository.existsBySession_Week_Id(weekId)
+                || sessionRepository.existsByWeek_IdAndStatus(weekId, SessionStatus.LIVE)
+                || attendanceRepository.existsBySession_Week_Id(weekId)) {
+            throw new globalLogicEx("Cannot delete week that contains submissions or session attendance records");
+        }
         weekRepository.deleteById(weekId);
     }
 
@@ -130,7 +154,7 @@ public class WeekService {
         for (Session s : sessions) {
             items.add(WeekContentItemDTO.builder()
                     .type("SESSION")
-                    .id(s.getId())
+                    .id(s.getPublicId())
                     .title(s.getTitle())
                     .createdAt(s.getCreatedAt())
                     .build());
@@ -139,7 +163,7 @@ public class WeekService {
         for (Quiz q : quizzes) {
             items.add(WeekContentItemDTO.builder()
                     .type("QUIZ")
-                    .id(q.getId())
+                    .id(q.getPublicId())
                     .title(q.getTitle())
                     .createdAt(q.getCreatedAt())
                     .build());
@@ -148,7 +172,7 @@ public class WeekService {
         for (Task t : tasks) {
             items.add(WeekContentItemDTO.builder()
                     .type("TASK")
-                    .id(t.getId())
+                    .id(t.getPublicId())
                     .title(t.getTitle())
                     .createdAt(t.getCreatedAt())
                     .build());
@@ -157,7 +181,7 @@ public class WeekService {
         for (Project p : projects) {
             items.add(WeekContentItemDTO.builder()
                     .type("PROJECT")
-                    .id(p.getId())
+                    .id(p.getPublicId())
                     .title(p.getTitle())
                     .createdAt(p.getCreatedAt())
                     .build());
@@ -165,7 +189,7 @@ public class WeekService {
         for (Lecture l: lectures){
             items.add(WeekContentItemDTO.builder()
                     .type("LECTURE")
-                    .id(l.getId())
+                    .id(l.getPublicId())
                     .title(l.getTitle())
                     .createdAt(l.getCreatedAt())
                     .build());
@@ -173,7 +197,7 @@ public class WeekService {
 
 
         return WeekContentsResponse.builder()
-                .weekId(week.getId())
+                .weekId(week.getPublicId())
                 .weekTitle(week.getTitle())
                 .items(items)
                 .build();
@@ -183,8 +207,42 @@ public class WeekService {
     private WeekResponse mapToWeekResponse(Week week) {
         WeekResponse res = new WeekResponse();
         res.setTitle(week.getTitle());
-        res.setId(week.getId());
+        res.setId(week.getPublicId());
         return res;
     }
+    
+    private Long resolveMentorshipId(UUID publicId) {
+        return mentorShipRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("mentorShip not found with UUID: " + publicId));
     }
 
+    private Long resolveWeekId(UUID publicId) {
+        return weekRepository.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Week not found with UUID: " + publicId));
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public void deleteWeek(UUID weekPublicId) {
+        deleteWeek(resolveWeekId(weekPublicId));
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('MENTOR')")
+    public WeekResponse updateWeekTitle(UUID weekPublicId, UpdateWeekRequest request) {
+        return updateWeekTitle(resolveWeekId(weekPublicId), request);
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('MENTOR')")
+    public List<WeekResponse> getWeeksByMentorship(UUID mentorshipPublicId) {
+        return getWeeksByMentorship(resolveMentorshipId(mentorshipPublicId));
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('MENTOR')")
+    public WeekContentsResponse getWeekContents(UUID weekPublicId) {
+        return getWeekContents(resolveWeekId(weekPublicId));
+    }
+
+}

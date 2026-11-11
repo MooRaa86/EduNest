@@ -24,7 +24,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Docs:** environments matrix ([`ops/environments.md`](../../../ops/environments.md)), [`.env.example`](../../../.env.example), DECISIONS D-22 record; ISSUE-MAPPING DEP-07.
 
 <a id="p6-02"></a>
-### P6-02 — Staging provisioning + backup policy
+### P6-02 — Staging provisioning + backup policy [COMPLETED — PR #107 merged, EB-73 closed 2026-11-11]
 
 **Priority:** P1 — "doesn't even exist today"; staging must exist and mirror prod (R6) before any validation work.  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Eng Lead + PO (cost)
@@ -34,13 +34,14 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Evidence:** D-22 matrix; ISSUES DEP-08; [`mds/deployment/environment-configuration.md`](../../../mds/deployment/environment-configuration.md).
 **Expected outcome:** staging reachable at a domain w/ HTTPS; MySQL provisioned (same major version as pick for prod); backup script scheduled (daily, retention N per matrix), restore procedure documented (execution = P3-07 rehearsal + P8-05 drills).
 **Approach:** config-as-script (not by hand); secrets into the P6-03 store; DNS/TLS from dependency register.
+**Amendment (2026-11-11, D-22):** re-scoped from the pre-D-22 text (MySQL 8 instance / disposable VM): staging = **same shape as production** — Railway container service (Dockerfile deploy from `main`, **manual deploys until P6-04** wires the staging-on-merge pipeline) + **Supabase staging project** (PostgreSQL 17 + Storage S3, separate project/keys from prod; 42-table schema via the [ADD-02] reconciliation tooling before first boot). TLS/domain = `staging-backend.edunest.dpdns.org`. Staging runs the **hardened prod chain** (`SPRING_PROFILES_ACTIVE=prod`, distinct secrets, no `EDUNEST_UNSAFE_DEV`). Backup policy = **two tiers** (approved 2026-11-11): Tier 1 Supabase native daily snapshots (7-day retention on free tier; extend when real data accrues) + **Tier 2 offline `pg_dump` copies** (`ops/backups/Invoke-Backup.ps1`/`.sh`, 14-dump retention, gitignored `ops/backups/local/`) to remove the vendor lock-in single point of failure; restore drill codified in `ops/backups/restore-procedure.md`; storage-sync of uploaded files deferred until volume justifies it. Provisioning runbook: `ops/staging/provision-staging.md`; smoke: `ops/staging/Invoke-StagingSmoke.ps1`.
 **Rollback consideration:** restore-from-backup is the documented recovery; staging redeployable from scratch script.
 **Depends on:** D-22; P6-01.  **Blocks:** P7-01.
 **Tests:** script runs on a disposable VM first (log artifact); restore check = backup → fresh instance boot.
 **Docs:** ops/environments.md update; ISSUE-MAPPING DEP-08/DEP-03.
 
 <a id="p6-03"></a>
-### P6-03 — Secrets management implementation
+### P6-03 — Secrets management implementation [COMPLETED — PR #105 merged, EB-74 closed 2026-11-11]
 
 **Priority:** P1 — historically the fallback JWT secret made secrets a *source-code fact*; now the store must exist before anyone provisions real values. **‼ Chained after P1-01: rotating a real secret before the code honors it breaks login (R1).**  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Security Reviewer
@@ -51,6 +52,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Expected outcome:** staging/prod containers receive secrets via injection (no values in git/image layers/compose defaults); rotation procedure documented (stable + app restart); JWT_SECRET generation record.
 **Approach:** baseline: directory `ops/secrets/` templates + `docker secret`/env-file pattern set by script; document rotation + who-holds-what.
 **Rollback consideration:** fallback = previous env file (kept versioned in secret store, not git).
+**Amendment (2026-11-11, D-22):** the `docker secret` baseline above is retired with the VM target — the secret store = **Railway environment dashboard** (role-restricted, injection at container boot) + **Supabase** for DB/storage credentials it owns; the local baseline = gitignored `.env` (restricted perms, per-developer values). `ops/secrets/` holds the store bookkeeping: topology + who-holds-what (`README.md`), the secret-classified inventory (`secrets-inventory.md`), per-secret rotation procedures (`rotation.md`), the JWT generation record (`JWT-GENERATION-RECORD.md`), and a CSPRNG generator script (`new-jwt-secret.ps1` / `.sh`). Hygiene is enforced in CI by `SecretsHygieneGuardTest` (no bakes, no tracked secret artifacts, placeholder-only secret bindings). Vault remains optional per scale (D-22), not adopted.
 **Depends on:** P1-01 (order!), P6-01.  **Blocks:** P7-05.
 **Tests:** secret-injection smoke: staging container boots with no env baked into image; log shows healthy startup.
 **Docs:** environment-configuration.md §secrets; ISSUE-MAPPING DEP-05.
@@ -108,7 +110,9 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Docs:** environment/ops docs note; ISSUE-MAPPING FILE-06/DEP-06.
 
 <a id="p6-07"></a>
-### P6-07 — Object storage for uploads (conditional)
+### P6-07 — Object storage for uploads (conditional) [COMPLETED — superseded by ADD-03/D-25, Jira EB-78 closed 2026-11-10]
+
+> Executed under [ADD-03] (Jira EB-83, Done) after **D-25 flipped the default** (2026-10-25, PO-approved): object storage adopted *now* — Supabase Storage (S3) replaces the local-disk upload path. All components below are delivered and verified there (adapter `SupabaseStorageService`/`Impl`, config switch `supabase.storage.*` with fail-closed production, dual-bucket public/private policy, config-only rollback, test trio incl. live smoke). The D-22 Railway amendment (2026-11-02) re-opened the volume question and explicitly kept object storage — no effect.
 
 **Priority:** P2 — D-25 default is **volume first** (P6-05); this task executes object storage only if PO opts in (potentially post-launch).  **Size:** L
 **Owner role:** DevOps Engineer + Backend Developer   **Reviewers:** Eng Lead
@@ -122,7 +126,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** adapter IT against localstack-ish container + prod-like config.
 
 <a id="p6-08"></a>
-### P6-08 — Deployment verification & failure handling
+### P6-08 — Deployment verification & failure handling [COMPLETED — PR #110 merged, EB-79 closed 2026-11-11]
 
 **Priority:** P2 — deploys need an *automatic* post-deploy check (health + smoke) instead of a human peeking, and a defined abort path.  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Eng Lead
@@ -134,6 +138,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Rollback consideration:** the task *builds* the rollback automation; drill = P7-01.
 **Depends on:** P6-04/05; P5-01.  **Blocks:** P7-06/07.
 **Tests:** fail-path IT: inject failing smoke → job marks red → rollback trigger documented (dry-run log).
+**Amendment (2026-11-11, D-22 posture):** dependency re-scoped — P6-04 is not built yet, so the verification tooling ships now and the pipeline-integrated verify job (build → deploy → verify in one workflow) lands with P6-04. Delivered here: `ops/runbooks/Invoke-DeployVerification.ps1` (health poll with budget, **fast-aggregate gate <5s** — the P6-08 fix acceptance check, smoke set, optional commit match), `ops/runbooks/rollback-triggers.md` (failure taxonomy → action map; DB never rolled back — forward-only), `.github/workflows/verify-deploy.yml` (auto-verify on `production` pushes + manual dispatch; Railway deploy window tolerated by the poll budget), version plumbing in `pom.xml` (spring-boot build-info + git-commit-id → `/actuator/info` exposes `git.commit.id`), and the **aggregate-health fix** in `application.properties`: `management.health.db.enabled=false` + `management.health.mail.enabled=false` (both indicators hang-capable with no per-indicator timeout; reproduced on prod 2026-11-11 — liveness/readiness stay the platform gates, DB health is functional). Fail-path evidence = deliberate bad-target dry-run recorded on EB-79.
 
 <a id="p6-09"></a>
 ### P6-09 — Runbook draft & environment config matrix

@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface SessionAttendanceResultRepository extends JpaRepository<SessionAttendanceResult, Long> {
     Optional<SessionAttendanceResult> findBySession_IdAndStudent_Id(Long sessionId, Long studentId);
     List<SessionAttendanceResult> findBySession_Id(Long sessionId);
+    /** EB-51 — cascade-delete protection: rejects deleting week if session attendance results exist. */
+    boolean existsBySession_Week_Id(Long weekId);
 
     @Query("""
         SELECT r
@@ -35,4 +37,16 @@ public interface SessionAttendanceResultRepository extends JpaRepository<Session
     """)
     List<SessionAttendanceResult> findByStudent_IdAndSession_Week_IdIn(@Param("studentId") Long studentId,
                                                                           @Param("weekIds") List<Long> weekIds);
+
+    @Query("""
+        SELECT r
+        FROM SessionAttendanceResult r
+        JOIN r.session s
+        JOIN s.week w
+        WHERE r.student.id = :studentId
+          AND w.mentorship.id = :mentorshipId
+          AND r.attended = true
+    """)
+    List<SessionAttendanceResult> findAttendedByStudentIdAndMentorshipId(@Param("studentId") Long studentId,
+                                                                         @Param("mentorshipId") Long mentorshipId);
 }

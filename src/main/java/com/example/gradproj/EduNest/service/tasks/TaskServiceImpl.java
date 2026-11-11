@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
@@ -9,6 +10,7 @@ import com.example.gradproj.EduNest.entity.mentorship.Week;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -20,6 +22,7 @@ import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 
 @Service
@@ -43,6 +47,7 @@ public class TaskServiceImpl implements TaskService {
     private final NotificationService notificationService;
     private final FileStorageService StorageService;
     private final ContentReadGuard contentReadGuard;
+    private final EntityManager entityManager;
 
     private void validateMentorshipOwnership(Long mentorShipId, String email) {
         if (!mentorShipRepository.existsByIdAndMentor_Email(mentorShipId, email)) {
@@ -64,7 +69,7 @@ public class TaskServiceImpl implements TaskService {
         if (req.getPassPoints() > req.getPoints()) {
             throw new globalLogicEx("passPoints must be less than or equal to points");
         }
-        Week week = weekRepository.findById(req.getWeekId())
+        Week week = weekRepository.findByPublicId(req.getWeekId())
                 .orElseThrow(() -> new globalLogicEx("weekId not found"));
         validateMentorshipOwnership(week.getMentorship().getId(), email);
 
@@ -113,9 +118,19 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse updateTask(long taskId, PatchTaskRequest request, MultipartFile file, String email) {
         Task task = validateMentorOwnershipAndGetTask(taskId, email);
+        // EB-51 — L1 -> L2 shared gate + D-09 content freeze: both gates are
+        // held while the points-minus baseline and the value-mutation happen,
+        // so an in-flight regrade cannot interleave with a points change.
+        Long weekId = task.getWeek().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        task = taskRepository.findForUpdateById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
         if (task.getStatus() == TaskStatus.CLOSED) {
             throw new globalLogicEx("cannot update closed task");
         }
+
+        int oldPoints = task.getPoints();
         TaskStatus oldStatus = task.getStatus();
         if (request != null) {
             if (request.getTitle() != null) task.setTitle(request.getTitle());
@@ -131,6 +146,12 @@ public class TaskServiceImpl implements TaskService {
                 }
                 task.setDueAt(request.getDueAt());
             }
+        }
+        // No persisted field can distinguish all never-graded submissions from
+        // legacy graded-then-resubmitted ones. Protect both conservatively.
+        if (task.getPoints() != oldPoints
+                && taskSubmissionRepository.existsByTask_Id(task.getId())) {
+            throw new globalLogicEx("Task points are locked while submissions exist");
         }
         if (file != null && !file.isEmpty()) {
             Long mentorshipId = task.getWeek().getMentorship().getId();
@@ -161,6 +182,20 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public void deleteTask(Long taskId, String email) {
         Task task = validateMentorOwnershipAndGetTask(taskId, email);
+
+        // EB-51 — L1 -> L2 shared gate + D-09 delete freeze: a graded task
+        // carries reconstruction-relevant award history, so deleting it is
+        // rejected while the gate is held (an interleaved regrade cannot pass
+        // between the check and the delete).
+        Long weekId = task.getWeek().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        task = taskRepository.findForUpdateById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+
+        if (taskSubmissionRepository.existsByTask_Id(task.getId())) {
+            throw new globalLogicEx("Cannot delete a task that has submissions");
+        }
 
         String filePath = task.getUploadedAttachmentPath();
         if (filePath != null && !filePath.isBlank()) {
@@ -195,7 +230,7 @@ public class TaskServiceImpl implements TaskService {
 
     private TaskResponse mapToTaskResponse(Task task) {
         return TaskResponse.builder()
-                .id(task.getId())
+                .id(task.getPublicId())
                 .title(task.getTitle())
                 .description(task.getDescription())
                 .points(task.getPoints())
@@ -214,7 +249,7 @@ public class TaskServiceImpl implements TaskService {
         Page<Task> tasks = taskRepository.findTasksByMentorship(msid, taskName, status, contentReadGuard.isStudentView(msid), pageable);
         List<TaskResponse> taskDTOs = tasks.getContent().stream()
                 .map(task -> TaskResponse.builder()
-                        .id(task.getId())
+                        .id(task.getPublicId())
                         .title(task.getTitle())
                         .description(task.getDescription())
                         .points(task.getPoints())
@@ -274,7 +309,7 @@ public class TaskServiceImpl implements TaskService {
                 .uploadedAttachmentPath(task.getUploadedAttachmentPath())
                 .description(task.getDescription())
                 .totalSubmissions((int) submissionsPage.getTotalElements())
-                .pendingReview(totalStudents - submissionsPage.getTotalPages())
+                .pendingReview(Math.toIntExact(taskSubmissionRepository.countByTask_IdAndStatus(taskId, SubmissionStatus.SUBMITTED)))
                 .createdAt(task.getCreatedAt())
                 .deadLine(task.getDueAt())
                 .totalPoints(task.getPoints())
@@ -284,9 +319,9 @@ public class TaskServiceImpl implements TaskService {
 
     private TaskSubmissionResponse mapToSubmissionResponseForStats(TaskSubmission s) {
         return TaskSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .taskId(s.getTask().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .taskId(s.getTask().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
@@ -334,5 +369,71 @@ public class TaskServiceImpl implements TaskService {
                 .mentorName(p.getMentorName())
                 .mentorPhoto(p.getMentorPhoto())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskResponse getTaskById(UUID taskId) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getTaskById(internalId);
+    }
+
+    @Override
+    public TaskResponse updateTask(UUID taskId, PatchTaskRequest request, MultipartFile file, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return updateTask(internalId, request, file, email);
+    }
+
+    @Override
+    public void deleteTask(UUID taskId, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        deleteTask(internalId, email);
+    }
+
+    @Override
+    public TaskResponse updateTaskStatus(UUID taskId, UpdateTaskStatusRequest req, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return updateTaskStatus(internalId, req, email);
+    }
+
+    @Override
+    public PageResponse<TaskResponse> getTasks(String taskName, TaskStatus status, UUID msid, Pageable pageable) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(msid)
+                .orElse(-1L);
+        return getTasks(taskName, status, internalMsid, pageable);
+    }
+
+    @Override
+    public TaskDashboardDTO getTaskDashboard(UUID mentorShipId, String email) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        return getTaskDashboard(internalMsid, email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskStatisticsDTO getTaskStatistics(UUID taskId, Pageable pageable, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return getTaskStatistics(internalId, pageable, email);
+    }
+
+    @Override
+    public FullTaskDashBoardDto getFullTaskDashboard(UUID mentorShipId, String taskName, TaskStatus status, Pageable pageable, String email) {
+        Long internalMsid = mentorShipRepository.findIdByPublicId(mentorShipId)
+                .orElseThrow(() -> new globalLogicEx("Mentorship not found"));
+        return getFullTaskDashboard(internalMsid, taskName, status, pageable, email);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskWithSubmissionForStudentResponse getTaskWithSubmission(UUID taskId, String email) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new AccessDeniedException("Content unavailable"));
+        return getTaskWithSubmission(internalId, email);
     }
 }

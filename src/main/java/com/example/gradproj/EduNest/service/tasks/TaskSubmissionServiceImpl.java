@@ -1,5 +1,7 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
+import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskSubmissionResponse;
@@ -9,15 +11,18 @@ import com.example.gradproj.EduNest.entity.tasks.TaskSubmission;
 import com.example.gradproj.EduNest.enums.notification.NotificationType;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
+import com.example.gradproj.EduNest.exception.LegacySubmissionAuditRequiredException;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
+import com.example.gradproj.EduNest.repository.week.WeekRepository;
 import com.example.gradproj.EduNest.service.fileSotageService.FileStorageService;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.points.TotalPointsServiceImp;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +52,9 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final MentorRepository mentorRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final WeekRepository weekRepository;
+    private final EntityManager entityManager;
+    private final LateSubmissionProperties lateSubmissionProperties;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -106,13 +115,28 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        boolean isLate = now.isAfter(task.getDueAt());
+        /*
+         * EB-53 / D-08 — late policy: a first submission within the configured
+         * grace (app.submission.late-grace-minutes, default 10) after the task
+         * deadline is accepted with isLate=true; grading stays mentor-assigned
+         * (no automatic deduction). Beyond the grace the first submission is
+         * rejected. Late resubmissions stay rejected. A null deadline never
+         * blocks submission.
+         *
+         * The grace boundary is compared on exact timestamps so that a
+         * submission even one second past deadline + grace is rejected.
+         */
+        boolean isLate = task.getDueAt() != null && now.isAfter(task.getDueAt());
 
         Optional<TaskSubmission> existingOpt =
                 submissionRepository.findByTask_IdAndStudent_Id(taskId, studentId);
 
         if (isLate && existingOpt.isPresent()) {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        }
+
+        if (isLate && now.isAfter(task.getDueAt().plusMinutes(lateSubmissionProperties.getLateGraceMinutes()))) {
+            throw new globalLogicEx("Submission deadline plus grace period has passed. This task no longer accepts first submissions.");
         }
 
         String uploadedPath = null;
@@ -132,6 +156,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             s.setTask(taskRepository.getReferenceById(taskId));
             s.setStudent(studentRepository.getReferenceById(studentId));
             s.setStatus(SubmissionStatus.SUBMITTED);
+            s.setPointsApplied(0);
             return s;
         });
 
@@ -194,7 +219,24 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     public TaskSubmissionResponse grade(Long submissionId, GradeTaskSubmissionRequest req) {
         TaskSubmission sub = validateMentorOwnsSubmission(submissionId);
 
-        Task task = sub.getTask();
+        // EB-51 — L1 -> L2 -> L3 ordered locking: week -> task -> submission
+        Long weekId = sub.getTask().getWeek().getId();
+        Long taskId = sub.getTask().getId();
+        weekRepository.findForUpdateById(weekId)
+                .orElseThrow(() -> new globalLogicEx("Week not found"));
+        Task task = taskRepository.findForUpdateById(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        sub = submissionRepository.findForUpdateById(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        if (entityManager != null) {
+            entityManager.refresh(sub);
+        }
+
+        // EB-51 D-09a: Strict integrity gate - reject grading if points provenance is null
+        if (sub.getPointsApplied() == null) {
+            throw new LegacySubmissionAuditRequiredException(
+                    "Task submission " + submissionId + " lacks recorded points provenance. Grading requires administrative reconciliation.");
+        }
 
         if (req.getScore() > task.getPoints()) {
             throw new globalLogicEx("score must be less than or equal to task points " + task.getPoints());
@@ -208,7 +250,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
         MentorShip mentorship = task.getWeek().getMentorship();
         int newScore = sub.getFinalScore();
-        int oldApplied = (sub.getPointsApplied() == null) ? 0 : sub.getPointsApplied();
+        int oldApplied = sub.getPointsApplied();
         int delta = newScore - oldApplied;
 
         if (delta != 0) {
@@ -233,9 +275,9 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
 
     private TaskSubmissionResponse mapToSubmissionResponse(TaskSubmission s) {
         return TaskSubmissionResponse.builder()
-                .submissionId(s.getId())
-                .taskId(s.getTask().getId())
-                .studentId(s.getStudent().getId())
+                .submissionId(s.getPublicId())
+                .taskId(s.getTask().getPublicId())
+                .studentId(s.getStudent().getPublicId())
                 .studentFullName(s.getStudent().getFirstName() + " " + s.getStudent().getLastName())
                 .fileUrl(s.getFileUrl())
                 .uploadedFilePath(s.getUploadedFilePath())
@@ -248,4 +290,26 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
                 .build();
     }
 
+
+    @Override
+    public TaskSubmissionResponse submit(UUID taskId, MultipartFile file, String fileUrl) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return submit(internalId, file, fileUrl);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TaskSubmissionResponse> listByTask(UUID taskId, int page, int size) {
+        Long internalId = taskRepository.findIdByPublicId(taskId)
+                .orElseThrow(() -> new globalLogicEx("Task not found"));
+        return listByTask(internalId, page, size);
+    }
+
+    @Override
+    public TaskSubmissionResponse grade(UUID submissionId, GradeTaskSubmissionRequest req) {
+        Long internalId = submissionRepository.findIdByPublicId(submissionId)
+                .orElseThrow(() -> new globalLogicEx("Submission not found"));
+        return grade(internalId, req);
+    }
 }

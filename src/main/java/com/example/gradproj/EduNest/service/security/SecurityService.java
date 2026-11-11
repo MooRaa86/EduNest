@@ -18,6 +18,9 @@ import com.example.gradproj.EduNest.repository.tasks.TaskSubmissionRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.repository.week.WeekRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuizRepository;
+import com.example.gradproj.EduNest.repository.quiz.QuestionRepository;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -41,6 +44,8 @@ public class SecurityService {
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final TaskSubmissionRepository taskSubmissionRepository;
     private final AuthorizationRepository securityRepository;
+    private final QuizRepository quizRepository;
+    private final QuestionRepository questionRepository;
 
     public String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -66,6 +71,20 @@ public class SecurityService {
 
     //------------------------------------------------------
 
+    
+    public Boolean isMentorOwnLiveSession(UUID sessionId, String email) {
+        return securityRepository.isMentorOwnLiveSession(sessionId, email);
+    }
+
+    public Boolean isStudentEnrolledByLiveSessionId(String email, UUID sessionId) {
+        return securityRepository.isStudentEnrolledByLiveSessionId(email, sessionId);
+    }
+
+    public Boolean isUserOwnNotification(UUID notificationId, String email) {
+        if (notificationId == null) return false;
+        return Boolean.TRUE.equals(securityRepository.isUserOwnNotification(notificationId, email));
+    }
+
     public Boolean isMentorOwnLiveSession(Long sessionId, String email) {
         return securityRepository.isMentorOwnLiveSession(sessionId, email);
     }
@@ -88,6 +107,11 @@ public class SecurityService {
 
     public Boolean isUserOwnNotification(Long notificationId, String email) {
         return securityRepository.isUserOwnNotification(notificationId, email);
+    }
+
+    public Boolean isUserMemberOfChatRoom(UUID roomId, String email) {
+        if (roomId == null) return false;
+        return Boolean.TRUE.equals(securityRepository.isUserMemberOfChatRoom(roomId, email));
     }
 
     public Boolean isUserMemberOfChatRoom(Long roomId, String email) {
@@ -244,5 +268,41 @@ public class SecurityService {
         if (!hasAccess) {
             throw new AccessDeniedException("You are not authorized to access this student's profile");
         }
+    }
+
+    public Boolean isMentorOwnQuiz(UUID quizPublicId, String email) {
+        return quizRepository.findIdByPublicId(quizPublicId)
+                .map(id -> isMentorOwnQuiz(id, email))
+                .orElse(false);
+    }
+
+    public Boolean isStudentEnrolledByQuizId(String email, UUID quizPublicId) {
+        return quizRepository.findIdByPublicId(quizPublicId)
+                .map(id -> isStudentEnrolledByQuizId(email, id))
+                .orElse(false);
+    }
+
+    public Boolean isMentorOwnQuestion(UUID questionPublicId, String email) {
+        return questionRepository.findIdByPublicId(questionPublicId)
+                .map(id -> isMentorOwnQuestion(id, email))
+                .orElse(false);
+    }
+
+    public Boolean isMentorOwnMentorship(UUID mentorshipPublicId, String email) {
+        return mentorShipRepository.findIdByPublicId(mentorshipPublicId)
+                .map(id -> isMentorOwnMentorship(id, email))
+                .orElse(false);
+    }
+
+    public Boolean isMentorOwnWeek(UUID weekPublicId, String email) {
+        return weekRepository.findIdByPublicId(weekPublicId)
+                .map(id -> isMentorOwnWeek(id, email))
+                .orElse(false);
+    }
+
+    public void validateMentorHasAccessToStudent(UUID studentPublicId) {
+        Long studentId = studentRepository.findIdByPublicId(studentPublicId)
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Student not found"));
+        validateMentorHasAccessToStudent(studentId);
     }
 }

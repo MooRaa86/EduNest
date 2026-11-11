@@ -8,9 +8,19 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.repository.query.Param;
 
 public interface ConversationRepository
         extends JpaRepository<Conversation, Long> {
+
+    Optional<Conversation> findByPublicId(UUID publicId);
+    boolean existsByPublicId(UUID publicId);
+    void deleteByPublicId(UUID publicId);
+
+    @Query("SELECT c.id FROM Conversation c WHERE c.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
 
     @Query("""
         SELECT c FROM Conversation c
@@ -21,22 +31,26 @@ public interface ConversationRepository
 
     @Query("""
 SELECT
- c.id as conversationId,
+ c.publicId as conversationId,
 
  CASE
+   WHEN c.user1.email = :email AND c.user2.deleted = true THEN NULL
    WHEN c.user1.email = :email THEN c.user2.email
-   ELSE c.user1.email
+   WHEN c.user1.deleted = true THEN NULL ELSE c.user1.email
  END as otherUserEmail,
 
  CASE
+   WHEN c.user1.email = :email AND c.user2.deleted = true THEN 'Deleted user'
+   WHEN c.user1.email <> :email AND c.user1.deleted = true THEN 'Deleted user'
    WHEN c.user1.email = :email
    THEN CONCAT(c.user2.firstName,' ',c.user2.lastName)
    ELSE CONCAT(c.user1.firstName,' ',c.user1.lastName)
  END as otherUserName,
 
  CASE
+   WHEN c.user1.email = :email AND c.user2.deleted = true THEN NULL
    WHEN c.user1.email = :email THEN c.user2.profileImageUrl
-   ELSE c.user1.profileImageUrl
+   WHEN c.user1.deleted = true THEN NULL ELSE c.user1.profileImageUrl
  END as otherUserProfileImageUrl,
 
  m.content as lastMessage,
