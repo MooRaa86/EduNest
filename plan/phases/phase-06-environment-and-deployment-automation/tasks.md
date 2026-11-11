@@ -24,7 +24,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Docs:** environments matrix ([`ops/environments.md`](../../../ops/environments.md)), [`.env.example`](../../../.env.example), DECISIONS D-22 record; ISSUE-MAPPING DEP-07.
 
 <a id="p6-02"></a>
-### P6-02 — Staging provisioning + backup policy
+### P6-02 — Staging provisioning + backup policy [COMPLETED — PR #107 merged, EB-73 closed 2026-11-11]
 
 **Priority:** P1 — "doesn't even exist today"; staging must exist and mirror prod (R6) before any validation work.  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Eng Lead + PO (cost)
