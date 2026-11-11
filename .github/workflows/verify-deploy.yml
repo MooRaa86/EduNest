@@ -1,0 +1,29 @@
+# P6-08 / EB-79: automatic post-deploy verification for the production container.
+# Railway deploys the long-lived container from the `production` branch; this job
+# runs right after that push and gates the deploy on the verification script
+# (health poll budget, fast aggregate health, smoke set, commit match).
+# Red here = failed verification -> ops/runbooks/rollback-triggers.md checklist.
+# The full pipeline-integrated verify (build -> deploy -> verify in one job) lands with P6-04.
+
+name: Deploy Verification
+
+on:
+  push:
+    branches: [ production ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Verify deployment health, latency, smoke, and commit match
+      shell: pwsh
+      run: |
+        ./ops/runbooks/Invoke-DeployVerification.ps1 `
+          -BaseUrl "https://backend.edunest.dpdns.org" `
+          -ExpectedCommit "${{ github.sha }}" `
+          -PollMinutes 25
