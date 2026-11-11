@@ -22,7 +22,7 @@ Verified from `service/quiz/quiz/QuizServiceImpl`, `service/quiz/question/Questi
 1. Requires enrollment + PUBLISHED + an existing attempt row ("Quiz not started yet").
 2. **Single attempt**: existing non-null `score` → "Quiz already submitted" (DB unique (student, quiz) as backstop).
 3. Scoring `calculateScore` (L305–321): `selectedAnswer.equals(String.valueOf(question.correctAnswer))` → accumulate question points; duplicate answers prevented by clearing + verifying each question id belongs to the quiz.
-4. **Late rule** (L110–117): `now > endDate` → `finalScore = max(0, score − minutesLate)` — soft −1 point/minute **penalty only; submission never rejected; no hard close**. The unused `@Scheduled` import promises none-existent auto-close; closing is manual via mentor status change.
+4. **Late rule (updated EB-53 / P4-04, 2026-11-11)**: a submission whose `endDate` is already past is accepted **only within the grace window** (`app.submission.late-grace-minutes`, default 10): `minutesLate = MINUTES.between(endDate, now)`; if `minutesLate > grace` → `globalLogicEx("Quiz submission window has closed (deadline was …)")` — thrown **before any mutation** (score, answers, TotalPoints untouched). Inside grace the −1 pt/min penalty applies, clamped at 0: `finalScore = max(0, raw − minutesLate)`, and the row is flagged `isLate=true` (persisted column `quiz_submission.is_late`, exposed on the student response and mentor listing rows). On-time submissions get `isLate=false` and full score.
 5. Points: `applyDelta(student, mentorship, (int) finalScore)` — **truncates** fractional scores (currently whole since question points are integers, but fragile).
 6. Pass criterion (display-time): `score ≥ fullMark/2` → "Passed" else "Failed" (`getAllSubmissionsByQuiz` L283–291; `getQuizOverviewDto` L345–354).
 7. Pushes notifications mentor-side ("New Quiz Submission") and student-side ("Quiz Submitted").
@@ -43,7 +43,12 @@ Verified from `service/quiz/quiz/QuizServiceImpl`, `service/quiz/question/Questi
 
 ## 6. Data model notes
 
-- No global pass/unlock, no per-quiz deadline field (only attempt window), no multi-attempt support (unique constraint + single-submission guard).
+- No global pass/unlock, no multi-attempt support (unique constraint + single-submission guard).
+- **Close policy (EB-53 / P4-04, D-08 — decided 2026-11-11):**
+  - `quiz.closeAt` is an **explicit, nullable** field (new V12 column `quiz.close_at`). It is never derived from attempt `endDate`s. Legacy PUBLISHED quizzes with `closeAt == null` are never auto-closed and never backfilled; they keep pre-EB-53 behavior (new attempts always allowed).
+  - Publishing (create-as-PUBLISHED, updateQuiz DRAFT→PUBLISHED, changeStatus → PUBLISHED) **requires a future `closeAt`** — null → `"closeAt is required when publishing a quiz"`, past → `"closeAt must be in the future when publishing a quiz"`. `closeAt` is echoed on `QuizResponseDTO` from all detail/list builders.
+  - **New attempts blocked after `closeAt`**: `QuestionServiceImp#getQuestionsByQuizIdForStudent` throws `"Quiz is closed for new attempts"` when `now >= closeAt` and the caller has no attempt row yet. In-progress attempts are unaffected (they keep their own `endDate` + grace window and may still submit).
+  - **Scheduler auto-close**: `QuizCloseSweepService` (`app.quiz.auto-close.enabled`, sweep every `app.quiz.auto-close.sweep-rate-ms`, default 300 s; scheduled only when `app.scheduling.enabled`) runs `PUBLISHED → CLOSED` when `closeAt` has passed **and no attempt is eligible to submit** (no `endDate + grace > now`). Non-TX dispatcher + `@Transactional` worker locking week → quiz (canonical order, D-15b Option B pattern); idempotent. Mentor manual `CLOSED` (§1 status change) still works and the sweep never touches already-closed quizzes.
 - Quiz status `CLOSED` blocks student GET (quiz fetch endpoint hides DRAFT from students pre-fetch? — `getQuizDetails` checks mentor-or-enrolled and hides DRAFT from students).
 
 ## 7. Test recommendations
@@ -52,3 +57,4 @@ Verified from `service/quiz/quiz/QuizServiceImpl`, `service/quiz/question/Questi
 2. Attempt window: submit 1 second before endDate ok; after → penalty math exact; re-submit rejected.
 3. Scoring: partial correctness, wrong answer, empty answers list accepted as 0 (current behavior), unknown question rejected.
 4. First-open creates attempt row; progress accounting excludes unsubmitted rows (post-fix).
+5. **EB-53 probes delivered 2026-11-11 (`QuizLatePolicyPostgresTest`)**: late-within-grace penalty math (score, isLate, TotalPoints), beyond-grace rejection with zero state mutation (no score, no answers, no points, isLate stays null), new-attempts blocked after closeAt (no attempt row created; in-progress attempt still submittable), sweep close/idempotency/skips-while-eligible, legacy null-closeAt never auto-closes, publish requires future closeAt, mentor manual close unaffected, post-close question edits rejected (pre-existing DRAFT gate).

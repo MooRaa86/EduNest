@@ -1,5 +1,6 @@
 package com.example.gradproj.EduNest.service.tasks;
 
+import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
@@ -53,6 +54,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     private final NotificationService notificationService;
     private final WeekRepository weekRepository;
     private final EntityManager entityManager;
+    private final LateSubmissionProperties lateSubmissionProperties;
 
     private String getCurrentUserEmail() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
@@ -113,13 +115,26 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        boolean isLate = now.isAfter(task.getDueAt());
+        /*
+         * EB-53 / D-08 — late policy: a first submission within the configured
+         * grace (app.submission.late-grace-minutes, default 10) after the task
+         * deadline is accepted with isLate=true; grading stays mentor-assigned
+         * (no automatic deduction). Beyond the grace the first submission is
+         * rejected. Late resubmissions stay rejected. A null deadline never
+         * blocks submission.
+         */
+        boolean isLate = task.getDueAt() != null && now.isAfter(task.getDueAt());
+        long minutesLate = isLate ? java.time.temporal.ChronoUnit.MINUTES.between(task.getDueAt(), now) : 0;
 
         Optional<TaskSubmission> existingOpt =
                 submissionRepository.findByTask_IdAndStudent_Id(taskId, studentId);
 
         if (isLate && existingOpt.isPresent()) {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
+        }
+
+        if (isLate && minutesLate > lateSubmissionProperties.getLateGraceMinutes()) {
+            throw new globalLogicEx("Submission deadline plus grace period has passed. This task no longer accepts first submissions.");
         }
 
         String uploadedPath = null;

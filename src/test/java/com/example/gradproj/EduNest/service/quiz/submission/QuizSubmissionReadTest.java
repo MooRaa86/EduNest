@@ -22,7 +22,8 @@ class QuizSubmissionReadTest {
         var quizzes = mock(QuizRepository.class);
         var submissions = mock(QuizSubmissionRepository.class);
         var security = mock(SecurityService.class);
-        var service = new QuizSubmissionServiceImpl(quizzes, submissions, null, null, null, security);
+        var service = new QuizSubmissionServiceImpl(quizzes, submissions, null, null, null, security,
+                new com.example.gradproj.EduNest.config.learning.LateSubmissionProperties());
         when(security.getCurrentUserEmail()).thenReturn("owner");
         when(security.isMentorOwnQuiz(1L, "owner")).thenReturn(true);
         when(quizzes.findById(1L)).thenReturn(Optional.of(Quiz.builder().questions(List.of()).build()));

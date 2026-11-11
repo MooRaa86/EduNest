@@ -109,6 +109,17 @@ public class QuestionServiceImp implements QuestionService {
         boolean alreadyStarted = quizSubmissionRepository
                 .existsByStudent_IdAndQuiz_Id(securityService.getCurrentStudent().getId(), quizId);
 
+        /*
+         * EB-53 / D-08 — new attempts are stopped once closeAt is reached.
+         * Attempts started before closeAt keep their full window (endDate +
+         * grace) and are still served here and accepted at submit.
+         */
+        if (!alreadyStarted
+                && quiz.getCloseAt() != null
+                && !LocalDateTime.now().isBefore(quiz.getCloseAt())) {
+            throw new globalLogicEx("Quiz is closed for new attempts");
+        }
+
         if (!alreadyStarted) {
             QuizSubmission quizSubmission = new QuizSubmission();
             quizSubmission.setQuiz(quiz);
