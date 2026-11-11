@@ -104,16 +104,21 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         /*
          * EB-53 / D-08 — late policy: the attempt window may be exceeded by at
-         * most the configured grace (app.quiz.late-grace-minutes, default 10).
+         * most the configured grace (app.submission.late-grace-minutes, default 10).
          * Beyond the grace the submission is rejected BEFORE any mutation —
          * answers, score, points and notifications are untouched. Within the
          * grace the submission is accepted, flagged isLate=true, with the
          * existing -1 pt/minute penalty (floored at 0).
+         *
+         * The grace boundary is compared on exact timestamps so that a
+         * submission even one second past deadline + grace is rejected;
+         * ChronoUnit.MINUTES is kept only for the per-minute penalty.
          */
         LocalDateTime now = LocalDateTime.now();
         boolean late = quizSubmission.getEndDate() != null && now.isAfter(quizSubmission.getEndDate());
         long minutesLate = late ? ChronoUnit.MINUTES.between(quizSubmission.getEndDate(), now) : 0;
-        if (late && minutesLate > lateSubmissionProperties.getLateGraceMinutes()) {
+        if (late && now.isAfter(
+                quizSubmission.getEndDate().plusMinutes(lateSubmissionProperties.getLateGraceMinutes()))) {
             throw new globalLogicEx(
                     "Quiz submission window has closed (deadline was " + quizSubmission.getEndDate() + ")");
         }

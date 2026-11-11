@@ -122,9 +122,11 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
          * (no automatic deduction). Beyond the grace the first submission is
          * rejected. Late resubmissions stay rejected. A null deadline never
          * blocks submission.
+         *
+         * The grace boundary is compared on exact timestamps so that a
+         * submission even one second past deadline + grace is rejected.
          */
         boolean isLate = task.getDueAt() != null && now.isAfter(task.getDueAt());
-        long minutesLate = isLate ? java.time.temporal.ChronoUnit.MINUTES.between(task.getDueAt(), now) : 0;
 
         Optional<TaskSubmission> existingOpt =
                 submissionRepository.findByTask_IdAndStudent_Id(taskId, studentId);
@@ -133,7 +135,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
             throw new globalLogicEx("Deadline passed. You can't resubmit because you already submitted before.");
         }
 
-        if (isLate && minutesLate > lateSubmissionProperties.getLateGraceMinutes()) {
+        if (isLate && now.isAfter(task.getDueAt().plusMinutes(lateSubmissionProperties.getLateGraceMinutes()))) {
             throw new globalLogicEx("Submission deadline plus grace period has passed. This task no longer accepts first submissions.");
         }
 
