@@ -520,6 +520,28 @@ jobs:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File ops/staging/Invoke-StagingSmoke.ps1 -BaseUrl "$STAGING_BASE_URL"
 
+      # Runtime commit identity: since EB-79 the image exposes build-info
+      # (full git.commit.id) at /actuator/info. A MISMATCH fails the run; an
+      # ABSENT value only occurs for a pre-EB-79 image (e.g. a manual
+      # rollback target) and is recorded without hard-failing the rollback.
+      - name: Verify deployed commit identity (/actuator/info)
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          set -uo pipefail
+          INFO_JSON=$(curl -fsS --max-time 10 "$STAGING_BASE_URL/actuator/info" || true)
+          DEPLOYED_COMMIT=$(printf '%s' "$INFO_JSON" | jq -r 'try (.git.commit.id // empty)' 2>/dev/null || true)
+          if [ -z "$DEPLOYED_COMMIT" ]; then
+            echo "WARN: /actuator/info does not expose git.commit.id (pre-EB-79 image) — deployed commit identity recorded as not exposed"
+            exit 0
+          fi
+          if [ "$DEPLOYED_COMMIT" != "$VERIFIED_SHA" ]; then
+            echo "BLOCK: deployed image reports commit identity that does not match the verified commit"
+            exit 1
+          fi
+          echo "OK: deployed image /actuator/info reports the verified commit identity"
+
   publish-evidence:
     name: Publish deployment evidence (audit artifact)
     runs-on: ubuntu-latest

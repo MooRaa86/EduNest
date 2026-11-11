@@ -134,6 +134,37 @@ class EnvContractGuardTest {
     }
 
     @Test
+    @DisplayName("Management health posture is pinned - no hang-capable indicators in the aggregate path")
+    void managementHealthPosturePinned() throws IOException {
+        Map<String, String> props = new LinkedHashMap<>();
+        for (String line : Files.readAllLines(Path.of("src/main/resources/application.properties"), StandardCharsets.UTF_8)) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            int eq = trimmed.indexOf('=');
+            if (eq > 0) {
+                props.putIfAbsent(trimmed.substring(0, eq), trimmed.substring(eq + 1).trim());
+            }
+        }
+        assertThat(props.get("management.health.db.enabled"))
+                .as("db indicator must stay disabled from the aggregate health path (P6-08/EB-79 fix: it can hang on the Supabase pooler)")
+                .isEqualTo("false");
+        assertThat(props.get("management.health.mail.enabled"))
+                .as("mail indicator must stay disabled from the aggregate health path (JavaMail connect has no default timeout - second hang source)")
+                .isEqualTo("false");
+        assertThat(props.get("management.endpoints.web.exposure.include"))
+                .as("actuator exposure must stay minimal (health,info only, EB-67)")
+                .isEqualTo("health,info");
+        assertThat(props.get("management.endpoint.health.group.liveness.include"))
+                .as("liveness group must keep the state-only membership (Railway gates on it)")
+                .isEqualTo("livenessState");
+        assertThat(props.get("management.endpoint.health.group.readiness.include"))
+                .as("readiness group must keep the state-only membership (Railway gates on it)")
+                .isEqualTo("readinessState");
+    }
+
+    @Test
     @DisplayName(".env.example contains placeholders only - no live secret shapes")
     void noLiveSecretMaterial() throws IOException {
         for (String line : envExampleLines()) {
