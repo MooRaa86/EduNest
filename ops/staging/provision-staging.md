@@ -2,7 +2,7 @@
 
 > Config-as-script: this runbook IS the provisioning definition — whoever clicks the console buttons follows it top to bottom. Target shape per D-22: staging mirrors production (Railway container + Supabase PostgreSQL + Supabase Storage), fully isolated, **no production data, no production secrets**.
 >
-> Deploy source for staging: **manual "Deploy" from `main`** in the Railway staging service until P6-04 wires the staging-on-merge pipeline (decision 2026-11-11, Omar-approved — separation of concerns).
+> Deploy source for staging: as of **P6-04 / EB-75**, deploys are wired through the staging-on-merge pipeline (`deploy-staging.yml`: activation gate -> tests gate -> digest-pinned GHCR image -> migration gate -> Railway deploy -> tracked deployment -> smoke -> evidence artifact; contract in [`../cicd/staging-pipeline.md`](../cicd/staging-pipeline.md)). **Both deployment paths are disabled by default** — automatic requires the repository variable `STAGING_AUTO_DEPLOY_ENABLED=true`, manual dispatch requires `STAGING_MANUAL_DEPLOY_ENABLED=true` (each an explicit PO authorization; recommended only after the `staging` GitHub Environment required-reviewers protection and Railway Registry Credentials (GHCR `read:packages` PAT) are provisioned). Until then keep using the manual "Deploy" from `main` in the Railway staging service (decision 2026-11-11, Omar-approved).
 
 ## 0. Isolation rules (read first)
 
@@ -23,7 +23,7 @@
 
 ## 2. Railway staging service (container)
 
-1. Railway → **New service** in a dedicated staging project (or a second environment of the existing project — dedicated project preferred for full isolation) → **Deploy from GitHub repo** `MooRaa86/EduNest`, branch `main` (manual deploys until P6-04; no auto-deploy trigger yet).
+1. Railway → **New service** in a dedicated staging project (or a second environment of the existing project — dedicated project preferred for full isolation) → deploy source becomes the P6-04 pipeline once activated (currently manual "Deploy" from `main`; the service was provisioned via Deploy-from-repo, but EB-75 deploys digest-pinned GHCR images via `railway service source connect --image` + `railway redeploy --from-source` — the service keeps its variables either way). One-time prerequisite for GHCR pulls: service Settings → Source → Registry Credentials → GitHub PAT with `read:packages` (private registry deploys require a Railway Pro plan).
 2. Variables — the full staging set (from the [`ops/environments.md`](../environments.md) matrix + [EB-74 inventory](../secrets/secrets-inventory.md)):
    - `SPRING_PROFILES_ACTIVE=prod`
    - `PORT` — leave unset (Railway injects)

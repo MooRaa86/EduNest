@@ -1,33 +1,150 @@
 name: Build and Push Docker Image
 
+# EB-75 [P6-04 / DEP-01] — image build + push to GHCR.
+#
+# Dependency chain (never deploy from a failed or untested build):
+#   PR validation (tests.yml on PR)  ->  tests.yml success on main push
+#   -> THIS workflow builds and pushes an immutable image of that exact commit
+#   -> deploy-staging.yml (migration gate -> Railway staging -> smoke).
+#
+# Trigger decision: workflow_run (not push). A plain `push:` trigger could push
+# an image for a commit whose test run failed — the image must exist only for
+# commits the trusted tests.yml run has PASSED on main. workflow_run events are
+# evaluated against the default branch (this file is read from main), and this
+# workflow must live on main to be eligible at all.
+#
+# Security notes:
+# - No artifacts are downloaded from the triggering run; the image is built
+#   from a fresh checkout of the verified commit, so nothing untrusted from a
+#   prior run is executed.
+# - The only write permission is `packages: write` for GHCR.
+# - Tags are immutable identities (full commit SHA + git describe); `latest`
+#   is deliberately NOT published. Deploys pin by digest.
+# - Gate logic is shared with deploy-staging.yml and unit-tested locally in
+#   scripts/cicd/test-deploy-gate.sh (G1/G2/G3 + stale-run protection).
+#
+# SHA semantics (workflow_run events are subtle — do not "simplify" this):
+#   github.sha                             = default-branch HEAD at event time
+#                                            (workflow definition revision
+#                                            context — NOT the tested commit)
+#   github.event.workflow_run.head_sha     = the commit the tests run was
+#                                            executed against = the tested
+#                                            and hence BUILT commit
+# The gate below blocks whenever these differ (stale-run protection): an older
+# tests run completing after a newer main commit was pushed must NOT produce
+# an image, and the image is only ever built from the verified head_sha.
+
 on:
-  push:
-    branches: [ main, develop ]
-  workflow_dispatch:
+  workflow_run:
+    workflows: [ tests ]
+    types: [ completed ]
+    branches: [ main ]
+
+concurrency:
+  group: image-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: edunest-backend
 
 jobs:
-  build:
+  build-and-push:
+    name: Build + push GHCR image (tested main commit only)
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Convert username to lowercase
-      id: lowercase
-      run: echo "owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-    
-    - name: Build and push
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        push: true
-        tags: |
-          ghcr.io/${{ steps.lowercase.outputs.owner }}/edunest-backend:latest
-          ghcr.io/${{ steps.lowercase.outputs.owner }}/edunest-backend:${{ github.sha }}
+      # Checkout the TESTED commit (github.event.workflow_run.head_sha). This
+      # is also the only checkout ref that could contain this exact workflow
+      # file revision plus the gate script; the gate still blocks the build
+      # unless head_sha == default-branch HEAD (stale-run protection).
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Verify triggering run (G1/G2/G3 - success, main, commit identity)
+        id: gate
+        env:
+          TRIGGER_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          TRIGGER_STATUS: ${{ github.event.workflow_run.status }}
+          TRIGGER_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          TRIGGER_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          rc=0
+          VERDICT=$(bash scripts/cicd/deploy-gate.sh trigger \
+            "$TRIGGER_CONCLUSION" "$TRIGGER_STATUS" "$TRIGGER_HEAD_BRANCH" "$TRIGGER_HEAD_SHA" "$CURRENT_SHA") || rc=$?
+          echo "gate verdict: $VERDICT"
+          exit "$rc"
+
+      - name: Derive immutable image tags (git describe / full SHA)
+        id: tags
+        env:
+          BUILT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          DESCRIBE=$(git describe --tags --always "$BUILT_SHA" 2>/dev/null || true)
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          {
+            echo "owner=$OWNER_LC"
+            echo "sha_tag=$BUILT_SHA"
+            echo "describe_tag=$DESCRIBE"
+            echo "image=ghcr.io/$OWNER_LC/$IMAGE_NAME"
+          } >> "$GITHUB_OUTPUT"
+          echo "tags: $BUILT_SHA and '${DESCRIBE}'"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (no 'latest' tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.tags.outputs.image }}:${{ steps.tags.outputs.sha_tag }}
+            ${{ steps.tags.outputs.image }}:${{ steps.tags.outputs.describe_tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Resolve and record immutable digest
+        id: digest
+        env:
+          IMAGE: ${{ steps.tags.outputs.image }}
+          SHA_TAG: ${{ steps.tags.outputs.sha_tag }}
+          DESCRIBE_TAG: ${{ steps.tags.outputs.describe_tag }}
+          BUILT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$SHA_TAG" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          if [ -z "$DIGEST" ]; then echo "image digest resolution failed"; exit 1; fi
+          {
+            echo "digest=$DIGEST"
+            echo "pinned=$IMAGE@$DIGEST"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "commit=$BUILT_SHA"
+            echo "image_ref_pinned=$IMAGE@$DIGEST"
+            echo "image_tags=$IMAGE:$SHA_TAG $IMAGE:$DESCRIBE_TAG"
+          } > image-identity.txt
+          cat image-identity.txt
+
+      # Traceability artifact: commit <-> image tags <-> digest, produced by the
+      # trusted image workflow itself (not user artifacts). deploy-staging.yml
+      # consumes this to prove the deployed image identity.
+      - name: Upload image identity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-identity
+          path: image-identity.txt
+          if-no-files-found: error

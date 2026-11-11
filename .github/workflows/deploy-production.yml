@@ -1,0 +1,53 @@
+name: Deploy Production
+
+# EB-75 [P6-04] — production promotion BOUNDARY (structure only, NOT active).
+#
+# Per the P6-04 plan spec: production deploy = the same workflow pattern,
+# manually dispatched, behind a GitHub Environment approval gate — but it is
+# EXECUTED at P7-06 (separately authorized production rollout task). This
+# workflow exists to make the future promotion path explicit and is
+# deliberately inert until the repo variable PROD_PROMOTION_ENABLED is set to
+# 'true' by the Project Owner at P7-06. Without that variable every run here
+# is skipped, and there is no automatic production deployment of any kind.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Full commit SHA the image was built from (must be a tested main commit)"
+        required: true
+        type: string
+      image_ref:
+        description: "Digest-pinned image ref, e.g. ghcr.io/OWNER/edunest-backend@sha256:..."
+        required: true
+        type: string
+
+# Production requires an explicit GitHub Environment with required reviewers.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  promotion-gate:
+    name: Production promotion gate (inert until P7-06)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Promotion activation check
+        run: |
+          set -uo pipefail
+          echo "PROD_PROMOTION_ENABLED=${{ vars.PROD_PROMOTION_ENABLED }}"
+          echo "The production rollout workflow is owned by P7-06 (separately authorized)."
+          echo "Nothing is deployed by this workflow until:"
+          echo "  1. the Project Owner sets repo variable PROD_PROMOTION_ENABLED=true at P7-06, and"
+          echo "  2. the 'production' GitHub Environment requires reviewer approval."
+          if [ "${{ vars.PROD_PROMOTION_ENABLED }}" != "true" ]; then
+            echo "Production promotion is NOT activated — skipping (by design)."
+            exit 0
+          fi
+          echo "Variable present: the P7-06 rollout task owns the actual promotion steps from here."
+          echo "This skeleton intentionally contains no deploy logic; P7-06 implements it."
