@@ -150,3 +150,13 @@ Single canonical list, cross-checked against `.env.example` and `ops/environment
 **Deferred vars (documented contracts, not wired yet):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (D-28 / EB-108, sprint-3) — land in `.env.example` and this matrix when EB-108 implements.
 
 **Guard:** `EnvContractGuardTest` keeps this list in sync with `.env.example` — `${ENV_VAR}` placeholders found in `application*.properties` must exist there, secret shapes must never appear, and dormant defaults are pinned.
+
+## 9. Secrets management (P6-03 / EB-74, 2026-11-11)
+
+The **secret store = Railway environment dashboard** (D-22 amendment): values are injected into the container at boot, never baked into the image (enforced by `SecretsHygieneGuardTest`), never committed to git, and never logged. Supabase owns the DB password and S3 key pairs it issues; local development uses a gitignored `.env` per developer. Vault remains optional per scale (D-22) — not adopted.
+
+Secret-classified variables (`JWT_SECRET`, `DATABASE_PASSWORD`, `MAIL_PASSWORD`, `ZOOM_CLIENT_SECRET`, `SUPABASE_S3_ACCESS_KEY`/`SECRET_KEY`), their holders, rotation cadences, and the full per-secret rotation procedures live in **[`ops/secrets/`](../../../ops/secrets/README.md)** — the store bookkeeping: `secrets-inventory.md` (register, zero values), `rotation.md` (stable + app restart, incl. the JWT re-auth window), `JWT-GENERATION-RECORD.md` (provenance only), and CSPRNG generator scripts.
+
+Hygiene gates in CI (both plain-JUnit, D-27-clean): `EnvContractGuardTest` (P5-04) pins template parity; `SecretsHygieneGuardTest` (P6-03) enforces no secret bakes in the Dockerfile, placeholder-only secret bindings, `.gitignore` coverage of `.env*`/`*.pem`/`ops/secrets/local/`, and that git tracks no secret artifacts.
+
+**Injection evidence (prod):** the production container at `https://backend.edunest.dpdns.org/` boots healthy with `JWT_SECRET` dashboard-injected — the fail-fast `JwtSecretProvider` (P1-01/SEL-01) would refuse to boot otherwise, so healthy startup *is* the injection smoke. The staging-container smoke runs with P6-02/EB-73 when the staging project exists.
