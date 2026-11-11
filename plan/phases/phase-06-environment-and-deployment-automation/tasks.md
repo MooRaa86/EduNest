@@ -40,7 +40,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Docs:** ops/environments.md update; ISSUE-MAPPING DEP-08/DEP-03.
 
 <a id="p6-03"></a>
-### P6-03 — Secrets management implementation
+### P6-03 — Secrets management implementation [COMPLETED — PR #105 merged, EB-74 closed 2026-11-11]
 
 **Priority:** P1 — historically the fallback JWT secret made secrets a *source-code fact*; now the store must exist before anyone provisions real values. **‼ Chained after P1-01: rotating a real secret before the code honors it breaks login (R1).**  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Security Reviewer
