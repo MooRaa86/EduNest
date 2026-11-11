@@ -36,3 +36,11 @@ build/
 
 # Supabase migration snapshots/backups (contains account data; stored outside the repo)
 tools/migration/snapshots/
+
+### Secrets & env files (P6-03 / EB-74) ###
+.env
+.env.*
+!.env.example
+*.pem
+# Scratch values during rotation windows (rollback lane, transient - never committed)
+ops/secrets/local/

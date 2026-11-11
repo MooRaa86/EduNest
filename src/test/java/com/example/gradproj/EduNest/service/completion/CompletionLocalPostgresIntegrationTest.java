@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /** PostgreSQL-backed completion verification using an isolated disposable database. */
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class CompletionLocalPostgresIntegrationTest extends ProdChainIntegrationTestBase {
     @Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
