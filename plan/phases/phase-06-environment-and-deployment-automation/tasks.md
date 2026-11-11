@@ -138,6 +138,7 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Rollback consideration:** the task *builds* the rollback automation; drill = P7-01.
 **Depends on:** P6-04/05; P5-01.  **Blocks:** P7-06/07.
 **Tests:** fail-path IT: inject failing smoke → job marks red → rollback trigger documented (dry-run log).
+**Amendment (2026-11-11, D-22 posture):** dependency re-scoped — P6-04 is not built yet, so the verification tooling ships now and the pipeline-integrated verify job (build → deploy → verify in one workflow) lands with P6-04. Delivered here: `ops/runbooks/Invoke-DeployVerification.ps1` (health poll with budget, **fast-aggregate gate <5s** — the P6-08 fix acceptance check, smoke set, optional commit match), `ops/runbooks/rollback-triggers.md` (failure taxonomy → action map; DB never rolled back — forward-only), `.github/workflows/verify-deploy.yml` (auto-verify on `production` pushes + manual dispatch; Railway deploy window tolerated by the poll budget), version plumbing in `pom.xml` (spring-boot build-info + git-commit-id → `/actuator/info` exposes `git.commit.id`), and the **aggregate-health fix** in `application.properties`: `management.health.db.enabled=false` + `management.health.mail.enabled=false` (both indicators hang-capable with no per-indicator timeout; reproduced on prod 2026-11-11 — liveness/readiness stay the platform gates, DB health is functional). Fail-path evidence = deliberate bad-target dry-run recorded on EB-79.
 
 <a id="p6-09"></a>
 ### P6-09 — Runbook draft & environment config matrix
