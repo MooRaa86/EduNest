@@ -91,7 +91,17 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** image inspection (no devtools, non-root uid); volume-persistence IT documented w/ capture.
 **Docs:** deployment/MDS.md; ISSUE-MAPPING FILE-07/DEP-03.
 **Amendment (2026-11-02, D-22):** uploads **volume is not applicable** on Vercel — object storage ([ADD-03]/D-25 outcome, Supabase Storage) is the only file persistence; hardening scope (non-root user, healthcheck, minimal expose, `.dockerignore`, devtools-absence A-9) unchanged and verified against the final GHCR/Vercel image.
-**Second amendment (2026-11-02, D-22 — team decision):** Railway supports persistent volumes, so the volume question technically re-opens — but the D-25 outcome (object storage now) is unchanged: uploads stay on Supabase Storage regardless of host. Hardening scope verified against the final GHCR image on Railway (Vercel fallback retains the no-volume note above).
+  **Second amendment (2026-11-02, D-22 — team decision):** Railway supports persistent volumes, so the volume 
+question technically re-opens — but the D-25 outcome (object storage now) is unchanged: uploads stay on Supabase 
+Storage regardless of host. Hardening scope verified against the final GHCR image on Railway (Vercel fallback retains 
+the no-volume note above).
+  **Implementation note (2026-11-12, EB-76):** delivered the hardening scope only — non-root uid/gid 1001 (only
+`/app/uploads` app-owned), Docker HEALTHCHECK on `/actuator/health/liveness` (30s/5s/90s/3, PORT-aware), graceful
+shutdown (30s phase timeout), digest-pinned `maven`/`eclipse-temurin` stages (verified via registry API +
+`docker manifest inspect`), widened `.dockerignore`, A-9 devtools-absence regression test, and a manual-dispatch-only
+`docker-smoke.yml` (isolated postgres service container + Flyway; never Supabase/Railway). No volume, no compose
+files (D-25/EB-83 obsolete them); Railway dashboard settings (healthcheckPath, restart policy) intentionally
+unchanged.
 
 <a id="p6-06"></a>
 ### P6-06 — Repo hygiene + uploads history purge
