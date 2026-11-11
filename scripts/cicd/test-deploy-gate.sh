@@ -94,6 +94,13 @@ assert_blocks "activation absent blocks"              "NOT activated"           
 assert_blocks "activation wrong casing blocks"        "NOT activated"                  gate_activation "True"
 assert_blocks "activation garbage blocks"             "NOT activated"                  gate_activation "yes"
 
+# G7m — explicit manual authorization gate (manual dispatch disabled by default)
+assert_passes  "manual activation true passes"                                         gate_manual_activation "true"
+assert_blocks "manual activation false blocks"        "manual staging deployment is NOT authorized" gate_manual_activation "false"
+assert_blocks "manual activation absent blocks"       "manual staging deployment is NOT authorized" gate_manual_activation ""
+assert_blocks "manual activation wrong casing blocks" "manual staging deployment is NOT authorized" gate_manual_activation "TRUE"
+assert_blocks "manual activation garbage blocks"      "manual staging deployment is NOT authorized" gate_manual_activation "1"
+
 # G8 — staging database identity allowlist (never prints credentials).
 # Identity = FLYWAY_USER (actual supplied username) + URL host form.
 STAGE_REF="stgref123example456"

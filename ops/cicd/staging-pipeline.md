@@ -27,7 +27,7 @@ staging updated       evidence artifact           audit record (never committed 
 
 ## 2. Gate invariants (G1-G8)
 
-Shared logic lives in `scripts/cicd/deploy-gate.sh` and is unit-tested locally by `scripts/cicd/test-deploy-gate.sh` (54 cases, all passing):
+Shared logic lives in `scripts/cicd/deploy-gate.sh` and is unit-tested locally by `scripts/cicd/test-deploy-gate.sh` (59 cases, all passing):
 
 | Gate | Invariant | Enforced by |
 |---|---|---|
@@ -71,7 +71,8 @@ GitHub evaluates `workflow_run` against the default branch, and in that context 
 
 | Name | Meaning | Source |
 |---|---|---|
-| `STAGING_AUTO_DEPLOY_ENABLED` | activation flag; must be set to exactly `true` by the Project Owner to enable automatic deployment. Absent/false = disabled | PO decision |
+| `STAGING_AUTO_DEPLOY_ENABLED` | activation flag for **automatic** deployment; must be set to exactly `true` by the Project Owner to enable it. Absent/false = disabled | PO decision |
+| `STAGING_MANUAL_DEPLOY_ENABLED` | authorization flag for **manual** `workflow_dispatch` deployments; must be set to exactly `true` to permit the manual path. Absent/false = manual deployment blocked | PO decision |
 | `STAGING_DB_PROJECT_REF` | approved staging Supabase project ref (identity allowlist for G8) | Supabase staging project |
 | `RAILWAY_STAGING_PROJECT_ID` | Railway staging project ID | Railway dashboard |
 | `RAILWAY_STAGING_SERVICE_ID` | Railway staging service ID | Railway dashboard |
@@ -95,13 +96,13 @@ Scoping rules enforced by the workflow design: the `verify-and-prepare` job has 
 
 **No credential or ID exists in this repository.** Nothing is committed; automatic deploys cannot start until the activation flag is set by the PO — and every step still fails closed on missing configuration (G4).
 
-## 5. Explicit deployment activation gate (G7)
+## 5. Explicit deployment activation gates (G7 automatic / G7m manual)
 
-- The `activation` job is the first job of `deploy-staging.yml`. It reads only the non-secret repository variable `STAGING_AUTO_DEPLOY_ENABLED` — no checkout, no secrets, no environment — so **skipping activation requires no approval**.
-- Absent, `false`, wrong casing, or any other value → output `enabled=false`; all downstream jobs are skipped (`if: needs.activation.outputs.enabled == 'true'`). **No migration runs, no deployment runs, nothing external is touched.** The run completes as a clean skip, not a red failure.
-- Setting the flag to `true` is the PO's explicit activation act; the flag itself is part of the documented authorization (recommended: also enable required reviewers on the `staging` environment).
-- **Manual dispatch is exempt from the flag** but requires explicit operator inputs (full commit SHA + digest-pinned image ref) and is still gated by the `staging` environment protection and the full verification chain (G1-G6, migration gate, smoke).
-- CI image building (docker-build.yml) continues independently of the activation flag.
+- The `activation` job is the first job of `deploy-staging.yml`. It reads only the non-secret repository variables — no checkout, no secrets, no environment — so **skipping activation requires no approval**.
+- **Automatic path (G7):** absent, `false`, wrong casing, or any other value of `STAGING_AUTO_DEPLOY_ENABLED` → all downstream jobs are skipped. **No migration runs, no deployment runs, nothing external is touched.** The run completes as a clean skip, not a red failure.
+- **Manual path (G7m):** manual dispatch is **also disabled by default**. Only when `STAGING_MANUAL_DEPLOY_ENABLED` is exactly `true` does a manual run proceed — and even then it must pass the full provenance chain (section 4) and the `staging` environment protection. Enabling the manual flag does not bypass any integrity gate.
+- Setting the flags to `true` is the PO's explicit authorization act. **Recommended prerequisite before enabling either flag: configure the `staging` GitHub Environment with required reviewers.** Neither flag is set by this pipeline.
+- CI image building (docker-build.yml) continues independently of both flags.
 
 ## 6. Railway staging integration (verified CLI v4 mechanism)
 
@@ -149,7 +150,8 @@ The existing **operator-controlled Flyway model** (EB-43) is preserved exactly; 
 
 | Failure | Effect |
 |---|---|
-| `STAGING_AUTO_DEPLOY_ENABLED` != `true` | automatic path stops at the activation gate; all downstream jobs skipped; **nothing external touched** |
+| `STAGING_AUTO_DEPLOY_ENABLED` != `true` (automatic path) | run stops at the activation gate; all downstream jobs skipped; **nothing external touched** |
+| `STAGING_MANUAL_DEPLOY_ENABLED` != `true` (manual dispatch) | run stops at the activation gate; **nothing external touched** |
 | tests.yml red on main | no image, no deploy (workflow_run never fires) |
 | image build fails | no image push; deploy workflow never fires |
 | older run completes after newer main commit | stale-run guard blocks the build and any deploy |
@@ -161,7 +163,7 @@ The existing **operator-controlled Flyway model** (EB-43) is preserved exactly; 
 | smoke fails (or staging never becomes live) | deployment marked unsuccessful; evidence artifact still published for audit |
 | missing configuration | G4 preflight blocks every affected job with an explicit message; nothing partially deploys |
 
-Manual bootstrap recap (one-time): provision staging Railway service + Supabase staging project per `ops/staging/provision-staging.md`; configure Railway Registry Credentials for GHCR; create the GitHub Environment `staging` with section 4 secrets; set the repository variables including `STAGING_DB_PROJECT_REF`; **Project Owner explicitly authorizes activation by setting `STAGING_AUTO_DEPLOY_ENABLED=true`** (plus environment required-reviewers recommended). Until then every automatic deploy attempt is a clean no-op at the activation gate.
+Manual bootstrap recap (one-time): provision staging Railway service + Supabase staging project per `ops/staging/provision-staging.md`; configure Railway Registry Credentials for GHCR; create the GitHub Environment `staging` with section 4 secrets **and configure required-reviewers protection**; set the repository variables including `STAGING_DB_PROJECT_REF`; **Project Owner explicitly authorizes activation by setting `STAGING_AUTO_DEPLOY_ENABLED=true` (automatic) and/or `STAGING_MANUAL_DEPLOY_ENABLED=true` (manual)** — recommended only after the environment protection is in place. Until then every deployment attempt (automatic or manual) is a clean no-op at the activation gate.
 
 ## 10. Production boundary (P7-06)
 

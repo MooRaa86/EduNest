@@ -155,9 +155,7 @@ gate_sha40() {
 # default: the repository variable STAGING_AUTO_DEPLOY_ENABLED must be exactly
 # 'true'. Any other value (absent, false, wrong casing) means NO migration and
 # NO deployment. The check reads a non-secret repository variable, so skipping
-# does not require an approval. Manual dispatch bypasses this gate but is
-# instead gated by operator-supplied explicit inputs and the 'staging'
-# environment protection rules.
+# does not require an approval.
 gate_activation() {
     local auto_deploy_enabled="$1"
     if [ "$auto_deploy_enabled" = "true" ]; then
@@ -165,6 +163,23 @@ gate_activation() {
         return 0
     fi
     echo "BLOCK: automatic staging deployment is NOT activated (STAGING_AUTO_DEPLOY_ENABLED is not exactly 'true') — no migration and no deployment will run; nothing external is touched"
+    return 1
+}
+
+# G7m — explicit manual authorization gate. Manual dispatch deployments are
+# ALSO disabled by default: the repository variable
+# STAGING_MANUAL_DEPLOY_ENABLED must be exactly 'true'. Enabling it still does
+# not bypass provenance verification (G3/G6, main-history ancestry, approved
+# pipeline-run provenance, OCI revision label) or the 'staging' environment
+# protection. Recommended prerequisite before enabling: configure the
+# 'staging' GitHub Environment with required reviewers.
+gate_manual_activation() {
+    local manual_deploy_enabled="$1"
+    if [ "$manual_deploy_enabled" = "true" ]; then
+        echo "OK: manual staging deployment is authorized (STAGING_MANUAL_DEPLOY_ENABLED=true) — provenance and environment gates still apply"
+        return 0
+    fi
+    echo "BLOCK: manual staging deployment is NOT authorized (STAGING_MANUAL_DEPLOY_ENABLED is not exactly 'true') — no migration and no deployment will run; nothing external is touched"
     return 1
 }
 
@@ -254,6 +269,7 @@ gate_commit_match() {
 #   deploy-gate.sh sha40 <commit_sha>
 #   deploy-gate.sh require-config <name> <value> [name value...]
 #   deploy-gate.sh activation <STAGING_AUTO_DEPLOY_ENABLED value>
+#   deploy-gate.sh manual-activation <STAGING_MANUAL_DEPLOY_ENABLED value>
 # Sourcing this file (as the test suite does) must have no side effects.
 case "${1:-}" in
     trigger)            shift; gate_verify_trigger "$@" ;;
@@ -264,6 +280,7 @@ case "${1:-}" in
     sha40)              shift; gate_sha40 "$1" ;;
     require-config)     shift; gate_require_config "$@" ;;
     activation)         shift; gate_activation "$1" ;;
+    manual-activation)  shift; gate_manual_activation "$1" ;;
     "")                 : ;;
     *)                  echo "BLOCK: unknown gate subcommand '$1'"; exit 1 ;;
 esac

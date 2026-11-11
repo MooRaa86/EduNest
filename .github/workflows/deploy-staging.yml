@@ -8,12 +8,18 @@ name: Deploy Staging
 #   gate -> Railway deploy -> smoke verification -> evidence artifact.
 #
 # Hard rules enforced here:
-# - Automatic staging deployment is DISABLED until the repository variable
-#   STAGING_AUTO_DEPLOY_ENABLED is exactly 'true' (activation gate G7): no
-#   migration, no deployment, no external changes, no environment approval
-#   is required merely to skip. Manual dispatch is exempt from the flag but
-#   still requires explicit operator inputs AND the 'staging' environment
-#   protection (required reviewers, if configured).
+# - BOTH deployment paths are DISABLED by default:
+#   * Automatic deployment requires the repository variable
+#     STAGING_AUTO_DEPLOY_ENABLED to be exactly 'true' (activation gate G7);
+#   * Manual dispatch additionally requires the repository variable
+#     STAGING_MANUAL_DEPLOY_ENABLED to be exactly 'true' (authorization gate
+#     G7m) — and still then must pass full commit/image provenance and the
+#     'staging' environment protection (required reviewers, if configured).
+#     Neither flag is set by this pipeline; the Project Owner activates them
+#     explicitly after authorizing the deployment, ideally only after the
+#     'staging' environment required-reviewers protection is configured.
+# - Gating a flag check reads a non-secret repository variable and requires
+#   no approval merely to skip; nothing external is touched while disabled.
 # - Never deploy from a failed or incomplete test/image run (G1).
 # - Only main may deploy to staging (G2); PR refs never deploy.
 # - Tested commit == built commit == deployed image (G3, digest-pinned).
@@ -34,10 +40,11 @@ name: Deploy Staging
 #   to protected main).
 #
 # FIRST DEPLOYMENT REQUIREMENT: the Project Owner must (1) set the repository
-# variables listed in ops/cicd/staging-pipeline.md (including the activation
-# flag), (2) create the GitHub Environment 'staging' with the required
-# secrets, and (3) explicitly authorize activation. Until then every
-# automatic path stops at the activation gate — by design, cleanly skipped.
+# variables listed in ops/cicd/staging-pipeline.md (including BOTH activation
+# flags), (2) create the GitHub Environment 'staging' with the required
+# secrets and configure required-reviewers protection, and (3) explicitly
+# authorize activation by setting the flags. Until then every deployment path
+# stops at the activation gate — by design, cleanly skipped, nothing deployed.
 
 on:
   workflow_run:
@@ -70,22 +77,32 @@ permissions:
 
 jobs:
   activation:
-    name: Deployment activation gate (G7)
+    name: Deployment activation gate (G7 automatic / G7m manual)
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.gate.outputs.enabled }}
     steps:
-      # Reads a non-secret repository variable only; no checkout, no secrets,
+      # Reads non-secret repository variables only; no checkout, no secrets,
       # no environment — skipping activation must not require an approval.
       - name: Evaluate activation gate
         id: gate
         env:
           AUTO_DEPLOY: ${{ vars.STAGING_AUTO_DEPLOY_ENABLED }}
+          MANUAL_DEPLOY: ${{ vars.STAGING_MANUAL_DEPLOY_ENABLED }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "manual dispatch: operator explicitly requested this deploy (still gated by 'staging' environment protection and full verification chain)"
+            # Manual path has its own explicit authorization gate (G7m):
+            # disabled by default, exactly 'true' required. Even when enabled,
+            # the run still must pass full provenance verification and the
+            # 'staging' environment protection downstream.
+            if [ "$MANUAL_DEPLOY" = "true" ]; then
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "manual dispatch: STAGING_MANUAL_DEPLOY_ENABLED=true — operator explicitly requested this deploy (provenance verification and 'staging' environment protection still apply)"
+            else
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "STAGING_MANUAL_DEPLOY_ENABLED is not 'true' (got: '$MANUAL_DEPLOY') — manual deployment is DISABLED; no migration, no deployment, no external changes. Repository owners can enable it by setting the repository variable to exactly 'true' after explicit authorization (recommended only after configuring 'staging' environment required reviewers)."
+            fi
           elif [ "$AUTO_DEPLOY" = "true" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
             echo "STAGING_AUTO_DEPLOY_ENABLED=true — automatic staging deployment activated"
