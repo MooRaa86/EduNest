@@ -62,7 +62,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * compatibility, mentor manual-close interaction, and post-close question
  * edit rejection.
  */
-@Testcontainers
+/*
+ * D-27 — all Testcontainers classes must skip gracefully when Docker is
+ * unavailable instead of crashing the local Maven suite.
+ */
+@Testcontainers(disabledWithoutDocker = true)
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 class QuizLatePolicyPostgresTest extends ProdChainIntegrationTestBase {
     @Container static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
