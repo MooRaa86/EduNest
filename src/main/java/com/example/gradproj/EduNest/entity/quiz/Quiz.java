@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -36,6 +37,13 @@ public class Quiz extends BaseEntity {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     private QuizStatus status = QuizStatus.DRAFT;
+
+    /**
+     * EB-53 / D-08 — absolute close deadline. Nullable: legacy PUBLISHED quizzes
+     * (closeAt == null) keep their manual-close-only behavior and are never
+     * auto-closed or backfilled.
+     */
+    private LocalDateTime closeAt;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true ,fetch = FetchType.LAZY)
     private List<Question> questions;

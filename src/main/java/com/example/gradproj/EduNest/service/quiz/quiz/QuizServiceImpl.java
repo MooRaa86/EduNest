@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,12 +58,17 @@ public class QuizServiceImpl implements QuizService {
                 () -> new globalLogicEx("Week not found")
         );
 
+        if (quizCreateDTO.getStatus() == QuizStatus.PUBLISHED) {
+            // EB-53 / D-08 — a quiz published at creation time must carry a valid closeAt.
+            requireValidCloseAt(quizCreateDTO.getCloseAt());
+        }
 
         Quiz quiz = Quiz.builder()
                 .title(quizCreateDTO.getTitle())
                 .durationMinutes(quizCreateDTO.getDurationMinutes())
                 .description(quizCreateDTO.getDescription())
                 .week(week)
+                .closeAt(quizCreateDTO.getCloseAt())
                 .status(quizCreateDTO.getStatus() != null ? quizCreateDTO.getStatus() : QuizStatus.DRAFT)
                 .build();
 
@@ -83,6 +89,7 @@ public class QuizServiceImpl implements QuizService {
                 .durationMinutes(quiz.getDurationMinutes())
                 .description(quiz.getDescription())
                 .status(quiz.getStatus())
+                .closeAt(quiz.getCloseAt())
                 .submissions(0)
                 .averageScore(0.0)
                 .build();
@@ -138,7 +145,13 @@ public class QuizServiceImpl implements QuizService {
         if (quizUpdateDto.getTitle() != null) quiz.setTitle(quizUpdateDto.getTitle());
         if (quizUpdateDto.getDescription() != null) quiz.setDescription(quizUpdateDto.getDescription());
         if (quizUpdateDto.getDurationMinutes() != null) quiz.setDurationMinutes(quizUpdateDto.getDurationMinutes());
+        if (quizUpdateDto.getCloseAt() != null) quiz.setCloseAt(quizUpdateDto.getCloseAt());
         if (quizUpdateDto.getStatus() != null) quiz.setStatus(quizUpdateDto.getStatus());
+
+        if (oldStatus != QuizStatus.PUBLISHED && quiz.getStatus() == QuizStatus.PUBLISHED) {
+            // EB-53 / D-08 — publishing through the update endpoint requires a valid closeAt.
+            requireValidCloseAt(quiz.getCloseAt());
+        }
 
 
         quiz = quizRepository.save(quiz);
@@ -159,6 +172,7 @@ public class QuizServiceImpl implements QuizService {
                 .durationMinutes(quiz.getDurationMinutes())
                 .description(quiz.getDescription())
                 .status(quiz.getStatus())
+                .closeAt(quiz.getCloseAt())
                 .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .averageScore(calculateAverageScore(quiz))
                 .build();
@@ -187,6 +201,7 @@ public class QuizServiceImpl implements QuizService {
                 .durationMinutes(quiz.getDurationMinutes())
                 .description(quiz.getDescription())
                 .status(quiz.getStatus())
+                .closeAt(quiz.getCloseAt())
                 .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                 .averageScore(calculateAverageScore(quiz))
                 .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
@@ -211,6 +226,7 @@ public class QuizServiceImpl implements QuizService {
                         .durationMinutes(quiz.getDurationMinutes())
                         .description(quiz.getDescription())
                         .status(quiz.getStatus())
+                        .closeAt(quiz.getCloseAt())
                         .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                         .averageScore(calculateAverageScore(quiz))
                         .build())
@@ -244,6 +260,7 @@ public class QuizServiceImpl implements QuizService {
                         .durationMinutes(quiz.getDurationMinutes())
                         .description(quiz.getDescription())
                         .status(quiz.getStatus())
+                        .closeAt(quiz.getCloseAt())
                         .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
                         .averageScore(calculateAverageScore(quiz))
                         .build())
@@ -415,6 +432,12 @@ public class QuizServiceImpl implements QuizService {
             throw new globalLogicEx("Cannot publish a quiz with no questions");
         }
 
+        if (quizStatus == QuizStatus.PUBLISHED) {
+            // EB-53 / D-08 — publishing requires a valid closeAt. Legacy PUBLISHED
+            // quizzes with closeAt == null keep their manual-close-only behavior.
+            requireValidCloseAt(quiz.getCloseAt());
+        }
+
         if (quizStatus == QuizStatus.CLOSED) {
             notificationService.sendToMentorshipStudents(
                     quiz.getWeek().getMentorship().getId(),
@@ -437,6 +460,20 @@ public class QuizServiceImpl implements QuizService {
         quizRepository.save(quiz);
     }
 
+
+    /**
+     * EB-53 / D-08 — a valid closeAt is non-null and in the future at publish
+     * time; the attempt window (durationMinutes) and grace still govern each
+     * individual submission inside that deadline.
+     */
+    private void requireValidCloseAt(LocalDateTime closeAt) {
+        if (closeAt == null) {
+            throw new globalLogicEx("closeAt is required when publishing a quiz");
+        }
+        if (!closeAt.isAfter(LocalDateTime.now())) {
+            throw new globalLogicEx("closeAt must be in the future when publishing a quiz");
+        }
+    }
 
     private double calculateAverageScore(Quiz quiz) {
 

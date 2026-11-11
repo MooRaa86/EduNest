@@ -115,7 +115,8 @@ class LegacySubmissionGradingSafetyTest {
                 mock(FileStorageService.class),
                 notificationService,
                 weekRepository,
-                mock(EntityManager.class)
+                mock(EntityManager.class),
+                new com.example.gradproj.EduNest.config.learning.LateSubmissionProperties()
         );
 
         ContentReadGuard contentReadGuard = mock(ContentReadGuard.class);
@@ -132,7 +133,8 @@ class LegacySubmissionGradingSafetyTest {
                 notificationService,
                 contentReadGuard,
                 weekRepository,
-                mock(EntityManager.class)
+                mock(EntityManager.class),
+                new com.example.gradproj.EduNest.config.learning.LateSubmissionProperties()
         );
     }
 

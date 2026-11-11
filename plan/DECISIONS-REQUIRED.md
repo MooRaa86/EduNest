@@ -94,6 +94,27 @@
 ### D-08 — Late submissions & quiz window
 - **Question:** Define late policy (LEARN-05): accept-with-flag? reject? penalty?; when do quizzes hard-close (LEARN-10)?
 - **Default (evidence-backed):** reject late *first* submissions is harsh; accept-with-penalty config `late.penalty.perMinute` default adopt existing −1pt/min rule; quizzes auto-close via scheduler at `durationMinutes` + grace. Decide-by: before P4-04.
+- **Outcome (decided 2026-11-11, Project Owner-approved):** final policy (differs from the earlier default):
+  - **Tasks/projects (LEARN-05):** late **first** submissions are accepted only within a configurable grace
+    window (`app.submission.late-grace-minutes`, default **10 min**), flagged `isLate=true` with **no automatic
+    grade deduction** — mentor grading stays authoritative. Beyond grace, first submissions are **rejected**
+    (front-end-visible 4xx) before any mutation. Late **re**-submissions remain rejected (pre-EB-53 rule kept).
+  - **Quizzes:** the −1 pt/min soft penalty is **kept but clamped at 0** and applies **only inside the grace
+    window**; beyond grace the submission is **rejected before any mutation** (no score, no answers, no
+    TotalPoints delta; `isLate` stays null). Late (within-grace) submissions persist/expose additive
+    `quiz_submission.is_late` (`isLate` on student response + mentor listing rows). Note: mentor-graded
+    submissions (task/project) use the flag-without-deduction mechanism, while auto-scored quizzes use the
+    per-minute deduction mechanism — same grace window, different penalty mechanisms.
+  - **Quiz close (LEARN-10):** auto-close **requires an explicit `quiz.closeAt`** field (nullable V12 column,
+    additive) and is **never derived** from max attempt endDates. Legacy PUBLISHED quizzes with `closeAt == null`
+    are never auto-closed and never backfilled. Publishing (create-as-PUBLISHED, updateQuiz DRAFT→PUBLISHED,
+    changeStatus → PUBLISHED) requires a valid future `closeAt`. New attempts are blocked once `closeAt` passes
+    (before any attempt row is created); in-progress attempts keep their own `endDate` + grace. The
+    `@Scheduled` sweep (idempotent, canonical week→quiz lock order, D-15b Option B non-TX dispatcher +
+    `@Transactional` worker) transitions PUBLISHED→CLOSED only when `closeAt` passed **and** no attempt is
+    eligible to submit (`endDate + grace > now`); mentor manual close is unaffected.
+  - **Implementation:** branch `feat/p4-04-quiz-late-policy` (EB-53), migration
+    `V12__quiz_close_at_and_submission_is_late.sql`, probes `QuizLatePolicyPostgresTest` (16 cases).
 
 ### D-09 — Points reconciliation & freeze rules
 - **Question:** Can mentors edit task/project/quiz points after grading (LEARN-06)? Badge point edits after mentorship COMPLETED (CERT-04)? Bulk-update clamp policy (GAME-03)?

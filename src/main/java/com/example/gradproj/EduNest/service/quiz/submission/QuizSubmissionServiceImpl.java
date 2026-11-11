@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.quiz.submission;
 
 
+import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
@@ -51,6 +52,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
     private final TotalPointsServiceImp totalPointsService;
     private final NotificationService notificationService;
     private final SecurityService securityService;
+    private final LateSubmissionProperties lateSubmissionProperties;
 
 
 
@@ -100,6 +102,22 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
             throw new globalLogicEx("Quiz already submitted");
         }
 
+        /*
+         * EB-53 / D-08 — late policy: the attempt window may be exceeded by at
+         * most the configured grace (app.quiz.late-grace-minutes, default 10).
+         * Beyond the grace the submission is rejected BEFORE any mutation —
+         * answers, score, points and notifications are untouched. Within the
+         * grace the submission is accepted, flagged isLate=true, with the
+         * existing -1 pt/minute penalty (floored at 0).
+         */
+        LocalDateTime now = LocalDateTime.now();
+        boolean late = quizSubmission.getEndDate() != null && now.isAfter(quizSubmission.getEndDate());
+        long minutesLate = late ? ChronoUnit.MINUTES.between(quizSubmission.getEndDate(), now) : 0;
+        if (late && minutesLate > lateSubmissionProperties.getLateGraceMinutes()) {
+            throw new globalLogicEx(
+                    "Quiz submission window has closed (deadline was " + quizSubmission.getEndDate() + ")");
+        }
+
         Map<UUID, Question> questions = new HashMap<>();
         for (Question q : quiz.getQuestions()) {
             if (q.getPublicId() != null) questions.put(q.getPublicId(), q);
@@ -109,11 +127,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
 
         double finalScore = score.getTotalScore();
-        if (LocalDateTime.now().isAfter(quizSubmission.getEndDate())) {
-            long minutesLate = ChronoUnit.MINUTES.between(
-                    quizSubmission.getEndDate(),
-                    LocalDateTime.now()
-            );
+        if (late) {
             finalScore = Math.max(0, finalScore - minutesLate);
 //            penaltyMessage = " (Late submission: -" + minutesLate + " points penalty)";
         }
@@ -139,6 +153,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
         quizSubmission.getAnswers().clear();
         quizSubmission.getAnswers().addAll(studentAnswers);
         quizSubmission.setScore(finalScore);
+        quizSubmission.setIsLate(late);
 
 
         quizSubmissionRepository.save(quizSubmission);
@@ -170,6 +185,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .score(finalScore)
                 .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                 .status("Submitted")
+                .isLate(quizSubmission.getIsLate())
                 .build();
 
     }
@@ -271,6 +287,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                         .studentId(sub.getStudent().getPublicId())
                         .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
                         .score(sub.getScore())
+                        .isLate(sub.getIsLate())
                         .build())
                 .toList();
     }
@@ -308,6 +325,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                             .totalPoints(quiz.getQuestions().stream().mapToInt(Question::getPoints).sum())
                             .score(sub.getScore())
                             .status(status)
+                            .isLate(sub.getIsLate())
                             .build();
                 })
                 .toList();

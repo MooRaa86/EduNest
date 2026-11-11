@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,6 +25,12 @@ public class QuizUpdateDto {
 
     @Min(value = 1, message = "Duration must be at least 1 minute")
     private Integer durationMinutes;
+
+    /**
+     * EB-53 / D-08 — absolute close deadline, editable while DRAFT. Required
+     * (and in the future) when this update transitions the quiz to PUBLISHED.
+     */
+    private LocalDateTime closeAt;
 
     @Builder.Default
     private QuizStatus status = QuizStatus.DRAFT;

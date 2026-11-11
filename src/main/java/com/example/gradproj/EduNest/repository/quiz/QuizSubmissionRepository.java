@@ -44,6 +44,12 @@ public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, 
     boolean existsByQuiz_Week_IdAndScoreIsNotNull(Long weekId);
     boolean existsByQuiz_Week_Id(Long weekId);
 
+    /**
+     * EB-53 — scheduler guard: an attempt is still eligible to submit while
+     * {@code endDate + grace > now}, i.e. {@code endDate > now - grace}.
+     */
+    boolean existsByQuiz_IdAndEndDateAfter(Long quizId, java.time.LocalDateTime cutoff);
+
     Page<QuizSubmission> findAllByQuiz_Id(Long quizId, Pageable pageable);
 
     Page<QuizSubmission> findAllByStudent_Id(Long studentId, Pageable pageable);

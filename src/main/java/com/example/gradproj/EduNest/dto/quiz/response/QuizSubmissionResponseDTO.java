@@ -15,4 +15,6 @@ public class QuizSubmissionResponseDTO {
     private Double score;
     private int totalPoints;
     private String status;
+    /** EB-53 / D-08 — additive: true when the submission landed after the attempt window (within grace). */
+    private Boolean isLate;
 }

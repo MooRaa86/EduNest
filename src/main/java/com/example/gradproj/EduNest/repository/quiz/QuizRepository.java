@@ -67,4 +67,18 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
     @Query("SELECT q FROM Quiz q WHERE q.week.id IN :weekIds AND q.status != :status")
     List<Quiz> findByWeek_IdInAndStatusNot(@Param("weekIds") List<Long> weekIds, @Param("status") QuizStatus status);
+
+    /**
+     * EB-53 — auto-close candidates: PUBLISHED quizzes whose closeAt deadline has
+     * passed, deterministically ordered. Legacy quizzes (closeAt NULL) are never
+     * selected — they keep manual-close-only behavior.
+     */
+    @Query("""
+        SELECT q.id FROM Quiz q
+        WHERE q.status = :status
+          AND q.closeAt IS NOT NULL
+          AND q.closeAt <= :now
+        ORDER BY q.id
+    """)
+    List<Long> findIdsDueForAutoClose(@Param("status") QuizStatus status, @Param("now") java.time.LocalDateTime now);
 }

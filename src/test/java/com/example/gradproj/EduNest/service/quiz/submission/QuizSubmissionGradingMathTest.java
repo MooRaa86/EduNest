@@ -67,7 +67,8 @@ class QuizSubmissionGradingMathTest {
 
         service = new QuizSubmissionServiceImpl(
                 quizRepository, quizSubmissionRepository, studentRepository,
-                totalPointsService, notificationService, securityService);
+                totalPointsService, notificationService, securityService,
+                new com.example.gradproj.EduNest.config.learning.LateSubmissionProperties());
     }
 
     // ------------------------------------------------------------------
@@ -313,17 +314,17 @@ class QuizSubmissionGradingMathTest {
     }
 
     @Test
-    @DisplayName("Very late submission: penalty floors at 0, score never negative (:115 Math.max)")
-    void veryLateSubmission_floorsAtZero() {
+    @DisplayName("Late within grace: penalty floors at 0, score never negative (:115 Math.max)")
+    void lateWithinGrace_floorsAtZero() {
         Quiz quiz = quizWith(question(1L, AnswerChoices.A, 5));
         Student student = Student.builder().id(5L).firstName("Rahma").lastName("Ismail")
                 .email("rahma@test.com").build();
-        // Ended ~12.5 minutes ago; raw score only 5 -> penalty floors at 0.
+        // Ended ~9.5 minutes ago (inside the 10-minute grace); raw score only 5 -> penalty floors at 0.
         LocalDateTime now = LocalDateTime.now();
         QuizSubmission submission = QuizSubmission.builder()
                 .id(9L).quiz(quiz).student(student).score(null)
                 .startDate(now.minusMinutes(40))
-                .endDate(now.minusSeconds(750)) // 12 min + 30 s in the past
+                .endDate(now.minusSeconds(570)) // 9 min + 30 s in the past
                 .answers(new ArrayList<>())
                 .build();
 
@@ -341,8 +342,9 @@ class QuizSubmissionGradingMathTest {
 
         QuizSubmissionResponseDTO resp = service.submitQuizAnswers(dto, 1L);
 
-        // max(0, 5 - 12) = 0
+        // max(0, 5 - 9) = 0
         assertThat(resp.getScore()).isEqualTo(0.0);
+        assertThat(resp.getIsLate()).isTrue();
         verify(totalPointsService).applyDelta(student, quiz.getWeek().getMentorship(), 0);
     }
 }

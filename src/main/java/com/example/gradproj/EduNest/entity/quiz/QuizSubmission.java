@@ -36,6 +36,12 @@ public class QuizSubmission extends BaseEntity {
 
     private LocalDateTime endDate;
 
+    /**
+     * EB-53 / D-08 — true when the submission landed after the attempt window
+     * (within the configured grace). Nullable: legacy rows are never backfilled.
+     */
+    private Boolean isLate;
+
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentAnswer> answers;
 }

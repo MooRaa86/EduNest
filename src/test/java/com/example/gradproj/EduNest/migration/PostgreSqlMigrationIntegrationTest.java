@@ -88,8 +88,8 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute scripts V1 through V11")
-                .isEqualTo(11);
+                .as("Initial migration must execute scripts V1 through V12")
+                .isEqualTo(12);
     }
 
     @Test
@@ -98,8 +98,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Eleven migrations must be registered in flyway_schema_history")
-                .hasSize(11);
+                .as("Twelve migrations must be registered in flyway_schema_history")
+                .hasSize(12);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -199,7 +199,7 @@ public class PostgreSqlMigrationIntegrationTest {
                     tables.add(rs.getString("table_name"));
                 }
                 assertThat(tables)
-                        .as("Schema must contain 51 application and support tables through V11")
+                        .as("Schema must contain 51 application and support tables through V12")
                         .hasSize(51);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
@@ -689,11 +689,11 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult upgraded = upgrade.migrate();
             assertThat(upgraded.success).isTrue();
             assertThat(upgraded.migrationsExecuted)
-                    .as("Upgrade from the V6-shaped database must apply V7 through V11")
-                    .isEqualTo(5);
+                    .as("Upgrade from the V6-shaped database must apply V7 through V12")
+                    .isEqualTo(6);
             assertThat(upgrade.info().applied())
-                    .as("Upgraded schema history must hold all eleven migrations")
-                    .hasSize(11);
+                    .as("Upgraded schema history must hold all twelve migrations")
+                    .hasSize(12);
 
             // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
