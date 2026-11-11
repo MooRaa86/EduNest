@@ -139,17 +139,50 @@ jobs:
           # manual path
           MANUAL_SHA: ${{ inputs.commit_sha }}
           MANUAL_IMAGE_REF: ${{ inputs.image_ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
+          OWNER_LC=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          EXPECTED_PREFIX="ghcr.io/${OWNER_LC}/edunest-backend@sha256:"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual deployment requires FULL provenance — a self-consistent
+            # pair of inputs proves nothing on its own. Each check below
+            # fails closed.
             echo "deploy_source=manual" >> "$GITHUB_OUTPUT"
-            bash scripts/cicd/deploy-gate.sh trigger success completed main "$MANUAL_SHA" "$MANUAL_SHA" \
-              || { echo "BLOCK: manual deploy input validation failed"; exit 1; }
-            bash scripts/cicd/deploy-gate.sh image-ref "$MANUAL_IMAGE_REF" || exit 1
+            # 1) syntactic validity of both inputs
+            bash scripts/cicd/deploy-gate.sh sha40 "$MANUAL_SHA" || exit 1
+            bash scripts/cicd/deploy-gate.sh image-ref "$MANUAL_IMAGE_REF" "$EXPECTED_PREFIX" || exit 1
+            # 2) the commit belongs to the authorized main history
+            CMP_STATUS=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$MANUAL_SHA" --jq .status 2>&1) \
+              || { echo "BLOCK: cannot verify commit ancestry against main (gh api: $CMP_STATUS)"; exit 1; }
+            case "$CMP_STATUS" in
+              identical|behind) echo "commit ancestry OK ($CMP_STATUS) — commit belongs to main history" ;;
+              *) echo "BLOCK: supplied commit is NOT part of the authorized main history (compare status: $CMP_STATUS)"; exit 1 ;;
+            esac
+            # 3) the image was built by the approved successful pipeline
+            APPROVED_RUNS=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$MANUAL_SHA&per_page=100" \
+              --jq '[.workflow_runs[] | select(.name == "Build and Push Docker Image" and .conclusion == "success" and .head_branch == "main")] | length' 2>&1) \
+              || { echo "BLOCK: cannot query pipeline runs for provenance (gh api: $APPROVED_RUNS)"; exit 1; }
+            if [ "$APPROVED_RUNS" -lt 1 ]; then
+              echo "BLOCK: no successful 'Build and Push Docker Image' run on main exists for this commit — provenance cannot be proven"
+              exit 1
+            fi
+            # 4) image integrity: pull the pinned digest and require the OCI
+            #    revision label to equal the supplied commit
+            echo "::add-mask::$GHCR_TOKEN"
+            if ! echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin >/dev/null 2>&1; then
+              echo "BLOCK: GHCR login failed — cannot verify image integrity"; exit 1
+            fi
+            if ! docker pull "$MANUAL_IMAGE_REF" >/dev/null 2>&1; then
+              echo "BLOCK: pinned image is not pullable — provenance cannot be proven"; exit 1
+            fi
+            REVISION=$(docker inspect "$MANUAL_IMAGE_REF" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || true)
+            bash scripts/cicd/deploy-gate.sh commit-match "$REVISION" "$MANUAL_SHA" "OCI image revision label vs supplied commit" || exit 1
             {
               echo "verified_sha=$MANUAL_SHA"
               echo "image_ref_pinned=$MANUAL_IMAGE_REF"
-              echo "image_tags=manual-input (operator-supplied)"
+              echo "image_tags=manual-input (provenance-verified)"
             } >> "$GITHUB_OUTPUT"
           else
             echo "deploy_source=workflow_run" >> "$GITHUB_OUTPUT"
@@ -186,6 +219,24 @@ jobs:
           ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
 
+      # Stale-run protection, re-checked immediately BEFORE the external
+      # mutation (automatic path only): if a newer main commit arrived after
+      # the initial SHA verification, this run aborts without migrating. The
+      # newer commit's own pipeline run deploys it instead. Manual dispatch is
+      # exempt by the documented rollback policy (operator explicitly chose an
+      # older commit; ancestry + provenance were verified in the verify job).
+      - name: Recheck main freshness before mutation (stale-run protection)
+        if: needs.verify-and-prepare.outputs.deploy_source == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          set -euo pipefail
+          CURRENT_MAIN=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          bash scripts/cicd/deploy-gate.sh commit-match "$VERIFIED_SHA" "$CURRENT_MAIN" \
+            "pre-migration freshness (verified commit vs current main HEAD)" \
+            || { echo "BLOCK: a newer main commit arrived — aborting without migrating; the newer commit's own pipeline run will deploy"; exit 1; }
+
       # All staging secrets are accessed in THIS environment-scoped job (and
       # the jobs below) — nowhere else. Values are preflighted as set/empty
       # flags only and masked before any output; they are never printed,
@@ -205,16 +256,23 @@ jobs:
             STAGING_DB_PROJECT_REF "$STAGING_DB_PROJECT_REF"
 
       # G5 (coarse: production ref must not appear anywhere) + G8 (positive
-      # identity: URL must match the approved staging Supabase project).
+      # identity: the ACTUAL supplied identity — FLYWAY_USER, the separate
+      # username the db-migrate profile really connects with — plus the URL
+      # host form must match the approved staging Supabase project; an
+      # approved ref present only in an unrelated URL parameter is not proof).
+      # No approved live-database marker exists today (Supabase does not
+      # expose project identity via SQL), so identity is credential+host
+      # based; this limitation is documented in the pipeline contract.
       - name: Guard migration target identity (G5/G8 — never production)
         env:
           STAGING_FLYWAY_URL: ${{ secrets.STAGING_FLYWAY_URL }}
+          FLYWAY_USER: ${{ secrets.STAGING_FLYWAY_USER }}
           STAGING_DB_PROJECT_REF: ${{ vars.STAGING_DB_PROJECT_REF }}
         run: |
           set -uo pipefail
           echo "::add-mask::$STAGING_FLYWAY_URL"
           bash scripts/cicd/deploy-gate.sh migration-url "$STAGING_FLYWAY_URL"
-          bash scripts/cicd/deploy-gate.sh staging-db-identity "$STAGING_FLYWAY_URL" "$STAGING_DB_PROJECT_REF" ciogysvcykzxrjuskxmk
+          bash scripts/cicd/deploy-gate.sh staging-db-identity "$STAGING_FLYWAY_URL" "$FLYWAY_USER" "$STAGING_DB_PROJECT_REF" ciogysvcykzxrjuskxmk
 
       # Migration contract: the exact operator sequence from
       # src/main/resources/db/migration/README.md §3.1.1, executed by the
@@ -251,6 +309,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     outputs:
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
       deployment_note: ${{ steps.deploy.outputs.deployment_note }}
     steps:
       - name: Checkout
@@ -278,10 +337,27 @@ jobs:
             RAILWAY_STAGING_ENVIRONMENT_ID "$RAILWAY_STAGING_ENVIRONMENT_ID" \
             STAGING_BASE_URL "$STAGING_BASE_URL"
 
+      # Second stale-run protection checkpoint, immediately BEFORE the
+      # external Railway mutation (automatic path only). Covers a commit
+      # arriving between the migration gate and the deploy, and multiple
+      # queued runs: a queued older run re-verifies here and aborts without
+      # touching Railway.
+      - name: Recheck main freshness before deploy mutation (stale-run protection)
+        if: needs.verify-and-prepare.outputs.deploy_source == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          set -euo pipefail
+          CURRENT_MAIN=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          bash scripts/cicd/deploy-gate.sh commit-match "$VERIFIED_SHA" "$CURRENT_MAIN" \
+            "pre-deploy freshness (verified commit vs current main HEAD)" \
+            || { echo "BLOCK: a newer main commit arrived — aborting without touching Railway"; exit 1; }
+
       # Verified Railway mechanism (Railway CLI v4; railway deploy --image does
       # NOT exist — that command provisions templates):
       #   1. railway service source connect --image <ref>  — sets/updates the
-      #      service's Docker image source.
+      #      service's Docker image source (all flags verified: -p/-s/-e/--image/--json).
       #   2. railway redeploy --from-source                — pulls and deploys
       #      the configured image source (pushing a new image does NOT
       #      redeploy on its own; --from-source makes it deterministic).
@@ -291,7 +367,7 @@ jobs:
       # Registry pull credentials (GHCR read:packages token) are configured
       # once on the service in the Railway dashboard (ops/cicd/
       # staging-pipeline.md), never through this workflow.
-      - name: Deploy image (pinned by digest)
+      - name: Deploy image (pinned by digest) and track the created deployment
         id: deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -313,40 +389,80 @@ jobs:
             --from-source --yes --json \
             --project "$RAILWAY_STAGING_PROJECT_ID" \
             --service "$RAILWAY_STAGING_SERVICE_ID" \
-            --environment "$RAILWAY_STAGING_ENVIRONMENT_ID"
+            --environment "$RAILWAY_STAGING_ENVIRONMENT_ID" \
+            > /tmp/railway-redeploy.json
+          # Track the ACTUAL deployment created by this run. The redeploy
+          # --json payload is expected to carry a deployment identifier; the
+          # exact field name is not pinned by the CLI docs, so common shapes
+          # are tried. If none is found the deployment CANNOT be verified
+          # later — fail closed instead of trusting existing service health.
+          DEPLOY_ID=$(jq -r 'try (.id // .deployment.id // .deploymentId // .deploymentId.id) // empty' /tmp/railway-redeploy.json 2>/dev/null || true)
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "BLOCK: could not capture the Railway deployment id created by this run — deployment identity is untrackable, failing closed (no success is claimed; the previous deployment keeps serving)"
+            exit 1
+          fi
           {
-            echo "deployment_note=image $IMAGE_REF deployed to Railway staging (service $RAILWAY_STAGING_SERVICE_ID) from commit $VERIFIED_SHA"
+            echo "deployment_id=$DEPLOY_ID"
+            echo "deployment_note=image $IMAGE_REF deployed to Railway staging (service $RAILWAY_STAGING_SERVICE_ID, deployment $DEPLOY_ID) from commit $VERIFIED_SHA"
           } >> "$GITHUB_OUTPUT"
 
-      # Best-effort deployment status capture: the authoritative success
-      # signal is the HTTP smoke verification below, and the deploy step
-      # above already failed on any nonzero CLI exit. Crash detection is
-      # best-effort because the Railway JSON schema is not pinned by the CLI
-      # docs; a smoke failure fails the pipeline regardless.
-      - name: Observe Railway deployment status (best-effort, pre-smoke)
+      # Track the created deployment to a TERMINAL successful status before
+      # smoke: health checks can be served by the PREVIOUS deployment, so
+      # success is never inferred from existing service health. Railway CLI
+      # 4.68.0: `railway deployment list` has NO --project flag — project
+      # context is established first with `railway link` (documented flags
+      # -p/-s/-e; writes local runner config only, non-destructive). Id and
+      # status field names are not pinned by the CLI docs; common shapes are
+      # tried and a conclusive terminal status is required, otherwise this
+      # step FAILS CLOSED (the run reports the deployment as unverified).
+      - name: Await tracked Railway deployment completion
+        id: watch
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_STAGING_PROJECT_ID: ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
           RAILWAY_STAGING_SERVICE_ID: ${{ vars.RAILWAY_STAGING_SERVICE_ID }}
           RAILWAY_STAGING_ENVIRONMENT_ID: ${{ vars.RAILWAY_STAGING_ENVIRONMENT_ID }}
+          DEPLOY_ID: ${{ steps.deploy.outputs.deployment_id }}
+          IMAGE_REF: ${{ needs.verify-and-prepare.outputs.image_ref_pinned }}
         run: |
           echo "::add-mask::$RAILWAY_TOKEN"
-          for attempt in $(seq 1 10); do
+          railway link \
+            --project "$RAILWAY_STAGING_PROJECT_ID" \
+            --service "$RAILWAY_STAGING_SERVICE_ID" \
+            --environment "$RAILWAY_STAGING_ENVIRONMENT_ID" \
+            --json >/dev/null
+          for attempt in $(seq 1 20); do
             if railway deployment list \
-              --project "$RAILWAY_STAGING_PROJECT_ID" \
               --service "$RAILWAY_STAGING_SERVICE_ID" \
               --environment "$RAILWAY_STAGING_ENVIRONMENT_ID" \
-              --limit 5 --json > /tmp/railway-deployments.json 2>/dev/null; then
-              if grep -Eq '"(CRASHED|FAILED)' /tmp/railway-deployments.json; then
-                echo "railway reports a failed deployment"; exit 1
-              fi
-              if grep -Eq '"(SUCCESS|DEPLOYED|ACTIVE)' /tmp/railway-deployments.json; then
-                echo "railway reports a live deployment (best-effort match)"; exit 0
+              --limit 20 --json > /tmp/railway-deployments.json 2>/dev/null; then
+              ENTRY=$(jq -c --arg id "$DEPLOY_ID" '.[]? | select((.id // .deploymentId // "") == $id)' /tmp/railway-deployments.json 2>/dev/null || true)
+              if [ -n "$ENTRY" ]; then
+                STATUS=$(printf '%s' "$ENTRY" | jq -r 'try (.status // .state // "unknown")' 2>/dev/null || echo unknown)
+                echo "attempt $attempt: deployment $DEPLOY_ID status: $STATUS"
+                case "$STATUS" in
+                  SUCCESS|DEPLOYED|ACTIVE)
+                    if printf '%s' "$ENTRY" | grep -Fq "$IMAGE_REF"; then
+                      echo "tracked deployment identity matches the pinned image ref"
+                    else
+                      echo "note: tracked deployment entry does not echo the image ref (status schema-dependent; digest was pinned at source connect)"
+                    fi
+                    echo "deployment_ok=true" >> "$GITHUB_OUTPUT"
+                    exit 0
+                    ;;
+                  CRASHED|FAILED)
+                    echo "BLOCK: tracked Railway deployment $DEPLOY_ID reached a failed terminal state ($STATUS)"
+                    exit 1
+                    ;;
+                esac
+              else
+                echo "attempt $attempt: deployment $DEPLOY_ID not in list yet"
               fi
             fi
-            echo "attempt $attempt: awaiting deployment completion"; sleep 30
+            sleep 30
           done
-          echo "status observation window elapsed without a conclusive match; proceeding to HTTP smoke verification (authoritative)"
+          echo "BLOCK: tracked deployment $DEPLOY_ID did not reach a terminal successful status within the observation window — deployment is UNVERIFIED, failing closed"
+          exit 1
 
   smoke-verify:
     name: Staging smoke verification (EB-73 script)
@@ -361,11 +477,13 @@ jobs:
           ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
 
-      # The Railway redeploy returns before the new container finishes
-      # rolling; poll liveness briefly, then run the full EB-73 smoke (health
-      # groups, Swagger UI, STOMP ws/info). A smoke failure fails this job,
-      # which marks the deployment unsuccessful and is recorded in evidence.
-      # The workflow cannot report success before this job succeeds.
+      # The tracked Railway deployment has reached a terminal successful
+      # status in the deploy job, but the container may still be finishing
+      # its rollout: poll liveness briefly, then run the full EB-73 smoke
+      # (health groups, Swagger UI, STOMP ws/info). A smoke failure fails
+      # this job, which marks the deployment unsuccessful and is recorded in
+      # evidence. The workflow cannot report success before this job
+      # succeeds, and success is never inferred from existing service health.
       - name: Wait for staging rollout
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
@@ -398,6 +516,7 @@ jobs:
           IMAGE_REF_PINNED: ${{ needs.verify-and-prepare.outputs.image_ref_pinned }}
           IMAGE_TAGS: ${{ needs.verify-and-prepare.outputs.image_tags }}
           DEPLOY_SOURCE: ${{ needs.verify-and-prepare.outputs.deploy_source }}
+          DEPLOYMENT_ID: ${{ needs.deploy-staging.outputs.deployment_id }}
           MIGRATION_OUTCOME: ${{ needs.migration-gate.result }}
           DEPLOY_OUTCOME: ${{ needs.deploy-staging.result }}
           SMOKE_OUTCOME: ${{ needs.smoke-verify.result }}
@@ -417,11 +536,12 @@ jobs:
             echo "verified_commit=$VERIFIED_SHA"
             echo "image_ref_pinned=$IMAGE_REF_PINNED"
             echo "image_tags=$IMAGE_TAGS"
+            echo "railway_deployment_id=$DEPLOYMENT_ID"
             echo "migration_gate=$MIGRATION_OUTCOME"
             echo "railway_deploy=$DEPLOY_OUTCOME"
             echo "staging_smoke=$SMOKE_OUTCOME"
             echo "deploy_note=$DEPLOY_NOTE"
-            echo "rollback_note=Rollback = redeploy the previous digest-pinned image via workflow_dispatch (Railway deployment rollbacks restore image ref + variables); database migrations are forward-only and are NOT auto-rolled back (see ops/cicd/staging-pipeline.md)."
+            echo "rollback_policy=Application rollback = manual workflow_dispatch redeploy of the previous digest-pinned image (provenance-verified); automatic deployments only ever deploy the newest verified main HEAD and will supersede a manual rollback on the next successful run. Database migrations are forward-only and are NOT auto-rolled back (see ops/cicd/staging-pipeline.md)."
           } > deployment-evidence.txt
           cat deployment-evidence.txt >> "$GITHUB_STEP_SUMMARY"
 

@@ -107,14 +107,47 @@ gate_guard_migration_url() {
     return 0
 }
 
-# G6 — reject mutable/implicit tags in the deploy command.
+# G6 — reject mutable/implicit tags in the deploy command. With an optional
+# expected image prefix (e.g. "ghcr.io/moora86/edunest-backend@sha256:") the
+# ref must additionally start with exactly that prefix, proving the image
+# belongs to the approved GHCR repository.
 gate_guard_image_ref() {
-    local ref="$1"
+    local ref="$1" expected_prefix="${2:-}"
     case "$ref" in
-        *@sha256:*) echo "OK: image ref is digest-pinned"; return 0 ;;
+        *@sha256:*) : ;;
         *:latest) echo "BLOCK: 'latest' tag is not deployable — pin by digest"; return 1 ;;
         "") echo "BLOCK: image ref is empty"; return 1 ;;
         *) echo "BLOCK: image ref must be digest-pinned (@sha256:...); got '$ref'"; return 1 ;;
+    esac
+    local digest="${ref##*@}"
+    if [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+        : 
+    else
+        echo "BLOCK: digest must be sha256 followed by exactly 64 lowercase hex characters"
+        return 1
+    fi
+    if [ -n "$expected_prefix" ]; then
+        case "$ref" in
+            "$expected_prefix"*) echo "OK: image ref is digest-pinned and matches the approved repository prefix"; return 0 ;;
+            *) echo "BLOCK: image ref does not belong to the approved GHCR repository (expected prefix '${expected_prefix}...')"; return 1 ;;
+        esac
+    fi
+    echo "OK: image ref is digest-pinned"; return 0
+}
+
+# G3 — full commit SHA format check: exactly 40 lowercase hex characters.
+gate_sha40() {
+    local sha="$1"
+    case "$sha" in
+        [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]\
+[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]\
+[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]\
+[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f])
+            echo "OK: commit SHA is a full 40-character lowercase hex SHA"; return 0 ;;
+        *)
+            echo "BLOCK: commit SHA must be a full 40-character lowercase hex SHA"
+            return 1
+            ;;
     esac
 }
 
@@ -135,18 +168,23 @@ gate_activation() {
     return 1
 }
 
-# G8 — staging database identity allowlist. Substring-blocking of the
-# production ref (G5, coarse) is not sufficient on its own: a mistyped or
-# stolen URL could point at an unknown database that merely does not contain
-# the production ref. Identity must be positively proven against the approved
-# staging Supabase project. Args:
+# G8 — staging database identity allowlist, based on the ACTUAL identity
+# Flyway connects with: FLYWAY_URL (host form) and FLYWAY_USER (the separate,
+# actually-supplied username — the pom's db-migrate profile wires
+# ${env.FLYWAY_URL}/${env.FLYWAY_USER}/${env.FLYWAY_PASSWORD}, so FLYWAY_USER
+# is the real credential identity, not a URL parameter). Two Supabase
+# connection forms are accepted:
+#   pooler:  FLYWAY_USER ends with ".<approved_ref>"  AND host *.pooler.supabase.com
+#   direct:  FLYWAY_USER == "postgres"                AND host db.<approved_ref>.supabase.co
+# An approved project reference present only in an unrelated URL parameter is
+# NOT accepted. Credential/URL values are parsed but NEVER printed. Args:
 #   $1 jdbc url (jdbc:postgresql://...)
-#   $2 approved staging Supabase project ref (repository variable
+#   $2 actually-supplied DB username (FLYWAY_USER)
+#   $3 approved staging Supabase project ref (repository variable
 #      STAGING_DB_PROJECT_REF; empty => fail closed)
-#   $3 production Supabase project ref (must never appear)
-# Credential/URL values are parsed but NEVER printed.
+#   $4 production Supabase project ref (must never appear)
 gate_staging_db_identity() {
-    local url="$1" approved_ref="$2" prod_ref="$3"
+    local url="$1" db_user="$2" approved_ref="$3" prod_ref="$4"
     if [ -z "$approved_ref" ]; then
         echo "BLOCK: approved staging database identity (STAGING_DB_PROJECT_REF) is not configured — refusing migration rather than trusting an unverified target"
         return 1
@@ -155,50 +193,45 @@ gate_staging_db_identity() {
         echo "BLOCK: migration URL is empty — no database identity to verify"
         return 1
     fi
+    if [ -z "$db_user" ]; then
+        echo "BLOCK: supplied database username is empty — refusing to migrate without a verifiable identity"
+        return 1
+    fi
     case "$url" in
         jdbc:postgresql://*) : ;;
         *) echo "BLOCK: staging database identity requires a PostgreSQL JDBC URL"; return 1 ;;
     esac
-    # Network location (may carry userinfo): everything between // and the
-    # first following '/'.
-    local netloc=""
-    netloc=$(printf '%s' "$url" | sed -n 's|^jdbc:postgresql://\([^/]*\)/.*|\1|p')
-    # Userinfo username (pooler format: postgres.<project-ref>:password@...).
-    local userinfo_user=""
-    case "$netloc" in
-        *@*)
-            userinfo_user=$(printf '%s' "$netloc" | sed 's|@.*||; s|:.*||')
-            ;;
-    esac
-    # Query-string user parameter (alternative credential location).
-    local query_user=""
-    query_user=$(printf '%s' "$url" | sed -n 's|[?&]user=\([^&]*\).*|\1|p')
-    # Host (direct-connection format: db.<project-ref>.supabase.co).
+    # Host = everything between // and the first following '/', minus any
+    # embedded userinfo and port. Parsed silently; never printed.
     local host
-    host=$(printf '%s' "$netloc" | sed 's|.*@||; s|:.*||')
+    host=$(printf '%s' "$url" | sed -n 's|^jdbc:postgresql://\([^/]*\)/.*|\1|p' | sed 's|.*@||' | sed 's|:.*||')
     # Defense in depth: the production ref must not appear in any identity
     # position (the coarse G5 check blocks it anywhere in the URL already).
-    case "|$userinfo_user|$query_user|$host|" in
+    case "|$db_user|$host|" in
         *"$prod_ref"*)
             echo "BLOCK: migration target carries the PRODUCTION Supabase project identity — refusing"
             return 1
             ;;
     esac
-    # Positive identity proof (either supported connection form).
-    case "$userinfo_user" in
-        *".${approved_ref}") : ;;
-        *) case "$query_user" in
-               *".${approved_ref}") : ;;
-               *) case "$host" in
-                      "${approved_ref}".supabase.co|db."${approved_ref}".supabase.co) : ;;
-                      *)
-                          echo "BLOCK: migration target does not match the approved staging database identity (no allowed connection form for the staging Supabase project) — refusing migration"
-                          return 1
-                          ;;
-                  esac ;;
-           esac ;;
+    # Positive identity proof (the two allowed Supabase connection forms).
+    local form=""
+    case "$db_user" in
+        *".${approved_ref}")
+            case "$host" in
+                *.pooler.supabase.com) form="pooler" ;;
+            esac
+            ;;
     esac
-    echo "OK: migration target identity matches the approved staging database (ref withheld)"
+    if [ -z "$form" ] && [ "$db_user" = "postgres" ]; then
+        case "$host" in
+            "db.${approved_ref}.supabase.co") form="direct" ;;
+        esac
+    fi
+    if [ -z "$form" ]; then
+        echo "BLOCK: migration target does not match the approved staging database identity (FLYWAY_USER/host pair matches neither the approved pooler nor the approved direct connection form) — refusing migration"
+        return 1
+    fi
+    echo "OK: migration target identity matches the approved staging database ($form form; credentials withheld)"
     return 0
 }
 
@@ -216,8 +249,9 @@ gate_commit_match() {
 # CLI dispatcher used by GitHub Actions steps (and reusable by operators):
 #   deploy-gate.sh trigger <conclusion> <status> <head_branch> <head_sha> <current_sha>
 #   deploy-gate.sh migration-url <jdbc_url>
-#   deploy-gate.sh staging-db-identity <jdbc_url> <approved_staging_ref> <prod_ref>
-#   deploy-gate.sh image-ref <ref>
+#   deploy-gate.sh staging-db-identity <jdbc_url> <db_user> <approved_staging_ref> <prod_ref>
+#   deploy-gate.sh image-ref <ref> [expected_repo_prefix]
+#   deploy-gate.sh sha40 <commit_sha>
 #   deploy-gate.sh require-config <name> <value> [name value...]
 #   deploy-gate.sh activation <STAGING_AUTO_DEPLOY_ENABLED value>
 # Sourcing this file (as the test suite does) must have no side effects.
@@ -225,8 +259,9 @@ case "${1:-}" in
     trigger)            shift; gate_verify_trigger "$@" ;;
     commit-match)       shift; gate_commit_match "$@" ;;
     migration-url)      shift; gate_guard_migration_url "$1" ;;
-    staging-db-identity) shift; gate_staging_db_identity "$1" "$2" "$3" ;;
-    image-ref)          shift; gate_guard_image_ref "$1" ;;
+    staging-db-identity) shift; gate_staging_db_identity "$1" "$2" "$3" "$4" ;;
+    image-ref)          shift; gate_guard_image_ref "$1" "$2" ;;
+    sha40)              shift; gate_sha40 "$1" ;;
     require-config)     shift; gate_require_config "$@" ;;
     activation)         shift; gate_activation "$1" ;;
     "")                 : ;;
