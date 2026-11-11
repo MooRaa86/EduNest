@@ -69,6 +69,42 @@ assert_passes  "digest-pinned ref passes"                                       
 out=$(gate_short_tag "$SHA" ""); [ "$out" = "${SHA:0:7}" ] && { pass=$((pass+1)); echo "PASS  short tag falls back to 7-char SHA"; } || { fail=$((fail+1)); echo "FAIL  short tag fallback (got '$out')"; }
 out=$(gate_short_tag "$SHA" "v1.2.3-4-ga660839"); [ "$out" = "v1.2.3-4-ga660839" ] && { pass=$((pass+1)); echo "PASS  describe tag preferred when present"; } || { fail=$((fail+1)); echo "FAIL  describe preference (got '$out')"; }
 
+# G7 — explicit activation gate (auto-deploy disabled by default)
+STAGE_REF="stgref123example456"
+assert_passes  "activation true passes"                                               gate_activation "true"
+assert_blocks "activation false blocks"               "NOT activated"                  gate_activation "false"
+assert_blocks "activation absent blocks"              "NOT activated"                  gate_activation ""
+assert_blocks "activation wrong casing blocks"        "NOT activated"                  gate_activation "True"
+assert_blocks "activation garbage blocks"             "NOT activated"                  gate_activation "yes"
+
+# G8 — staging database identity allowlist (never prints credentials)
+POOL_STG="jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres?user=postgres.${STAGE_REF}&password=secret"
+DIRECT_STG="jdbc:postgresql://db.${STAGE_REF}.supabase.co:5432/postgres"
+PROD_REF="ciogysvcykzxrjuskxmk"
+POOL_PROD="jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres?user=postgres.${PROD_REF}&password=secret"
+DIRECT_PROD="jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres"
+assert_passes  "staging pooler identity passes"                                        gate_staging_db_identity "$POOL_STG" "$STAGE_REF" "$PROD_REF"
+assert_passes  "staging direct host identity passes"                                   gate_staging_db_identity "$DIRECT_STG" "$STAGE_REF" "$PROD_REF"
+assert_blocks "production pooler identity blocks"     "PRODUCTION Supabase project identity" gate_staging_db_identity "$POOL_PROD" "$STAGE_REF" "$PROD_REF"
+assert_blocks "production direct host identity blocks" "PRODUCTION Supabase project identity"  gate_staging_db_identity "$DIRECT_PROD" "$STAGE_REF" "$PROD_REF"
+assert_blocks "unapproved foreign db blocks"          "does not match the approved staging database identity" gate_staging_db_identity "jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres?user=postgres.someotherref999&password=secret" "$STAGE_REF" "$PROD_REF"
+assert_blocks "missing approved ref fails closed"     "not configured"                 gate_staging_db_identity "$POOL_STG" "" "$PROD_REF"
+assert_blocks "empty url identity blocks"             "migration URL is empty"         gate_staging_db_identity "" "$STAGE_REF" "$PROD_REF"
+assert_blocks "non-jdbc identity blocks"              "PostgreSQL JDBC URL"            gate_staging_db_identity "postgres://db.${STAGE_REF}.supabase.co:5432/postgres" "$STAGE_REF" "$PROD_REF"
+out=$(gate_staging_db_identity "$POOL_STG" "$STAGE_REF" "$PROD_REF" 2>&1)
+printf '%s' "$out" | grep -qF "secret" && { fail=$((fail+1)); echo "FAIL  identity check leaked password"; } || { pass=$((pass+1)); echo "PASS  identity check never prints credentials"; }
+out=$(gate_staging_db_identity "jdbc:postgresql://host/db?user=postgres.${STAGE_REF}&password=with${PROD_REF}inside" "$STAGE_REF" "$PROD_REF" 2>&1)
+printf '%s' "$out" | grep -qF "with${PROD_REF}inside" && { fail=$((fail+1)); echo "FAIL  identity check leaked URL"; } || { pass=$((pass+1)); echo "PASS  identity check never prints the URL"; }
+
+# stale-run protection: an older successful run must not deploy over newer main
+assert_blocks "stale triggering run blocks deploy"    "identity mismatch"              gate_verify_trigger success completed main 1111111111111111111111111111111111111111 "$SHA"
+
+# G5 coarse check — production ref hidden inside a password is still blocked
+assert_blocks "prod ref anywhere in URL blocks"       "PRODUCTION Supabase project ref" gate_guard_migration_url "jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres?user=postgres.${STAGE_REF}&password=xx${PROD_REF}yy"
+
+# safe manual dispatch shape: explicit success+completed+main with matching SHA
+assert_passes  "manual dispatch safe path passes"                                      gate_verify_trigger success completed main "$SHA" "$SHA"
+
 echo "-----"
 echo "deploy-gate tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

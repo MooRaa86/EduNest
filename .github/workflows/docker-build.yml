@@ -21,7 +21,18 @@ name: Build and Push Docker Image
 # - Tags are immutable identities (full commit SHA + git describe); `latest`
 #   is deliberately NOT published. Deploys pin by digest.
 # - Gate logic is shared with deploy-staging.yml and unit-tested locally in
-#   scripts/cicd/test-deploy-gate.sh (G1/G2/G3).
+#   scripts/cicd/test-deploy-gate.sh (G1/G2/G3 + stale-run protection).
+#
+# SHA semantics (workflow_run events are subtle — do not "simplify" this):
+#   github.sha                             = default-branch HEAD at event time
+#                                            (workflow definition revision
+#                                            context — NOT the tested commit)
+#   github.event.workflow_run.head_sha     = the commit the tests run was
+#                                            executed against = the tested
+#                                            and hence BUILT commit
+# The gate below blocks whenever these differ (stale-run protection): an older
+# tests run completing after a newer main commit was pushed must NOT produce
+# an image, and the image is only ever built from the verified head_sha.
 
 on:
   workflow_run:
@@ -45,10 +56,14 @@ jobs:
     name: Build + push GHCR image (tested main commit only)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout verified commit
+      # Checkout the TESTED commit (github.event.workflow_run.head_sha). This
+      # is also the only checkout ref that could contain this exact workflow
+      # file revision plus the gate script; the gate still blocks the build
+      # unless head_sha == default-branch HEAD (stale-run protection).
+      - name: Checkout tested commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
       - name: Verify triggering run (G1/G2/G3 - success, main, commit identity)
@@ -70,18 +85,18 @@ jobs:
       - name: Derive immutable image tags (git describe / full SHA)
         id: tags
         env:
-          CURRENT_SHA: ${{ github.sha }}
+          BUILT_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          DESCRIBE=$(git describe --tags --always "$CURRENT_SHA" 2>/dev/null || true)
+          DESCRIBE=$(git describe --tags --always "$BUILT_SHA" 2>/dev/null || true)
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           {
             echo "owner=$OWNER_LC"
-            echo "sha_tag=$CURRENT_SHA"
+            echo "sha_tag=$BUILT_SHA"
             echo "describe_tag=$DESCRIBE"
             echo "image=ghcr.io/$OWNER_LC/$IMAGE_NAME"
           } >> "$GITHUB_OUTPUT"
-          echo "tags: $CURRENT_SHA and '${DESCRIBE}'"
+          echo "tags: $BUILT_SHA and '${DESCRIBE}'"
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -99,7 +114,7 @@ jobs:
             ${{ steps.tags.outputs.image }}:${{ steps.tags.outputs.sha_tag }}
             ${{ steps.tags.outputs.image }}:${{ steps.tags.outputs.describe_tag }}
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
       - name: Resolve and record immutable digest
@@ -108,7 +123,7 @@ jobs:
           IMAGE: ${{ steps.tags.outputs.image }}
           SHA_TAG: ${{ steps.tags.outputs.sha_tag }}
           DESCRIBE_TAG: ${{ steps.tags.outputs.describe_tag }}
-          CURRENT_SHA: ${{ github.sha }}
+          BUILT_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
           DIGEST=$(docker buildx imagetools inspect "$IMAGE:$SHA_TAG" --format '{{json .Manifest.Digest}}' | tr -d '"')
@@ -118,7 +133,7 @@ jobs:
             echo "pinned=$IMAGE@$DIGEST"
           } >> "$GITHUB_OUTPUT"
           {
-            echo "commit=$CURRENT_SHA"
+            echo "commit=$BUILT_SHA"
             echo "image_ref_pinned=$IMAGE@$DIGEST"
             echo "image_tags=$IMAGE:$SHA_TAG $IMAGE:$DESCRIBE_TAG"
           } > image-identity.txt

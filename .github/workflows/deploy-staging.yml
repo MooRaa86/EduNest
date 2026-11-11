@@ -4,26 +4,40 @@ name: Deploy Staging
 #
 # Dependency chain (see ops/cicd/staging-pipeline.md for the full contract):
 #   tests.yml success on main -> docker-build.yml pushes immutable GHCR image
-#   -> THIS workflow: trigger verification -> migration gate -> Railway deploy
-#   -> smoke verification -> deployment evidence artifact.
+#   -> THIS workflow: activation gate -> trigger verification -> migration
+#   gate -> Railway deploy -> smoke verification -> evidence artifact.
 #
 # Hard rules enforced here:
+# - Automatic staging deployment is DISABLED until the repository variable
+#   STAGING_AUTO_DEPLOY_ENABLED is exactly 'true' (activation gate G7): no
+#   migration, no deployment, no external changes, no environment approval
+#   is required merely to skip. Manual dispatch is exempt from the flag but
+#   still requires explicit operator inputs AND the 'staging' environment
+#   protection (required reviewers, if configured).
 # - Never deploy from a failed or incomplete test/image run (G1).
 # - Only main may deploy to staging (G2); PR refs never deploy.
 # - Tested commit == built commit == deployed image (G3, digest-pinned).
+# - Stale-run protection: the triggering run's head_sha must equal
+#   default-branch HEAD at deploy time, so an older successful run can never
+#   overwrite a newer staging deployment.
 # - Missing staging configuration BLOCKS the deployment (G4) instead of
-#   continuing silently.
-# - Migrations never target the production Supabase project (G5) and run
-#   BEFORE the new image is deployed; a failed migration aborts the deploy.
+#   continuing silently. Environment-scoped secrets are read ONLY in jobs
+#   attached to the 'staging' environment (they are invisible elsewhere —
+#   the verify job intentionally accesses none).
+# - Migrations never target the production Supabase project (G5) and must
+#   positively match the approved staging database identity (G8); they run
+#   BEFORE the new image is deployed and a failed migration aborts the deploy.
+# - Image refs are digest-pinned (G6); 'latest' is never deployable.
 # - Concurrent staging deployments are serialized by the concurrency group
 #   (queued, never cancelled mid-deploy).
 # - Deployment evidence is published as a workflow artifact (never committed
 #   to protected main).
 #
-# FIRST DEPLOYMENT REQUIREMENT: the Project Owner must provision the GitHub
-# Environment 'staging' with the secrets/vars listed in
-# ops/cicd/staging-pipeline.md and explicitly authorize the first deploy.
-# Until then this workflow will fail fast at the preflight gates — by design.
+# FIRST DEPLOYMENT REQUIREMENT: the Project Owner must (1) set the repository
+# variables listed in ops/cicd/staging-pipeline.md (including the activation
+# flag), (2) create the GitHub Environment 'staging' with the required
+# secrets, and (3) explicitly authorize activation. Until then every
+# automatic path stops at the activation gate — by design, cleanly skipped.
 
 on:
   workflow_run:
@@ -34,7 +48,7 @@ on:
     # Manual redeploy path: requires an explicitly digest-pinned image ref and
     # the commit SHA that produced it, and still runs the migration gate and
     # smoke. The 'staging' GitHub Environment protection (if configured with
-    # required reviewers) applies to every path.
+    # required reviewers) applies to every step of this path.
     inputs:
       commit_sha:
         description: "Full commit SHA the image was built from"
@@ -55,8 +69,35 @@ permissions:
   packages: read
 
 jobs:
+  activation:
+    name: Deployment activation gate (G7)
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.gate.outputs.enabled }}
+    steps:
+      # Reads a non-secret repository variable only; no checkout, no secrets,
+      # no environment — skipping activation must not require an approval.
+      - name: Evaluate activation gate
+        id: gate
+        env:
+          AUTO_DEPLOY: ${{ vars.STAGING_AUTO_DEPLOY_ENABLED }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "manual dispatch: operator explicitly requested this deploy (still gated by 'staging' environment protection and full verification chain)"
+          elif [ "$AUTO_DEPLOY" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "STAGING_AUTO_DEPLOY_ENABLED=true — automatic staging deployment activated"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "STAGING_AUTO_DEPLOY_ENABLED is not 'true' (got: '$AUTO_DEPLOY') — automatic staging deployment is DISABLED; no migration, no deployment, no external changes. Repository owners can activate by setting the repository variable to exactly 'true' after explicit authorization."
+          fi
+
   verify-and-prepare:
-    name: Verify trigger and image identity (G1-G4, G6)
+    name: Verify trigger and image identity (G1-G3, G6)
+    needs: [activation]
+    if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     outputs:
       verified_sha: ${{ steps.prepare.outputs.verified_sha }}
@@ -64,9 +105,17 @@ jobs:
       image_tags: ${{ steps.prepare.outputs.image_tags }}
       deploy_source: ${{ steps.prepare.outputs.deploy_source }}
     steps:
-      - name: Checkout
+      # Intentionally NOT attached to the 'staging' environment and reads NO
+      # secrets: environment-scoped secrets are only accessible in jobs that
+      # reference the environment, so all secret-dependent checks live in the
+      # migration/deploy/smoke jobs below.
+      - name: Checkout verified revision
         uses: actions/checkout@v4
         with:
+          # workflow_run: checkout the TESTED commit (github.sha here is the
+          # default-branch HEAD / definition revision, not the tested commit).
+          # dispatch: the default branch provides the gate scripts.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - name: Download image identity from trusted image run
@@ -104,6 +153,10 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           else
             echo "deploy_source=workflow_run" >> "$GITHUB_OUTPUT"
+            # G1/G2/G3 + stale-run protection: head_sha must equal current
+            # default-branch HEAD, so an older successful image run whose
+            # deployment arrives after a newer commit was merged is rejected
+            # instead of overwriting newer staging.
             bash scripts/cicd/deploy-gate.sh trigger \
               "$TRIGGER_CONCLUSION" "$TRIGGER_STATUS" "$TRIGGER_HEAD_BRANCH" "$TRIGGER_HEAD_SHA" "$CURRENT_SHA" || exit 1
             bash scripts/cicd/deploy-gate.sh require-config image-identity-artifact "$(cat image-identity.txt 2>/dev/null)" || exit 1
@@ -120,28 +173,11 @@ jobs:
           fi
           cat "$GITHUB_OUTPUT"
 
-      - name: Pre-verify staging configuration (G4 — fail fast, deploy block)
-        env:
-          # '${{ secrets.X != '' && 'set' || '' }}' yields the empty string when
-          # unset (never the literal 'false', which bash would treat as set).
-          RAILWAY_TOKEN_SET: ${{ secrets.RAILWAY_TOKEN != '' && 'set' || '' }}
-          RAILWAY_STAGING_PROJECT_ID: ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
-          RAILWAY_STAGING_SERVICE_ID: ${{ vars.RAILWAY_STAGING_SERVICE_ID }}
-          RAILWAY_STAGING_ENVIRONMENT_ID: ${{ vars.RAILWAY_STAGING_ENVIRONMENT_ID }}
-          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
-        run: |
-          set -uo pipefail
-          bash scripts/cicd/deploy-gate.sh require-config \
-            RAILWAY_TOKEN "$RAILWAY_TOKEN_SET" \
-            RAILWAY_STAGING_PROJECT_ID "$RAILWAY_STAGING_PROJECT_ID" \
-            RAILWAY_STAGING_SERVICE_ID "$RAILWAY_STAGING_SERVICE_ID" \
-            RAILWAY_STAGING_ENVIRONMENT_ID "$RAILWAY_STAGING_ENVIRONMENT_ID" \
-            STAGING_BASE_URL "$STAGING_BASE_URL"
-
   migration-gate:
     name: Staging Flyway migration gate (before deploy)
+    needs: [activation, verify-and-prepare]
+    if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
-    needs: [verify-and-prepare]
     environment: staging
     steps:
       - name: Checkout the exact verified commit
@@ -150,23 +186,40 @@ jobs:
           ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
 
-      - name: Guard migration target and credentials (G4/G5 — never production)
+      # All staging secrets are accessed in THIS environment-scoped job (and
+      # the jobs below) — nowhere else. Values are preflighted as set/empty
+      # flags only and masked before any output; they are never printed,
+      # passed through job outputs, or written to artifacts.
+      - name: Preflight migration configuration (G4 — fail closed)
         env:
-          STAGING_FLYWAY_URL: ${{ secrets.STAGING_FLYWAY_URL }}
+          STAGING_FLYWAY_URL_SET: ${{ secrets.STAGING_FLYWAY_URL != '' && 'set' || '' }}
           STAGING_FLYWAY_USER_SET: ${{ secrets.STAGING_FLYWAY_USER != '' && 'set' || '' }}
           STAGING_FLYWAY_PASSWORD_SET: ${{ secrets.STAGING_FLYWAY_PASSWORD != '' && 'set' || '' }}
+          STAGING_DB_PROJECT_REF: ${{ vars.STAGING_DB_PROJECT_REF }}
         run: |
           set -uo pipefail
           bash scripts/cicd/deploy-gate.sh require-config \
+            STAGING_FLYWAY_URL "$STAGING_FLYWAY_URL_SET" \
             STAGING_FLYWAY_USER "$STAGING_FLYWAY_USER_SET" \
-            STAGING_FLYWAY_PASSWORD "$STAGING_FLYWAY_PASSWORD_SET"
+            STAGING_FLYWAY_PASSWORD "$STAGING_FLYWAY_PASSWORD_SET" \
+            STAGING_DB_PROJECT_REF "$STAGING_DB_PROJECT_REF"
+
+      # G5 (coarse: production ref must not appear anywhere) + G8 (positive
+      # identity: URL must match the approved staging Supabase project).
+      - name: Guard migration target identity (G5/G8 — never production)
+        env:
+          STAGING_FLYWAY_URL: ${{ secrets.STAGING_FLYWAY_URL }}
+          STAGING_DB_PROJECT_REF: ${{ vars.STAGING_DB_PROJECT_REF }}
+        run: |
+          set -uo pipefail
+          echo "::add-mask::$STAGING_FLYWAY_URL"
           bash scripts/cicd/deploy-gate.sh migration-url "$STAGING_FLYWAY_URL"
+          bash scripts/cicd/deploy-gate.sh staging-db-identity "$STAGING_FLYWAY_URL" "$STAGING_DB_PROJECT_REF" ciogysvcykzxrjuskxmk
 
       # Migration contract: the exact operator sequence from
       # src/main/resources/db/migration/README.md §3.1.1, executed by the
       # pipeline as an authorized operator. No repair, no clean, no baseline —
       # a failed migration BLOCKS deployment (the deploy job needs this job).
-      # Secrets are masked and never printed.
       - name: Set up JDK 21 + Maven cache
         uses: actions/setup-java@v5
         with:
@@ -193,8 +246,9 @@ jobs:
 
   deploy-staging:
     name: Deploy digest-pinned image to Railway staging
+    needs: [activation, verify-and-prepare, migration-gate]
+    if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
-    needs: [verify-and-prepare, migration-gate]
     environment: staging
     outputs:
       deployment_note: ${{ steps.deploy.outputs.deployment_note }}
@@ -205,26 +259,38 @@ jobs:
           ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
 
-      # Railway CLI deploy of a pre-built digest-pinned image. All identifiers
-      # are GitHub Environment configuration (ops/cicd/staging-pipeline.md).
-      # The token is provided as a secret and never echoed.
       - name: Install Railway CLI
         run: npm install -g @railway/cli@^4
 
-      - name: Preflight Railway configuration (G4)
+      - name: Preflight Railway configuration (G4 — fail closed)
         env:
           RAILWAY_TOKEN_SET: ${{ secrets.RAILWAY_TOKEN != '' && 'set' || '' }}
           RAILWAY_STAGING_PROJECT_ID: ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
           RAILWAY_STAGING_SERVICE_ID: ${{ vars.RAILWAY_STAGING_SERVICE_ID }}
           RAILWAY_STAGING_ENVIRONMENT_ID: ${{ vars.RAILWAY_STAGING_ENVIRONMENT_ID }}
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
         run: |
           set -uo pipefail
           bash scripts/cicd/deploy-gate.sh require-config \
             RAILWAY_TOKEN "$RAILWAY_TOKEN_SET" \
             RAILWAY_STAGING_PROJECT_ID "$RAILWAY_STAGING_PROJECT_ID" \
             RAILWAY_STAGING_SERVICE_ID "$RAILWAY_STAGING_SERVICE_ID" \
-            RAILWAY_STAGING_ENVIRONMENT_ID "$RAILWAY_STAGING_ENVIRONMENT_ID"
+            RAILWAY_STAGING_ENVIRONMENT_ID "$RAILWAY_STAGING_ENVIRONMENT_ID" \
+            STAGING_BASE_URL "$STAGING_BASE_URL"
 
+      # Verified Railway mechanism (Railway CLI v4; railway deploy --image does
+      # NOT exist — that command provisions templates):
+      #   1. railway service source connect --image <ref>  — sets/updates the
+      #      service's Docker image source.
+      #   2. railway redeploy --from-source                — pulls and deploys
+      #      the configured image source (pushing a new image does NOT
+      #      redeploy on its own; --from-source makes it deterministic).
+      # The image ref is digest-pinned (G6); deploying an unpinned image or
+      # rebuilding from source (railway up) is deliberately not a fallback —
+      # if the image source cannot be set, this step fails and nothing deploys.
+      # Registry pull credentials (GHCR read:packages token) are configured
+      # once on the service in the Railway dashboard (ops/cicd/
+      # staging-pipeline.md), never through this workflow.
       - name: Deploy image (pinned by digest)
         id: deploy
         env:
@@ -237,8 +303,14 @@ jobs:
         run: |
           set -euo pipefail
           echo "::add-mask::$RAILWAY_TOKEN"
-          railway deploy \
+          railway service source connect \
             --image "$IMAGE_REF" \
+            --project "$RAILWAY_STAGING_PROJECT_ID" \
+            --service "$RAILWAY_STAGING_SERVICE_ID" \
+            --environment "$RAILWAY_STAGING_ENVIRONMENT_ID" \
+            --json
+          railway redeploy \
+            --from-source --yes --json \
             --project "$RAILWAY_STAGING_PROJECT_ID" \
             --service "$RAILWAY_STAGING_SERVICE_ID" \
             --environment "$RAILWAY_STAGING_ENVIRONMENT_ID"
@@ -246,10 +318,41 @@ jobs:
             echo "deployment_note=image $IMAGE_REF deployed to Railway staging (service $RAILWAY_STAGING_SERVICE_ID) from commit $VERIFIED_SHA"
           } >> "$GITHUB_OUTPUT"
 
+      # Best-effort deployment status capture: the authoritative success
+      # signal is the HTTP smoke verification below, and the deploy step
+      # above already failed on any nonzero CLI exit. Crash detection is
+      # best-effort because the Railway JSON schema is not pinned by the CLI
+      # docs; a smoke failure fails the pipeline regardless.
+      - name: Observe Railway deployment status (best-effort, pre-smoke)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_STAGING_PROJECT_ID: ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
+          RAILWAY_STAGING_SERVICE_ID: ${{ vars.RAILWAY_STAGING_SERVICE_ID }}
+          RAILWAY_STAGING_ENVIRONMENT_ID: ${{ vars.RAILWAY_STAGING_ENVIRONMENT_ID }}
+        run: |
+          echo "::add-mask::$RAILWAY_TOKEN"
+          for attempt in $(seq 1 10); do
+            if railway deployment list \
+              --project "$RAILWAY_STAGING_PROJECT_ID" \
+              --service "$RAILWAY_STAGING_SERVICE_ID" \
+              --environment "$RAILWAY_STAGING_ENVIRONMENT_ID" \
+              --limit 5 --json > /tmp/railway-deployments.json 2>/dev/null; then
+              if grep -Eq '"(CRASHED|FAILED)' /tmp/railway-deployments.json; then
+                echo "railway reports a failed deployment"; exit 1
+              fi
+              if grep -Eq '"(SUCCESS|DEPLOYED|ACTIVE)' /tmp/railway-deployments.json; then
+                echo "railway reports a live deployment (best-effort match)"; exit 0
+              fi
+            fi
+            echo "attempt $attempt: awaiting deployment completion"; sleep 30
+          done
+          echo "status observation window elapsed without a conclusive match; proceeding to HTTP smoke verification (authoritative)"
+
   smoke-verify:
     name: Staging smoke verification (EB-73 script)
+    needs: [activation, verify-and-prepare, deploy-staging]
+    if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
-    needs: [verify-and-prepare, deploy-staging]
     environment: staging
     steps:
       - name: Checkout
@@ -258,10 +361,11 @@ jobs:
           ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
 
-      # The Railway deploy returns before the new container finishes rolling;
-      # poll liveness briefly, then run the full EB-73 smoke (health groups,
-      # Swagger UI, STOMP ws/info). A smoke failure fails this job, which marks
-      # the deployment unsuccessful and is recorded in the evidence artifact.
+      # The Railway redeploy returns before the new container finishes
+      # rolling; poll liveness briefly, then run the full EB-73 smoke (health
+      # groups, Swagger UI, STOMP ws/info). A smoke failure fails this job,
+      # which marks the deployment unsuccessful and is recorded in evidence.
+      # The workflow cannot report success before this job succeeds.
       - name: Wait for staging rollout
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
@@ -284,11 +388,12 @@ jobs:
   publish-evidence:
     name: Publish deployment evidence (audit artifact)
     runs-on: ubuntu-latest
-    needs: [verify-and-prepare, migration-gate, deploy-staging, smoke-verify]
+    needs: [activation, verify-and-prepare, migration-gate, deploy-staging, smoke-verify]
     if: always()
     steps:
       - name: Assemble deployment evidence
         env:
+          ACTIVATION_ENABLED: ${{ needs.activation.outputs.enabled }}
           VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           IMAGE_REF_PINNED: ${{ needs.verify-and-prepare.outputs.image_ref_pinned }}
           IMAGE_TAGS: ${{ needs.verify-and-prepare.outputs.image_tags }}
@@ -305,6 +410,7 @@ jobs:
           done
           {
             echo "DEPLOYMENT OVERALL: $overall"
+            echo "activation_gate=$ACTIVATION_ENABLED"
             echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "deploy_source=$DEPLOY_SOURCE"
             echo "triggering_run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -315,7 +421,7 @@ jobs:
             echo "railway_deploy=$DEPLOY_OUTCOME"
             echo "staging_smoke=$SMOKE_OUTCOME"
             echo "deploy_note=$DEPLOY_NOTE"
-            echo "rollback_note=Rollback = redeploy the previous digest-pinned image via workflow_dispatch; database migrations are forward-only and are NOT auto-rolled back (see ops/cicd/staging-pipeline.md)."
+            echo "rollback_note=Rollback = redeploy the previous digest-pinned image via workflow_dispatch (Railway deployment rollbacks restore image ref + variables); database migrations are forward-only and are NOT auto-rolled back (see ops/cicd/staging-pipeline.md)."
           } > deployment-evidence.txt
           cat deployment-evidence.txt >> "$GITHUB_STEP_SUMMARY"
 

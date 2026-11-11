@@ -13,6 +13,11 @@
 #   G4  Every required configuration value must be present and non-empty.
 #   G5  The migration target must never be the production Supabase project.
 #   G6  Image refs are pinned by immutable digest, never by mutable tags.
+#   G7  Automatic staging deployment is inert until the repository variable
+#       STAGING_AUTO_DEPLOY_ENABLED is exactly 'true' (explicit activation).
+#   G8  The migration target must match the explicitly approved staging
+#       database identity (Supabase project allowlist) — substring blocking of
+#       the production ref is only the first coarse line of defense.
 
 set -u
 
@@ -113,6 +118,90 @@ gate_guard_image_ref() {
     esac
 }
 
+# G7 — explicit activation gate. Automatic staging deployment is disabled by
+# default: the repository variable STAGING_AUTO_DEPLOY_ENABLED must be exactly
+# 'true'. Any other value (absent, false, wrong casing) means NO migration and
+# NO deployment. The check reads a non-secret repository variable, so skipping
+# does not require an approval. Manual dispatch bypasses this gate but is
+# instead gated by operator-supplied explicit inputs and the 'staging'
+# environment protection rules.
+gate_activation() {
+    local auto_deploy_enabled="$1"
+    if [ "$auto_deploy_enabled" = "true" ]; then
+        echo "OK: automatic staging deployment is activated (STAGING_AUTO_DEPLOY_ENABLED=true)"
+        return 0
+    fi
+    echo "BLOCK: automatic staging deployment is NOT activated (STAGING_AUTO_DEPLOY_ENABLED is not exactly 'true') — no migration and no deployment will run; nothing external is touched"
+    return 1
+}
+
+# G8 — staging database identity allowlist. Substring-blocking of the
+# production ref (G5, coarse) is not sufficient on its own: a mistyped or
+# stolen URL could point at an unknown database that merely does not contain
+# the production ref. Identity must be positively proven against the approved
+# staging Supabase project. Args:
+#   $1 jdbc url (jdbc:postgresql://...)
+#   $2 approved staging Supabase project ref (repository variable
+#      STAGING_DB_PROJECT_REF; empty => fail closed)
+#   $3 production Supabase project ref (must never appear)
+# Credential/URL values are parsed but NEVER printed.
+gate_staging_db_identity() {
+    local url="$1" approved_ref="$2" prod_ref="$3"
+    if [ -z "$approved_ref" ]; then
+        echo "BLOCK: approved staging database identity (STAGING_DB_PROJECT_REF) is not configured — refusing migration rather than trusting an unverified target"
+        return 1
+    fi
+    if [ -z "$url" ]; then
+        echo "BLOCK: migration URL is empty — no database identity to verify"
+        return 1
+    fi
+    case "$url" in
+        jdbc:postgresql://*) : ;;
+        *) echo "BLOCK: staging database identity requires a PostgreSQL JDBC URL"; return 1 ;;
+    esac
+    # Network location (may carry userinfo): everything between // and the
+    # first following '/'.
+    local netloc=""
+    netloc=$(printf '%s' "$url" | sed -n 's|^jdbc:postgresql://\([^/]*\)/.*|\1|p')
+    # Userinfo username (pooler format: postgres.<project-ref>:password@...).
+    local userinfo_user=""
+    case "$netloc" in
+        *@*)
+            userinfo_user=$(printf '%s' "$netloc" | sed 's|@.*||; s|:.*||')
+            ;;
+    esac
+    # Query-string user parameter (alternative credential location).
+    local query_user=""
+    query_user=$(printf '%s' "$url" | sed -n 's|[?&]user=\([^&]*\).*|\1|p')
+    # Host (direct-connection format: db.<project-ref>.supabase.co).
+    local host
+    host=$(printf '%s' "$netloc" | sed 's|.*@||; s|:.*||')
+    # Defense in depth: the production ref must not appear in any identity
+    # position (the coarse G5 check blocks it anywhere in the URL already).
+    case "|$userinfo_user|$query_user|$host|" in
+        *"$prod_ref"*)
+            echo "BLOCK: migration target carries the PRODUCTION Supabase project identity — refusing"
+            return 1
+            ;;
+    esac
+    # Positive identity proof (either supported connection form).
+    case "$userinfo_user" in
+        *".${approved_ref}") : ;;
+        *) case "$query_user" in
+               *".${approved_ref}") : ;;
+               *) case "$host" in
+                      "${approved_ref}".supabase.co|db."${approved_ref}".supabase.co) : ;;
+                      *)
+                          echo "BLOCK: migration target does not match the approved staging database identity (no allowed connection form for the staging Supabase project) — refusing migration"
+                          return 1
+                          ;;
+                  esac ;;
+           esac ;;
+    esac
+    echo "OK: migration target identity matches the approved staging database (ref withheld)"
+    return 0
+}
+
 # G3b — simple equality check used for artifact-vs-trigger commit comparison.
 gate_commit_match() {
     local a="$1" b="$2" label="${3:-commit}"
@@ -127,15 +216,19 @@ gate_commit_match() {
 # CLI dispatcher used by GitHub Actions steps (and reusable by operators):
 #   deploy-gate.sh trigger <conclusion> <status> <head_branch> <head_sha> <current_sha>
 #   deploy-gate.sh migration-url <jdbc_url>
+#   deploy-gate.sh staging-db-identity <jdbc_url> <approved_staging_ref> <prod_ref>
 #   deploy-gate.sh image-ref <ref>
 #   deploy-gate.sh require-config <name> <value> [name value...]
+#   deploy-gate.sh activation <STAGING_AUTO_DEPLOY_ENABLED value>
 # Sourcing this file (as the test suite does) must have no side effects.
 case "${1:-}" in
-    trigger)        shift; gate_verify_trigger "$@" ;;
-    commit-match)   shift; gate_commit_match "$@" ;;
-    migration-url)  shift; gate_guard_migration_url "$1" ;;
-    image-ref)      shift; gate_guard_image_ref "$1" ;;
-    require-config) shift; gate_require_config "$@" ;;
-    "")             : ;;
-    *)              echo "BLOCK: unknown gate subcommand '$1'"; exit 1 ;;
+    trigger)            shift; gate_verify_trigger "$@" ;;
+    commit-match)       shift; gate_commit_match "$@" ;;
+    migration-url)      shift; gate_guard_migration_url "$1" ;;
+    staging-db-identity) shift; gate_staging_db_identity "$1" "$2" "$3" ;;
+    image-ref)          shift; gate_guard_image_ref "$1" ;;
+    require-config)     shift; gate_require_config "$@" ;;
+    activation)         shift; gate_activation "$1" ;;
+    "")                 : ;;
+    *)                  echo "BLOCK: unknown gate subcommand '$1'"; exit 1 ;;
 esac
