@@ -344,7 +344,10 @@ public class ProjectServiceImpl implements ProjectService{
         int totalSubmissions = (int) submissionsPage.getTotalElements();
 
 
-        int pendingReview = totalStudents-totalSubmissions;
+        // EB-54 / P4-05 — pendingReview counts submissions still awaiting review
+        // (status SUBMITTED), mirroring the task-side rule in TaskServiceImpl.
+        // Non-submitters are "awaiting submission", not pending review.
+        int pendingReview = (int) submissionRepository.countByProject_IdAndStatus(projectId, SubmissionStatus.SUBMITTED);
 
         Page<ProjectSubmissionResponse> mapped =
                 submissionsPage.map(this::mapToProjectSubmissionResponse);
