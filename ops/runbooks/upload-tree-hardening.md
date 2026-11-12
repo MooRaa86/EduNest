@@ -58,10 +58,29 @@ principals in the container — no reparse-point concern.
 - **CI pin:** a new `EnvContractGuardTest` probe (6th) fails the build if the
   Dockerfile stops pinning the absolute var.
 
-### 4. Reviewer sign-off (record the outcome line here)
-> **Reviewer sign-off (Omar):** ____________ (date) — reviewed the collected
-> evidence on host `<host>` / container commit `<sha>`; upload-tree hardening
-> accepted; fail-closed storage contract verified by `StorageFailClosedTest`.
+### 4. Reviewer sign-off (recorded 2026-11-12)
+
+> **Tech Lead sign-off (Omar, 2026-11-12):** *"I have decided to waive the local
+> Windows host evidence requirement. Since the production environment is fully
+> secured via the Docker non-root user (`edunest`) and the strict S3 fail-closed
+> logic, the local Windows ACLs are strictly a local development concern and not
+> a priority for this sprint. Consider this message my official Tech Lead
+> sign-off: The fail-closed storage contract is verified, and the container
+> runtime hardening is accepted."*
+
+**Disposition of the acceptance items under this sign-off:**
+
+| Item | Disposition |
+|---|---|
+| 1. Upload tree writable only by app-service user | **WAIVED for the local Windows dev host** — production boundary is the container runtime: non-root `edunest` (uid/gid 1001) with only `/app/uploads` chowned (EB-76 Dockerfile). The collectors remain available for any future host-level audit. |
+| 2. 8.3 / reparse-point evidence | **WAIVED with item 1** (same local-host scope; 8.3 is a Windows-host concept with no container analog). |
+| 3. `app.upload.base-dir` pinned absolute in prod | **ACCEPTED** — Dockerfile `ENV APP_UPLOAD_BASE_DIR=/app/uploads`, double CI-pinned (`EnvContractGuardTest` + `SecretsHygieneGuardTest`). |
+| 4. Reviewer sign-off | **RECORDED above** (Omar, 2026-11-12). |
+
+The security-relevant contract lives outside the local host: **fail-closed
+Supabase S3 in production** (verified by `StorageFailClosedTest`, 5 CI probes)
+and the **container runtime hardening** (EB-76) — both accepted by this sign-off.
+The ticket closed **Done** on this basis (Jira, 2026-11-12).
 
 ## Evidence-collection procedures (copy-paste)
 
