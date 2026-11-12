@@ -61,6 +61,15 @@
 			<artifactId>tika-core</artifactId>
 			<version>2.9.2</version>
 		</dependency>
+		<!-- Stripe official SDK — [ADD-06]/EB-108 (D-28): Checkout session creation +
+		     webhook signature (HMAC) verification. Per Omar's D decision (2026-11-12):
+		     for financial cryptography the official SDK is non-negotiable; hand-rolling
+		     the webhook HMAC was rejected. -->
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>34.1.0</version>
+		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
