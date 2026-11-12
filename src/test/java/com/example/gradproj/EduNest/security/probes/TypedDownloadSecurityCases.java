@@ -45,6 +45,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -103,8 +104,35 @@ abstract class TypedDownloadSecurityCases {
         auth.student(STRANGER);
     }
 
-    @AfterEach void cleanup() throws IOException {
-        for (Path p : created) Files.deleteIfExists(p);
+    /**
+     * EB-90 — Windows-only fixture-cleanup stability. The transient file lock is
+     * held by the download response itself: FileResponseBuilder (P1-20 TOCTOU
+     * hardening) keeps the authorized file's SeekableByteChannel open for
+     * streaming and delegates closing to the response writer; under MockMvc the
+     * body is fully buffered and that close can land only at GC finalization. On
+     * Windows an open handle makes Files.deleteIfExists fail intermittently
+     * (AccessDeniedException); Linux deletes entries with open handles, which is
+     * why Linux CI stayed green. Cleanup is therefore quiesce + bounded-retry and
+     * deliberately best-effort: these are disposable temp fixtures, so a stuck
+     * lock must never fail an already-passed security assertion.
+     */
+    @AfterEach void cleanup() {
+        // Quiesce: give pending finalizers (a lingering response channel) a chance to release.
+        System.gc();
+        System.runFinalization();
+        for (Path p : created) {
+            boolean deleted = false;
+            for (int attempt = 0; attempt < 8 && !deleted; attempt++) {
+                try {
+                    deleted = Files.deleteIfExists(p);
+                } catch (IOException transientLock) {
+                    try { Thread.sleep(50L); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                }
+            }
+            if (!deleted && Files.exists(p)) {
+                System.err.println("[eb90] disposable fixture not deletable (Windows transient lock), left for OS temp cleanup: " + p);
+            }
+        }
         created.clear();
     }
 
@@ -283,8 +311,12 @@ abstract class TypedDownloadSecurityCases {
             if (!System.getProperty("os.name").toLowerCase().contains("windows")) throw ex;
             Process process = new ProcessBuilder("cmd.exe", "/c", "mklink", "/J", link.toString(), outside.toString())
                     .redirectErrorStream(true).start();
-            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            String output;
+            try (InputStream pipes = process.getInputStream()) {
+                output = new String(pipes.readAllBytes(), StandardCharsets.UTF_8);
+            }
             if (process.waitFor() != 0) throw new IOException("Cannot create junction: " + output);
+            process.destroy(); // EB-90: release the process pipes deterministically
         }
         created.add(link);
         String path = link.toString().replace('\\', '/');
@@ -429,8 +461,12 @@ abstract class TypedDownloadSecurityCases {
             // symlink privileges. Both its location and destination are disposable.
             Process process = new ProcessBuilder("cmd.exe", "/c", "mklink", "/J",
                     link.toString(), outside.toString()).redirectErrorStream(true).start();
-            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            String output;
+            try (InputStream pipes = process.getInputStream()) {
+                output = new String(pipes.readAllBytes(), StandardCharsets.UTF_8);
+            }
             assumeTrue(process.waitFor() == 0, "Cannot create disposable junction: " + output);
+            process.destroy(); // EB-90: release the process pipes deterministically
         }
         created.add(link);
         Case item = seed(kind, link.getFileName() + "/outside.txt");
