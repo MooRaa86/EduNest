@@ -40,12 +40,28 @@ Verified 2026-11-12: `[]` — **no enforcement active**. The delivered ruleset (
 
 ### 2.3 Authorized review and merge
 
-1. Owner reviews the diff, confirms both checks green, merges (merge commit). Do **not** squash into `production` without checking that Railway commit tracking stays meaningful (each production push = one deployment).
-2. **The push to `production` is the deployment trigger.** Railway Auto Deploy fires on it (observed: deployment created within seconds of PR #121's merge).
+### 2.3 Authorized review, merge, and the unambiguous release sequence
+
+Railway Auto Deploy fires on the push to `production` — **observed within ~2 seconds of the merge** (deployment created moments after PR #121's merge). There is no gap to "catch up" a forgotten migration afterward. The authoritative sequence:
+
+1. Review the release diff **and the pending Flyway migrations** it contains (`flyway:info` against production, §3.4 — read-only).
+2. Determine whether any database changes are required. **Releases with no schema changes skip §3 entirely** — do not imply or perform migrations that are not needed; only the §2 checks and verification apply.
+3. If database changes are required: verify the new migrations are **backward-compatible with the currently deployed app** (the app that runs *now* must keep booting `ddl-auto=validate` against the post-migration schema, because the migration will land before the new code does).
+4. Complete §3.1 backups and §3.2 migration rehearsal.
+5. If required and safe, run the authorized migration and strict validation (§3.4) — **before merging the release PR**.
+6. **If any pending migration is NOT backward-compatible with the currently deployed app: STOP.** A plain pre-merge migration is unsafe by definition; require an expand/contract migration pair (add-and-backfill now, contract in a later release after the new code ships) or an explicit coordinated-downtime plan approved by the PO before proceeding.
+7. Confirm both required checks green (§2.1) and reviewer approval; if the ruleset is not yet active (§2.2), record the check-run evidence in the PR body.
+8. Merge into `production` (merge commit).
+9. Track the Railway Auto Deploy (§4): deployment ID + deployed commit SHA.
+10. Run deployment verification (§5) against the merged commit.
+
+> **Never merge the production release PR and then attempt to catch up with a required database migration.** The push itself deploys; by then it is too late.
+
+Owner reviews the diff and confirms both checks green before merging. Do **not** squash into `production` without checking that Railway commit tracking stays meaningful (each production push = one deployment).
 
 ## 3. Operator-controlled Flyway migrations (separate, before deploy — never inside it)
 
-Production runs `spring.jpa.hibernate.ddl-auto=validate` and `spring.flyway.enabled=false` in `application-prod.properties` — **the app never migrates its own database at boot** (EB-43). Schema changes are applied by an authorized operator **before the new image is deployed**.
+Production runs `spring.jpa.hibernate.ddl-auto=validate` and `spring.flyway.enabled=false` in `application-prod.properties` — **the app never migrates its own database at boot** (EB-43). Schema changes are applied by an authorized operator **before the release PR is merged** (§2.3 step 5): once the push lands, the new image deploys within seconds, so "before deploy" in practice means "before merge".
 
 ### 3.1 Backup gate first (mandatory)
 
@@ -64,9 +80,24 @@ Verify the dump's size assertion (> 10 KB) and note its timestamp in the ticket 
 powershell -ExecutionPolicy Bypass -File ops/rehearsals/Invoke-MigrationRehearsal.ps1
 ```
 
-### 3.3 Operator sequence on the production database (README §3.1.1, exact)
+### 3.3 Target-identity preflight (mandatory, before any manual migration)
 
-Set `FLYWAY_URL` / `FLYWAY_USER` / `FLYWAY_PASSWORD` for the **production** target (from the owner's secret store; values are never echoed, logged, or committed), then:
+A wrong-target migration is the worst-case failure of the manual path; no automated guard protects it on the production manual path. Run and record these checks before every production migration, and **fail closed** on any mismatch or if the environment cannot be positively established. Credentials are parsed/read but **never** printed, echoed, or logged (no passwords, tokens, or full credential-bearing URLs).
+
+| Check | How | Fail condition |
+|---|---|---|
+| Intended environment established by name | The ticket thread states "production migration of commit X against project ref `ciogysvcykzxrjuskxmk`" before any command runs | No recorded intent → stop |
+| Actual `FLYWAY_URL` host identity | Parse the JDBC URL (read-only in-session), extract the host — do **not** print the URL. Accepted production host forms: `*.pooler.supabase.com` (pooler) or `db.<ref>.supabase.co` (direct) | Unrecognized host, or anything that is not a Supabase host → stop |
+| Expected project ref | Host-derived ref must **positively** equal the production ref `ciogysvcykzxrjuskxmk` (public config) — a simple substring match anywhere in the URL is not sufficient; derive it from the host/username form | Ref mismatch, absent, or only present in an unrelated URL parameter → stop |
+| Actual `FLYWAY_USER` identity | Must be `postgres.<ref>` (pooler) or `postgres` (direct), matching the host form | User/host form mismatch → stop |
+| Staging crosscheck | If host or user derives to a **non-production** ref (i.e. the approved staging `STAGING_DB_PROJECT_REF` or any unknown ref), the credentials point at the wrong environment → **stop immediately** and re-derive from the owner's store | Any non-production derivation → stop |
+| Session hygiene | Re-set all three `$env:FLYWAY_*` variables explicitly in this session; a stale value inherited from a previous session (possibly staging) must never be trusted | Inherited/stale values → stop |
+
+This manual preflight is **not equivalent to a fully automated identity guard**: it relies on operator discipline, has no independent freshness re-check, and is not machine-auditable (the pipeline's G5/G8 gates exist only on the staging pipeline path). The recorded ticket-thread intent plus this checklist is the documented compensating control until the owner ratifies a live DB-side identity marker.
+
+### 3.4 Operator sequence on the production database (README §3.1.1, exact)
+
+Set `FLYWAY_URL` / `FLYWAY_USER` / `FLYWAY_PASSWORD` for the **production** target (from the owner's secret store; values are never echoed, logged, or committed) — **only after the §3.3 preflight has passed** — then:
 
 ```powershell
 .\mvnw.cmd -B -Pdb-migrate flyway:info
@@ -88,7 +119,7 @@ railway service list
 railway deployment list
 ```
 
-Record in the ticket thread: **deployment ID**, **deployed commit SHA**, and start time. Railway keeps deployment history — the rollback target (§6) is chosen from this list.
+Record in the ticket thread: **deployment ID**, **deployed commit SHA**, and start time. Railway's deploy history is the rollback target source (§6), but history entries are eventually **Removed** (singleton-deploy model) and rollback availability is retention-limited — see §6.1 before assuming any target is restorable.
 
 ## 5. Verification and post-deployment validation
 
@@ -107,13 +138,24 @@ Full verdict→action map: [`rollback-triggers.md`](rollback-triggers.md). Produ
 
 | Failure | Action |
 |---|---|
-| Health poll exhausts budget (boot crash) | Read failed-deployment logs → **Railway → Deployments → Redeploy the previous deployment** (one click; Railway restores image + variables) → re-run §5 verification with the rolled-back commit |
+| Health poll exhausts budget (boot crash) | Read failed-deployment logs → **Railway → Deployments → Rollback to the previous deployment** (semantics and retention caveats: §6.1) → re-run §5 verification with the rolled-back commit |
 | Version match fails (wrong build deployed — queued-push race) | Not a rollback trigger; re-verify with the actually-deployed commit as `-ExpectedCommit`, redeploy the intended commit if genuinely wrong |
 | Smoke/WS fail while health is UP | One investigation cycle; roll back only if it persists |
 | **Boot crash after a migration ran** | **Database is NOT rolled back.** Forward-only rule. Paths: (a) roll forward with a `V{N+1}` script (app stays down until the fix migrates clean, or the previous image is redeployed *if* it still validates against the new schema), or (b) if data itself is damaged, the restore decision table in [`../backups/backup-policy.md`](../backups/backup-policy.md) — **full production restore = downtime window + PO sign-off** |
 | Boot crash after a config/secret change | Revert the variable per [`../secrets/rotation.md`](../secrets/rotation.md) rollback lane; the app boots fail-fast on bad secrets |
 
-**Rollback limitations after schema migration (explicit):** container rollback restores *code*, not *schema*. Redeploying an older image is safe only while its Hibernate validation (`ddl-auto=validate`) still passes against the migrated schema — check the prior image's expected migrations before choosing it. Data recovery after a bad migration goes through the Tier-2 restore procedure (disposable target first, verify, then act), never through schema rollback. The next release must include a corrective forward migration regardless of which path was taken.
+**Rollback limitations after schema migration (explicit):** container rollback restores *code*, not *schema*. Rolling back to an older image is safe only while its Hibernate validation (`ddl-auto=validate`) still passes against the migrated schema — check the prior image's expected migrations before choosing it. A database migration is **never** reversed by a container rollback. Data recovery after a bad migration goes through the Tier-2 restore procedure (disposable target first, verify, then act), never through schema rollback. The next release must include a corrective forward migration regardless of which path was taken.
+
+### 6.1 Railway rollback semantics and retention (official docs)
+
+Per Railway's official documentation ([Deployment actions](https://docs.railway.com/deployments/deployment-actions), [Plans → Image retention policy](https://docs.railway.com/pricing/plans#image-retention-policy)):
+
+- **Rollback and Redeploy are different actions.** *Rollback* restores the selected deployment's Docker image **and its custom variables** — but only while the rollback artifact (retained image) is still available. *Redeploy* creates a new deployment from the selected deployment's code/config; for a removed deployment outside the retention window it **rebuilds the image from the original source code with the deployment's original variables** instead of restoring a retained image.
+- **Image retention is plan-dependent** (images of removed deployments are retained only for the policy window): Free/Trial **24 h**, Hobby **72 h**, Pro **120 h**, Enterprise **360 h**. Deployments older than the policy cannot be rolled back at all — the Rollback option is not shown. **[VERIFY-OWNER]** Do not assume this project's current Railway plan tier; the operator confirms the effective window in the Railway dashboard before relying on any rollback target, and prefers the most recent successful deployment as the target.
+- Railway's singleton-deploy model eventually **removes** older deployments; a removed deployment is still rollable within the retention window, beyond it only Redeploy (rebuild-from-source) remains possible. Because production deploys from a git source, a Redeploy rebuild remains feasible even beyond retention — but it is a *rebuild*, not a restore, and must be verified like any new deployment.
+- **Verify after either action:** confirm the actually-deployed artifact identity — source SHA (Railway deployment's recorded commit) and the `/actuator/info` `git.commit.id` — via §5 verification, and review the effective variable set. Never assume the restored configuration is what you intended; prove it.
+- **Secret-rotation check before restoring old variables:** rollback/redeploy restores the *historical* variable values. If any secret was rotated since the target deployment was created (rotation history: [`../secrets/rotation.md`](../secrets/rotation.md)), restoring old values may re-introduce a revoked or superseded credential — re-set rotated values immediately after the rollback and re-verify. Do not assume old credentials remain safe to restore.
+- **A database migration is NOT reversed by a container rollback** (forward-only rule; the "boot crash after a migration ran" row above).
 
 ## 7. Environment configuration matrix (EB-80 approved scope, comment 10112)
 
