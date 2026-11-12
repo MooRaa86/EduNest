@@ -46,7 +46,16 @@ class SecretsHygieneGuardTest {
 
     /** The only ENV declaration allowed to be baked into the image. */
     private static final Pattern DOCKERFILE_ENV_LINE = Pattern.compile("^ENV\\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$");
-    private static final String ALLOWED_BAKED_ENV_KEY = "SPRING_PROFILES_ACTIVE";
+    /**
+     * Non-secret constants allowed to be baked into the image. The audit's target
+     * is SECRET material: credentials are injected at runtime, never baked.
+     * APP_UPLOAD_BASE_DIR=/app/uploads is a non-sensitive infrastructure path pin
+     * (EB-89: absolute base-dir instead of the CWD-coupled relative default),
+     * additionally pinned by the EnvContractGuardTest Dockerfile probe.
+     */
+    private static final List<String> ALLOWED_BAKED_ENV_KEYS = List.of(
+            "SPRING_PROFILES_ACTIVE",
+            "APP_UPLOAD_BASE_DIR");
 
     /** A resolved value must be exactly a ${VAR} or ${VAR:default} placeholder. */
     private static final Pattern PLACEHOLDER_ONLY = Pattern.compile("^\\$\\{[A-Z][A-Z0-9_]*(:.*)?}$");
@@ -70,9 +79,10 @@ class SecretsHygieneGuardTest {
             }
             String key = matcher.group(1);
             String value = matcher.group(2);
-            assertTrue(ALLOWED_BAKED_ENV_KEY.equals(key),
+            assertTrue(ALLOWED_BAKED_ENV_KEYS.contains(key),
                     "Dockerfile line " + (i + 1) + " bakes ENV " + key
-                            + " - only SPRING_PROFILES_ACTIVE may be baked; secrets are injected at runtime");
+                            + " - only non-secret infrastructure constants may be baked ("
+                            + String.join(", ", ALLOWED_BAKED_ENV_KEYS) + "); secrets are injected at runtime");
             assertTrue(!Pattern.compile(LIVE_SECRET_SHAPE).matcher(value).find(),
                     "Dockerfile line " + (i + 1) + " bakes a live-secret-shaped value");
         }

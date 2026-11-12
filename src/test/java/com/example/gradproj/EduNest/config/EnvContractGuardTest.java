@@ -174,6 +174,23 @@ class EnvContractGuardTest {
         }
     }
 
+    @Test
+    @DisplayName("Container upload root is pinned ABSOLUTE in the Dockerfile (EB-89)")
+    void dockerfilePinsAbsoluteUploadBaseDir() throws IOException {
+        Path dockerfile = Path.of("Dockerfile");
+        assertThat(dockerfile.toAbsolutePath())
+                .as("repo-root Dockerfile must exist (the deployed image is the prod deployment unit)")
+                .exists();
+        boolean pinned = Files.readAllLines(dockerfile, StandardCharsets.UTF_8).stream()
+                .anyMatch(line -> line.trim().equals("ENV APP_UPLOAD_BASE_DIR=/app/uploads"));
+        assertThat(pinned)
+                .as("APP_UPLOAD_BASE_DIR must be pinned to the absolute /app/uploads in the Dockerfile - "
+                        + "the relative 'uploads' default couples to the process CWD (EB-89 acceptance item 3). "
+                        + "The dir is the dev/local store and temp area ONLY: production storage is Supabase S3, "
+                        + "fail-closed (StorageFailClosedTest)")
+                .isTrue();
+    }
+
     private static boolean anyLineDocuments(List<String> lines, String variable) {
         Pattern pattern = Pattern.compile("^\\s*#*\\s*" + Pattern.quote(variable) + "\\s?=.*",
                 Pattern.CASE_INSENSITIVE);

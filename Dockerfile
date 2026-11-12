@@ -19,6 +19,15 @@ RUN groupadd --system --gid 1001 edunest \
     && useradd --system --uid 1001 --gid 1001 --home-dir /app --shell /usr/sbin/nologin edunest \
     && mkdir -p /app/uploads \
     && chown -R edunest:edunest /app/uploads
+# EB-89: pin the upload root to an ABSOLUTE path (the default is the relative
+# "uploads", which couples to the process CWD). This directory is the dev/local
+# store and temporary-processing area ONLY - it is NEVER a fallback target:
+# production storage is Supabase S3, fail-closed on any S3 failure (a failing
+# upload aborts with an exception and writes nothing locally; containers are
+# stateless, so a silent local fallback would be data loss on restart). The
+# posture is pinned by StorageFailClosedTest + the EnvContractGuardTest
+# Dockerfile probe.
+ENV APP_UPLOAD_BASE_DIR=/app/uploads
 COPY --from=build /app/target/*.jar app.jar
 # curl exists only for the HEALTHCHECK below (Temurin JRE ships neither curl nor
 # wget); kept minimal, apt lists cleared so no package cache bloats a layer.
