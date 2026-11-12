@@ -80,28 +80,36 @@ Verify the dump's size assertion (> 10 KB) and note its timestamp in the ticket 
 powershell -ExecutionPolicy Bypass -File ops/rehearsals/Invoke-MigrationRehearsal.ps1
 ```
 
-### 3.3 Target-identity preflight (mandatory, before any manual migration)
+### 3.3 Credential load + target-identity preflight (mandatory, before any manual migration)
 
-A wrong-target migration is the worst-case failure of the manual path; no automated guard protects it on the production manual path. Run and record these checks before every production migration, and **fail closed** on any mismatch or if the environment cannot be positively established. Credentials are parsed/read but **never** printed, echoed, or logged (no passwords, tokens, or full credential-bearing URLs).
+A wrong-target migration is the worst-case failure of the manual path; no automated guard protects it on the production manual path. The sequence is **load → verify → use**: the same session variables that are verified here are the ones the migration commands consume — there is no circular dependency and no variable replacement between verification and execution. **Fail closed** on any mismatch, and do not proceed if the environment cannot be positively established. Credentials are parsed/read but **never** printed, echoed, or logged (no passwords, tokens, or full credential-bearing URLs).
+
+1. **Record intent** in the ticket thread: "production migration of commit X against project ref `ciogysvcykzxrjuskxmk`" — before any command runs. No recorded intent → stop.
+2. **Obtain credentials** from the correct authorized environment store: the production Railway service variables / the owner's secret store — never staging values, never the staging pipeline's stores.
+3. **Load all three variables** into the current session explicitly, overwriting any inherited values (a stale `$env:FLYWAY_*` from a previous session — possibly staging — must never be trusted): set `FLYWAY_URL` / `FLYWAY_USER` / `FLYWAY_PASSWORD` from the store; values are never echoed, logged, or committed.
+4. **Verify identity of the loaded variables** (read-only parsing in-session; do **not** print the URL):
 
 | Check | How | Fail condition |
 |---|---|---|
-| Intended environment established by name | The ticket thread states "production migration of commit X against project ref `ciogysvcykzxrjuskxmk`" before any command runs | No recorded intent → stop |
-| Actual `FLYWAY_URL` host identity | Parse the JDBC URL (read-only in-session), extract the host — do **not** print the URL. Accepted production host forms: `*.pooler.supabase.com` (pooler) or `db.<ref>.supabase.co` (direct) | Unrecognized host, or anything that is not a Supabase host → stop |
+| Actual `FLYWAY_URL` host identity | Parse the loaded JDBC URL, extract the host. Accepted production host forms: `*.pooler.supabase.com` (pooler) or `db.<ref>.supabase.co` (direct) | Unrecognized host, or anything that is not a Supabase host → stop |
 | Expected project ref | Host-derived ref must **positively** equal the production ref `ciogysvcykzxrjuskxmk` (public config) — a simple substring match anywhere in the URL is not sufficient; derive it from the host/username form | Ref mismatch, absent, or only present in an unrelated URL parameter → stop |
 | Actual `FLYWAY_USER` identity | Must be `postgres.<ref>` (pooler) or `postgres` (direct), matching the host form | User/host form mismatch → stop |
-| Staging crosscheck | If host or user derives to a **non-production** ref (i.e. the approved staging `STAGING_DB_PROJECT_REF` or any unknown ref), the credentials point at the wrong environment → **stop immediately** and re-derive from the owner's store | Any non-production derivation → stop |
-| Session hygiene | Re-set all three `$env:FLYWAY_*` variables explicitly in this session; a stale value inherited from a previous session (possibly staging) must never be trusted | Inherited/stale values → stop |
+| Staging crosscheck | If host or user derives to a **non-production** ref (i.e. the approved staging `STAGING_DB_PROJECT_REF` or any unknown ref), the credentials point at the wrong environment → **stop immediately**, discard the session values, and re-derive from the owner's store | Any non-production derivation → stop |
+| Uncertainty | If any value cannot be positively derived or matched (obscure URL form, ambiguous ref) | Uncertainty counts as mismatch → stop |
 
-This manual preflight is **not equivalent to a fully automated identity guard**: it relies on operator discipline, has no independent freshness re-check, and is not machine-auditable (the pipeline's G5/G8 gates exist only on the staging pipeline path). The recorded ticket-thread intent plus this checklist is the documented compensating control until the owner ratifies a live DB-side identity marker.
+5. **Freeze the verified variables.** From this point the exact loaded `FLYWAY_URL`/`FLYWAY_USER`/`FLYWAY_PASSWORD` are used for every migration command; do **not** replace, re-source, or re-derive them between identity verification and execution.
+6. **Recheck immediately before the mutation step** (`flyway:migrate`, step 3 of §3.4): re-derive the host + username from the loaded variables and confirm the ref still positively equals `ciogysvcykzxrjuskxmk` (same checks as step 4). If the recheck fails or anything changed → stop.
+
+This manual preflight is **not equivalent to a fully automated identity guard**: it relies on operator discipline, has no machine-auditable freshness re-check, and is not independently auditable (the pipeline's G5/G8 gates exist only on the staging pipeline path). The recorded ticket-thread intent plus this checklist is the documented compensating control until the owner ratifies a live DB-side identity marker.
 
 ### 3.4 Operator sequence on the production database (README §3.1.1, exact)
 
-Set `FLYWAY_URL` / `FLYWAY_USER` / `FLYWAY_PASSWORD` for the **production** target (from the owner's secret store; values are never echoed, logged, or committed) — **only after the §3.3 preflight has passed** — then:
+Use the exact variables loaded and identity-verified in §3.3 — **do not replace them between verification and execution**. The commands consume the same session variables that passed the preflight:
 
 ```powershell
 .\mvnw.cmd -B -Pdb-migrate flyway:info
 .\mvnw.cmd -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=*:pending' flyway:validate
+# >>> §3.3 step 6: recheck host/username identity against the production ref ciogysvcykzxrjuskxmk immediately here, before the mutation <<<
 .\mvnw.cmd -B -Pdb-migrate flyway:migrate
 .\mvnw.cmd -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=' flyway:validate
 .\mvnw.cmd -B -Pdb-migrate flyway:info
