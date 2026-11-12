@@ -189,6 +189,7 @@
 ### D-13 — Chat receipts
 - **Question:** Build unread/read-stat model for chat (CHAT-07) in this cycle?
 - **Default:** defer to post-launch unless FE sprint has room (clearly medium feature). Decide-by: before P4-07.
+- **Outcome (decided 2026-11-12, PO-approved Omar):** **DEFER** — *"I don't need to make Chat receipts/unread feature now. I need to keep the chat messages like it now, because it's a learning platform, not mandatory — this feature we may in the future add it, but now no."* Chat surface stands as-is (delivery + persistence unchanged, no read-stat model); matches the documented default (defer to post-launch). Jira EB-56/CHAT-07 dispositioned accordingly (closed-with-deferral note; no code changes). Revisit post-launch if wanted — the P4-07 spec remains the reference.
 
 ### D-14 — Chat membership semantics *(decide early — gates P0 task P1-12)*
 - **Question:** Who may subscribe/post in `chat-room`: enrollment-proxy (any enrolled student) or explicit `chat_room_members` only?
