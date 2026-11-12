@@ -55,6 +55,22 @@
 
 ---
 
+## §6 - `STRIPE_SECRET_KEY` (High) — Stripe Secret key
+
+1. Stripe Dashboard → Developers → API keys → **Roll secret key** (test mode first; live keys gated to P7 provisioning, D-28).
+2. Railway → Variables → update `STRIPE_SECRET_KEY` to the new key.
+3. Verify: redeploy healthy; run a test-mode checkout end-to-end (join → pay with `4242…` test card → webhook → enrollment created).
+4. The join flow **fails fast** with an incomplete/invalid key (EB-108 C decision: the money path never silently bypasses) — a wrong key shows up immediately at `/join` as a 500, which is the smoke signal.
+
+## §7 - `STRIPE_WEBHOOK_SECRET` (High) — webhook signing secret
+
+1. Stripe Dashboard → Developers → Webhooks → select the endpoint → **Roll signing secret** (or locally: restart `stripe listen` for a fresh `whsec_`).
+2. Railway → Variables → update `STRIPE_WEBHOOK_SECRET` to the new secret.
+3. Verify: send a test event (Dashboard → Send test webhook) and confirm the app answers 200; a stale secret answers **400** (fail-closed HMAC, EB-108) — that is the smoke signal, and Stripe stops retrying deliveries it cannot authenticate after enough 400s.
+4. No enrollment impact from a wrong secret beyond delayed finalization: Stripe retries signature-failed deliveries, then the dashboard flags the endpoint.
+
+---
+
 ## Post-rotation checklist (all rotations)
 
 - [ ] Health endpoint UP after the automatic redeploy

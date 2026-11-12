@@ -40,7 +40,9 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | **`V8`** | **MERGED** | `EB-62` / `INT-02` | `V8__failed_email_attempts.sql` | Outbox-style persistence table for asynchronous delivery failure observability and bounded retries. |
 | **`V9`** | **MERGED** | `EB-51` | `V9__badge_and_total_points_versions.sql` | Adds version columns for badges and total points optimistic locking. |
 | **`V10`** | **MERGED** | `EB-51` | `V10__unique_session_attendance_result.sql` | Creates an archive surface, fails closed on duplicate attendance results, and enforces uniqueness. The V9 labels in its SQL are historical and must not be edited. |
-| **`V11`** | **LOCAL DRAFT** | `EB-52` | `V11__completion_jobs_and_snapshots.sql` | Adds completion jobs and frozen ranking snapshots. Not merged or deployed. |
+| **`V11`** | **MERGED** | `EB-52` | `V11__completion_jobs_and_snapshots.sql` | Adds completion jobs and frozen ranking snapshots. |
+| **`V12`** | **MERGED** | `EB-53` | `V12__quiz_close_at_and_submission_is_late.sql` | Explicit quiz `close_at` auto-close and late-submission `is_late` flag. |
+| **`V14`** | **MERGED (this PR)** | `EB-108` | `V14__payment_transactions.sql` | Stripe enrollment-payment transaction store (D-28): one row per Checkout Session, unique `stripe_session_id` idempotency backstop, server-side amount snapshots. **V13 is RESERVED** for the test-only Flyway startup sentinel (`src/test/resources/startup-migrations`) and must never be used by a real migration. |
 
 *Note: Do not invent or assign version numbers out of order. Consult the engineering lead and Phase 3 task roadmap before reserving versions beyond V5.*
 

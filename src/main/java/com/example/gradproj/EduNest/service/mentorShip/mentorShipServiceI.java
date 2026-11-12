@@ -1,13 +1,17 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
+import com.example.gradproj.EduNest.config.integrations.StripeProperties;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.JoinMentorshipOutcome;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
 import com.example.gradproj.EduNest.entity.mentorship.*;
+import com.example.gradproj.EduNest.entity.payment.PaymentStatus;
+import com.example.gradproj.EduNest.entity.payment.PaymentTransaction;
 import com.example.gradproj.EduNest.entity.points.TotalPoints;
 import com.example.gradproj.EduNest.entity.tasks.Task;
 import com.example.gradproj.EduNest.entity.users.Mentor;
@@ -20,11 +24,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.ReviewsRepository;
+import com.example.gradproj.EduNest.repository.payment.PaymentTransactionRepository;
 import com.example.gradproj.EduNest.repository.points.TotalPointsRepository;
 import com.example.gradproj.EduNest.repository.tasks.TaskRepository;
 import com.example.gradproj.EduNest.repository.users.MentorRepository;
 import com.example.gradproj.EduNest.repository.users.StudentRepository;
 import com.example.gradproj.EduNest.service.completion.CompletionSnapshotStore;
+import com.example.gradproj.EduNest.service.integration.stripe.StripeCheckoutRequest;
+import com.example.gradproj.EduNest.service.integration.stripe.StripeCheckoutSession;
+import com.example.gradproj.EduNest.service.integration.stripe.StripePaymentGateway;
 import com.example.gradproj.EduNest.service.notification.NotificationService;
 import com.example.gradproj.EduNest.service.security.ContentReadGuard;
 import com.example.gradproj.EduNest.enums.tasks.TaskStatus;
@@ -63,6 +71,12 @@ public class mentorShipServiceI implements mentorShipService{
     private final NotificationService notificationService;
     private final CommissionService commissionService;
     private final ContentReadGuard contentReadGuard;
+    // [EB-108][P4-18] Stripe-backed enrollment payments (D-28). The gateway bean
+    // is DisabledStripePaymentGateway while STRIPE_ENABLED=false; the disabled
+    // branch below keeps the legacy direct-join in that state (C decision).
+    private final StripeProperties stripeProperties;
+    private final StripePaymentGateway stripePaymentGateway;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
 
     private String getCurrentUserEmail() {
@@ -404,7 +418,7 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     @Transactional
-    public void joinMentorship(Long mentorshipId) {
+    public JoinMentorshipOutcome joinMentorship(Long mentorshipId) {
 
         String email = getCurrentUserEmail();
 
@@ -427,7 +441,91 @@ public class mentorShipServiceI implements mentorShipService{
             throw new DuplicateResourceException("You are already enrolled in this mentorship");
         }
 
+        // [EB-108][P4-18] D-28: the amount is computed SERVER-side from the
+        // mentorship records only — never from client input.
         Double priceAfterDiscount = mentorShip.getPrice() - (mentorShip.getPrice() * mentorShip.getDiscountPercentage()/100);
+        long amountCents = Math.round(priceAfterDiscount * 100);
+
+        // [EB-108] Free Tier Bypass (Omar, 2026-11-12): a mentorship whose
+        // effective price is $0 joins instantly through the legacy path —
+        // Stripe is NEVER invoked for a zero-amount join. STRIPE_ENABLED=false
+        // keeps the legacy direct-join for every price too (C decision), so
+        // local dev and the full test suite run exactly as before.
+        if (amountCents <= 0 || !stripeProperties.isEnabled()) {
+            finalizeEnrollment(student, mentorShip, priceAfterDiscount, true);
+            return JoinMentorshipOutcome.directEnrollment();
+        }
+
+        // Money path (Stripe enabled + amount > 0). One unpaid checkout per
+        // (student, mentorship): no stacking of pending sessions; replays of
+        // completed sessions are handled idempotently by the webhook instead.
+        if (paymentTransactionRepository.existsByStudent_IdAndMentorShip_IdAndStatus(
+                student.getId(), mentorshipId, PaymentStatus.PENDING)) {
+            throw new DuplicateResourceException(
+                    "You already have a pending payment for this mentorship - complete it before starting a new one");
+        }
+
+        // The transaction's public id travels in the Checkout metadata so the
+        // webhook can resolve the attempt; it is generated up front because
+        // Stripe sees it before we persist anything.
+        UUID transactionPublicId = UUID.randomUUID();
+        StripeCheckoutSession session = stripePaymentGateway.createCheckoutSession(
+                new StripeCheckoutRequest(
+                        transactionPublicId.toString(),
+                        student.getPublicId().toString(),
+                        student.getEmail(),
+                        mentorShip.getPublicId().toString(),
+                        mentorShip.getTitle(),
+                        amountCents));
+
+        // If the Stripe call above succeeded but this save fails, the session
+        // simply expires unpaid — no enrollment, no money path side effects.
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .publicId(transactionPublicId)
+                .student(student)
+                .mentorShip(mentorShip)
+                .amount(priceAfterDiscount)
+                .currency(stripeProperties.getCurrency())
+                .status(PaymentStatus.PENDING)
+                .stripeSessionId(session.sessionId())
+                .build();
+        paymentTransactionRepository.save(transaction);
+
+        // The enrollment does NOT exist at this point — only the signature-
+        // verified webhook flipping this transaction to PAID creates it.
+        return JoinMentorshipOutcome.checkoutRequired(session.checkoutUrl());
+    }
+
+    /**
+     * [EB-108][P4-18] webhook-side finalization for a PAID transaction (the
+     * sole source of truth for enrollment creation — D-28). Uses the PAID
+     * amount snapshot, even if the mentor has since changed the price: the
+     * student pays/has paid what the checkout session stated.
+     */
+    @Override
+    @Transactional
+    public void finalizePaidEnrollment(PaymentTransaction transaction) {
+        finalizeEnrollment(transaction.getStudent(), transaction.getMentorShip(), transaction.getAmount(), false);
+    }
+
+    /**
+     * The legacy enrollment finalization block, shared verbatim by both paths:
+     * the direct join (free bypass / Stripe disabled, throwOnDuplicate=true to
+     * preserve the 409 MSH-04 semantics) and the webhook PAID path
+     * (throwOnDuplicate=false — a replay or double-payment on an already-
+     * enrolled pair is a no-op, never an error loop for Stripe retries).
+     */
+    private void finalizeEnrollment(Student student, MentorShip mentorShip, Double priceAfterDiscount,
+                                    boolean throwOnDuplicate) {
+
+        if (enrollmentRepository.existsByMentorShip_IdAndStudent_Id(
+                mentorShip.getId(), student.getId())) {
+            if (throwOnDuplicate) {
+                throw new DuplicateResourceException("You are already enrolled in this mentorship");
+            }
+            return;
+        }
+
         Double platformProfit = commissionService.calculatePlatformCut(priceAfterDiscount);
 
         Enrollment enrollment = Enrollment.builder()
@@ -460,7 +558,11 @@ public class mentorShipServiceI implements mentorShipService{
             // hits uk_enrollment_student_mentorship -> translate to 409
             enrollmentRepository.save(enrollment);
         } catch (DataIntegrityViolationException dive) {
-            throw new DuplicateResourceException("You are already enrolled in this mentorship");
+            if (throwOnDuplicate) {
+                throw new DuplicateResourceException("You are already enrolled in this mentorship");
+            }
+            // Racing webhook: the other attempt won the unique pair; the PAID
+            // transaction record stands but no duplicate enrollment is created.
         }
         totalPointsRepository.save(tp);
     }
@@ -664,8 +766,8 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     @Transactional
-    public void joinMentorship(UUID mentorshipId) {
-        joinMentorship(resolveMentorshipId(mentorshipId));
+    public JoinMentorshipOutcome joinMentorship(UUID mentorshipId) {
+        return joinMentorship(resolveMentorshipId(mentorshipId));
     }
 
     @Override
