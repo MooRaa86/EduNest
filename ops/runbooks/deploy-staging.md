@@ -69,6 +69,21 @@ Per [`../backups/backup-policy.md`](../backups/backup-policy.md): staging DB is 
 
 The app runs `spring.flyway.enabled=false` + `ddl-auto=validate` in every profile — **migrations are always run by an authorized operator before the image deploys** (EB-43 model; preserved by EB-75 §7). The staging DB must already have the `[ADD-02]` schema (provision-staging §1.3) before first boot.
 
+### 5.0 Target-identity preflight (mandatory, before any manual migration)
+
+A wrong-target migration is the worst-case failure of the manual path; the pipeline's G5/G8 gates do not protect it. Run and record these checks before every manual migration, and **fail closed** — do not proceed on any mismatch, and do not proceed if the environment cannot be positively established. Credentials are parsed/read but **never** printed, echoed, or logged (no passwords, tokens, or full credential-bearing URLs).
+
+| Check | How | Fail condition |
+|---|---|---|
+| Intended environment established by name | The ticket thread states "staging migration of commit X against `STAGING_DB_PROJECT_REF=<ref>`" before any command runs | No recorded intent → stop |
+| Actual `FLYWAY_URL` host identity | Parse the JDBC URL (read-only in-session) and extract the host — do **not** print the URL. Host must be `*.pooler.supabase.com` or `db.<ref>.supabase.co` | Unrecognized host, or a URL that looks like anything but Supabase → stop |
+| Expected project ref | Host-derived ref (pooler username `postgres.<ref>` suffix / `db.<ref>` host component) must **positively** match `STAGING_DB_PROJECT_REF` — the owner-approved allowlist value, not a guess | Ref mismatch, unknown, or absent `STAGING_DB_PROJECT_REF` → stop |
+| Actual `FLYWAY_USER` identity | Must be `postgres.<staging-ref>` (pooler) or `postgres` (direct) — matching the host form | User/host form mismatch → stop |
+| Production-crosscheck | If host or user derives to the **production** ref (`ciogysvcykzxrjuskxmk`, public config — also guard-listed in staging-pipeline G5), the credentials point at production → **stop immediately** and re-derive from the owner's store | Any production-derivation → stop |
+| Session hygiene | Confirm no `$env:FLYWAY_*` value from a previous session (possibly production) is still live: re-set all three variables explicitly in this session | Inherited/stale values → stop |
+
+This manual preflight is **not equivalent to the automated identity guard** (G8): it depends on operator discipline and the same session's variables, has no freshness re-check, and is not independently auditable. Until a live DB-side marker is ratified (staging-pipeline §7 limitation), the manual path remains this check plus the recorded ticket-thread intent.
+
 ### 5.1 Rehearsal gate (mandatory, before touching any real target)
 
 ```powershell
@@ -78,7 +93,7 @@ powershell -ExecutionPolicy Bypass -File ops/rehearsals/Invoke-MigrationRehearsa
 
 ### 5.2 Operator sequence on staging (exact commands from `src/main/resources/db/migration/README.md` §3.1.1)
 
-Set the staging identity in the session environment first (values are never printed or logged):
+Set the staging identity in the session environment first (values are never printed or logged) — **only after the §5.0 preflight has passed**:
 
 ```powershell
 $env:FLYWAY_URL    = "<staging JDBC url — pooler :6543, sslmode=require>"   # set by owner, kept in Railway/secret store
@@ -119,13 +134,29 @@ Triggered by `deploy-staging.yml` `workflow_run` on a successful `tests` run on 
 
 ### Path C — current fallback: manual Railway "Deploy" from `main` (Omar-approved, 2026-11-11)
 
-Until the pipeline is activated (and only while the staging service exists):
+Until the pipeline is activated (and only while the staging service exists). **Migration always precedes deployment on this path** — the app boots with `spring.flyway.enabled=false` (it never migrates its own database) and `spring.jpa.hibernate.ddl-auto=validate`, so deploying before the schema is migrated guarantees a boot crash (Hibernate validation failure):
 
-1. Railway dashboard → staging service → Deploy → source `main` commit (confirm SHA).
-2. Run the migration sequence §5.2 against staging **first** (app cannot self-migrate: `flyway.enabled=false`).
-3. After deploy, run §7 verification. This path has no digest pinning, no tracked-deployment gate, and no evidence artifact — it is the interim mechanism, replaced by paths A/B once the owner activates them.
+1. Verify prerequisites (§1), confirm the target identity per §5.0 preflight (staging — never production), and confirm the backup posture (§4).
+2. Run the migration rehearsal gate (§5.1).
+3. Run the authorized Flyway sequence (§5.2) against the verified staging database **if** `flyway:info` shows pending migrations; confirm the strict final `flyway:validate` passes (step 4 of the sequence).
+4. Railway dashboard → staging service → Deploy → the intended `main` commit (confirm SHA).
+5. Track the deployment and run §7 verification (smoke + commit identity).
 
-**Rollback policy (all paths):** automatic deployments only ever advance to the newest verified commit; rollback is a **manual** redeploy of the previous digest-pinned image (paths A/B) or previous Railway deployment (path C), superseded by any later automatic deployment — documented policy, never an accident.
+This path has no digest pinning, no tracked-deployment gate, and no evidence artifact — it is the interim mechanism, replaced by paths A/B once the owner activates them.
+
+**Rollback policy (all paths):** automatic deployments only ever advance to the newest verified commit; rollback is a **manual** redeploy of the previous digest-pinned image (paths A/B) or a previous Railway deployment (path C), superseded by any later automatic deployment — documented policy, never an accident. Railway action semantics and retention caveats: see §6.1.
+
+### 6.1 Railway rollback semantics and retention (official docs)
+
+Per Railway's official documentation ([Deployment actions](https://docs.railway.com/deployments/deployment-actions), [Plans → Image retention policy](https://docs.railway.com/pricing/plans#image-retention-policy)):
+
+- **Rollback and Redeploy are different actions.** *Rollback* restores the selected deployment's Docker image **and its custom variables** — but only while the rollback artifact (retained image) is still available. *Redeploy* creates a new deployment from the selected deployment's code/config; for a removed deployment outside the retention window it **rebuilds the image from the original source code with the deployment's original variables** instead of restoring a retained image.
+- **Image retention is plan-dependent** (Railway retains images of removed deployments only for the policy window): Free/Trial **24 h**, Hobby **72 h**, Pro **120 h**, Enterprise **360 h**. Deployments older than the policy cannot be rolled back at all — the Rollback option is not even shown. **[VERIFY-OWNER]** Do not assume this project's current Railway plan tier; the operator confirms the effective window in the dashboard before relying on any rollback.
+- Railway's singleton-deploy model eventually **removes** older deployments; a removed deployment is still rollable within the retention window, beyond it only Redeploy is possible.
+- **Verify after either action:** confirm the actually-deployed artifact identity — for paths A/B the digest-pinned image ref and `/actuator/info` `git.commit.id`; for source deploys the source SHA and the effective variable set — via §7 verification. Never assume the restored configuration is what you intended; prove it.
+- **Secret-rotation check before restoring old variables:** rollback/redeploy restores the *historical* variable values. If any secret was rotated since the target deployment was created (rotation history: [`../secrets/rotation.md`](../secrets/rotation.md)), restoring old values may re-introduce a revoked or superseded credential — re-set rotated values immediately after the rollback and re-verify. Do not assume old credentials remain safe to restore.
+- **A database migration is NOT reversed by a container rollback** (forward-only rule; §8 / `rollback-triggers.md`).
+- Retention-immune alternative for paths A/B: manual `workflow_dispatch` of the previous **digest-pinned GHCR image** (the image persists in GHCR keyed by commit SHA, independent of Railway's retention window).
 
 ## 7. Smoke and health verification
 
@@ -146,7 +177,7 @@ The verdict→action map lives in [`rollback-triggers.md`](rollback-triggers.md)
 
 | Failure | Action |
 |---|---|
-| Health poll exhausts budget | Read failed-deployment logs; **redeploy the previous deployment/image**; re-verify after rollback |
+| Health poll exhausts budget | Read failed-deployment logs; roll back to the previous deployment/image (Railway action semantics + retention caveats: §6.1); re-verify after rollback |
 | Boot crash **after a migration ran** | DB is **NOT rolled back** (forward-only): roll forward with `V{N+1}`, or if data is damaged, follow the restore decision table in [`../backups/backup-policy.md`](../backups/backup-policy.md) — for staging, prefer **rebuild** (§ teardown) |
 | Boot crash after a config/secret change | Revert the variable via the rotation lane (`../secrets/rotation.md`) |
 | Pipeline gate failure (G1–G8) | Nothing external was touched; fix the configuration/identity problem and re-run |
