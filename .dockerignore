@@ -1,8 +1,37 @@
+# EB-76 / P6-05: build context hygiene. Only pom.xml + src/main are needed by the
+# image build (`mvn clean package -DskipTests`); everything else is excluded to
+# shrink context, keep plan/ops docs and tooling out of daemon scope, and prevent
+# local state (uploads, credentials, IDE noise) from ever entering a layer.
 target/
 .mvn/
 .git/
 .gitignore
+.gitattributes
 *.md
 .env
+.env.*
+*.env
+!.env.example
 .DS_Store
 *.log
+logs/
+
+# local runtime state (never ship uploads into an image layer)
+uploads/
+
+# IDE / editor noise
+.idea/
+.vscode/
+*.iml
+
+# documentation, planning, ops and tooling (not needed by the build)
+docs/
+mds/
+ops/
+plan/
+tools/
+node_modules/
+
+# CI/CD definitions and test sources (tests are not compiled into the image)
+.github/
+src/test/

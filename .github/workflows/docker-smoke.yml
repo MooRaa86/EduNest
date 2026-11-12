@@ -1,0 +1,152 @@
+# EB-76 / P6-05: manual-dispatch Docker smoke tests for the hardened image.
+#
+# Deliberately dispatch-only: it is not part of the merge gate, does not touch the
+# EB-75 CI/CD chain (docker-build.yml / deploy-staging.yml are frozen), pushes
+# nothing to any registry, and connects only to an isolated ephemeral postgres
+# service container — never to Supabase or any Railway environment.
+#
+# What it verifies (evidence per step):
+#   1. image builds from the hardened Dockerfile
+#   2. Flyway V1..V<N> applies cleanly on a fresh postgres 16
+#   3. runtime UID is non-root (1001)
+#   4. Java 21 is the runtime
+#   5. /app/uploads is writable by the runtime user (Supabase disabled in smoke)
+#   6. application boots, liveness + readiness return {"status":"UP"}
+#   7. Docker HEALTHCHECK reaches "healthy" state
+#   8. SIGTERM triggers Spring Boot graceful shutdown
+#   9. packaged jar contains no spring-boot-devtools (A-9)
+#  10. no credential files / secret-looking layer arguments in the image
+name: docker-smoke
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      # Isolated smoke database only — never Supabase, never Railway.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SMOKE_JWT_SECRET: smoke-only-jwt-secret-0123456789abcdef0123456789abcdef
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (flyway migration runner)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Apply Flyway migrations to the smoke database
+        env:
+          FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/postgres
+          FLYWAY_USER: postgres
+          FLYWAY_PASSWORD: postgres
+        run: ./mvnw -B -Pdb-migrate flyway:migrate
+
+      - name: Build the image
+        run: docker build -t edunest:smoke .
+
+      - name: Start the container (isolated config, dummy secrets)
+        run: |
+          docker run -d --name edunest-smoke \
+            -p 8080:8080 \
+            --add-host host.docker.internal:host-gateway \
+            -e PORT=8080 \
+            -e DATABASE_URL="jdbc:postgresql://host.docker.internal:5432/postgres" \
+            -e DATABASE_NAME=postgres \
+            -e DATABASE_PASSWORD=postgres \
+            -e JWT_SECRET="$SMOKE_JWT_SECRET" \
+            -e MAIL_HOST=localhost \
+            -e MAIL_PORT=587 \
+            -e MAIL_USERNAME=smoke@example.org \
+            -e MAIL_PASSWORD=smoke-only \
+            edunest:smoke
+
+      - name: Effective runtime UID is non-root
+        run: |
+          uid="$(docker exec edunest-smoke id -u)"
+          echo "runtime uid: $uid"
+          test "$uid" != "0"
+
+      - name: Java 21 runtime
+        run: docker exec edunest-smoke sh -c 'java -version 2>&1 | grep -F "version \"21."'
+
+      - name: Writable uploads directory for the runtime user
+        run: docker exec edunest-smoke sh -c 'touch /app/uploads/.smoke-write-test && rm /app/uploads/.smoke-write-test'
+
+      - name: Liveness and readiness respond correctly
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS -m 5 http://127.0.0.1:8080/actuator/health/liveness > /tmp/live.json 2>/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS -m 5 http://127.0.0.1:8080/actuator/health/liveness | tee /tmp/live.json
+          grep -q '"status":"UP"' /tmp/live.json
+          curl -fsS -m 5 http://127.0.0.1:8080/actuator/health/readiness | grep -q '"status":"UP"'
+          # health endpoint must not leak details
+          test "$(curl -fsS http://127.0.0.1:8080/actuator/health)" = '{"status":"UP","groups":["liveness","readiness"]}'
+
+      - name: Docker HEALTHCHECK reaches healthy
+        run: |
+          for i in $(seq 1 24); do
+            st="$(docker inspect --format '{{.State.Health.Status}}' edunest-smoke)"
+            echo "healthcheck state: $st"
+            [ "$st" = "healthy" ] && exit 0
+            sleep 10
+          done
+          docker inspect --format '{{json .State.Health}}' edunest-smoke
+          exit 1
+
+      - name: SIGTERM triggers graceful shutdown
+        run: |
+          docker stop -t 35 edunest-smoke
+          docker logs edunest-smoke 2>&1 | grep -F "Commencing graceful shutdown"
+          docker logs edunest-smoke 2>&1 | grep -F "Graceful shutdown complete"
+
+      - name: No spring-boot-devtools in the packaged jar (A-9)
+        run: |
+          cid="$(docker create edunest:smoke)"
+          docker cp "$cid:/app/app.jar" /tmp/app.jar
+          docker rm "$cid"
+          if unzip -l /tmp/app.jar | grep -q "spring-boot-devtools"; then
+            echo "FAIL: devtools found in packaged jar"; exit 1
+          fi
+
+      - name: No credential files or secret-looking layer arguments
+        run: |
+          # .env (and any *.env) must not exist in the image filesystem
+          docker run --rm --entrypoint sh edunest:smoke -c 'for f in /app/.env /app/.env.* /app/uploads/.env; do test ! -f "$f" || exit 1; done'
+          # layer arguments must not carry secret-looking values
+          if docker history --no-trunc edunest:smoke | grep -Ei "(password|secret|token)[[:space:]]*=[[:space:]]*[^[:space:]]{6,}"; then
+            echo "FAIL: secret-looking content in image history"; exit 1
+          fi
+          echo "layer hygiene OK"
+
+      - name: Cleanup (runs even on failure)
+        if: always()
+        run: |
+          docker rm -f edunest-smoke 2>/dev/null || true
+          rm -f /tmp/app.jar /tmp/live.json 2>/dev/null || true
+          echo "smoke resources cleaned"
