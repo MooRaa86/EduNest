@@ -115,7 +115,8 @@ public interface MentorRepository extends JpaRepository<Mentor, Long> {
             COUNT(DISTINCT ls.id) as totalSessions,
             COUNT(DISTINCT e.student.id) as totalStudents,
             COALESCE((SELECT AVG(r2.rating) FROM Mentor m2 JOIN m2.mentorships ms2 JOIN ms2.reviews r2 WHERE m2.id = :mentorId), 0.0) as averageRating,
-            0 as totalBadges,
+            COALESCE((SELECT COUNT(uab.id) FROM com.example.gradproj.EduNest.entity.admin.UserAdminBadge uab
+                      WHERE uab.user.id = :mentorId), 0) as totalBadges,
             COUNT(DISTINCT ms.id) as mentorshipCount
         FROM Mentor m
         LEFT JOIN m.mentorships ms
