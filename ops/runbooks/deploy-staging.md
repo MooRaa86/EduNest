@@ -69,20 +69,32 @@ Per [`../backups/backup-policy.md`](../backups/backup-policy.md): staging DB is 
 
 The app runs `spring.flyway.enabled=false` + `ddl-auto=validate` in every profile — **migrations are always run by an authorized operator before the image deploys** (EB-43 model; preserved by EB-75 §7). The staging DB must already have the `[ADD-02]` schema (provision-staging §1.3) before first boot.
 
-### 5.0 Target-identity preflight (mandatory, before any manual migration)
+### 5.0 Credential load + target-identity preflight (mandatory, before any manual migration)
 
-A wrong-target migration is the worst-case failure of the manual path; the pipeline's G5/G8 gates do not protect it. Run and record these checks before every manual migration, and **fail closed** — do not proceed on any mismatch, and do not proceed if the environment cannot be positively established. Credentials are parsed/read but **never** printed, echoed, or logged (no passwords, tokens, or full credential-bearing URLs).
+A wrong-target migration is the worst-case failure of the manual path; the pipeline's G5/G8 gates do not protect it. The sequence is **load → verify → use**: the same session variables that are verified here are the ones the migration commands consume — there is no circular dependency and no variable replacement between verification and execution. **Fail closed** on any mismatch, and do not proceed if the environment cannot be positively established. Credentials are parsed/read but **never** printed, echoed, or logged (no passwords, tokens, or full credential-bearing URLs).
+
+1. **Record intent** in the ticket thread: "staging migration of commit X against `STAGING_DB_PROJECT_REF=<ref>`" — before any command runs. No recorded intent → stop.
+2. **Obtain credentials** from the correct authorized environment store: the staging Railway service variables / the owner's secret store — never production values, never the pipeline's production-adjacent stores.
+3. **Load all three variables** into the current session explicitly, overwriting any inherited values (a stale `$env:FLYWAY_*` from a previous session — possibly production — must never be trusted):
+   ```powershell
+   $env:FLYWAY_URL    = "<staging JDBC url — pooler :6543, sslmode=require>"   # set by owner, kept in Railway/secret store
+   $env:FLYWAY_USER   = "<staging migration role, e.g. postgres.<staging-ref>>"
+   $env:FLYWAY_PASSWORD = "<staging role password>"
+   ```
+4. **Verify identity of the loaded variables** (read-only parsing in-session; do **not** print the URL):
 
 | Check | How | Fail condition |
 |---|---|---|
-| Intended environment established by name | The ticket thread states "staging migration of commit X against `STAGING_DB_PROJECT_REF=<ref>`" before any command runs | No recorded intent → stop |
-| Actual `FLYWAY_URL` host identity | Parse the JDBC URL (read-only in-session) and extract the host — do **not** print the URL. Host must be `*.pooler.supabase.com` or `db.<ref>.supabase.co` | Unrecognized host, or a URL that looks like anything but Supabase → stop |
+| Actual `FLYWAY_URL` host identity | Parse the loaded JDBC URL and extract the host. Host must be `*.pooler.supabase.com` or `db.<ref>.supabase.co` | Unrecognized host, or a URL that looks like anything but Supabase → stop |
 | Expected project ref | Host-derived ref (pooler username `postgres.<ref>` suffix / `db.<ref>` host component) must **positively** match `STAGING_DB_PROJECT_REF` — the owner-approved allowlist value, not a guess | Ref mismatch, unknown, or absent `STAGING_DB_PROJECT_REF` → stop |
 | Actual `FLYWAY_USER` identity | Must be `postgres.<staging-ref>` (pooler) or `postgres` (direct) — matching the host form | User/host form mismatch → stop |
-| Production-crosscheck | If host or user derives to the **production** ref (`ciogysvcykzxrjuskxmk`, public config — also guard-listed in staging-pipeline G5), the credentials point at production → **stop immediately** and re-derive from the owner's store | Any production-derivation → stop |
-| Session hygiene | Confirm no `$env:FLYWAY_*` value from a previous session (possibly production) is still live: re-set all three variables explicitly in this session | Inherited/stale values → stop |
+| Production-crosscheck | If host or user derives to the **production** ref (`ciogysvcykzxrjuskxmk`, public config — also guard-listed in staging-pipeline G5), the credentials point at production → **stop immediately**, discard the session values, and re-derive from the owner's store | Any production-derivation → stop |
+| Uncertainty | If any value cannot be positively derived or matched (obscure URL form, ambiguous ref) | Uncertainty counts as mismatch → stop |
 
-This manual preflight is **not equivalent to the automated identity guard** (G8): it depends on operator discipline and the same session's variables, has no freshness re-check, and is not independently auditable. Until a live DB-side marker is ratified (staging-pipeline §7 limitation), the manual path remains this check plus the recorded ticket-thread intent.
+5. **Freeze the verified variables.** From this point the exact loaded `FLYWAY_URL`/`FLYWAY_USER`/`FLYWAY_PASSWORD` are used for every migration command; do **not** replace, re-source, or re-derive them between identity verification and execution.
+6. **Recheck immediately before the mutation step** (`flyway:migrate`, step 3 of §5.2): re-derive the host + username from the loaded variables and confirm they still positively match `STAGING_DB_PROJECT_REF` (same checks as step 4). If the recheck fails or anything changed → stop.
+
+This manual preflight is **not equivalent to the automated identity guard** (G8): it depends on operator discipline and the same session's variables, has no machine-auditable freshness re-check, and is not independently auditable. Until a live DB-side marker is ratified (staging-pipeline §7 limitation), the manual path remains this check plus the recorded ticket-thread intent.
 
 ### 5.1 Rehearsal gate (mandatory, before touching any real target)
 
@@ -93,19 +105,12 @@ powershell -ExecutionPolicy Bypass -File ops/rehearsals/Invoke-MigrationRehearsa
 
 ### 5.2 Operator sequence on staging (exact commands from `src/main/resources/db/migration/README.md` §3.1.1)
 
-Set the staging identity in the session environment first (values are never printed or logged) — **only after the §5.0 preflight has passed**:
-
-```powershell
-$env:FLYWAY_URL    = "<staging JDBC url — pooler :6543, sslmode=require>"   # set by owner, kept in Railway/secret store
-$env:FLYWAY_USER   = "<staging migration role, e.g. postgres.<staging-ref>>"
-$env:FLYWAY_PASSWORD = "<staging role password>"
-```
-
-Then the five-command sequence:
+Use the exact variables loaded and identity-verified in §5.0 — **do not replace them between verification and execution**. The commands consume the same session variables that passed the preflight:
 
 ```powershell
 .\mvnw.cmd -B -Pdb-migrate flyway:info
 .\mvnw.cmd -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=*:pending' flyway:validate
+# >>> §5.0 step 6: recheck host/username identity against STAGING_DB_PROJECT_REF immediately here, before the mutation <<<
 .\mvnw.cmd -B -Pdb-migrate flyway:migrate
 .\mvnw.cmd -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=' flyway:validate
 .\mvnw.cmd -B -Pdb-migrate flyway:info
@@ -134,7 +139,7 @@ Triggered by `deploy-staging.yml` `workflow_run` on a successful `tests` run on 
 
 ### Path C — current fallback: manual Railway "Deploy" from `main` (Omar-approved, 2026-11-11)
 
-Until the pipeline is activated (and only while the staging service exists). **Migration always precedes deployment on this path** — the app boots with `spring.flyway.enabled=false` (it never migrates its own database) and `spring.jpa.hibernate.ddl-auto=validate`, so deploying before the schema is migrated guarantees a boot crash (Hibernate validation failure):
+Until the pipeline is activated (and only while the staging service exists). **Migration always precedes deployment on this path** — the app boots with `spring.flyway.enabled=false` (it never migrates its own database) and `spring.jpa.hibernate.ddl-auto=validate`. Deploying a release whose code expects not-yet-applied schema changes fails at boot (Hibernate validation rejects the mismatched schema); a release that happens to be schema-compatible with the current schema may boot without migrating, but the §5.2 sequence is still mandatory on this path either way, so schema state and deployed code never drift:
 
 1. Verify prerequisites (§1), confirm the target identity per §5.0 preflight (staging — never production), and confirm the backup posture (§4).
 2. Run the migration rehearsal gate (§5.1).
