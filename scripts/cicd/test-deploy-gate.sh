@@ -198,6 +198,13 @@ assert_blocks "mismatched compatibility approval SHA blocks" "mismatch"         
 assert_passes  "prod activation true passes"                                           gate_activation "true" "production" "PROD_AUTO_DEPLOY_ENABLED"
 assert_blocks "prod activation false blocks"                 "PROD_AUTO_DEPLOY_ENABLED"  gate_activation "false" "production" "PROD_AUTO_DEPLOY_ENABLED"
 
+# G2m — manual dispatch ancestry compare tests
+assert_passes  "ancestry status identical passes"                                      gate_ancestry_status "identical" "production"
+assert_passes  "ancestry status behind passes"                                         gate_ancestry_status "behind" "production"
+assert_blocks "ancestry status ahead blocks"                 "not part of"               gate_ancestry_status "ahead" "production"
+assert_blocks "ancestry status diverged blocks"              "not part of"               gate_ancestry_status "diverged" "production"
+assert_blocks "empty ancestry status blocks"                 "not part of"               gate_ancestry_status "" "production"
+
 echo "-----"
 echo "deploy-gate tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

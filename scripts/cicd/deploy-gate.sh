@@ -438,8 +438,25 @@ gate_commit_match() {
     return 0
 }
 
+# G2m — ancestry check for manual dispatch (GitHub compare status).
+gate_ancestry_status() {
+    local status="$1" branch="${2:-production}"
+    case "$status" in
+        identical|behind)
+            echo "OK: commit belongs to $branch branch history ($status)"
+            return 0
+            ;;
+        *)
+            echo "BLOCK: commit is not part of $branch branch history (compare status: '$status')"
+            return 1
+            ;;
+    esac
+}
+
 # CLI dispatcher used by GitHub Actions steps (and reusable by operators):
 #   deploy-gate.sh trigger <conclusion> <status> <head_branch> <head_sha> <current_sha>
+#   deploy-gate.sh commit-match "$a" "$b" [label]
+#   deploy-gate.sh ancestry-status <compare_status> [branch]
 #   deploy-gate.sh migration-url <jdbc_url>
 #   deploy-gate.sh staging-db-identity <jdbc_url> <db_user> <approved_staging_ref> <prod_ref>
 #   deploy-gate.sh production-db-identity <jdbc_url> <db_user> <approved_prod_ref> [staging_ref]
@@ -454,6 +471,7 @@ gate_commit_match() {
 case "${1:-}" in
     trigger)              shift; gate_verify_trigger "$@" ;;
     commit-match)         shift; gate_commit_match "$@" ;;
+    ancestry-status)      shift; gate_ancestry_status "$1" "${2:-production}" ;;
     migration-url)        shift; gate_guard_migration_url "$1" ;;
     staging-db-identity)  shift; gate_staging_db_identity "$1" "$2" "$3" "$4" ;;
     production-db-identity) shift; gate_production_db_identity "$1" "$2" "$3" "${4:-}" ;;
