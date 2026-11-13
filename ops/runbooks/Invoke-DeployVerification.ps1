@@ -18,7 +18,8 @@ param(
     [int]$PollMinutes = 20,
     [int]$PollSeconds = 5,
     [int]$AggregateWaitMinutes = 15,
-    [int]$AggregateTimeoutSeconds = 5
+    [int]$AggregateTimeoutSeconds = 5,
+    [switch]$StrictIdentity
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +27,9 @@ $ErrorActionPreference = "Stop"
 $BaseUrl = $BaseUrl.TrimEnd("/")
 $fails = @()
 $warns = @()
+if ($StrictIdentity -and $ExpectedCommit -notmatch '^[0-9a-f]{40}$') {
+    $fails += "strict version match requires a full lowercase 40-character commit SHA"
+}
 
 # ---- Gate 1: health poll with timeout (liveness + readiness) -----------------
 $deadline = (Get-Date).AddMinutes($PollMinutes)
@@ -96,7 +100,8 @@ if ($ExpectedCommit -and $aggFast) {
         if (-not $gitId) { $gitId = $info.git.commit.id }
         if (-not $gitId) {
             $fails += "version match FAILED: /actuator/info exposes no git.commit.id (build-info/git-commit-id plumbing missing from this image)"
-        } elseif (-not ($gitId.ToLower().StartsWith($ExpectedCommit.ToLower()))) {
+        } elseif (($StrictIdentity -and $gitId.ToLower() -ne $ExpectedCommit.ToLower()) -or
+                  (-not $StrictIdentity -and -not $gitId.ToLower().StartsWith($ExpectedCommit.ToLower()))) {
             $fails += "version match FAILED: deployed commit $gitId does not match expected $ExpectedCommit (Railway may have deployed a different push)"
         } else {
             Write-Output ("OK   version match -> deployed commit {0} matches expected" -f $gitId.Substring(0, 12))
@@ -104,7 +109,7 @@ if ($ExpectedCommit -and $aggFast) {
     } catch {
         $status = $null
         if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
-        if ($status -eq 401 -or $status -eq 403) {
+        if (($status -eq 401 -or $status -eq 403) -and -not $StrictIdentity) {
             $warns += "version match deferred: /actuator/info is admin-only (EB-67 posture) - authorized commit match lands when a build-marker/token path is decided"
         } else {
             $fails += "version match could not read /actuator/info: $($_.Exception.Message)"

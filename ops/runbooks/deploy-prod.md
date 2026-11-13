@@ -1,5 +1,10 @@
 # Deploy Production Runbook (P6-09 / EB-80 — DEP-07 docs half)
 
+> EB-115 implementation is in progress and is **not activated**. The current
+> production workflow prepares a release but blocks at protected preflight; it
+> is not a production migration or deployment pipeline. Continue following this manual runbook until a separate
+> authorized cutover; see [`../cicd/production-pipeline.md`](../cicd/production-pipeline.md).
+
 > **Status banner (2026-11-12):** production is **ACTIVE and confirmed live**. Railway Auto Deploy tracks the `production` branch; latest verified state: service `EduNest` healthy (1/1 replica, region `iad`), deployment `01a69575` SUCCESS, commit `bef1153` (PR #121), health endpoints UP, startup logs clean.
 >
 > **Branch protection is NOT yet enforced.** Verified 2026-11-12: `gh api repos/MooRaa86/EduNest/rules/branches/production` → `[]` (no rulesets, no classic protection reachable by a non-admin). The EB-113 release gate (required checks `Build + test + package (JDK 21)` + `smoke`) is implemented and proven green on release PR #123, but the **`production-release-gate` ruleset awaits owner activation**. Until the owner activates it (and this runbook's §2 verification passes), merge discipline on `production` is **procedural, not enforced** — verify §2 before relying on any claim of enforcement.

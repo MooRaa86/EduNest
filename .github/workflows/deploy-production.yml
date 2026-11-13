@@ -1,53 +1,231 @@
 name: Deploy Production
 
-# EB-75 [P6-04] — production promotion BOUNDARY (structure only, NOT active).
-#
-# Per the P6-04 plan spec: production deploy = the same workflow pattern,
-# manually dispatched, behind a GitHub Environment approval gate — but it is
-# EXECUTED at P7-06 (separately authorized production rollout task). This
-# workflow exists to make the future promotion path explicit and is
-# deliberately inert until the repo variable PROD_PROMOTION_ENABLED is set to
-# 'true' by the Project Owner at P7-06. Without that variable every run here
-# is skipped, and there is no automatic production deployment of any kind.
-
+# EB-115: release preparation is implemented; production mutation remains
+# blocked until the authenticated evidence and provider contracts are ready.
 on:
+  push:
+    branches: [production]
   workflow_dispatch:
-    inputs:
-      commit_sha:
-        description: "Full commit SHA the image was built from (must be a tested main commit)"
-        required: true
-        type: string
-      image_ref:
-        description: "Digest-pinned image ref, e.g. ghcr.io/OWNER/edunest-backend@sha256:..."
-        required: true
-        type: string
 
-# Production requires an explicit GitHub Environment with required reviewers.
+permissions:
+  contents: read
+
 concurrency:
   group: production-deploy
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  actions: read
-
 jobs:
-  promotion-gate:
-    name: Production promotion gate (inert until P7-06)
+  activation:
+    name: Production activation boundary
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.gate.outputs.enabled }}
+    steps:
+      - name: Check activation without production secrets
+        id: gate
+        env:
+          AUTO_DEPLOY: ${{ vars.PROD_AUTO_DEPLOY_ENABLED }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$AUTO_DEPLOY" != 'true' ]; then
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'Production automation disabled; no deployment or migration attempted.'
+            exit 0
+          fi
+          if [ "$EVENT" != push ] || [ "$REF" != refs/heads/production ]; then
+            echo '::error::Only a production push can prepare an automatic release.'
+            exit 1
+          fi
+          echo 'enabled=true' >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Verify production release SHA
+    needs: [activation]
+    if: needs.activation.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.verify.outputs.sha }}
+    steps:
+      - name: Verify production head
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Invalid release SHA'; exit 1; }
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
+          [ "$head" = "$RELEASE_SHA" ] || { echo '::error::Release is stale'; exit 1; }
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Test and package exact release
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Production decision tests
+        run: python3 -B -m unittest discover -s scripts/cicd -p 'test_*.py' -v
+      - name: Staging gate regression tests
+        run: bash scripts/cicd/test-deploy-gate.sh
+      - run: docker info >/dev/null
+      - run: ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
+      - name: Require completion PostgreSQL tests to execute
+        run: |
+          python3 - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          path = Path('target/surefire-reports/TEST-com.example.gradproj.EduNest.service.completion.CompletionLocalPostgresIntegrationTest.xml')
+          if not path.is_file():
+              sys.exit('Missing completion PostgreSQL report')
+          root = ET.parse(path).getroot()
+          cases = root.findall('testcase')
+          counts = {k: int(root.attrib[k]) for k in ('tests', 'failures', 'errors', 'skipped')}
+          if (counts['tests'] < 14 or len(cases) != counts['tests'] or counts['failures'] or counts['errors'] or counts['skipped']
+                  or any(case.find(tag) is not None for case in cases for tag in ('failure', 'error', 'skipped'))):
+              sys.exit('Completion PostgreSQL tests did not all pass')
+          PY
+      - run: ./mvnw -B test '-Dtest=UniquenessPostgresMigrationIT,UniquenessHttpPostgresIT' -Dsurefire.failIfNoSpecifiedTests=true -DskipTests=false -Dmaven.test.failure.ignore=false
+      - name: Require uniqueness PostgreSQL tests to execute
+        run: |
+          set -euo pipefail
+          grep -F 'Tests run: 5, Failures: 0, Errors: 0, Skipped: 0' target/surefire-reports/com.example.gradproj.EduNest.migration.UniquenessPostgresMigrationIT.txt
+          grep -F 'Tests run: 11, Failures: 0, Errors: 0, Skipped: 0' target/surefire-reports/com.example.gradproj.EduNest.migration.UniquenessHttpPostgresIT.txt
+
+  image:
+    name: Build and verify immutable image
+    needs: [release, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      ref: ${{ steps.identity.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Derive repository image name
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/edunest-backend" >> "$GITHUB_OUTPUT"
+      - name: Recheck release freshness before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
+          [ "$head" = "$SHA" ] || { echo '::error::Release is stale'; exit 1; }
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.name.outputs.image }}:${{ needs.release.outputs.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ needs.release.outputs.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+      - name: Verify pushed digest and revision
+        id: identity
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SHA: ${{ needs.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo '::error::Invalid image digest'; exit 1; }
+          ref="$IMAGE@$DIGEST"
+          docker pull "$ref" >/dev/null
+          revision=$(docker inspect "$ref" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')
+          [ "$revision" = "$SHA" ] || { echo '::error::Image revision mismatch'; exit 1; }
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+  rehearsal:
+    name: Rehearse migrations on disposable PostgreSQL
+    needs: [release, test]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: rehearsal-only
+          POSTGRES_DB: rehearsal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rehearsal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run isolated Flyway adapter rehearsal
+        env:
+          EB115_RUN_REHEARSAL_IT: '1'
+        run: python3 -B -m unittest discover -s scripts/cicd -p test_flyway_adapter_integration.py -v
+
+  production-preflight:
+    name: Protected production preflight (blocked)
+    needs: [release, test, image, rehearsal]
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Promotion activation check
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+      - name: Refuse unverified Railway deployment identity contract
+        run: python3 scripts/cicd/railway_adapter.py
+
+  evidence:
+    name: Publish sanitized preparation evidence
+    if: always() && needs.activation.outputs.enabled == 'true'
+    needs: [activation, release, test, image, rehearsal, production-preflight]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize outcomes
+        env:
+          RELEASE_SHA: ${{ needs.release.outputs.sha }}
+          IMAGE_REF: ${{ needs.image.outputs.ref }}
+          TEST_RESULT: ${{ needs.test.result }}
+          REHEARSAL_RESULT: ${{ needs.rehearsal.result }}
+          PREFLIGHT_RESULT: ${{ needs.production-preflight.result }}
         run: |
-          set -uo pipefail
-          echo "PROD_PROMOTION_ENABLED=${{ vars.PROD_PROMOTION_ENABLED }}"
-          echo "The production rollout workflow is owned by P7-06 (separately authorized)."
-          echo "Nothing is deployed by this workflow until:"
-          echo "  1. the Project Owner sets repo variable PROD_PROMOTION_ENABLED=true at P7-06, and"
-          echo "  2. the 'production' GitHub Environment requires reviewer approval."
-          if [ "${{ vars.PROD_PROMOTION_ENABLED }}" != "true" ]; then
-            echo "Production promotion is NOT activated — skipping (by design)."
-            exit 0
-          fi
-          echo "Variable present: the P7-06 rollout task owns the actual promotion steps from here."
-          echo "This skeleton intentionally contains no deploy logic; P7-06 implements it."
+          set -euo pipefail
+          printf 'release=%s\nimage=%s\ntests=%s\nrehearsal=%s\nproduction_preflight=%s\nproduction_mutation=not_attempted\n' \
+            "$RELEASE_SHA" "$IMAGE_REF" "$TEST_RESULT" "$REHEARSAL_RESULT" "$PREFLIGHT_RESULT" > evidence.txt
+          cat evidence.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-preparation-${{ github.run_id }}
+          path: evidence.txt
+          if-no-files-found: error
