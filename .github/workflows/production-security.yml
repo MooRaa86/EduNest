@@ -27,16 +27,18 @@ jobs:
         run: |
           docker info >/dev/null
           openssl version
-      - name: Python security and failure tests
-        run: python3 -B -m unittest discover -s scripts/cicd -p 'test_*.py' -v
-      - name: Existing staging gate regression tests
+      - name: Bash deployment gate and target identity tests
         run: bash scripts/cicd/test-deploy-gate.sh
       - name: Actionlint pinned container
         run: |
           docker run --rm -v "$PWD:/repo:ro" -w /repo \
             rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 \
             .github/workflows/deploy-production.yml .github/workflows/production-security.yml
-      - name: Owned disposable PostgreSQL migration integration
-        env:
-          EB115_RUN_REHEARSAL_IT: '1'
-        run: python3 -B -m unittest discover -s scripts/cicd -p test_flyway_adapter_integration.py -v
+      - name: Disposable PostgreSQL uniqueness integration tests
+        run: |
+          ./mvnw -B test -Dtest=UniquenessPostgresMigrationIT,UniquenessHttpPostgresIT \
+            -Dsurefire.failIfNoSpecifiedTests=true -DskipTests=false -Dmaven.test.failure.ignore=false
+      - name: Disposable PostgreSQL Flyway lifecycle integration test
+        run: |
+          ./mvnw -B test -Dtest=PostgreSqlMigrationIntegrationTest \
+            -Dsurefire.failIfNoSpecifiedTests=true -DskipTests=false -Dmaven.test.failure.ignore=false

@@ -158,11 +158,13 @@ gate_sha40() {
 # does not require an approval.
 gate_activation() {
     local auto_deploy_enabled="$1"
+    local env_label="${2:-staging}"
+    local var_name="${3:-STAGING_AUTO_DEPLOY_ENABLED}"
     if [ "$auto_deploy_enabled" = "true" ]; then
-        echo "OK: automatic staging deployment is activated (STAGING_AUTO_DEPLOY_ENABLED=true)"
+        echo "OK: automatic $env_label deployment is activated ($var_name=true)"
         return 0
     fi
-    echo "BLOCK: automatic staging deployment is NOT activated (STAGING_AUTO_DEPLOY_ENABLED is not exactly 'true') — no migration and no deployment will run; nothing external is touched"
+    echo "BLOCK: automatic $env_label deployment is NOT activated ($var_name is not exactly 'true') — no migration and no deployment will run; nothing external is touched"
     return 1
 }
 
@@ -250,6 +252,181 @@ gate_staging_db_identity() {
     return 0
 }
 
+# G8p — production database identity allowlist.
+# Enforces positive identity triple:
+#   1. Approved production ref (PROD_DB_PROJECT_REF; e.g. ciogysvcykzxrjuskxmk)
+#   2. Approved host and user form:
+#      - Direct: host "db.${approved_prod_ref}.supabase.co", FLYWAY_USER == "postgres"
+#      - Pooler: host *.pooler.supabase.com, FLYWAY_USER == "postgres.${approved_prod_ref}"
+#   3. Strict query parameters:
+#      - Exact sslmode=verify-full REQUIRED (rejects sslmode=require and any weaker mode)
+#      - No duplicate sslmode parameters
+#      - No embedded userinfo or credentials (user/password in URL or query params)
+#      - No multi-host URLs (no commas in host)
+#      - Staging project ref strictly rejected
+# Credentials are never printed in error or success messages.
+gate_production_db_identity() {
+    local url="$1" db_user="$2" approved_prod_ref="$3" staging_ref="${4:-}"
+
+    if [ -z "$approved_prod_ref" ]; then
+        echo "BLOCK: approved production database identity (PROD_DB_PROJECT_REF) is not configured — refusing migration rather than trusting an unverified target"
+        return 1
+    fi
+    if [ -z "$url" ]; then
+        echo "BLOCK: migration URL is empty — no database identity to verify"
+        return 1
+    fi
+    if [ -z "$db_user" ]; then
+        echo "BLOCK: supplied database username is empty — refusing to migrate without a verifiable identity"
+        return 1
+    fi
+    case "$url" in
+        jdbc:postgresql://*) : ;;
+        *) echo "BLOCK: production database identity requires a PostgreSQL JDBC URL"; return 1 ;;
+    esac
+
+    # Defense in depth: reject staging ref if provided
+    if [ -n "$staging_ref" ]; then
+        case "|$db_user|$url|" in
+            *"$staging_ref"*)
+                echo "BLOCK: staging project identity detected in production target — refusing"
+                return 1
+                ;;
+        esac
+    fi
+
+    # Check for embedded userinfo in URL authority (e.g. user:pass@host)
+    local host_part="${url#jdbc:postgresql://}"
+    local authority="${host_part%%/*}"
+    if [ "$authority" = "$host_part" ]; then
+        authority="${host_part%%\?*}"
+    fi
+
+    case "$authority" in
+        *"@"*)
+            echo "BLOCK: embedded userinfo in JDBC URL is prohibited; credentials must be supplied via FLYWAY_USER and FLYWAY_PASSWORD"
+            return 1
+            ;;
+        *","*)
+            echo "BLOCK: ambiguous multi-host URL is prohibited for production"
+            return 1
+            ;;
+    esac
+
+    # Extract host (strip port if present)
+    local host="${authority%%:*}"
+    if [ -z "$host" ]; then
+        echo "BLOCK: unable to extract host from JDBC URL"
+        return 1
+    fi
+
+    # Extract query parameters
+    local query_string=""
+    case "$url" in
+        *\?*) query_string="${url#*\?}" ;;
+    esac
+
+    if [ -z "$query_string" ]; then
+        echo "BLOCK: production JDBC URL missing query parameters; sslmode=verify-full is strictly required"
+        return 1
+    fi
+
+    # Strict query parameter parsing
+    local sslmode_count=0
+    local sslmode_val=""
+    local old_ifs="$IFS"
+    IFS='&'
+    for param in $query_string; do
+        IFS="$old_ifs"
+        local key="${param%%=*}"
+        local val="${param#*=}"
+        case "$key" in
+            sslmode)
+                sslmode_count=$((sslmode_count + 1))
+                sslmode_val="$val"
+                ;;
+            user|password)
+                echo "BLOCK: credentials in JDBC query parameters are prohibited"
+                return 1
+                ;;
+            ssl)
+                if [ "$val" = "false" ] || [ "$val" = "0" ] || [ "$val" = "off" ]; then
+                    echo "BLOCK: ssl=false is prohibited in production JDBC URL"
+                    return 1
+                fi
+                ;;
+        esac
+        IFS='&'
+    done
+    IFS="$old_ifs"
+
+    if [ "$sslmode_count" -eq 0 ]; then
+        echo "BLOCK: production JDBC URL must specify sslmode=verify-full"
+        return 1
+    fi
+    if [ "$sslmode_count" -gt 1 ]; then
+        echo "BLOCK: duplicate sslmode parameter in JDBC URL is prohibited"
+        return 1
+    fi
+    if [ "$sslmode_val" != "verify-full" ]; then
+        echo "BLOCK: production JDBC URL requires exact sslmode=verify-full (rejecting sslmode=$sslmode_val)"
+        return 1
+    fi
+
+    # Positive identity proof (the two allowed Supabase connection forms)
+    local form=""
+    case "$db_user" in
+        "postgres.${approved_prod_ref}")
+            case "$host" in
+                *.pooler.supabase.com) form="pooler" ;;
+            esac
+            ;;
+        "postgres")
+            case "$host" in
+                "db.${approved_prod_ref}.supabase.co") form="direct" ;;
+            esac
+            ;;
+    esac
+
+    if [ -z "$form" ]; then
+        echo "BLOCK: migration target does not match approved production database identity (FLYWAY_USER and host pair match neither approved pooler nor direct form, or foreign project ref used) — refusing migration"
+        return 1
+    fi
+
+    echo "OK: migration target identity matches the approved production database ($form form; credentials withheld)"
+    return 0
+}
+
+# Auditable pre-migration backup readiness check.
+gate_backup_readiness() {
+    local backup_sha="$1" target_sha="$2"
+    if [ -z "$backup_sha" ]; then
+        echo "BLOCK: pre-migration backup confirmation (PROD_BACKUP_CONFIRMED_SHA) is not set — per runbook §3, migrations require an auditable release-specific backup confirmation"
+        return 1
+    fi
+    if [ "$backup_sha" != "$target_sha" ]; then
+        echo "BLOCK: backup confirmation SHA mismatch ('$backup_sha' vs target '$target_sha') — refusing migration without verified backup for this release"
+        return 1
+    fi
+    echo "OK: pre-migration backup readiness confirmed for commit $target_sha"
+    return 0
+}
+
+# Auditable backward compatibility approval check for pending migrations.
+gate_schema_compatibility() {
+    local compat_sha="$1" target_sha="$2"
+    if [ -z "$compat_sha" ]; then
+        echo "BLOCK: pending migrations exist but backward compatibility approval (PROD_COMPATIBILITY_CONFIRMED_SHA) is not set — refusing migration without verified backward compatibility"
+        return 1
+    fi
+    if [ "$compat_sha" != "$target_sha" ]; then
+        echo "BLOCK: backward compatibility confirmation SHA mismatch ('$compat_sha' vs target '$target_sha') — refusing migration"
+        return 1
+    fi
+    echo "OK: backward compatibility confirmed for commit $target_sha"
+    return 0
+}
+
 # G3b — simple equality check used for artifact-vs-trigger commit comparison.
 gate_commit_match() {
     local a="$1" b="$2" label="${3:-commit}"
@@ -265,22 +442,28 @@ gate_commit_match() {
 #   deploy-gate.sh trigger <conclusion> <status> <head_branch> <head_sha> <current_sha>
 #   deploy-gate.sh migration-url <jdbc_url>
 #   deploy-gate.sh staging-db-identity <jdbc_url> <db_user> <approved_staging_ref> <prod_ref>
+#   deploy-gate.sh production-db-identity <jdbc_url> <db_user> <approved_prod_ref> [staging_ref]
+#   deploy-gate.sh backup-readiness <backup_sha> <target_sha>
+#   deploy-gate.sh schema-compatibility <compat_sha> <target_sha>
 #   deploy-gate.sh image-ref <ref> [expected_repo_prefix]
 #   deploy-gate.sh sha40 <commit_sha>
 #   deploy-gate.sh require-config <name> <value> [name value...]
-#   deploy-gate.sh activation <STAGING_AUTO_DEPLOY_ENABLED value>
+#   deploy-gate.sh activation <AUTO_DEPLOY_ENABLED value> [env_label] [var_name]
 #   deploy-gate.sh manual-activation <STAGING_MANUAL_DEPLOY_ENABLED value>
 # Sourcing this file (as the test suite does) must have no side effects.
 case "${1:-}" in
-    trigger)            shift; gate_verify_trigger "$@" ;;
-    commit-match)       shift; gate_commit_match "$@" ;;
-    migration-url)      shift; gate_guard_migration_url "$1" ;;
-    staging-db-identity) shift; gate_staging_db_identity "$1" "$2" "$3" "$4" ;;
-    image-ref)          shift; gate_guard_image_ref "$1" "$2" ;;
-    sha40)              shift; gate_sha40 "$1" ;;
-    require-config)     shift; gate_require_config "$@" ;;
-    activation)         shift; gate_activation "$1" ;;
-    manual-activation)  shift; gate_manual_activation "$1" ;;
-    "")                 : ;;
-    *)                  echo "BLOCK: unknown gate subcommand '$1'"; exit 1 ;;
+    trigger)              shift; gate_verify_trigger "$@" ;;
+    commit-match)         shift; gate_commit_match "$@" ;;
+    migration-url)        shift; gate_guard_migration_url "$1" ;;
+    staging-db-identity)  shift; gate_staging_db_identity "$1" "$2" "$3" "$4" ;;
+    production-db-identity) shift; gate_production_db_identity "$1" "$2" "$3" "${4:-}" ;;
+    backup-readiness)     shift; gate_backup_readiness "$1" "$2" ;;
+    schema-compatibility) shift; gate_schema_compatibility "$1" "$2" ;;
+    image-ref)            shift; gate_guard_image_ref "$1" "$2" ;;
+    sha40)                shift; gate_sha40 "$1" ;;
+    require-config)       shift; gate_require_config "$@" ;;
+    activation)           shift; gate_activation "$@" ;;
+    manual-activation)    shift; gate_manual_activation "$1" ;;
+    "")                   : ;;
+    *)                    echo "BLOCK: unknown gate subcommand '$1'"; exit 1 ;;
 esac
