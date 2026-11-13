@@ -26,11 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Full commit SHA to deploy (must be in production branch history)"
-        required: true
-        type: string
-      image_ref:
-        description: "Digest-pinned image ref (ghcr.io/mooraa86/edunest-backend@sha256:...)"
+        description: "Full 40-character lowercase commit SHA to deploy (must belong to production branch history)"
         required: true
         type: string
 
@@ -94,20 +90,26 @@ jobs:
       verified_sha: ${{ steps.prepare.outputs.verified_sha }}
       image_ref_pinned: ${{ steps.prepare.outputs.image_ref_pinned }}
     steps:
-      - name: Determine target release SHA
+      - name: Determine and validate target release SHA
         id: target
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_SHA: ${{ github.event.inputs.commit_sha }}
           GITHUB_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             SHA="$INPUT_SHA"
+            bash scripts/cicd/deploy-gate.sh sha40 "$SHA"
+            # Validate manually selected commit belongs to production branch history
+            CMP_STATUS=$(gh api "repos/$GITHUB_REPOSITORY/compare/production...$SHA" --jq .status 2>&1) \
+              || { echo "::error::Cannot verify commit ancestry against production (gh api: $CMP_STATUS)"; exit 1; }
+            bash scripts/cicd/deploy-gate.sh ancestry-status "$CMP_STATUS" "production"
           else
             SHA="$GITHUB_SHA"
+            bash scripts/cicd/deploy-gate.sh sha40 "$SHA"
           fi
-          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid commit SHA '$SHA'"; exit 1; }
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
       - name: Checkout verified release revision
@@ -155,13 +157,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - name: Derive canonical lowercase image name
+        id: image_name
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          OWNER_LC=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER_LC}/edunest-backend"
+          echo "canonical image: $IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "owner_lc=$OWNER_LC" >> "$GITHUB_OUTPUT"
+
       - name: Build and push digest-pinned container image
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/edunest-backend:${{ steps.target.outputs.sha }}
+          tags: ${{ steps.image_name.outputs.image }}:${{ steps.target.outputs.sha }}
           labels: |
             org.opencontainers.image.revision=${{ steps.target.outputs.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -169,13 +183,14 @@ jobs:
       - name: Verify pushed image digest and OCI revision label
         id: prepare
         env:
-          OWNER: ${{ github.repository_owner }}
+          IMAGE: ${{ steps.image_name.outputs.image }}
+          OWNER_LC: ${{ steps.image_name.outputs.owner_lc }}
           DIGEST: ${{ steps.build.outputs.digest }}
           SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
-          IMAGE="ghcr.io/${OWNER,,}/edunest-backend"
-          bash scripts/cicd/deploy-gate.sh image-ref "$IMAGE@$DIGEST"
+          EXPECTED_PREFIX="ghcr.io/${OWNER_LC}/edunest-backend@sha256:"
+          bash scripts/cicd/deploy-gate.sh image-ref "$IMAGE@$DIGEST" "$EXPECTED_PREFIX"
           ref="$IMAGE@$DIGEST"
           docker pull "$ref" >/dev/null
           revision=$(docker inspect "$ref" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')
