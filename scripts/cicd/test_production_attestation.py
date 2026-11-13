@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import subprocess
 import tempfile
@@ -78,6 +79,54 @@ class AttestationTests(unittest.TestCase):
         with self.assertRaises(GateFailure): verify(p, s, self.public, "compatibility", SHA, TARGET, now, ("14",), attempt=ATTEMPT, serving_observer=observer, replay_store=ReplayStore())
         observer.observed_at, observer.authenticated = now, False
         with self.assertRaises(GateFailure): verify(p, s, self.public, "compatibility", SHA, TARGET, now, ("14",), attempt=ATTEMPT, serving_observer=observer, replay_store=ReplayStore())
+
+    def test_with_real_components(self):
+        from replay_store import InMemoryReplayStore, HmacDurableReplayStore
+        from serving_observer import RailwayServingImageObserver
+
+        now = int(time.time())
+        common = {"release_sha": SHA, "target": TARGET, "attempt": ATTEMPT, "issued_at": now - 1, "expires_at": now + 60}
+        backup = {**common, "kind": "backup", "backup_id": "backup-real", "sha256": "c" * 64,
+                  "integrity_verified": True, "backup_at": now - 2, "pending_versions": ["14"]}
+        payload, signature = self.signed(backup)
+
+        # Test with InMemoryReplayStore
+        in_memory_store = InMemoryReplayStore()
+        self.assertTrue(verify(payload, signature, self.public, "backup", SHA, TARGET, now, ("14",), attempt=ATTEMPT, replay_store=in_memory_store))
+        with self.assertRaises(GateFailure):
+            verify(payload, signature, self.public, "backup", SHA, TARGET, now, ("14",), attempt=ATTEMPT, replay_store=in_memory_store)
+
+        # Test with HmacDurableReplayStore
+        store_file = Path(self.temp.name) / "durable_replay.json"
+        durable_store = HmacDurableReplayStore(store_file, b"at_least_32_bytes_hmac_secret_key_12345!")
+        compat = {**common, "kind": "compatibility", "pending_versions": ["14"], "compatible": True,
+                  "previous_image_digest": "sha256:" + "d" * 64}
+        p_compat, s_compat = self.signed(compat)
+
+        # Test with RailwayServingImageObserver
+        class MockHttpResponse(io.BytesIO):
+            status = 200
+
+        railway_obs = RailwayServingImageObserver(
+            project_id="proj_1",
+            environment_id="env_1",
+            service_id="srv_1",
+            token="token_1",
+            opener=lambda req, timeout=15: MockHttpResponse(b'{"data":{"projectToken":{"projectId":"proj_1","environmentId":"env_1"}}}'),
+            deployment_lister=lambda s, e, env: [{
+                "id": "dep_1",
+                "status": "SUCCESS",
+                "createdAt": now - 5,
+                "meta": {"image": "sha256:" + "d" * 64}
+            }],
+        )
+
+        self.assertTrue(verify(p_compat, s_compat, self.public, "compatibility", SHA, TARGET, now, ("14",),
+                               attempt=ATTEMPT, serving_observer=railway_obs, replay_store=durable_store))
+        # Replay must be rejected
+        with self.assertRaises(GateFailure):
+            verify(p_compat, s_compat, self.public, "compatibility", SHA, TARGET, now, ("14",),
+                   attempt=ATTEMPT, serving_observer=railway_obs, replay_store=durable_store)
 
 
 if __name__ == "__main__": unittest.main()
