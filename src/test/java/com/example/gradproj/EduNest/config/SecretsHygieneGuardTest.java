@@ -42,7 +42,11 @@ class SecretsHygieneGuardTest {
             "spring.mail.password",
             "app.zoom.client-secret",
             "supabase.storage.access-key",
-            "supabase.storage.secret-key");
+            "supabase.storage.secret-key",
+            // [ADD-06]/EB-108 (D-28): Stripe test-mode keys are secret-classified
+            // from day one (live keys gated to P7) — placeholder-only bindings
+            "app.stripe.secret-key",
+            "app.stripe.webhook-secret");
 
     /** The only ENV declaration allowed to be baked into the image. */
     private static final Pattern DOCKERFILE_ENV_LINE = Pattern.compile("^ENV\\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$");
