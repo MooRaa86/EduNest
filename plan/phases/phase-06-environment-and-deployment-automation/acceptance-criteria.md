@@ -15,7 +15,7 @@
 | P6-03 | No secrets in git/image; injection verified; rotation doc | store audit + smoke log | Security Reviewer |
 | P6-04 | Tag→image→staging green pipeline; red check blocks; manual prod gate exists | run links | Eng Lead |
 | P6-05 | Non-root image; volume persists across redeploy; devtools absent | inspection + capture | Security Reviewer |
-| P6-06 | Uploads purged from all history; clone-refresh executed; guard live | clone check + guard run | Eng Lead |
+| P6-06 | Reduced per D-19: zero uploads tracked in HEAD; CI hygiene guard live in tests.yml | guard run + test suite | Eng Lead |
 | P6-07 | *(Conditional)* adapter live per D-25 or deferral recorded | — | Eng Lead |
 | P6-08 | Automated verify step green; fail-path triggers documented rollback | fail-run log | Eng Lead |
 | P6-09 | Runbook drafts complete & dry-run walked | artifact | DevOps |
