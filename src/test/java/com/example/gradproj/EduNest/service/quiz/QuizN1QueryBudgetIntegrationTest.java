@@ -192,7 +192,9 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
 
         assertThat(response(mentorPath, mentorToken, "quizName", "alpha").path("Quizzes").path("totalElements").asInt()).isEqualTo(3);
         JsonNode noMatch = response(mentorPath, mentorToken, "quizName", "no-such-title").path("Quizzes");
-        assertThat(noMatch.path("totalElements").asInt()).isZero();
+        assertThat(noMatch.has("totalElements")).isTrue();
+        assertThat(noMatch.get("totalElements").isNumber()).isTrue();
+        assertThat(noMatch.get("totalElements").decimalValue()).isEqualByComparingTo("0");
         assertThat(noMatch.path("content").size()).isZero();
         assertThat(response(mentorPath, mentorToken, "status", "PUBLISHED").path("Quizzes").path("totalElements").asInt()).isEqualTo(3);
         assertThat(response(mentorPath, mentorToken, "quizName", "alpha", "status", "DRAFT").path("Quizzes").path("totalElements").asInt()).isEqualTo(1);
@@ -204,7 +206,10 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
         assertThat(page0.path("content").get(0).path("id").asText()).isEqualTo(first.getPublicId().toString());
         assertThat(page1.path("content").get(0).path("id").asText()).isEqualTo(second.getPublicId().toString());
         assertThat(response(studentPath, studentToken, "quizName", "alpha").path("Quizzes").path("totalElements").asInt()).isEqualTo(2);
-        assertThat(response(studentPath, studentToken, "quizName", "alpha", "status", "DRAFT").path("Quizzes").path("totalElements").asInt()).isZero();
+        JsonNode studentDraft = response(studentPath, studentToken, "quizName", "alpha", "status", "DRAFT").path("Quizzes");
+        assertThat(studentDraft.has("totalElements")).isTrue();
+        assertThat(studentDraft.get("totalElements").isNumber()).isTrue();
+        assertThat(studentDraft.get("totalElements").decimalValue()).isEqualByComparingTo("0");
     }
 
     @Test
@@ -491,22 +496,26 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
 
         Measurement run1 = measure(() -> {
             var response = homePage.getStudentHomePage(studentEmail);
-            // one publicId lookup per continue-learning row in the old code (limit = 2)
-            assertThat(response.getContinueLearning()).isNotEmpty();
+            assertThat(response.getContinueLearning()).extracting(item -> item.getMentorshipId())
+                    .containsExactly(chain.mentorship().getPublicId());
         });
         log("F4 getStudentHomePage run1 (1 continue-learning row)", run1);
 
+        var second = auth.mentorship("eb60-f4-m2-" + unique + "@example.org",
+                com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
+        auth.enroll(second.mentorship().getId(), studentEmail);
         Measurement run2 = measure(() -> {
             var response = homePage.getStudentHomePage(studentEmail);
-            assertThat(response.getContinueLearning().get(0).getMentorshipId())
-                    .isEqualTo(chain.mentorship().getPublicId());
+            assertThat(response.getContinueLearning()).extracting(item -> item.getMentorshipId())
+                    .containsExactlyInAnyOrder(chain.mentorship().getPublicId(), second.mentorship().getPublicId());
         });
-        log("F4 getStudentHomePage run2", run2);
+        log("F4 getStudentHomePage run2 (2 continue-learning rows)", run2);
 
-        // EB-60 fixed behavior: publicId is carried by the projection
-        // (asserted above); baseline with the old per-row lookup was 7
-        // statements, the fixed path is 6 — and it does NOT grow with the
-        // continue-learning limit.
+        // Detect the old standalone findPublicIdById query, independently of
+        // other homepage queries that may legitimately change with fixtures.
+        String publicIdLookup = "(?is)^\\s*select\\s+(?:\\w+\\.)?public_id\\s+from\\s+mentorship\\s+\\w+\\s+where\\s+(?:\\w+\\.)?id\\s*=\\s*\\?.*";
+        assertThat(run1.sql()).noneMatch(sql -> sql.matches(publicIdLookup));
+        assertThat(run2.sql()).noneMatch(sql -> sql.matches(publicIdLookup));
         assertThat(run1.statements()).isLessThanOrEqualTo(6);
         assertThat(run2.statements()).isLessThanOrEqualTo(6);
     }
