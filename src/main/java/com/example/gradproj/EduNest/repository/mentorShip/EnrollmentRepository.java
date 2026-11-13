@@ -275,6 +275,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     @Query(value = """
     SELECT 
         m.id as mentorshipId,
+        CAST(m.public_id AS VARCHAR) as mentorshipPublicId,
         m.title as title,
         m.cover_image_url as coverImageUrl,
         CONCAT(u.first_name, ' ', u.last_name) as mentorName,
@@ -299,7 +300,7 @@ Page<EnrolledMentorshipProgressResponse> findEnrolledMentorshipsProgressForMento
     LEFT JOIN project_submission ps ON ps.project_id = p.id AND ps.student_id = s.student_id
     WHERE student_user.email = :email
       AND m.status = 'ACTIVE'
-    GROUP BY m.id, m.title, m.cover_image_url, u.first_name, u.last_name
+    GROUP BY m.id, m.public_id, m.title, m.cover_image_url, u.first_name, u.last_name
     ORDER BY (
         (COUNT(DISTINCT CASE WHEN t.task_status = 'PUBLISHED' THEN t.id END) - COUNT(DISTINCT ts.id)) +
         (COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' THEN q.id END) - COUNT(DISTINCT CASE WHEN q.status = 'PUBLISHED' AND qs.score IS NOT NULL THEN q.id END)) +
