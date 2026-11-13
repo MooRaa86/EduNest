@@ -32,6 +32,8 @@ import org.springframework.test.context.TestPropertySource;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -42,11 +44,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * Measures real SQL statement counts through the full MockMvc/OSIV production
  * chain (statistics enabled only in this context via @TestPropertySource), and
- * captures raw SQL text through a Hibernate StatementInspector so pagination
- * behavior (LIMIT vs in-memory) is observable, not assumed.
+ * captures raw SQL text through a Hibernate StatementInspector so database
+ * pagination can be verified using the dialect's pagination syntax.
  *
- * Baseline phase (before F1/F2/F3 fixes): prints observed counts.
- * After the fixes: the same methods assert query ceilings and pagination shape.
+ * Pre-fix counts are recorded in the EB-60 evidence (F1: 12→17 statements
+ * linear; F3: 9/13; homepage: 7). This suite asserts the FIXED budgets and
+ * the response-contract invariants, plus the review-hardening cases:
+ * filter equivalence, pass/fail threshold, pagination pages, and the
+ * recommended-mentorships projection.
  */
 @Tag("performance")
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
@@ -73,6 +78,7 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     @Autowired private QuizSubmissionRepository submissions;
     @Autowired private EntityManagerFactory entityManagerFactory;
     @Autowired private com.example.gradproj.EduNest.service.homepage.HomePageService homePage;
+    @Autowired private ObjectMapper objectMapper;
 
     private Statistics stats;
 
@@ -87,9 +93,6 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
                                ListAppender<ILoggingEvent> hibernateLogs) {
         long dataQueries() {
             return sql.stream().filter(s -> !s.trim().toLowerCase().startsWith("select count(")).count();
-        }
-        long limitQueries() {
-            return sql.stream().filter(s -> s.toLowerCase().contains(" limit ")).count();
         }
         long submissionJoinQueries() {
             return sql.stream().filter(s -> s.toLowerCase().contains("quiz_submission") && s.toLowerCase().contains("join")).count();
@@ -136,10 +139,9 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     }
 
     private void log(String label, Measurement m) {
-        System.out.println("[EB60-BASELINE] " + label
+        System.out.println("[EB60-BUDGET] " + label
                 + " statements=" + m.statements()
                 + " hql=" + m.hqlQueries()
-                + " limitQueries=" + m.limitQueries()
                 + " submissionJoinQueries=" + m.submissionJoinQueries());
         m.sql().forEach(s -> System.out.println("[EB60-SQL] " + s.replaceAll("\\s+", " ").trim()));
     }
@@ -164,11 +166,105 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
                 .quiz(quiz).student(student).score(score).startDate(java.time.LocalDateTime.now()).build());
     }
 
+    private JsonNode response(String path, String token, String... params) throws Exception {
+        var request = get(path).header("Authorization", token);
+        for (int i = 0; i < params.length; i += 2) request.param(params[i], params[i + 1]);
+        return objectMapper.readTree(mockMvc.perform(request).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString()).path("apiResponse");
+    }
+
+    @Test
+    void f2_filters_and_filtered_pagination() throws Exception {
+        String id = UUID.randomUUID().toString();
+        String mentor = "filter-m-" + id + "@example.org";
+        String student = "filter-s-" + id + "@example.org";
+        var chain = auth.mentorship(mentor, com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
+        auth.enroll(chain.mentorship().getId(), student);
+        Week week = weeks.saveAndFlush(Week.builder().mentorship(chain.mentorship()).title("Filters").build());
+        Quiz first = seedQuiz(week, "Alpha One", QuizStatus.PUBLISHED);
+        Quiz second = seedQuiz(week, "Alpha Two", QuizStatus.PUBLISHED);
+        seedQuiz(week, "Beta", QuizStatus.PUBLISHED);
+        seedQuiz(week, "Alpha Draft", QuizStatus.DRAFT);
+        String mentorToken = auth.authToken(mentor, AuthFixture.MENTOR);
+        String studentToken = auth.authToken(student, AuthFixture.STUDENT);
+        String mentorPath = "/api/v1/quiz/filter/" + chain.mentorship().getPublicId();
+        String studentPath = "/api/v1/quiz/student-quizzes/" + chain.mentorship().getPublicId();
+
+        assertThat(response(mentorPath, mentorToken, "quizName", "alpha").path("Quizzes").path("totalElements").asInt()).isEqualTo(3);
+        JsonNode noMatch = response(mentorPath, mentorToken, "quizName", "no-such-title").path("Quizzes");
+        assertThat(noMatch.path("totalElements").asInt()).isZero();
+        assertThat(noMatch.path("content").size()).isZero();
+        assertThat(response(mentorPath, mentorToken, "status", "PUBLISHED").path("Quizzes").path("totalElements").asInt()).isEqualTo(3);
+        assertThat(response(mentorPath, mentorToken, "quizName", "alpha", "status", "DRAFT").path("Quizzes").path("totalElements").asInt()).isEqualTo(1);
+        JsonNode page0 = response(mentorPath, mentorToken, "quizName", "alpha", "status", "PUBLISHED", "size", "1", "page", "0").path("Quizzes");
+        JsonNode page1 = response(mentorPath, mentorToken, "quizName", "alpha", "status", "PUBLISHED", "size", "1", "page", "1").path("Quizzes");
+        assertThat(page0.path("totalElements").asInt()).isEqualTo(2);
+        assertThat(page1.path("totalElements").asInt()).isEqualTo(2);
+        assertThat(page0.path("totalPages").asInt()).isEqualTo(2);
+        assertThat(page0.path("content").get(0).path("id").asText()).isEqualTo(first.getPublicId().toString());
+        assertThat(page1.path("content").get(0).path("id").asText()).isEqualTo(second.getPublicId().toString());
+        assertThat(response(studentPath, studentToken, "quizName", "alpha").path("Quizzes").path("totalElements").asInt()).isEqualTo(2);
+        assertThat(response(studentPath, studentToken, "quizName", "alpha", "status", "DRAFT").path("Quizzes").path("totalElements").asInt()).isZero();
+    }
+
+    @Test
+    void f3_odd_total_preserves_pass_threshold_and_pagination() throws Exception {
+        String id = UUID.randomUUID().toString();
+        String mentor = "threshold-m-" + id + "@example.org";
+        var chain = auth.mentorship(mentor, com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
+        Week week = weeks.saveAndFlush(Week.builder().mentorship(chain.mentorship()).title("Threshold").build());
+        Quiz quiz = quizzes.saveAndFlush(Quiz.builder().week(week).title("Odd points").description("test")
+                .durationMinutes(30).status(QuizStatus.PUBLISHED).build());
+        for (int points : new int[]{2, 3}) {
+            questions.saveAndFlush(Question.builder().quiz(quiz).text("Q" + points).points(points)
+                    .correctAnswer(AnswerChoices.A).optionA("A").optionB("B").optionC("C").optionD("D").build());
+        }
+        Student failed = auth.student("threshold-f-" + id + "@example.org");
+        Student passed = auth.student("threshold-p-" + id + "@example.org");
+        seedSubmission(quiz, failed, 2.0);
+        seedSubmission(quiz, passed, 3.0);
+        String token = auth.authToken(mentor, AuthFixture.MENTOR);
+        String listing = "/api/v1/submissions/quiz/" + quiz.getPublicId();
+        JsonNode all = response(listing, token, "size", "10").path("Submissions");
+        assertThat(all.size()).isEqualTo(2);
+        assertThat(all.findValuesAsText("score")).containsExactlyInAnyOrder("2.0", "3.0");
+        for (JsonNode row : all) {
+            assertThat(row.path("totalPoints").asInt()).isEqualTo(5);
+            assertThat(row.path("status").asText()).isEqualTo(row.path("score").asDouble() == 2.0 ? "Failed" : "Passed");
+        }
+        JsonNode page0 = response(listing, token, "page", "0", "size", "1").path("Submissions");
+        JsonNode page1 = response(listing, token, "page", "1", "size", "1").path("Submissions");
+        assertThat(page0.size()).isEqualTo(1);
+        assertThat(page1.size()).isEqualTo(1);
+        assertThat(page0.get(0).path("id").asText()).isNotEqualTo(page1.get(0).path("id").asText());
+        JsonNode overview = response("/api/v1/quiz/QuizOverview/" + quiz.getPublicId(), token).path("Quiz Details").path("submissions");
+        assertThat(overview.size()).isEqualTo(2);
+        for (JsonNode row : overview) {
+            assertThat(row.path("status").asText()).isEqualTo(row.path("score").asDouble() == 2.0 ? "Failed" : "Passed");
+        }
+    }
+
+    @Test
+    void f4_recommendation_uuid_serializes_with_actual_rows() throws Exception {
+        String id = UUID.randomUUID().toString();
+        String student = "recommend-s-" + id + "@example.org";
+        var enrolled = auth.mentorship("recommend-m1-" + id + "@example.org", com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
+        var recommended = auth.mentorship("recommend-m2-" + id + "@example.org", com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
+        auth.enroll(enrolled.mentorship().getId(), student);
+        for (int i = 0; i < 8; i++) auth.enroll(recommended.mentorship().getId(), "recommend-extra-" + i + "-" + id + "@example.org");
+        String token = auth.authToken(student, AuthFixture.STUDENT);
+        JsonNode rows = response("/api/v1/homepage/recommended", token).path("recommendations");
+        assertThat(rows.isArray()).isTrue();
+        assertThat(rows.size()).isPositive();
+        assertThat(rows.findValuesAsText("id")).contains(recommended.mentorship().getPublicId().toString());
+        for (JsonNode row : rows) assertThat(UUID.fromString(row.path("id").asText())).isNotNull();
+    }
+
     /* ---------- F1: dashboard ---------- */
 
     @Test
-    @DisplayName("F1 baseline: dashboard over 6 vs 12 quizzes (N+1 growth evidence)")
-    void f1_dashboard_growth_baseline() throws Exception {
+    @DisplayName("F1: dashboard statement count constant regardless of quiz count (pre-fix: 12 vs 17, linear)")
+    void f1_dashboard_statementCount_constant() throws Exception {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         var chain6 = auth.mentorship("eb60-f1-a-m-" + unique + "@example.org", com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
         Week week6 = weeks.saveAndFlush(Week.builder().mentorship(chain6.mentorship()).title("W6").build());
@@ -210,8 +306,8 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     /* ---------- F2: paginated quiz lists ---------- */
 
     @Test
-    @DisplayName("F2 baseline: mentor quiz filter page in-memory pagination + per-row submission access")
-    void f2_quizFilter_baseline() throws Exception {
+    @DisplayName("F2: mentor quiz filter pagination and bounded query budget")
+    void f2_quizFilter_pagination_budget() throws Exception {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         String mentorEmail = "eb60-f2-m-" + unique + "@example.org";
         var chain = auth.mentorship(mentorEmail, com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
@@ -248,6 +344,10 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
         // EB-60 fixed behavior: DB-level pagination (no HHH000104 in-memory
         // pagination), constant query budget, page 2 returns different rows.
         assertNoInMemoryPagination(smallPage.hibernateLogs());
+        assertThat(smallPage.sql()).anyMatch(s -> s.toLowerCase().contains("group by")
+                && s.toLowerCase().contains("fetch first"));
+        assertThat(page2.sql()).anyMatch(s -> s.toLowerCase().contains("group by")
+                && s.toLowerCase().contains("offset") && s.toLowerCase().contains("fetch first"));
         assertThat(smallPage.statements()).isLessThanOrEqualTo(6);
         assertThat(page2.statements()).isLessThanOrEqualTo(6);
         assertThat(fullPage.statements()).isLessThanOrEqualTo(6);
@@ -259,8 +359,8 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     }
 
     @Test
-    @DisplayName("F2 baseline: student quizzes excludes DRAFT, same fetch-join shape")
-    void f2_studentQuizzes_baseline() throws Exception {
+    @DisplayName("F2: student quizzes exclude DRAFT with bounded pagination")
+    void f2_studentQuizzes_pagination_budget() throws Exception {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         String mentorEmail = "eb60-f2s-m-" + unique + "@example.org";
         String studentEmail = "eb60-f2s-s-" + unique + "@example.org";
@@ -291,8 +391,8 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     }
 
     @Test
-    @DisplayName("F2 baseline: mentorshipQuizzesOverview compounds dashboard + page")
-    void f2_overview_baseline() throws Exception {
+    @DisplayName("F2: mentorship quizzes overview has a bounded query budget")
+    void f2_overview_budget() throws Exception {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         String mentorEmail = "eb60-f2o-m-" + unique + "@example.org";
         var chain = auth.mentorship(mentorEmail, com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
@@ -318,8 +418,8 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     /* ---------- F3: submission listings ---------- */
 
     @Test
-    @DisplayName("F3 baseline: submissions-by-quiz per-row student fetch (2 vs 6 rows)")
-    void f3_submissionsByQuiz_baseline() throws Exception {
+    @DisplayName("F3: submissions-by-quiz joins student with a constant budget")
+    void f3_submissionsByQuiz_budget() throws Exception {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         String mentorEmail = "eb60-f3-m-" + unique + "@example.org";
         var chain = auth.mentorship(mentorEmail, com.example.gradproj.EduNest.enums.mentorShip.Status.ACTIVE);
@@ -353,8 +453,8 @@ public class QuizN1QueryBudgetIntegrationTest extends ProdChainIntegrationTestBa
     }
 
     @Test
-    @DisplayName("F3 baseline: submissions-by-student per-row student fetch")
-    void f3_submissionsByStudent_baseline() throws Exception {
+    @DisplayName("F3: submissions-by-student joins student with a bounded budget")
+    void f3_submissionsByStudent_budget() throws Exception {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         String mentorEmail = "eb60-f3b-m-" + unique + "@example.org";
         String studentEmail = "eb60-f3b-s-" + unique + "@example.org";

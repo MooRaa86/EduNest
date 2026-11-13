@@ -189,7 +189,7 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 
     @Query(value = """
     SELECT
-        m.public_id AS id,
+        CAST(m.public_id AS VARCHAR) AS id,
         m.title AS title,
         m.subtitle AS subtitle,
         m.description AS description,
