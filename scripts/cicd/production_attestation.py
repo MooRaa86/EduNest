@@ -16,9 +16,12 @@ from production_gate import GateFailure, SHA
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 
 
-def verify(payload, signature, public_key, expected_kind, sha, target, now, pending=()):
+def verify(payload, signature, public_key, expected_kind, sha, target, now, pending=(), *,
+           attempt=None, serving_observer=None, replay_store=None):
     """Authenticate exact bytes then validate purpose, identity and expiry."""
-    if not isinstance(payload, bytes) or len(payload) > 65536 or not SHA.fullmatch(sha or ""):
+    if (not isinstance(payload, bytes) or len(payload) > 65536 or not SHA.fullmatch(sha or "")
+            or not isinstance(attempt, str) or not re.fullmatch(r"[A-Za-z0-9_-]{16,128}", attempt)
+            or replay_store is None):
         raise GateFailure("invalid attestation input")
     try:
         sig = base64.b64decode(signature, validate=True)
@@ -43,14 +46,16 @@ def verify(payload, signature, public_key, expected_kind, sha, target, now, pend
         claim = json.loads(payload, object_pairs_hook=unique)
         if not isinstance(claim, dict) or claim.get("kind") != expected_kind or claim.get("release_sha") != sha:
             raise ValueError("wrong release or kind")
-        if not target or claim.get("target") != target:
+        if not target or claim.get("target") != target or claim.get("attempt") != attempt:
             raise ValueError("wrong target")
         issued, expires = claim.get("issued_at"), claim.get("expires_at")
         if type(issued) is not int or type(expires) is not int or not issued <= now < expires or expires - issued > 86400:
             raise ValueError("invalid evidence lifetime")
         if expected_kind == "backup":
             if (not isinstance(claim.get("backup_id"), str) or not claim["backup_id"].strip()
-                    or not HEX64.fullmatch(claim.get("sha256", "")) or claim.get("integrity_verified") is not True):
+                    or not HEX64.fullmatch(claim.get("sha256", "")) or claim.get("integrity_verified") is not True
+                    or type(claim.get("backup_at")) is not int or not now - 86400 <= claim["backup_at"] <= issued
+                    or claim.get("pending_versions") != list(pending)):
                 raise ValueError("invalid backup evidence")
         elif expected_kind == "compatibility":
             versions = claim.get("pending_versions")
@@ -60,8 +65,16 @@ def verify(payload, signature, public_key, expected_kind, sha, target, now, pend
                     or not isinstance(claim.get("previous_image_digest"), str)
                     or not re.fullmatch(r"sha256:[0-9a-f]{64}", claim["previous_image_digest"])):
                 raise ValueError("invalid compatibility evidence")
+            # An independently implemented observer must authenticate the live
+            # service, target, digest and freshness; no observer exists yet.
+            if serving_observer is None or serving_observer.verify(target, claim["previous_image_digest"], now) is not True:
+                raise ValueError("serving image unverified or changed")
         else:
             raise ValueError("unknown evidence type")
-    except (OSError, ValueError, TypeError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        # The backing store must atomically consume (attempt, kind), persist
+        # across runners, and be protected against rollback. None is configured.
+        if replay_store.consume(attempt, expected_kind, expires) is not True:
+            raise ValueError("attestation replay or unavailable replay store")
+    except Exception:
         raise GateFailure("attestation invalid or unverifiable") from None
     return True

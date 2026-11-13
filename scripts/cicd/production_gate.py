@@ -7,7 +7,7 @@ calling it; unchecked JSON or operator-supplied strings are not attestations.
 import re
 
 SHA = re.compile(r"[0-9a-f]{40}\Z")
-DIGEST = re.compile(r"ghcr\.io/mooraa86/edunest-backend@sha256:[0-9a-f]{64}\Z")
+DIGEST = re.compile(r"ghcr\.io/mooraa86/edunest-production-preparation@sha256:[0-9a-f]{64}\Z")
 
 
 class GateFailure(Exception):
@@ -52,8 +52,8 @@ def migration_states(rows):
     return pending
 
 
-def migrate(adapter, sha):
-    """Enforce gate ordering; external adapter exceptions are sanitized.
+def simulate_migration(adapter, sha):
+    """Simulate gate ordering; external adapter exceptions are sanitized.
 
     The adapter is responsible for genuine DB identity, current-head lookup,
     trusted backup/compatibility attestation verification, and Flyway calls.
@@ -109,7 +109,7 @@ def simulate_release(adapter, event, branch, sha, digest):
         image(digest, adapter.revision(digest), sha)
         if adapter.rehearsal(sha) is not True:
             raise GateFailure("migration rehearsal failed")
-        migrate(adapter, sha)
+        simulate_migration(adapter, sha)
         if adapter.activation() is not True or adapter.current_sha() != sha or adapter.identity() is not True:
             raise GateFailure("pre-deployment recheck failed")
         deploy_id = adapter.deploy(digest)

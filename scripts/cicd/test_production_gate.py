@@ -1,8 +1,8 @@
 import unittest
-from production_gate import GateFailure, deployment_result, image, migrate, migration_states, release, simulate_release
+from production_gate import GateFailure, deployment_result, image, simulate_migration, migration_states, release, simulate_release
 
 SHA = "a" * 40
-REF = "ghcr.io/mooraa86/edunest-backend@sha256:" + "b" * 64
+REF = "ghcr.io/mooraa86/edunest-production-preparation@sha256:" + "b" * 64
 
 
 class Adapter:
@@ -62,7 +62,7 @@ class ProductionGateTests(unittest.TestCase):
                      ("push", "refs/heads/main", SHA, SHA),
                      ("push", "refs/heads/production", SHA, "c" * 40)):
             with self.assertRaises(GateFailure): release(*args)
-        for ref in (REF[:-1], "ghcr.io/mooraa86/edunest-backend:latest", REF.replace("mooraa86", "other")):
+        for ref in (REF[:-1], "ghcr.io/mooraa86/edunest-production-preparation:latest", REF.replace("mooraa86", "other")):
             with self.assertRaises(GateFailure): image(ref, SHA, SHA)
         with self.assertRaises(GateFailure): image(REF, "c" * 40, SHA)
 
@@ -75,25 +75,25 @@ class ProductionGateTests(unittest.TestCase):
 
     def test_no_pending_never_migrates(self):
         adapter = Adapter(False)
-        migrate(adapter, SHA)
+        simulate_migration(adapter, SHA)
         self.assertEqual(adapter.events, ["identity", "validate-pre", "info", "validate-strict", "info"])
 
     def test_pending_requires_evidence_and_freshness(self):
         adapter = Adapter(True)
-        migrate(adapter, SHA)
+        simulate_migration(adapter, SHA)
         self.assertEqual(adapter.events, ["identity", "validate-pre", "info", "backup", "compatibility",
                                           "freshness", "identity", "migrate", "validate-strict", "info"])
         for attribute, value in (("identity_ok", False), ("backup_ok", False), ("compat_ok", False),
                                  ("backup_ok", "true"), ("sha", "c" * 40)):
             adapter = Adapter(True)
             setattr(adapter, attribute, value)
-            with self.assertRaises(GateFailure): migrate(adapter, SHA)
+            with self.assertRaises(GateFailure): simulate_migration(adapter, SHA)
             self.assertNotIn("migrate", adapter.events)
 
     def test_failure_redacts_adapter_output(self):
         adapter = Adapter(True)
         adapter.failure = True
-        with self.assertRaises(GateFailure) as error: migrate(adapter, SHA)
+        with self.assertRaises(GateFailure) as error: simulate_migration(adapter, SHA)
         self.assertNotIn("secret-test-value", str(error.exception))
         self.assertNotIn("validate-strict", adapter.events)
 

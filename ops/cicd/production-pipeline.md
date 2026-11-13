@@ -15,12 +15,11 @@ independent deployment path is not controlled by this workflow.
 - `scripts/cicd/production_gate.py` contains pure release, image, migration-state
   and deployment-result decisions and a fake-adapter sequencing simulation.
   It is not connected to Flyway, GitHub or Railway and is not a deploy runner.
-- `scripts/cicd/flyway_adapter.py` executes Flyway Maven info/validate/migrate
-  with captured output. Its rehearsal-only integration test ran against a
-  disposable PostgreSQL 17 container; the workflow runs the same test against
-  its disposable PostgreSQL service. It also rejects a deliberately invalid
-  migration in a temporary copy. No production identity or attestation adapter
-  is connected to it; stdout/stderr are withheld to avoid exposing credentials.
+- `scripts/cicd/flyway_adapter.py` runs Flyway info/validate with captured output
+  and checks report boundaries and release migration manifest coverage. Direct
+  `FlywayAdapter.migrate()` and `migrate_production()` refuse all mutation.
+  The test-only `RehearsalFlywayAdapter` rechecks an owned container before
+  migrating. No production identity or attestation adapter is connected to it.
 - GitHub production-HEAD lookup, Maven tests, image build/push and GHCR digest
   inspection are implemented in the workflow, but have not been exercised by
   an enabled production workflow run. The digest is taken from the build step,
@@ -28,9 +27,10 @@ independent deployment path is not controlled by this workflow.
 - `Invoke-DeployVerification.ps1 -StrictIdentity` is a preliminary stricter
   commit check; an authorized runtime identity mechanism has not been wired.
 - `production_attestation.py` verifies a detached signature and checks release,
-  target, freshness, and backup/compatibility claims. Tests generate disposable
-  signing keys. A trusted signer/key provisioning and evidence source are not
-  configured; a valid signature alone is not proof of a usable backup.
+  attempt, target, migration set, freshness, and backup/compatibility claims.
+  It also requires an independently implemented serving-image observer and an
+  atomic replay store; neither exists for production. Tests use disposable keys
+  and fake observers/stores. A signature alone is not proof of a usable backup.
 - `railway_adapter.py` implements the documented project-token identity query
   and deployment-list ID/status checks. Its immutable-image mutation interface
   always fails before issuing a provider command. The protected workflow invokes
@@ -77,5 +77,26 @@ roll back schema. A failed or untrackable deployment call can already have cause
 an external mutation; treat its outcome as unknown and investigate.
 
 The current manual production release and migration runbook remains in force.
-The preparation workflow has not been run with activation enabled, and no CI
-run on this branch is available until a reviewable commit is pushed.
+The preparation workflow has not been run with activation enabled.
+
+## Trust, freshness and action maintenance
+
+- Before any production integration, provision a protected signer and public
+  key independently of release inputs. Pin and audit the signer identity and
+  key fingerprint in protected configuration; restrict key administration and
+  signing access. Rotate by provisioning a new trusted key with a bounded
+  overlap; immediately revoke compromised keys and reject their outstanding
+  attestations. No key is currently provisioned by this repository.
+- Attestations bind the release SHA, target, unique release attempt and pending
+  migration set. Backup claims include a creation timestamp and integrity hash;
+  compatibility claims include the previous digest. A durable, tamper-resistant
+  atomic store must reject reused attempt/kind pairs, including across runners.
+  The serving-digest observer must authenticate the provider and return a fresh
+  identity; it must be checked again immediately before a future migration. No
+  production implementation of the observer or replay store currently exists.
+- The protected workflow hard stop remains in place. The Python interfaces are
+  not a substitute for independent database credentials, provider access
+  restrictions or a cross-system deployment lock.
+- GitHub Actions are pinned to immutable commit SHAs. Update by verifying a new
+  upstream release/tag-to-commit mapping, reviewing its changes, updating pins in
+  one PR and rerunning actionlint and the isolated security workflow.

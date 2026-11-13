@@ -1,0 +1,42 @@
+name: EB-115 production security checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    name: EB-115 isolated security and migration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify Docker and OpenSSL
+        run: |
+          docker info >/dev/null
+          openssl version
+      - name: Python security and failure tests
+        run: python3 -B -m unittest discover -s scripts/cicd -p 'test_*.py' -v
+      - name: Existing staging gate regression tests
+        run: bash scripts/cicd/test-deploy-gate.sh
+      - name: Actionlint pinned container
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -w /repo \
+            rhysd/actionlint@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9 \
+            .github/workflows/deploy-production.yml .github/workflows/production-security.yml
+      - name: Owned disposable PostgreSQL migration integration
+        env:
+          EB115_RUN_REHEARSAL_IT: '1'
+        run: python3 -B -m unittest discover -s scripts/cicd -p test_flyway_adapter_integration.py -v
