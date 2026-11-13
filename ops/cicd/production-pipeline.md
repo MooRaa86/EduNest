@@ -12,6 +12,22 @@ independent deployment path is not controlled by this workflow.
 - `scripts/cicd/production_identity.py` validates an allowlisted JDBC URL and
   user form without printing credentials. This is syntax validation, not proof
   of the identity of the connected database.
+- `scripts/cicd/database_identity.py` implements `DatabaseIdentityVerifier`,
+  `DatabaseIdentityPolicy`, and `DatabaseIdentityReport`. It enforces TLS
+  verification (`sslmode=verify-full`), checks connected database, schema, user,
+  and cluster `system_identifier` via `pg_control_system()`, computes cryptographic
+  identity fingerprints, and rechecks identity immediately before any migration.
+  Tests use dependency injection and mocked sessions without touching production.
+- `scripts/cicd/replay_store.py` defines the atomic consume-once `ReplayStore`
+  contract with expiry enforcement, duplicate rejection, and fail-closed error
+  handling. It implements `InMemoryReplayStore`, `HmacDurableReplayStore` (with
+  tamper-evident HMAC-SHA256 signatures, atomic writes, and file locking),
+  `RemoteHttpReplayStore` (for multi-runner CI persistence), and `DatabaseReplayStore`.
+- `scripts/cicd/serving_observer.py` implements `RailwayServingImageObserver`,
+  verifying Railway project and environment identity via documented projectToken
+  GraphQL, extracting the exact immutable image digest from deployment metadata,
+  enforcing a <= 60s freshness window, and rechecking serving identity immediately
+  before future migrations.
 - `scripts/cicd/production_gate.py` contains pure release, image, migration-state
   and deployment-result decisions and a fake-adapter sequencing simulation.
   It is not connected to Flyway, GitHub or Railway and is not a deploy runner.

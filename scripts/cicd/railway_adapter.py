@@ -79,6 +79,12 @@ def deploy_immutable_image(*_args, **_kwargs):
     raise GateFailure("Railway immutable-image deployment identity contract unverified; no mutation attempted")
 
 
+try:
+    from serving_observer import RailwayServingImageObserver, ServingImageObservation, ServingImageObserver
+except ImportError:
+    pass
+
+
 if __name__ == "__main__":
     import sys
     try:

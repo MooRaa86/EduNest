@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Fail-closed EB-115 credential-form check. Reads secrets only from the environment.
 
-This is a syntactic identity guard, not proof of the remote database's identity.
+This module provides both:
+1. Syntactic credential-form checks for existing gates (`check`).
+2. Authenticated database identity verification via `DatabaseIdentityVerifier`.
 """
 import os
 import re
 import sys
 from urllib.parse import parse_qsl, urlsplit
+
+from database_identity import (
+    DatabaseIdentityPolicy,
+    DatabaseIdentityReport,
+    DatabaseIdentityVerifier,
+    DatabaseSession,
+)
 
 REF = re.compile(r"[a-z0-9]{20}")
 POOLER = re.compile(r"[a-z0-9-]+\.pooler\.supabase\.com")
