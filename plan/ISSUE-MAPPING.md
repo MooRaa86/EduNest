@@ -108,7 +108,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DB-03** | Med | P3-04 | 3 | database | D→T (D-18) | Planned |
 | **DB-04** | Med | P3-02 | 3 | database | T | Planned |
 | **DB-05** | Med | P3-03 | 3 | database | T | **Implemented — EB-45**: Added `@Transactional` boundaries on multi-step mutations (`WeekService.createWeek`, `WeekService.deleteWeek` cascade operations); ensures atomic rollback across child tasks/quizzes/projects/sessions/lectures; probes in `TransactionalCoverageAndFileAtomicityProbesTest` |
-| **DB-06** | Low | P3-06 → P4-11 | 3,4 | database | T (+D-24) | Planned |
+| **DB-06** | Low | P3-06 → P4-11 (EB-60) | 3,4 | database | T (+D-24) | **Partial (EB-60):** dashboard/list N+1 + in-memory pagination + submission-listing student fetch fixed; no-OSIV trial remains with D-24 |
 | **DB-07** | Low | P4-12 | 4 | database | T | Planned |
 | **API-01** | Low | P4-16 (cond.) | 4 | api | D→T (D-20), DEF expected | Planned |
 | **API-02** | Med | P4-09 | 4 | api | T | **Contract pinned — EB-40 (P2-06, 2026-11-02)**: `contract/PaginationContractTest` compiles the pagination contract as tests (beyond-range page → 200 empty; `size<=0`/`page=-1` → raw IllegalArgumentException → **500 ERR_INTERNAL_SYSTEM** — no clamp anywhere; `size=10000` unbounded). Quirks documented in `mds/api/MDS.md` pagination row; the cap/clamp fix itself remains P4-09 |

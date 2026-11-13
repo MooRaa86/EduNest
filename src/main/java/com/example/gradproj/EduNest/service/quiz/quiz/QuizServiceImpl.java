@@ -217,19 +217,14 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not authorized to view quizzes for this mentorship");
         }
 
-        Page<Quiz> quizzes = quizRepository.findQuizzesByMentorship(msid, quizName, status, pageable);
+        // EB-60 / P4-11 — F2: projection rows instead of entity rows; the
+        // previous query fetch-joined the LAZY submissions bag under a Page,
+        // which forced Hibernate into in-memory pagination (HHH000104) and
+        // the mapping loop then navigated each quiz's submissions.
+        Page<QuizRepository.QuizListRow> quizzes = quizRepository.findQuizzesByMentorship(msid, quizName, status, pageable);
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
-                .map(quiz -> QuizResponseDTO.builder()
-                        .id(quiz.getPublicId())
-                        .title(quiz.getTitle())
-                        .durationMinutes(quiz.getDurationMinutes())
-                        .description(quiz.getDescription())
-                        .status(quiz.getStatus())
-                        .closeAt(quiz.getCloseAt())
-                        .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
-                        .averageScore(calculateAverageScore(quiz))
-                        .build())
+                .map(this::toQuizResponseDto)
                 .toList();
 
 
@@ -251,19 +246,12 @@ public class QuizServiceImpl implements QuizService {
             throw new AccessDeniedException("You are not enrolled in this mentorship");
         }
 
-        Page<Quiz> quizzes = quizRepository.findStudentQuizzesByMentorship(msid, quizName, status, pageable);
+        // EB-60 / P4-11 — F2: same projection shape as the mentor list (see
+        // getQuizzes); DRAFT exclusion preserved by the repository query.
+        Page<QuizRepository.QuizListRow> quizzes = quizRepository.findStudentQuizzesByMentorship(msid, quizName, status, pageable);
 
         List<QuizResponseDTO> quizDTOs = quizzes.getContent().stream()
-                .map(quiz -> QuizResponseDTO.builder()
-                        .id(quiz.getPublicId())
-                        .title(quiz.getTitle())
-                        .durationMinutes(quiz.getDurationMinutes())
-                        .description(quiz.getDescription())
-                        .status(quiz.getStatus())
-                        .closeAt(quiz.getCloseAt())
-                        .submissions(quiz.getSubmissions() != null ? quiz.getSubmissions().size() : 0)
-                        .averageScore(calculateAverageScore(quiz))
-                        .build())
+                .map(this::toQuizResponseDto)
                 .toList();
 
         return PageResponse.<QuizResponseDTO>builder()
@@ -286,17 +274,28 @@ public class QuizServiceImpl implements QuizService {
         if (!(mentorshipRepository.existsById(mentorShipId))) {
             throw new globalLogicEx("MentorShip not found");
         }
-        List<Quiz> allQuizzes = quizRepository.findByWeek_Mentorship_Id(mentorShipId);
+        // EB-60 / P4-11 — F1: the loop used to load every quiz of the
+        // mentorship and navigate its LAZY submissions collection (1 + N
+        // queries, growing with quiz count). One grouped aggregate query now
+        // supplies per-quiz status + average; the semantics are preserved
+        // exactly: per-quiz average rounded to 2 decimals (calculateAverageScore),
+        // summed over ALL quizzes (DRAFT/empty included), divided by the total
+        // count, final value not re-rounded.
+        List<QuizRepository.QuizAggregateRow> aggregates =
+                quizRepository.findDashboardAggregatesByMentorship(mentorShipId);
 
-        int totalQuizzes = allQuizzes.size();
+        int totalQuizzes = aggregates.size();
         int publishedCount = 0;
         int draftCount = 0;
         double sumAverageScores = 0.0;
 
-        for (Quiz quiz : allQuizzes) {
-            publishedCount += (quiz.getStatus() == QuizStatus.PUBLISHED ? 1 : 0);
-            draftCount += (quiz.getStatus() == QuizStatus.DRAFT ? 1 : 0);
-            sumAverageScores += calculateAverageScore(quiz);
+        for (QuizRepository.QuizAggregateRow row : aggregates) {
+            publishedCount += (row.getStatus() == QuizStatus.PUBLISHED ? 1 : 0);
+            draftCount += (row.getStatus() == QuizStatus.DRAFT ? 1 : 0);
+            Double average = row.getAverageScore();
+            if (average != null) {
+                sumAverageScores += Math.round(average * 100.0) / 100.0;
+            }
         }
         double averageScore = totalQuizzes > 0 ? sumAverageScores / totalQuizzes : 0.0;
 
@@ -349,9 +348,12 @@ public class QuizServiceImpl implements QuizService {
             throw new globalLogicEx("MentorShip not found");
         }
         Pageable pageable = PageRequest.of(page, size);
-        Page<Quiz> allQuizzes = quizRepository.findByWeek_Mentorship_Id(mentorShipId, pageable);
+        // EB-60 / P4-11 — F2: projection rows (see getQuizzes); mentor overview
+        // keeps DRAFT quizzes visible (no status filter), like the old query.
+        Page<QuizRepository.QuizListRow> allQuizzes =
+                quizRepository.findQuizzesByMentorship(mentorShipId, null, null, pageable);
         List<QuizOverviewDto> quizOverviewDtos = allQuizzes.stream()
-                .map(this::mapToQuizOverviewDto)
+                .map(this::toQuizOverviewDto)
                 .toList();
 
         PageResponse<QuizOverviewDto> pageResponse = PageResponse.<QuizOverviewDto>builder()
@@ -490,13 +492,33 @@ public class QuizServiceImpl implements QuizService {
         return Math.round(average * 100.0) / 100.0;
     }
 
-    private QuizOverviewDto mapToQuizOverviewDto(Quiz quiz) {
+    // EB-60 / P4-11 — F2: projection mappers. COUNT/AVG come pre-aggregated
+    // from the database; per-quiz average rounding mirrors
+    // calculateAverageScore (2 decimals) so responses are byte-identical.
+    private QuizResponseDTO toQuizResponseDto(QuizRepository.QuizListRow row) {
+        Long submissionCount = row.getSubmissionCount();
+        Double average = row.getAverageScore();
+        return QuizResponseDTO.builder()
+                .id(row.getPublicId())
+                .title(row.getTitle())
+                .durationMinutes(row.getDurationMinutes())
+                .description(row.getDescription())
+                .status(row.getStatus())
+                .closeAt(row.getCloseAt())
+                .submissions(submissionCount == null ? 0 : submissionCount.intValue())
+                .averageScore(average == null ? 0.0 : Math.round(average * 100.0) / 100.0)
+                .build();
+    }
+
+    private QuizOverviewDto toQuizOverviewDto(QuizRepository.QuizListRow row) {
+        Long submissionCount = row.getSubmissionCount();
+        Double average = row.getAverageScore();
         return QuizOverviewDto.builder()
-                .id(quiz.getPublicId())
-                .title(quiz.getTitle())
-                .averageScore(calculateAverageScore(quiz))
-                .status(quiz.getStatus())
-                .submissions(quiz.getSubmissions().size())
+                .id(row.getPublicId())
+                .title(row.getTitle())
+                .status(row.getStatus())
+                .submissions(submissionCount == null ? 0 : submissionCount.intValue())
+                .averageScore(average == null ? 0.0 : Math.round(average * 100.0) / 100.0)
                 .build();
     }
 

@@ -197,7 +197,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | DB-03 | DATA INTEGRITY | Medium | ✅ | Soft-delete (`deleted`) not applied in read queries (leaderboards/reviews/chat can surface deleted users) | query layers across repos |
 | DB-04 | DATA INTEGRITY | Medium | ✅ | Missing unique constraints: enrollments, mentorship reviews, conversations, session-attendance pairs | entity definitions (§ indexing doc) |
 | DB-05 | RELIABILITY | Medium | ✅ | **Resolved - EB-45 [P3-03]**: Added `@Transactional` to `WeekService.deleteWeek` and `createWeek` for atomic cascade rollback; probes in `TransactionalCoverageAndFileAtomicityProbesTest` | `WeekService.deleteWeek`, `WeekService.createWeek` |
-| DB-06 | TECHNICAL DEBT | Low | ✅ | OSIV reliance for lazy navigation (breaks if disabled; sources several N+1s) | quiz/dashboard read paths |
+| DB-06 | TECHNICAL DEBT | Low | ✅ | **PARTIALLY FIXED (EB-60 / P4-11):** quiz dashboard, paginated quiz lists and overview now aggregate/projection-based (per-quiz N+1 eliminated; in-memory pagination replaced with DB-level pagination); submission listings pre-join student via `@EntityGraph`; homepage continue-learning carries publicId inline. Single-quiz detail/statistics lazy navigation remains OSIV-reliant — deferred to EB-48/D-24 | `QuizServiceImpl`; `QuizRepository`; `QuizSubmissionRepository`; `HomePageService` |
 | DB-07 | PERFORMANCE | Low | ✅ | Row-by-row persistence loops (attendance snapshots, per-student fans) instead of batching | cited services |
 
 ---

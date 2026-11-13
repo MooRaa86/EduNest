@@ -138,6 +138,12 @@ Spring Boot's default OSIV keeps the session open per request; the following ver
 
 Implication: build a **no-OSIV test profile** before attempting transactional refactors; document explicitly which reads must become fetch-joins.
 
+**EB-60 / P4-11 update (2026-11-13):** the quiz multi-row reads no longer navigate lazy state and are OSIV-independent:
+- `getQuizDashboard` / `getMentorshipQuizzesOverview` use a single grouped aggregate query (`QuizRepository.findDashboardAggregatesByMentorship`) — no per-quiz `submissions` traversal. Dashboard average semantics preserved: per-quiz average rounded to 2 decimals, summed over all quizzes, divided by total (unrounded).
+- `getQuizzes` / `getStudentQuizzes` / overview pages return `QuizListRow` projections (`COUNT`/`AVG` subqueries); the former `LEFT JOIN FETCH q.submissions` on a `Page` forced Hibernate in-memory pagination (HHH000104 — no LIMIT sent to the DB) and is removed. Regression/query-budget evidence: `QuizN1QueryBudgetIntegrationTest` (dashboard 12→5 statements constant with quiz count; by-quiz submissions 9/13→7/7; no HHH000104).
+- `getAllSubmissionsByQuiz` / `getAllSubmissionsByStudent` pre-join `student` via `@EntityGraph` (to-one, pagination-safe).
+- Still OSIV-reliant (deferred to EB-48/D-24, no N+1 demonstrated): single-quiz `getQuizDetails` / `getQuizStatistics` navigation (`getQuestions()`, `week.mentorship`), `mentorShipServiceI.mapToMentorShipResponse` collection walks (mitigated by `@BatchSize(25)`), dashboard services using repository aggregates.
+
 ## 4. Multi-step operations without atomicity
 
 | Operation | Steps | Risk |

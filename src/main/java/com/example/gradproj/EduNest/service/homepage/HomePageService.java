@@ -134,8 +134,12 @@ public class HomePageService {
 
                     int progressPercentage = totalItems > 0 ? (int)((completedItems * 100) / totalItems) : 0;
 
+                    // EB-60 / P4-11 — F4: publicId now arrives inside the
+                    // projection (one loop-of-lookups fewer per homepage load;
+                    // the old code called findPublicIdById per mentorship row).
                     return ContinueLearningDto.builder()
-                            .mentorshipId(mentorShipRepository.findPublicIdById(m.getMentorshipId()).orElse(null))
+                            .mentorshipId(m.getMentorshipPublicId() == null
+                                    ? null : UUID.fromString(m.getMentorshipPublicId()))
                             .title(m.getTitle())
                             .coverImageUrl(m.getCoverImageUrl())
                             .mentorName(m.getMentorName())

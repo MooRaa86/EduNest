@@ -188,8 +188,8 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
     List<String> findCategoriesByStudentEmail(@Param("email") String email);
 
     @Query(value = """
-    SELECT 
-        m.publicId AS id,
+    SELECT
+        m.public_id AS id,
         m.title AS title,
         m.subtitle AS subtitle,
         m.description AS description,
