@@ -30,8 +30,15 @@ class FlywayDisabledStartupPostgresTest {
         Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
                 .placeholders(Map.of("defaultCommissionRate", "10.0")).load().migrate();
+        // outOfOrder(true): since EB-108 added V14 to db/migration, the real
+        // migrate() above applies past the unapplied V13 sentinel — and with
+        // Flyway's default outOfOrder=false an unapplied lower-version migration
+        // is no longer reported as PENDING (CI-verified: probe saw [] instead of
+        // ["13"]). The sentinel must still register as pending for the invariant
+        // below to be honest: startup (flyway disabled) never executes it.
         var probe = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration", "classpath:startup-migrations")
+                .outOfOrder(true)
                 .placeholders(Map.of("defaultCommissionRate", "10.0")).load();
         assertThat(probe.info().pending()).extracting(info -> info.getVersion().getVersion()).containsExactly("13");
         registry.add("spring.datasource.url", postgres::getJdbcUrl);

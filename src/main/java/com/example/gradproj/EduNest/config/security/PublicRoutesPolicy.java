@@ -49,7 +49,11 @@ public final class PublicRoutesPolicy {
             "/api/v1/student/mentorships/*/reviews",
             "/api/v1/mentorship/explore",
             "/api/v1/mentorship/categories",
-            "/api/v1/profile/mentor/**"
+            "/api/v1/profile/mentor/**",
+            // [EB-108][P4-18] Stripe webhook - Stripe cannot authenticate, but
+            // every call is HMAC signature-verified over the raw body
+            // (fail-closed in SdkStripePaymentGateway; bad signature -> 400).
+            "/api/v1/payments/webhook"
     );
 
     /**

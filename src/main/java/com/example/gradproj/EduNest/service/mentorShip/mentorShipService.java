@@ -3,10 +3,12 @@ package com.example.gradproj.EduNest.service.mentorShip;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.JoinMentorshipOutcome;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
+import com.example.gradproj.EduNest.entity.payment.PaymentTransaction;
 import com.example.gradproj.EduNest.enums.mentorShip.Status;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,8 +47,16 @@ public interface mentorShipService {
     void deleteCoverImage(Long mentorshipId);
     void deleteCoverImage(UUID mentorshipId);
 
-    void joinMentorship(Long mentorshipId);
-    void joinMentorship(UUID mentorshipId);
+    JoinMentorshipOutcome joinMentorship(Long mentorshipId);
+    JoinMentorshipOutcome joinMentorship(UUID mentorshipId);
+
+    /**
+     * [EB-108][P4-18] webhook-side enrollment finalization: creates the
+     * Enrollment + TotalPoints + mentor notification for a PAID payment
+     * transaction. Idempotent-safe: if the student is somehow already enrolled,
+     * nothing is created (no duplicate, no exception).
+     */
+    void finalizePaidEnrollment(PaymentTransaction transaction);
 
     void rateMentorship(Long mentorshipId, CreateReviewRequest request);
     void rateMentorship(UUID mentorshipId, CreateReviewRequest request);

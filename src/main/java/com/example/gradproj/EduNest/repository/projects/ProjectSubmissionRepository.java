@@ -49,6 +49,8 @@ public interface ProjectSubmissionRepository extends JpaRepository<ProjectSubmis
     boolean existsByProject_Id(Long projectId);
     /** EB-51 / D-09 — freeze predicate: at least one qualifying (GRADED) submission exists. */
     boolean existsByProject_IdAndStatus(Long projectId, SubmissionStatus status);
+    /** EB-54 / P4-05 — pendingReview: rows still awaiting review (status SUBMITTED). */
+    long countByProject_IdAndStatus(Long projectId, SubmissionStatus status);
     /** EB-51 — cascade-delete protection: rejects deleting week if submissions exist. */
     boolean existsByProject_Week_Id(Long weekId);
     boolean existsByProject_Week_IdAndStatus(Long weekId, SubmissionStatus status);

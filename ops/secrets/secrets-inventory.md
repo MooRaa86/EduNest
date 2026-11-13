@@ -12,6 +12,8 @@ Classification: **Critical** (compromise = full auth takeover), **High** (compro
 | `ZOOM_CLIENT_SECRET` | High | `app.zoom.client-secret` | Railway only (after Zoom Marketplace provisioning) | Repo admin | On need; regenerate in the Zoom Marketplace app settings | [rotation.md §4](rotation.md) |
 | `SUPABASE_S3_ACCESS_KEY` | High | `supabase.storage.access-key` | Supabase S3 keys → mirrored into Railway | Repo admin | On need; always rotate the pair together | [rotation.md §5](rotation.md) |
 | `SUPABASE_S3_SECRET_KEY` | High | `supabase.storage.secret-key` | Supabase S3 keys → mirrored into Railway | Repo admin | On need; always rotate the pair together | [rotation.md §5](rotation.md) |
+| `STRIPE_SECRET_KEY` | High | `app.stripe.secret-key` | Stripe Dashboard (test mode first) → mirrored into Railway (after Stripe provisioning) | Repo admin | Rotate on need / on suspicion ("Roll key" in the Dashboard); live keys gated to P7 provisioning (D-28) | [rotation.md §7](rotation.md) |
+| `STRIPE_WEBHOOK_SECRET` | High | `app.stripe.webhook-secret` | Stripe Dashboard webhook endpoint settings → mirrored into Railway | Repo admin | Rotate on need; re-issue per webhook endpoint | [rotation.md §7](rotation.md) |
 
 ## Not secret-classified (context)
 

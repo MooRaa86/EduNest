@@ -1,6 +1,8 @@
 # Environment Configuration
 
 > **Authoritative Infrastructure Reference:** See [`ops/environments.md`](../../ops/environments.md) for the ratified staging/production topology (Railway deployment at `https://backend.edunest.dpdns.org/`, Supabase PostgreSQL & S3 storage, and `production` branch CD pipeline) and [`.env.example`](../../.env.example) for the environment template.
+>
+> **Deployment procedures (P6-09 / EB-80):** [`ops/runbooks/deploy-prod.md`](../../ops/runbooks/deploy-prod.md) (active production path: release PR → `production` → Railway Auto Deploy → verification → rollback) and [`ops/runbooks/deploy-staging.md`](../../ops/runbooks/deploy-staging.md) (staging paths + activation gates — staging is documented as **not provisioned** there; do not treat it as a live environment).
 
 Complete configuration surface (verified against `application.properties`, `application-prod.properties`, `Dockerfile`, and the code that reads env values).
 
@@ -27,7 +29,7 @@ Complete configuration surface (verified against `application.properties`, `appl
 | Setting | default (`application.properties`) | `prod` (`application-prod.properties`) |
 |---|---|---|
 | `server.port` | `${PORT:8080}` | `${PORT:8080}` |
-| DDL | `ddl-auto=update` | `ddl-auto=update` (same) |
+| DDL | `ddl-auto=validate` | `ddl-auto=validate` (same) — Flyway owns schema; Hibernate only validates (`spring.flyway.enabled=false`, operator migrations via `-Pdb-migrate`; corrected 2026-11-12 from a stale `update` row against `application.properties`/`application-prod.properties`) |
 | SQL logging | `show-sql=true`, `format_sql=true` | same (**prod-noisy**, DEP-04) |
 | Jackson unknown fields | default (ignored) | `fail-on-unknown-properties=true` (contract drift — API-05) |
 | Static resources | – | `static-locations = classpath:/static/, file:uploads/` |
@@ -143,11 +145,15 @@ Single canonical list, cross-checked against `.env.example` and `ops/environment
 | Opt | `APP_UPLOAD_BASE_DIR` | `app.upload.base-dir` | `uploads` | local-disk rollback lane (D-25) |
 | Opt | `APP_AUTH_RESET_TOKEN_TTL` | `app.auth.reset-token-ttl` | `PT5M` | reset-token lifetime |
 | Opt | `APP_CERTIFICATE_ISSUANCE_BATCH_SIZE` | `app.certificate.issuance-batch-size` | `100` (clamped 1..1000) | EB-54 issuance |
+| Opt | `STRIPE_ENABLED` / `STRIPE_CURRENCY` | `app.stripe.enabled` / `app.stripe.currency` | `false` / `USD` | [ADD-06]/EB-108 (D-28): `false` keeps the legacy direct-join on `/join` (C decision); currency hardcoded USD (E decision) |
+| Sec | `STRIPE_SECRET_KEY` | `app.stripe.secret-key` | *(env store)* | Stripe Secret key (test mode first: `sk_test_...`); secrets class — env store only, rotation per §9 |
+| Sec | `STRIPE_WEBHOOK_SECRET` | `app.stripe.webhook-secret` | *(env store)* | Webhook signing secret (`whsec_...`); endpoint `POST /api/v1/payments/webhook` (public route, HMAC fail-closed) |
+| Opt | `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | `app.stripe.success-url` / `app.stripe.cancel-url` | *(empty)* | FE landing routes Stripe redirects to; required once `STRIPE_ENABLED=true` (gateway fails fast without them) |
 | Dev-only | `EDUNEST_UNSAFE_DEV` | `ProjectSecurityConfig` gate | `false` | Boot refusal without it when `prod` absent; **never set true outside local dev** |
 
 **Not env-configurable (inventory facts):** CORS (`ProjectSecurityConfig`, `*` in both chains), Jackson prod strictness (`application-prod.properties`), multipart caps (10MB in files), `springdoc` UI settings.
 
-**Deferred vars (documented contracts, not wired yet):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (D-28 / EB-108, sprint-3) — land in `.env.example` and this matrix when EB-108 implements.
+**Deferred vars:** none — the previously deferred `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` (D-28 / EB-108) are now wired: see the rows above and section 6b of `.env.example`. Live-mode keys remain gated to P7 provisioning (D-28).
 
 **Guard:** `EnvContractGuardTest` keeps this list in sync with `.env.example` — `${ENV_VAR}` placeholders found in `application*.properties` must exist there, secret shapes must never appear, and dormant defaults are pinned.
 
@@ -155,7 +161,7 @@ Single canonical list, cross-checked against `.env.example` and `ops/environment
 
 The **secret store = Railway environment dashboard** (D-22 amendment): values are injected into the container at boot, never baked into the image (enforced by `SecretsHygieneGuardTest`), never committed to git, and never logged. Supabase owns the DB password and S3 key pairs it issues; local development uses a gitignored `.env` per developer. Vault remains optional per scale (D-22) — not adopted.
 
-Secret-classified variables (`JWT_SECRET`, `DATABASE_PASSWORD`, `MAIL_PASSWORD`, `ZOOM_CLIENT_SECRET`, `SUPABASE_S3_ACCESS_KEY`/`SECRET_KEY`), their holders, rotation cadences, and the full per-secret rotation procedures live in **[`ops/secrets/`](../../../ops/secrets/README.md)** — the store bookkeeping: `secrets-inventory.md` (register, zero values), `rotation.md` (stable + app restart, incl. the JWT re-auth window), `JWT-GENERATION-RECORD.md` (provenance only), and CSPRNG generator scripts.
+Secret-classified variables (`JWT_SECRET`, `DATABASE_PASSWORD`, `MAIL_PASSWORD`, `ZOOM_CLIENT_SECRET`, `SUPABASE_S3_ACCESS_KEY`/`SECRET_KEY`), their holders, rotation cadences, and the full per-secret rotation procedures live in **[`ops/secrets/`](../../ops/secrets/README.md)** — the store bookkeeping: `secrets-inventory.md` (register, zero values), `rotation.md` (stable + app restart, incl. the JWT re-auth window), `JWT-GENERATION-RECORD.md` (provenance only), and CSPRNG generator scripts.
 
 Hygiene gates in CI (both plain-JUnit, D-27-clean): `EnvContractGuardTest` (P5-04) pins template parity; `SecretsHygieneGuardTest` (P6-03) enforces no secret bakes in the Dockerfile, placeholder-only secret bindings, `.gitignore` coverage of `.env*`/`*.pem`/`ops/secrets/local/`, and that git tracks no secret artifacts.
 

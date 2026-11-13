@@ -5,6 +5,7 @@ import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.ChangeStatusReque
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
+import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.JoinMentorshipOutcome;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.mentorShipFDto;
 import com.example.gradproj.EduNest.dto.tasks.response.TaskResponse;
@@ -201,15 +202,24 @@ public class mentorShipControllers {
     }
 
     @PostMapping("/{mentorshipId}/join")
-    @Operation(summary = "Student join in mentorship")
+    @Operation(summary = "Student join in mentorship",
+            description = "Free-tier bypass: a $0 mentorship (effective price 0 after discount) enrolls "
+                    + "immediately. Otherwise, when Stripe is enabled, returns a checkoutUrl the FE must "
+                    + "redirect to - the enrollment is created only after the signature-verified webhook "
+                    + "confirms payment. With STRIPE_ENABLED=false the legacy direct join applies.")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<SimpleResponse> joinMentorship(
             @PathVariable UUID mentorshipId
     ) {
-        mentorShipService.joinMentorship(mentorshipId);
+        JoinMentorshipOutcome outcome = mentorShipService.joinMentorship(mentorshipId);
 
         SimpleResponse response = new SimpleResponse();
-        response.addMessage("message", "Mentorship joined successfully");
+        if (outcome.enrolledDirectly()) {
+            response.addMessage("message", "Mentorship joined successfully");
+        } else {
+            response.addMessage("message", "Complete the payment to join this mentorship");
+            response.addMessage("checkoutUrl", outcome.checkoutUrl());
+        }
 
         return ResponseEntity.ok(response);
     }
