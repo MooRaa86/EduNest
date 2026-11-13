@@ -1,217 +1,474 @@
 name: Deploy Production
 
-# EB-115: release preparation is implemented; production mutation remains
-# blocked until the authenticated evidence and provider contracts are ready.
+# EB-115 [P6-04 / P7-06] — gated production deployment pipeline.
+#
+# Proven pipeline architecture based on deploy-staging.yml:
+#   push to 'production' branch -> activation gate -> verify release & prepare image
+#   -> disposable migration rehearsal -> production migration gate -> Railway deploy
+#   -> smoke verification -> evidence artifact.
+#
+# Hard invariants enforced:
+# - spring.flyway.enabled=false
+# - spring.jpa.hibernate.ddl-auto=validate
+# - DISABLED by default: requires PROD_AUTO_DEPLOY_ENABLED=true repository variable.
+#   If disabled, the workflow skips cleanly without accessing production secrets.
+# - Only pushes to the 'production' branch can trigger automated deployment.
+# - Tested commit == built commit == deployed image (digest-pinned).
+# - Stale-run protection: HEAD of production branch is re-verified at each critical gate.
+# - Migrations run BEFORE the new image is deployed; failed migration aborts deploy.
+# - Target DB identity strictly enforced: ref ciogysvcykzxrjuskxmk, sslmode=verify-full.
+# - Railway Auto Deploy must be OFF on the production service so this pipeline controls rollout.
+# - Deployed deployment ID is captured from authoritative Railway CLI response and tracked.
+
 on:
   push:
-    branches: [production]
+    branches: [ production ]
   workflow_dispatch:
-
-permissions:
-  contents: read
+    inputs:
+      commit_sha:
+        description: "Full commit SHA to deploy (must be in production branch history)"
+        required: true
+        type: string
+      image_ref:
+        description: "Digest-pinned image ref (ghcr.io/mooraa86/edunest-backend@sha256:...)"
+        required: true
+        type: string
 
 concurrency:
   group: production-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   activation:
-    name: Production activation boundary
+    name: Production deployment activation gate
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.gate.outputs.enabled }}
     steps:
-      - name: Check activation without production secrets
+      - name: Checkout gate script
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Evaluate activation gate
         id: gate
         env:
           AUTO_DEPLOY: ${{ vars.PROD_AUTO_DEPLOY_ENABLED }}
-          EVENT: ${{ github.event_name }}
+          MANUAL_DEPLOY: ${{ vars.PROD_MANUAL_DEPLOY_ENABLED }}
+          EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          if [ "$AUTO_DEPLOY" != 'true' ]; then
-            echo 'enabled=false' >> "$GITHUB_OUTPUT"
-            echo 'Production automation disabled; no deployment or migration attempted.'
-            exit 0
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "${MANUAL_DEPLOY:-}" = "true" ]; then
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "Manual dispatch: PROD_MANUAL_DEPLOY_ENABLED=true — operator explicitly requested this deploy"
+            else
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "PROD_MANUAL_DEPLOY_ENABLED is not 'true' — manual deployment is DISABLED."
+            fi
+          elif [ "${AUTO_DEPLOY:-}" = "true" ]; then
+            if [ "$REF" != "refs/heads/production" ]; then
+              echo "::error::Only pushes to refs/heads/production can trigger automatic production deploy."
+              exit 1
+            fi
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "PROD_AUTO_DEPLOY_ENABLED=true — automatic production deployment activated"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "PROD_AUTO_DEPLOY_ENABLED is not 'true' (got: '${AUTO_DEPLOY:-}') — automatic production deployment is DISABLED; no migration, no deployment, no external changes."
           fi
-          if [ "$EVENT" != push ] || [ "$REF" != refs/heads/production ]; then
-            echo '::error::Only a production push can prepare an automatic release.'
-            exit 1
-          fi
-          echo 'enabled=true' >> "$GITHUB_OUTPUT"
 
-  release:
-    name: Verify production release SHA
+  verify-and-prepare:
+    name: Verify release & prepare digest-pinned image
     needs: [activation]
     if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
     outputs:
-      sha: ${{ steps.verify.outputs.sha }}
+      verified_sha: ${{ steps.prepare.outputs.verified_sha }}
+      image_ref_pinned: ${{ steps.prepare.outputs.image_ref_pinned }}
     steps:
-      - name: Verify production head
-        id: verify
+      - name: Determine target release SHA
+        id: target
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SHA: ${{ github.event.inputs.commit_sha }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Invalid release SHA'; exit 1; }
-          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
-          [ "$head" = "$RELEASE_SHA" ] || { echo '::error::Release is stale'; exit 1; }
-          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            SHA="$INPUT_SHA"
+          else
+            SHA="$GITHUB_SHA"
+          fi
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid commit SHA '$SHA'"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-  test:
-    name: Test and package exact release
-    needs: [release]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Checkout verified release revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.release.outputs.sha }}
+          ref: ${{ steps.target.outputs.sha }}
           persist-credentials: false
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+
+      - name: Recheck production HEAD freshness (stale-run protection)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_SHA: ${{ steps.target.outputs.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "workflow_dispatch" ]; then
+            CURRENT_PROD=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
+            bash scripts/cicd/deploy-gate.sh commit-match "$VERIFIED_SHA" "$CURRENT_PROD" \
+              "pre-build freshness (verified commit vs current production HEAD)" \
+              || { echo "BLOCK: a newer production commit arrived — aborting"; exit 1; }
+          fi
+
+      - name: Set up JDK 21 (Temurin) + Maven cache
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Production decision tests
-        run: python3 -B -m unittest discover -s scripts/cicd -p 'test_*.py' -v
-      - name: Staging gate regression tests
-        run: bash scripts/cicd/test-deploy-gate.sh
-      - run: docker info >/dev/null
-      - run: ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
-      - name: Require completion PostgreSQL tests to execute
-        run: |
-          python3 - <<'PY'
-          import sys
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-          path = Path('target/surefire-reports/TEST-com.example.gradproj.EduNest.service.completion.CompletionLocalPostgresIntegrationTest.xml')
-          if not path.is_file():
-              sys.exit('Missing completion PostgreSQL report')
-          root = ET.parse(path).getroot()
-          cases = root.findall('testcase')
-          counts = {k: int(root.attrib[k]) for k in ('tests', 'failures', 'errors', 'skipped')}
-          if (counts['tests'] < 14 or len(cases) != counts['tests'] or counts['failures'] or counts['errors'] or counts['skipped']
-                  or any(case.find(tag) is not None for case in cases for tag in ('failure', 'error', 'skipped'))):
-              sys.exit('Completion PostgreSQL tests did not all pass')
-          PY
-      - run: ./mvnw -B test '-Dtest=UniquenessPostgresMigrationIT,UniquenessHttpPostgresIT' -Dsurefire.failIfNoSpecifiedTests=true -DskipTests=false -Dmaven.test.failure.ignore=false
-      - name: Require uniqueness PostgreSQL tests to execute
-        run: |
-          set -euo pipefail
-          grep -F 'Tests run: 5, Failures: 0, Errors: 0, Skipped: 0' target/surefire-reports/com.example.gradproj.EduNest.migration.UniquenessPostgresMigrationIT.txt
-          grep -F 'Tests run: 11, Failures: 0, Errors: 0, Skipped: 0' target/surefire-reports/com.example.gradproj.EduNest.migration.UniquenessHttpPostgresIT.txt
 
-  image:
-    name: Build and verify immutable image
-    needs: [release, test]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      ref: ${{ steps.identity.outputs.ref }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: ${{ needs.release.outputs.sha }}
-          persist-credentials: false
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      - name: Run gate verification tests
+        run: bash scripts/cicd/test-deploy-gate.sh
+
+      - name: Package application
+        run: ./mvnw -B package -DskipTests=false -Dmaven.test.failure.ignore=false
+
+      - name: Require uniqueness PostgreSQL integration tests
+        run: |
+          ./mvnw -B test -Dtest=UniquenessPostgresMigrationIT,UniquenessHttpPostgresIT \
+            -Dsurefire.failIfNoSpecifiedTests=true -DskipTests=false -Dmaven.test.failure.ignore=false
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - name: Derive repository image name
-        id: name
-        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/edunest-production-preparation" >> "$GITHUB_OUTPUT"
-      - name: Recheck release freshness before publishing
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ needs.release.outputs.sha }}
-        run: |
-          set -euo pipefail
-          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
-          [ "$head" = "$SHA" ] || { echo '::error::Release is stale'; exit 1; }
-      - name: Build and push
+
+      - name: Build and push digest-pinned container image
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           push: true
-          tags: ${{ steps.name.outputs.image }}:${{ needs.release.outputs.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/edunest-backend:${{ steps.target.outputs.sha }}
           labels: |
-            org.opencontainers.image.revision=${{ needs.release.outputs.sha }}
+            org.opencontainers.image.revision=${{ steps.target.outputs.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-      - name: Verify pushed digest and revision
-        id: identity
+
+      - name: Verify pushed image digest and OCI revision label
+        id: prepare
         env:
-          IMAGE: ${{ steps.name.outputs.image }}
+          OWNER: ${{ github.repository_owner }}
           DIGEST: ${{ steps.build.outputs.digest }}
-          SHA: ${{ needs.release.outputs.sha }}
+          SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
-          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo '::error::Invalid image digest'; exit 1; }
+          IMAGE="ghcr.io/${OWNER,,}/edunest-backend"
+          bash scripts/cicd/deploy-gate.sh image-ref "$IMAGE@$DIGEST"
           ref="$IMAGE@$DIGEST"
           docker pull "$ref" >/dev/null
           revision=$(docker inspect "$ref" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')
-          [ "$revision" = "$SHA" ] || { echo '::error::Image revision mismatch'; exit 1; }
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          bash scripts/cicd/deploy-gate.sh commit-match "$revision" "$SHA" "OCI image revision label vs release SHA"
+          echo "verified_sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "image_ref_pinned=$ref" >> "$GITHUB_OUTPUT"
 
-  rehearsal:
+  migration-rehearsal:
     name: Rehearse migrations on disposable PostgreSQL
-    needs: [release, test]
+    needs: [activation, verify-and-prepare]
+    if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Checkout verified release revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.release.outputs.sha }}
+          ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      - name: Set up JDK 21 (Temurin) + Maven cache
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Run isolated Flyway adapter rehearsal
-        env:
-          EB115_RUN_REHEARSAL_IT: '1'
-        run: python3 -B -m unittest discover -s scripts/cicd -p test_flyway_adapter_integration.py -v
+      - name: Rehearse full Flyway migration lifecycle
+        run: |
+          ./mvnw -B test -Dtest=PostgreSqlMigrationIntegrationTest \
+            -Dsurefire.failIfNoSpecifiedTests=true -DskipTests=false -Dmaven.test.failure.ignore=false
 
-  production-preflight:
-    name: Protected production preflight (blocked)
-    needs: [release, test, image, rehearsal]
+  migration-gate:
+    name: Production Flyway migration gate (before deploy)
+    needs: [activation, verify-and-prepare, migration-rehearsal]
+    if: needs.activation.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Checkout verified release revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ needs.release.outputs.sha }}
+          ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
           persist-credentials: false
-      - name: Refuse unverified Railway deployment identity contract
-        run: python3 scripts/cicd/railway_adapter.py
 
-  evidence:
-    name: Publish sanitized preparation evidence
-    if: always() && needs.activation.outputs.enabled == 'true'
-    needs: [activation, release, test, image, rehearsal, production-preflight]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Summarize outcomes
+      - name: Recheck production freshness before DB mutation
+        if: github.event_name != 'workflow_dispatch'
         env:
-          RELEASE_SHA: ${{ needs.release.outputs.sha }}
-          IMAGE_REF: ${{ needs.image.outputs.ref }}
-          TEST_RESULT: ${{ needs.test.result }}
-          REHEARSAL_RESULT: ${{ needs.rehearsal.result }}
-          PREFLIGHT_RESULT: ${{ needs.production-preflight.result }}
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
         run: |
           set -euo pipefail
-          printf 'release=%s\nimage=%s\ntests=%s\nrehearsal=%s\nproduction_preflight=%s\nproduction_mutation=not_attempted\n' \
-            "$RELEASE_SHA" "$IMAGE_REF" "$TEST_RESULT" "$REHEARSAL_RESULT" "$PREFLIGHT_RESULT" > evidence.txt
-          cat evidence.txt >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+          CURRENT_PROD=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
+          bash scripts/cicd/deploy-gate.sh commit-match "$VERIFIED_SHA" "$CURRENT_PROD" \
+            "pre-migration freshness (verified commit vs current production HEAD)" \
+            || { echo "BLOCK: a newer production commit arrived — aborting without migrating"; exit 1; }
+
+      - name: Preflight production migration configuration (G4 — fail closed)
+        env:
+          PROD_FLYWAY_URL_SET: ${{ secrets.PROD_FLYWAY_URL != '' && 'set' || '' }}
+          PROD_FLYWAY_USER_SET: ${{ secrets.PROD_FLYWAY_USER != '' && 'set' || '' }}
+          PROD_FLYWAY_PASSWORD_SET: ${{ secrets.PROD_FLYWAY_PASSWORD != '' && 'set' || '' }}
+          PROD_DB_PROJECT_REF: ${{ vars.PROD_DB_PROJECT_REF }}
+        run: |
+          set -uo pipefail
+          bash scripts/cicd/deploy-gate.sh require-config \
+            PROD_FLYWAY_URL "$PROD_FLYWAY_URL_SET" \
+            PROD_FLYWAY_USER "$PROD_FLYWAY_USER_SET" \
+            PROD_FLYWAY_PASSWORD "$PROD_FLYWAY_PASSWORD_SET" \
+            PROD_DB_PROJECT_REF "$PROD_DB_PROJECT_REF"
+
+      - name: Guard production database identity (strict ref + sslmode=verify-full)
+        env:
+          PROD_FLYWAY_URL: ${{ secrets.PROD_FLYWAY_URL }}
+          FLYWAY_USER: ${{ secrets.PROD_FLYWAY_USER }}
+          PROD_DB_PROJECT_REF: ${{ vars.PROD_DB_PROJECT_REF }}
+          STAGING_DB_PROJECT_REF: ${{ vars.STAGING_DB_PROJECT_REF }}
+        run: |
+          set -uo pipefail
+          echo "::add-mask::$PROD_FLYWAY_URL"
+          echo "::add-mask::$FLYWAY_USER"
+          bash scripts/cicd/deploy-gate.sh production-db-identity \
+            "$PROD_FLYWAY_URL" "$FLYWAY_USER" "$PROD_DB_PROJECT_REF" "${STAGING_DB_PROJECT_REF:-}"
+
+      - name: Set up JDK 21 + Maven cache
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          name: production-preparation-${{ github.run_id }}
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Flyway info -> validate -> conditional migrate -> strict validate -> info
+        env:
+          FLYWAY_URL: ${{ secrets.PROD_FLYWAY_URL }}
+          FLYWAY_USER: ${{ secrets.PROD_FLYWAY_USER }}
+          FLYWAY_PASSWORD: ${{ secrets.PROD_FLYWAY_PASSWORD }}
+          PROD_BACKUP_CONFIRMED_SHA: ${{ vars.PROD_BACKUP_CONFIRMED_SHA }}
+          PROD_COMPATIBILITY_CONFIRMED_SHA: ${{ vars.PROD_COMPATIBILITY_CONFIRMED_SHA }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$FLYWAY_URL"
+          echo "::add-mask::$FLYWAY_USER"
+          echo "::add-mask::$FLYWAY_PASSWORD"
+
+          ./mvnw -B -Pdb-migrate flyway:info > /tmp/flyway-info.txt
+          cat /tmp/flyway-info.txt
+          ./mvnw -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=*:pending' flyway:validate
+
+          if grep -Ei '\|\s*Pending\s*\|' /tmp/flyway-info.txt >/dev/null; then
+            echo "Pending migrations detected. Verifying release-specific approvals before executing migration..."
+            bash scripts/cicd/deploy-gate.sh backup-readiness "${PROD_BACKUP_CONFIRMED_SHA:-}" "$VERIFIED_SHA"
+            bash scripts/cicd/deploy-gate.sh schema-compatibility "${PROD_COMPATIBILITY_CONFIRMED_SHA:-}" "$VERIFIED_SHA"
+
+            echo "Executing flyway:migrate..."
+            ./mvnw -B -Pdb-migrate flyway:migrate
+            ./mvnw -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=' flyway:validate
+            ./mvnw -B -Pdb-migrate flyway:info
+            echo "Production schema migration completed and strictly validated."
+          else
+            echo "No pending migrations detected; schema is already up to date. Skipping flyway:migrate."
+            ./mvnw -B -Pdb-migrate '-Dflyway.ignoreMigrationPatterns=' flyway:validate
+          fi
+
+  deploy-production:
+    name: Deploy digest-pinned image to Railway production
+    needs: [activation, verify-and-prepare, migration-gate]
+    if: needs.activation.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
+      deployment_note: ${{ steps.deploy.outputs.deployment_note }}
+    steps:
+      - name: Checkout verified release revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+          persist-credentials: false
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@^4
+
+      - name: Preflight Railway configuration (G4 — fail closed)
+        env:
+          RAILWAY_TOKEN_SET: ${{ secrets.RAILWAY_TOKEN != '' && 'set' || '' }}
+          RAILWAY_PROD_PROJECT_ID: ${{ vars.RAILWAY_PROD_PROJECT_ID }}
+          RAILWAY_PROD_SERVICE_ID: ${{ vars.RAILWAY_PROD_SERVICE_ID }}
+          RAILWAY_PROD_ENVIRONMENT_ID: ${{ vars.RAILWAY_PROD_ENVIRONMENT_ID }}
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+        run: |
+          set -uo pipefail
+          bash scripts/cicd/deploy-gate.sh require-config \
+            RAILWAY_TOKEN "$RAILWAY_TOKEN_SET" \
+            RAILWAY_PROD_PROJECT_ID "$RAILWAY_PROD_PROJECT_ID" \
+            RAILWAY_PROD_SERVICE_ID "$RAILWAY_PROD_SERVICE_ID" \
+            RAILWAY_PROD_ENVIRONMENT_ID "$RAILWAY_PROD_ENVIRONMENT_ID" \
+            PROD_BASE_URL "$PROD_BASE_URL"
+
+      - name: Recheck production freshness before deploy mutation (stale-run protection)
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          set -euo pipefail
+          CURRENT_PROD=$(gh api "repos/$GITHUB_REPOSITORY/commits/production" --jq .sha)
+          bash scripts/cicd/deploy-gate.sh commit-match "$VERIFIED_SHA" "$CURRENT_PROD" \
+            "pre-deploy freshness (verified commit vs current production HEAD)" \
+            || { echo "BLOCK: a newer production commit arrived — aborting without touching Railway"; exit 1; }
+
+      - name: Deploy image (pinned by digest) and track created deployment
+        id: deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROD_PROJECT_ID: ${{ vars.RAILWAY_PROD_PROJECT_ID }}
+          RAILWAY_PROD_SERVICE_ID: ${{ vars.RAILWAY_PROD_SERVICE_ID }}
+          RAILWAY_PROD_ENVIRONMENT_ID: ${{ vars.RAILWAY_PROD_ENVIRONMENT_ID }}
+          IMAGE_REF: ${{ needs.verify-and-prepare.outputs.image_ref_pinned }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$RAILWAY_TOKEN"
+          railway service source connect \
+            --image "$IMAGE_REF" \
+            --project "$RAILWAY_PROD_PROJECT_ID" \
+            --service "$RAILWAY_PROD_SERVICE_ID" \
+            --environment "$RAILWAY_PROD_ENVIRONMENT_ID" \
+            --json
+          railway redeploy \
+            --from-source --yes --json \
+            --project "$RAILWAY_PROD_PROJECT_ID" \
+            --service "$RAILWAY_PROD_SERVICE_ID" \
+            --environment "$RAILWAY_PROD_ENVIRONMENT_ID" \
+            > /tmp/railway-redeploy.json
+          DEPLOY_ID=$(jq -r 'try (.id // .deployment.id // .deploymentId // .deploymentId.id) // empty' /tmp/railway-redeploy.json 2>/dev/null || true)
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "BLOCK: could not capture the Railway deployment id created by this run — failing closed"
+            exit 1
+          fi
+          {
+            echo "deployment_id=$DEPLOY_ID"
+            echo "deployment_note=image $IMAGE_REF deployed to Railway production (service $RAILWAY_PROD_SERVICE_ID, deployment $DEPLOY_ID) from commit $VERIFIED_SHA"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Await tracked Railway deployment completion
+        id: watch
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROD_PROJECT_ID: ${{ vars.RAILWAY_PROD_PROJECT_ID }}
+          RAILWAY_PROD_SERVICE_ID: ${{ vars.RAILWAY_PROD_SERVICE_ID }}
+          RAILWAY_PROD_ENVIRONMENT_ID: ${{ vars.RAILWAY_PROD_ENVIRONMENT_ID }}
+          DEPLOY_ID: ${{ steps.deploy.outputs.deployment_id }}
+          IMAGE_REF: ${{ needs.verify-and-prepare.outputs.image_ref_pinned }}
+        run: |
+          echo "::add-mask::$RAILWAY_TOKEN"
+          railway link \
+            --project "$RAILWAY_PROD_PROJECT_ID" \
+            --service "$RAILWAY_PROD_SERVICE_ID" \
+            --environment "$RAILWAY_PROD_ENVIRONMENT_ID" \
+            --json >/dev/null
+          for attempt in $(seq 1 20); do
+            if railway deployment list \
+              --service "$RAILWAY_PROD_SERVICE_ID" \
+              --environment "$RAILWAY_PROD_ENVIRONMENT_ID" \
+              --limit 20 --json > /tmp/railway-deployments.json 2>/dev/null; then
+              ENTRY=$(jq -c --arg id "$DEPLOY_ID" '.[]? | select((.id // .deploymentId // "") == $id)' /tmp/railway-deployments.json 2>/dev/null || true)
+              if [ -n "$ENTRY" ]; then
+                STATUS=$(printf '%s' "$ENTRY" | jq -r 'try (.status // .state // "unknown")' 2>/dev/null || echo unknown)
+                echo "attempt $attempt: deployment $DEPLOY_ID status: $STATUS"
+                case "$STATUS" in
+                  SUCCESS|DEPLOYED|ACTIVE)
+                    echo "tracked deployment reached successful state: $STATUS"
+                    exit 0
+                    ;;
+                  CRASHED|FAILED)
+                    echo "BLOCK: tracked Railway deployment $DEPLOY_ID reached a failed terminal state ($STATUS)"
+                    exit 1
+                    ;;
+                esac
+              else
+                echo "attempt $attempt: deployment $DEPLOY_ID not in list yet"
+              fi
+            fi
+            sleep 30
+          done
+          echo "BLOCK: tracked deployment $DEPLOY_ID did not reach a terminal successful state within polling budget"
+          exit 1
+
+  verify-and-evidence:
+    name: Production smoke verification and release evidence
+    needs: [activation, verify-and-prepare, migration-rehearsal, migration-gate, deploy-production]
+    if: always() && needs.activation.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout verified release revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+          persist-credentials: false
+
+      - name: Run post-deployment smoke verification
+        if: needs.deploy-production.result == 'success'
+        env:
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          VERIFIED_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+        run: |
+          pwsh -ExecutionPolicy Bypass -File ops/runbooks/Invoke-DeployVerification.ps1 \
+            -BaseUrl "$PROD_BASE_URL" \
+            -ExpectedCommit "$VERIFIED_SHA"
+
+      - name: Summarize release outcomes and publish evidence
+        env:
+          RELEASE_SHA: ${{ needs.verify-and-prepare.outputs.verified_sha }}
+          IMAGE_REF: ${{ needs.verify-and-prepare.outputs.image_ref_pinned }}
+          PREPARE_RESULT: ${{ needs.verify-and-prepare.result }}
+          REHEARSAL_RESULT: ${{ needs.migration-rehearsal.result }}
+          MIGRATION_RESULT: ${{ needs.migration-gate.result }}
+          DEPLOY_RESULT: ${{ needs.deploy-production.result }}
+          DEPLOY_ID: ${{ needs.deploy-production.outputs.deployment_id }}
+        run: |
+          set -euo pipefail
+          {
+            printf 'release_commit=%s\n' "$RELEASE_SHA"
+            printf 'image_ref_pinned=%s\n' "$IMAGE_REF"
+            printf 'verify_and_prepare_result=%s\n' "$PREPARE_RESULT"
+            printf 'migration_rehearsal_result=%s\n' "$REHEARSAL_RESULT"
+            printf 'migration_gate_result=%s\n' "$MIGRATION_RESULT"
+            printf 'deploy_production_result=%s\n' "$DEPLOY_RESULT"
+            printf 'railway_deployment_id=%s\n' "${DEPLOY_ID:-none}"
+          } > evidence.txt
+          cat evidence.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: production-deploy-evidence-${{ github.run_id }}
           path: evidence.txt
           if-no-files-found: error
