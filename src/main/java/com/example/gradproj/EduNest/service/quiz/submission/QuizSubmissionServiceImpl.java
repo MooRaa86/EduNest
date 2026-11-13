@@ -309,11 +309,14 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         // EB-60 / P4-11 — F3: fullMark was previously recomputed per submission
         // row inside the mapping loop; the questions collection is identical
-        // for every row of this quiz, so compute it once. Kept as int to
-        // preserve the original (fullMark / 2) integer-division threshold.
-        int fullMark = quiz.getQuestions().stream()
+        // for every row of this quiz, so compute it once. The pass threshold
+        // variable stays double exactly like the original implementation
+        // (fullMark / 2 with 5 total points is 2.5, not 2); totalPoints for the
+        // DTO stays int.
+        int totalPoints = quiz.getQuestions().stream()
                 .mapToInt(Question::getPoints)
                 .sum();
+        double fullMark = totalPoints;
 
         return  quizSubmissionRepository.findAllByQuiz_Id(quizId, PageRequest.of(page, size))
                 .stream()
@@ -331,7 +334,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                             .id(sub.getPublicId())
                             .studentId(sub.getStudent().getPublicId())
                             .studentName(sub.getStudent().getFirstName() + " " + sub.getStudent().getLastName())
-                            .totalPoints(fullMark)
+                            .totalPoints(totalPoints)
                             .score(sub.getScore())
                             .status(status)
                             .isLate(sub.getIsLate())
