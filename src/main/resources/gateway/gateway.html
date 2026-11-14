@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<!--
+  [EB-112][P5-06] EduNest Backend — Root Domain Gateway & Architecture Showcase.
+  Self-contained shell: renders the live JSON model served by GatewayService
+  (GET /api/v1/showcase?audience=hr|business|technical). No build tooling,
+  no backend templating — the JSON is the single source of truth.
+  Mermaid.js pinned to v10.9.1 CDN; Manrope via Google Fonts. No Docker, no
+  new backend dependencies.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduNest Backend — Gateway &amp; Architecture Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --ink: #16232e;
+    --ink-soft: #51616f;
+    --ink-faint: #7d8c99;
+    --paper: #fbfcfd;
+    --panel: #ffffff;
+    --line: #e3e9ef;
+    --line-strong: #cfd9e2;
+    --accent: #0e7c7b;
+    --accent-ink: #085d5c;
+    --accent-tint: #e5f2f1;
+    --code-bg: #101c25;
+    --code-ink: #dbe7f0;
+    --danger: #b4441f;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(22, 35, 46, .05), 0 8px 24px rgba(22, 35, 46, .06);
+  }
+  [data-theme="dark"] {
+    --ink: #e3ecf3;
+    --ink-soft: #a7b6c3;
+    --ink-faint: #748695;
+    --paper: #0c141b;
+    --panel: #131f29;
+    --line: #24333f;
+    --line-strong: #33434f;
+    --accent: #35b5b2;
+    --accent-ink: #6fd3d0;
+    --accent-tint: #14302f;
+    --code-bg: #0a1219;
+    --code-ink: #cfe0ec;
+    --danger: #e87551;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Manrope", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-ink); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  code, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .86em; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- topbar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; gap: .8rem;
+    padding: .65rem 1.4rem;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .wordmark { display: flex; align-items: center; gap: .55rem; font-weight: 800; font-size: 1rem; letter-spacing: -.01em; }
+  .wordmark .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); }
+  .wordmark small { color: var(--ink-faint); font-weight: 600; }
+  .status-pill {
+    margin-left: auto; display: flex; align-items: center; gap: .45rem;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: .22rem .75rem; font-size: .78rem; color: var(--ink-soft); background: var(--panel);
+  }
+  .status-pill .beat { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .theme-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: .3rem .6rem; font-size: .85rem; }
+  .theme-btn:hover { border-color: var(--line-strong); }
+
+  /* ---------- layout ---------- */
+  main { max-width: 1120px; margin: 0 auto; padding: 0 1.4rem 4.5rem; }
+  section { margin-top: 3.2rem; scroll-margin-top: 4.6rem; }
+
+  /* ---------- hero ---------- */
+  .hero { margin-top: 2.6rem; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 2.2rem; align-items: start; }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+  .hero h1 { font-size: clamp(2rem, 4.6vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; margin: .1rem 0 .55rem; font-weight: 800; }
+  .hero .tagline { color: var(--ink-soft); font-size: 1.02rem; max-width: 34rem; margin: 0 0 1.1rem; }
+  .hero .quality { display: inline-flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 999px; padding: .28rem .8rem; background: var(--panel); }
+  .hero .quality b { color: var(--accent-ink); font-weight: 700; }
+
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 11px; padding: 3px; gap: 3px; margin: 1.25rem 0 1.35rem; background: var(--panel); }
+  .seg button { border: 0; background: transparent; border-radius: 8px; padding: .4rem 1rem; font-size: .86rem; font-weight: 600; color: var(--ink-soft); transition: background .15s, color .15s; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  [data-theme="dark"] .seg button[aria-pressed="true"] { color: #08211f; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; }
+  @media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    text-align: left; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); padding: .8rem .95rem; display: block; width: 100%;
+    transition: border-color .15s, transform .15s;
+  }
+  .stat:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .stat .n { font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; color: var(--ink); line-height: 1.1; }
+  .stat .l { font-size: .78rem; color: var(--ink-faint); margin-top: .15rem; }
+
+  .hero-diagram {
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+    padding: 1rem; box-shadow: var(--shadow);
+  }
+  .hero-diagram .cap { display: flex; justify-content: space-between; align-items: center; font-size: .8rem; color: var(--ink-faint); padding: .1rem .2rem .5rem; }
+  .hero-diagram .cap button { border: 0; background: none; color: var(--accent-ink); font-size: .8rem; font-weight: 700; padding: 0; }
+  .hero-diagram svg { max-width: 100%; height: auto; }
+  .hero .stagger > * { opacity: 0; transform: translateY(10px); animation: rise .55s cubic-bezier(.2, .7, .3, 1) forwards; }
+  .hero .stagger > *:nth-child(2) { animation-delay: .08s; }
+  .hero .stagger > *:nth-child(3) { animation-delay: .16s; }
+  .hero .stagger > *:nth-child(4) { animation-delay: .24s; }
+  .hero .stagger > *:nth-child(5) { animation-delay: .32s; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  /* ---------- section nav ---------- */
+  .secnav {
+    position: sticky; top: 3.35rem; z-index: 30; display: flex; gap: .4rem; flex-wrap: wrap;
+    padding: .55rem 0; margin: 2.2rem 0 -0.6rem; background: var(--paper);
+    border-bottom: 1px solid var(--line);
+  }
+  .secnav a {
+    font-size: .84rem; font-weight: 600; color: var(--ink-soft);
+    padding: .32rem .85rem; border-radius: 999px; border: 1px solid transparent;
+  }
+  .secnav a:hover { text-decoration: none; color: var(--ink); }
+  .secnav a.active { background: var(--accent-tint); color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  h2 { font-size: 1.35rem; letter-spacing: -.02em; margin: 0 0 .35rem; font-weight: 800; }
+  .sub { color: var(--ink-faint); font-size: .88rem; margin: 0 0 1.2rem; max-width: 46rem; }
+
+  /* ---------- domain cards ---------- */
+  .domains { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+  @media (max-width: 860px) { .domains { grid-template-columns: 1fr; } }
+  .domain {
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+    overflow: hidden; transition: border-color .15s;
+  }
+  .domain:hover { border-color: var(--line-strong); }
+  .domain .head {
+    width: 100%; display: flex; align-items: center; gap: .8rem; text-align: left;
+    padding: .9rem 1rem; background: none; border: 0;
+  }
+  .domain .ic {
+    flex: none; width: 40px; height: 40px; border-radius: 11px;
+    background: var(--accent-tint); color: var(--accent-ink);
+    display: grid; place-items: center;
+  }
+  .domain .ic svg { width: 20px; height: 20px; }
+  .domain .t { font-weight: 700; font-size: .95rem; letter-spacing: -.01em; }
+  .domain .s { color: var(--ink-soft); font-size: .84rem; margin-top: .1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .domain .chev { margin-left: auto; flex: none; color: var(--ink-faint); transition: transform .2s; }
+  .domain[data-open="true"] .chev { transform: rotate(90deg); }
+  .domain .body { display: none; padding: 0 1rem 1rem 3.2rem; }
+  .domain[data-open="true"] .body { display: block; }
+  .domain .body li { font-size: .86rem; color: var(--ink-soft); margin: .35rem 0; }
+  .domain .body ul { margin: .2rem 0 0; padding-left: 1rem; }
+
+  /* ---------- workflows ---------- */
+  .flows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+  @media (max-width: 860px) { .flows { grid-template-columns: 1fr; } }
+  .flow { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 1rem 1.1rem; }
+  .flow h3 { margin: 0 0 .6rem; font-size: .95rem; font-weight: 700; }
+  .flow ol { list-style: none; margin: 0; padding: 0; counter-reset: st; }
+  .flow li { counter-increment: st; display: flex; gap: .65rem; padding: .3rem 0; font-size: .86rem; color: var(--ink-soft); }
+  .flow li::before {
+    content: counter(st); flex: none; width: 22px; height: 22px; margin-top: .1rem;
+    border-radius: 50%; background: var(--accent-tint); color: var(--accent-ink);
+    font-size: .72rem; font-weight: 700; display: grid; place-items: center;
+  }
+  .flow .linked { margin-top: .7rem; }
+
+  /* ---------- diagram gallery ---------- */
+  .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+  @media (max-width: 900px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .gallery { grid-template-columns: 1fr; } }
+  .dg {
+    text-align: left; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); padding: .85rem .95rem; width: 100%;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .dg:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .dg .kind { display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .02em; border-radius: 6px; padding: .12rem .5rem; background: var(--accent-tint); color: var(--accent-ink); margin-bottom: .45rem; }
+  .dg .t { font-weight: 700; font-size: .92rem; letter-spacing: -.01em; }
+  .dg .thumb { margin-top: .65rem; height: 74px; border: 1px dashed var(--line); border-radius: 9px; display: grid; place-items: center; color: var(--ink-faint); font-size: .74rem; }
+  .dg .thumb svg { max-width: 92%; max-height: 64px; }
+
+  /* ---------- realtime ---------- */
+  .ws { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+  .ws-tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .ws-tabs button { flex: 1; border: 0; background: none; padding: .7rem; font-weight: 700; font-size: .86rem; color: var(--ink-faint); border-bottom: 2px solid transparent; }
+  .ws-tabs button[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); }
+  .ws .rows { padding: .4rem .6rem; }
+  .wsrow { display: flex; align-items: baseline; gap: .7rem; width: 100%; text-align: left; border: 0; background: none; border-radius: 9px; padding: .55rem .55rem; }
+  .wsrow:hover { background: var(--accent-tint); }
+  .wsrow .dest { font-weight: 700; color: var(--accent-ink); white-space: nowrap; }
+  .wsrow .why { color: var(--ink-soft); font-size: .82rem; min-width: 0; }
+  .wsrow .copied { flex: none; font-size: .7rem; font-weight: 700; color: var(--accent-ink); opacity: 0; transition: opacity .2s; }
+  .wsrow.copied .copied { opacity: 1; }
+  .ws .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; padding: .9rem 1rem 1rem; border-top: 1px solid var(--line); }
+  @media (max-width: 700px) { .ws .facts { grid-template-columns: 1fr; } }
+  .fact { font-size: .84rem; color: var(--ink-soft); }
+  .fact b { display: block; color: var(--ink); font-size: .8rem; margin-bottom: .15rem; }
+  .codeblock { position: relative; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: .95rem 1rem; font-size: .82rem; overflow-x: auto; margin: .9rem 1rem 1.1rem; }
+  .codeblock .copy { position: absolute; top: .55rem; right: .55rem; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; border-radius: 7px; font-size: .72rem; padding: .22rem .6rem; }
+  .codeblock .copy:hover { background: rgba(255,255,255,.16); }
+
+  /* ---------- stack + api ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: .35rem .85rem; font-size: .82rem; }
+  .chip b { color: var(--accent-ink); font-weight: 700; margin-right: .35rem; }
+  .apitool { display: flex; gap: .6rem; align-items: center; margin-bottom: .8rem; flex-wrap: wrap; }
+  .apitool input { font: inherit; font-size: .88rem; padding: .5rem .8rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--panel); color: var(--ink); min-width: 240px; }
+  .apitool input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-tint); }
+  .apitool .count { color: var(--ink-faint); font-size: .8rem; }
+  .apitool .all { border: 1px solid var(--line-strong); background: var(--panel); border-radius: 10px; padding: .45rem .8rem; font-size: .82rem; font-weight: 600; }
+  .tbl { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .tbl th { text-align: left; font-size: .7rem; letter-spacing: .04em; color: var(--ink-faint); font-weight: 700; padding: .55rem .8rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 60%, var(--paper)); }
+  .tbl td { padding: .42rem .8rem; border-bottom: 1px solid var(--line); font-size: .84rem; }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl .m { font-weight: 800; font-size: .72rem; color: var(--accent-ink); width: 64px; }
+  .tbl .p { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; }
+  .tbl .c { color: var(--ink-faint); font-size: .78rem; }
+  .pill { font-size: .68rem; font-weight: 700; border-radius: 999px; padding: .14rem .55rem; }
+  .pill.pub { background: var(--accent-tint); color: var(--accent-ink); }
+  .pill.auth { background: var(--line); color: var(--ink-soft); }
+
+  /* ---------- lightbox ---------- */
+  .lightbox { position: fixed; inset: 0; z-index: 100; display: none; }
+  .lightbox[data-open="true"] { display: grid; }
+  .lightbox .veil { position: absolute; inset: 0; background: rgba(10, 18, 24, .55); border: 0; width: 100%; }
+  .lightbox .panel {
+    position: relative; margin: auto; width: min(1040px, calc(100vw - 2.4rem));
+    max-height: calc(100vh - 3rem); overflow: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .35); padding: 1.1rem 1.3rem 1.4rem;
+  }
+  .lightbox .panel .cap { display: flex; align-items: center; gap: .8rem; margin-bottom: .8rem; }
+  .lightbox .panel h3 { margin: 0; font-size: 1.05rem; letter-spacing: -.01em; }
+  .lightbox .panel .close { margin-left: auto; border: 1px solid var(--line-strong); background: var(--panel); border-radius: 9px; padding: .3rem .7rem; font-size: .8rem; font-weight: 700; }
+  .lightbox .panel .view { display: flex; gap: .5rem; }
+  .lightbox .panel svg { max-width: 100%; height: auto; }
+  .lightbox .panel pre.src { display: none; background: var(--code-bg); color: var(--code-ink); padding: 1rem; border-radius: 10px; font-size: .8rem; overflow-x: auto; white-space: pre; }
+  .lightbox .panel[data-view="src"] .src { display: block; }
+  .lightbox .panel[data-view="src"] .vis { display: none; }
+
+  footer { border-top: 1px solid var(--line); padding: 1.4rem; text-align: center; color: var(--ink-faint); font-size: .8rem; }
+  footer nav { display: flex; gap: 1.2rem; justify-content: center; margin-top: .3rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark"><span class="dot"></span>EduNest <small>/ backend</small></div>
+  <div class="status-pill" id="statusPill"><span class="beat"></span><span id="statusText">checking…</span></div>
+  <button class="theme-btn" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+</header>
+
+<main>
+  <!-- ============ HERO ============ -->
+  <section class="hero" aria-label="Overview">
+    <div class="hero-grid">
+      <div class="stagger">
+        <h1 id="title">EduNest Backend</h1>
+        <p class="tagline" id="tagline"></p>
+        <p class="quality" id="quality"></p>
+        <div class="seg" role="group" aria-label="Audience view" id="audienceSeg">
+          <button data-a="technical" aria-pressed="true">Technical</button>
+          <button data-a="business" aria-pressed="false">Business</button>
+          <button data-a="hr" aria-pressed="false">HR</button>
+        </div>
+        <div class="stat-row" id="stats"></div>
+      </div>
+      <div class="hero-diagram">
+        <div class="cap"><span>The system at a glance</span><button id="heroExpand" type="button">Open full size</button></div>
+        <div id="heroDiagram"></div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="secnav" id="secnav" aria-label="Sections"></nav>
+
+  <!-- ============ DOMAINS ============ -->
+  <section id="domains">
+    <h2>What the platform does</h2>
+    <p class="sub">Ten capability areas — click any card to see how it is built.</p>
+    <div class="domains" id="domainGrid"></div>
+  </section>
+
+  <!-- ============ WORKFLOWS ============ -->
+  <section id="workflows">
+    <h2>How the core flows run</h2>
+    <p class="sub">End-to-end journeys as the backend executes them — every step is enforced server-side.</p>
+    <div class="flows" id="flowGrid"></div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <p class="sub">Click any diagram to open it full size — the same sources are available programmatically at <a href="/diagrams"><code>/diagrams</code></a>.</p>
+    <div class="gallery" id="diagramGrid"></div>
+  </section>
+
+  <!-- ============ REALTIME ============ -->
+  <section id="realtime">
+    <h2>Real-time integration</h2>
+    <p class="sub">The WebSocket contract for the frontend team — click a destination to copy it.</p>
+    <div class="ws" id="wsPanel"></div>
+  </section>
+
+  <!-- ============ STACK ============ -->
+  <section id="stack">
+    <h2>Technology choices</h2>
+    <p class="sub">Each choice, with the reason it was made.</p>
+    <div class="chips" id="stackChips"></div>
+  </section>
+
+  <!-- ============ API ============ -->
+  <section id="api">
+    <h2>REST API surface</h2>
+    <p class="sub" id="apiSub"></p>
+    <div class="apitool">
+      <input id="apiSearch" type="search" placeholder="Search endpoints or controllers…" aria-label="Search endpoints" />
+      <span class="count" id="apiCount"></span>
+      <button class="all" id="apiShowAll" type="button" hidden>Show all</button>
+    </div>
+    <table class="tbl"><thead><tr><th>Method</th><th>Path</th><th>Access</th><th>Controller</th></tr></thead>
+      <tbody id="apiRows"></tbody></table>
+  </section>
+</main>
+
+<!-- ============ LIGHTBOX ============ -->
+<div class="lightbox" id="lightbox" data-open="false" role="dialog" aria-modal="true" aria-label="Diagram viewer">
+  <button class="veil" id="lightboxVeil" aria-label="Close"></button>
+  <div class="panel" id="lightboxPanel" data-view="vis">
+    <div class="cap">
+      <span class="kind" id="lbKind"></span>
+      <h3 id="lbTitle"></h3>
+      <div class="view">
+        <button class="close" id="lbViewToggle" type="button">Source</button>
+        <button class="close" id="lbClose" type="button">Close</button>
+      </div>
+    </div>
+    <div class="vis" id="lbVis"></div>
+    <pre class="src" id="lbSrc"></pre>
+  </div>
+</div>
+
+<footer>
+  <div>Generated live from the running backend · commit <span class="mono" id="fCommit"></span></div>
+  <nav>
+    <a href="/api/v1/showcase">JSON model</a>
+    <a href="/diagrams">diagrams</a>
+    <a href="/status">status</a>
+    <a href="/swagger-ui/index.html">API docs</a>
+  </nav>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var state = { model: null, audience: "technical", dark: false, svgCache: {}, apiLimit: 30 };
+
+  /* ---------- icons (inline SVG, stroke style) ---------- */
+  var ICONS = {
+    "identity-auth": '<path d="M12 3l7 3v5c0 4.4-3 8.4-7 9.5C8 19.4 5 15.4 5 11V6l7-3z"/>',
+    "curriculum": '<path d="M4 6a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2V6zM20 6a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2V6z"/>',
+    "submissions": '<path d="M4 17V7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/>',
+    "assessment": '<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+    "live-coaching": '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>',
+    "gamification": '<path d="M12 3l2.6 5.6L21 9.3l-4.5 4.2 1.2 6-5.7-3.2L6.3 19.5l1.2-6L3 9.3l6.4-.7L12 3z"/>',
+    "certification": '<circle cx="12" cy="9" r="5"/><path d="M8.5 13.5L7 21l5-2.6L17 21l-1.5-7.5"/>',
+    "realtime-chat": '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12.5h5"/>',
+    "finance-commissions": '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 14.5h4"/>',
+    "platform-ops": '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/><circle cx="12" cy="12" r="3"/>'
+  };
+  function icon(id) {
+    var d = ICONS[id];
+    return d
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/></svg>';
+  }
+  function diagramKind(code) {
+    if (code.startsWith("sequenceDiagram")) return "Sequence";
+    if (code.startsWith("erDiagram")) return "ER model";
+    if (code.startsWith("stateDiagram")) return "State";
+    return "Flow";
+  }
+
+  /* ---------- tiny helpers ---------- */
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function $(id) { return document.getElementById(id); }
+  function copyText(t, el) {
+    function done() { if (!el) return; el.classList.add("copied"); setTimeout(function () { el.classList.remove("copied"); }, 1400); }
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(done, done); }
+    else { var ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+  }
+
+  /* ---------- theme + mermaid ---------- */
+  function initMermaid() {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      theme: state.dark ? "dark" : "default",
+      securityLevel: "loose",
+      flowchart: { useMaxWidth: true },
+      themeVariables: state.dark ? {} : { primaryColor: "#e5f2f1", primaryBorderColor: "#0e7c7b", lineColor: "#51616f" }
+    });
+    state.svgCache = {};
+  }
+  function renderDiagram(code) {
+    var id = "d" + Math.random().toString(36).slice(2);
+    return window.mermaid.render(id, code).then(function (r) { return r.svg; });
+  }
+
+  /* ---------- fetch + render ---------- */
+  function load() {
+    return fetch("/api/v1/showcase?audience=" + state.audience)
+      .then(function (r) { return r.json(); })
+      .then(function (m) { state.model = m; renderAll(); })
+      .catch(function (e) { $("title").textContent = "EduNest Backend"; renderError(e); });
+  }
+  function renderError(e) {
+    document.querySelectorAll("#domainGrid,#flowGrid,#diagramGrid").forEach(function (n) { n.innerHTML = ""; });
+    $("domainGrid").innerHTML = '<div style="border:1px solid var(--line);border-radius:14px;padding:1rem;background:var(--panel)">Could not load the showcase model — try refreshing. <code>' + esc(e) + '</code></div>';
+  }
+
+  function renderAll() {
+    var m = state.model;
+    $("title").textContent = m.service;
+    $("tagline").textContent = m.description;
+    $("fCommit").textContent = m.commit;
+    $("quality").innerHTML = m.metrics
+      ? "<b>" + esc(m.metrics.testsRun) + " tests</b> · 0 failing · " + esc(m.metrics.testsSkipped) + " deliberate skips"
+      : "";
+    renderStats(m); renderNav(m); renderDomains(m); renderFlows(m);
+    renderDiagrams(m); renderWs(m); renderStack(m); renderApi(m);
+    renderHero(m);
+    // hide sections whose content this audience doesn't get
+    $("realtime").hidden = !m.websocket;
+    $("stack").hidden = !(m.techStack && m.techStack.length);
+    $("api").hidden = !(m.apiSurface && m.apiSurface.length);
+  }
+
+  function renderStats(m) {
+    var tiles = [
+      { n: m.domains.length, l: "platform areas", go: "#domains" },
+      { n: m.workflows.length, l: "core flows", go: "#workflows" },
+      { n: m.diagrams.length, l: "diagrams", go: "#architecture" }
+    ];
+    if (m.apiSurface && m.apiSurface.length) tiles.push({ n: m.apiSurface.length, l: "REST endpoints", go: "#api" });
+    $("stats").innerHTML = tiles.map(function (t) {
+      return '<button class="stat" data-go="' + t.go + '"><span class="n">' + esc(t.n) + '</span><span class="l">' + esc(t.l) + "</span></button>";
+    }).join("");
+    $("stats").querySelectorAll("[data-go]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var el = document.querySelector(b.getAttribute("data-go"));
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
+  function renderNav(m) {
+    var items = [["domains", "Domains"], ["workflows", "Flows"], ["architecture", "Architecture"]];
+    if (m.websocket) items.push(["realtime", "Real-time"]);
+    if (m.techStack && m.techStack.length) items.push(["stack", "Stack"]);
+    if (m.apiSurface && m.apiSurface.length) items.push(["api", "API"]);
+    var nav = $("secnav");
+    nav.innerHTML = items.map(function (i) { return '<a href="#' + i[0] + '" data-sec="' + i[0] + '">' + i[1] + "</a>"; }).join("");
+    nav.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var el = document.getElementById(a.getAttribute("data-sec"));
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    if ("IntersectionObserver" in window) {
+      var spy = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            nav.querySelectorAll("a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-sec") === en.target.id); });
+          }
+        });
+      }, { rootMargin: "-30% 0px -55% 0px" });
+      items.forEach(function (i) { var el = document.getElementById(i[0]); if (el) spy.observe(el); });
+    }
+  }
+
+  function renderDomains(m) {
+    $("domainGrid").innerHTML = m.domains.map(function (d, i) {
+      return '<div class="domain" data-open="false">' +
+        '<button class="head" aria-expanded="false" aria-controls="dom-' + i + '">' +
+          '<span class="ic">' + icon(d.id) + "</span>" +
+          "<span><span class='t'>" + esc(d.title) + "</span><br><span class='s'>" + esc(d.summary) + "</span></span>" +
+          '<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></span>' +
+        "</button>" +
+        '<div class="body" id="dom-' + i + '"><ul>' +
+          (d.bullets || []).map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") +
+        "</ul></div></div>";
+    }).join("");
+    $("domainGrid").querySelectorAll(".domain .head").forEach(function (h) {
+      h.addEventListener("click", function () {
+        var card = h.closest(".domain");
+        var open = card.getAttribute("data-open") === "true";
+        card.setAttribute("data-open", open ? "false" : "true");
+        h.setAttribute("aria-expanded", open ? "false" : "true");
+      });
+    });
+  }
+
+  function renderFlows(m) {
+    $("flowGrid").innerHTML = m.workflows.map(function (w) {
+      return '<div class="flow"><h3>' + esc(w.name) + "</h3><ol>" +
+        w.steps.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") +
+        "</ol>" + (w.diagramId ? '<div class="linked"><button class="stat" data-diagram="' + esc(w.diagramId) + '" style="width:auto;display:inline-block"><span class="n" style="font-size:.85rem">View diagram ↗</span></button></div>' : "") +
+        "</div>";
+    }).join("");
+    $("flowGrid").querySelectorAll("[data-diagram]").forEach(function (b) {
+      b.addEventListener("click", function () { openDiagram(b.getAttribute("data-diagram")); });
+    });
+  }
+
+  function renderDiagrams(m) {
+    $("diagramGrid").innerHTML = m.diagrams.map(function (d, i) {
+      return '<button class="dg" data-i="' + i + '"><span class="kind">' + diagramKind(d.code) + "</span><div class='t'>" + esc(d.title) + "</div><div class='thumb'>click to view</div></button>";
+    }).join("");
+    $("diagramGrid").querySelectorAll(".dg").forEach(function (b) {
+      b.addEventListener("click", function () { openDiagram(null, Number(b.getAttribute("data-i"))); });
+      var d = m.diagrams[Number(b.getAttribute("data-i"))];
+      renderDiagram(d.code).then(function (svg) {
+        var th = b.querySelector(".thumb");
+        if (th) { th.innerHTML = svg; th.style.border = "none"; }
+        state.svgCache[d.id] = { svg: svg, code: d.code, title: d.title };
+      }).catch(function () {});
+    });
+  }
+
+  function renderWs(m) {
+    var ws = m.websocket;
+    if (!ws) { $("wsPanel").innerHTML = ""; $("wsPanel").style.display = "none"; return; }
+    $("wsPanel").style.display = "";
+    function rows(list) {
+      return '<div class="rows">' + list.map(function (d) {
+        var why = d.purpose + (d.payload ? " · payload " + d.payload : "");
+        return '<button class="wsrow" data-copy="' + esc(d.destination) + '">' +
+          '<span class="dest mono">' + esc(d.destination) + "</span>" +
+          '<span class="why">' + esc(why) + "</span>" +
+          '<span class="copied">Copied ✓</span></button>';
+      }).join("") + "</div>";
+    }
+    $("wsPanel").innerHTML =
+      '<div class="ws-tabs" role="tablist">' +
+        '<button role="tab" aria-selected="true" data-tab="sub">Subscribe (' + ws.subscribe.length + ")</button>" +
+        '<button role="tab" aria-selected="false" data-tab="send">Send (' + ws.send.length + ")</button>" +
+      "</div>" +
+      '<div data-pane="sub">' + rows(ws.subscribe) + "</div>" +
+      '<div data-pane="send" hidden>' + rows(ws.send) + "</div>" +
+      '<div class="facts">' +
+        "<div class='fact'><b>Connect</b><span class='mono'>" + esc(ws.endpoint) + "</span><br>" + esc(ws.connectAuth.canonical) + " " + esc(ws.connectAuth.tolerated) + "</div>" +
+        "<div class='fact'><b>If something is rejected</b>" + esc(ws.errorSemantics) + "</div>" +
+      "</div>" +
+      '<pre class="codeblock" id="wsCode" data-snippet="' + esc(feSnippet()) + '">' + esc(feSnippet()) + '<button class="copy" data-copy-target="wsCode">Copy</button></pre>';
+    $("wsPanel").querySelectorAll(".ws-tabs button").forEach(function (t) {
+      t.addEventListener("click", function () {
+        $("wsPanel").querySelectorAll(".ws-tabs button").forEach(function (x) { x.setAttribute("aria-selected", "false"); });
+        t.setAttribute("aria-selected", "true");
+        $("wsPanel").querySelectorAll("[data-pane]").forEach(function (p) { p.hidden = p.getAttribute("data-pane") !== t.getAttribute("data-tab"); });
+      });
+    });
+    $("wsPanel").querySelectorAll(".wsrow").forEach(function (r) {
+      r.addEventListener("click", function () { copyText(r.getAttribute("data-copy"), r); });
+    });
+    var cb = $("wsPanel").querySelector(".copy");
+    if (cb) cb.addEventListener("click", function () {
+      copyText($("wsCode").getAttribute("data-snippet"), cb);
+      cb.textContent = "Copied ✓"; setTimeout(function () { cb.textContent = "Copy"; }, 1400);
+    });
+  }
+
+  function feSnippet() {
+    return "// Minimal browser example (stomp-js)\n" +
+      'import { Client } from "@stomp/stompjs";\n' +
+      "const client = new Client({\n" +
+      '  brokerURL: "wss://backend.edunest.dpdns.org/ws/websocket",\n' +
+      "  connectHeaders: { Authorization: jwtToken }, // raw JWT (no Bearer prefix)\n" +
+      "  onConnect: () => {\n" +
+      '    client.subscribe("/user/queue/notifications", onNotification);\n' +
+      '    client.subscribe("/user/queue/messages", onPrivateMessage);\n' +
+      '    client.subscribe("/user/queue/errors", onWsError);\n' +
+      '    client.subscribe("/topic/room/" + roomId, onRoomMessage);\n' +
+      "  }\n});\n" +
+      "client.activate();\n" +
+      'client.publish({ destination: "/app/chat/" + roomId, body: JSON.stringify({ content: "hi" }) });';
+  }
+
+  function renderStack(m) {
+    var chips = m.techStack || [];
+    $("stackChips").innerHTML = chips.map(function (t) {
+      return '<span class="chip" title="' + esc(t.why) + '"><b>' + esc(t.area) + "</b>" + esc(t.name) + "</span>";
+    }).join("");
+  }
+
+  function renderApi(m) {
+    var surface = m.apiSurface || [];
+    $("apiSub").innerHTML = surface.length
+      ? "Reflected live from the running application — " + surface.length + " endpoints under <code>/api/**</code>. The access flag is computed from the security policy, not hardcoded."
+      : "";
+    renderApiRows(surface);
+    $("apiSearch").oninput = function () { renderApiRows(surface); };
+    $("apiShowAll").onclick = function () { state.apiLimit = Infinity; renderApiRows(surface); };
+  }
+  function renderApiRows(surface) {
+    var q = ($("apiSearch").value || "").toLowerCase().trim();
+    var rows = surface.filter(function (a) {
+      return !q || a.path.toLowerCase().indexOf(q) >= 0 || a.controller.toLowerCase().indexOf(q) >= 0;
+    });
+    var shown = rows.slice(0, state.apiLimit);
+    $("apiRows").innerHTML = shown.map(function (a) {
+      return "<tr><td class='m'>" + esc(a.method) + "</td><td class='p'>" + esc(a.path) + "</td>" +
+        "<td>" + (a.publicRoute ? '<span class="pill pub">public</span>' : '<span class="pill auth">auth</span>') + "</td>" +
+        "<td class='c'>" + esc(a.controller) + "</td></tr>";
+    }).join("");
+    $("apiCount").textContent = rows.length ? rows.length + " of " + surface.length : "no matches";
+    $("apiShowAll").hidden = !(isFinite(state.apiLimit) && rows.length > state.apiLimit);
+  }
+
+  /* ---------- hero diagram + lightbox ---------- */
+  function renderHero(m) {
+    var hero = m.diagrams[0];
+    if (!hero) return;
+    renderDiagram(hero.code).then(function (svg) {
+      state.svgCache[hero.id] = { svg: svg, code: hero.code, title: hero.title };
+      $("heroDiagram").innerHTML = svg;
+      $("heroExpand").onclick = function () { openDiagram(hero.id); };
+    }).catch(function () {});
+  }
+  function openDiagram(id, index) {
+    var m = state.model;
+    var d = id ? m.diagrams.find(function (x) { return x.id === id; }) : m.diagrams[index];
+    if (!d) return;
+    $("lbTitle").textContent = d.title;
+    $("lbKind").textContent = diagramKind(d.code);
+    $("lbSrc").textContent = d.code;
+    $("lightboxPanel").setAttribute("data-view", "vis");
+    $("lbViewToggle").textContent = "Source";
+    var cached = state.svgCache[d.id];
+    if (cached && cached.code === d.code) { $("lbVis").innerHTML = cached.svg; }
+    else { $("lbVis").innerHTML = "<p class='sub'>Rendering…</p>"; renderDiagram(d.code).then(function (svg) { $("lbVis").innerHTML = svg; state.svgCache[d.id] = { svg: svg, code: d.code, title: d.title }; }); }
+    $("lightbox").setAttribute("data-open", "true");
+    document.body.style.overflow = "hidden";
+    $("lbClose").focus();
+  }
+  function closeLightbox() {
+    $("lightbox").setAttribute("data-open", "false");
+    document.body.style.overflow = "";
+  }
+  $("lbClose").addEventListener("click", closeLightbox);
+  $("lightboxVeil").addEventListener("click", closeLightbox);
+  $("lbViewToggle").addEventListener("click", function () {
+    var p = $("lightboxPanel");
+    var toSrc = p.getAttribute("data-view") !== "src";
+    p.setAttribute("data-view", toSrc ? "src" : "vis");
+    $("lbViewToggle").textContent = toSrc ? "Visual" : "Source";
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "/" && document.activeElement !== $("apiSearch")
+        && !$("api").hidden && $("api").offsetParent !== null) {
+      e.preventDefault();
+      $("apiSearch").focus();
+    }
+  });
+
+  /* ---------- audience + theme + status ---------- */
+  $("audienceSeg").querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      $("audienceSeg").querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+      state.audience = b.getAttribute("data-a");
+      load();
+    });
+  });
+  $("themeToggle").addEventListener("click", function () {
+    state.dark = !state.dark;
+    document.documentElement.setAttribute("data-theme", state.dark ? "dark" : "light");
+    this.textContent = state.dark ? "☀️" : "🌙";
+    initMermaid();
+    if (state.model) { renderHero(state.model); renderDiagrams(state.model); }
+  });
+
+  fetch("/status").then(function (r) { return r.json(); }).then(function (s) {
+    $("statusText").textContent = "v" + s.version + " · " + s.environment + " · " + s.commit;
+  }).catch(function () { $("statusText").textContent = "live"; });
+
+  initMermaid();
+  load();
+})();
+</script>
+</body>
+</html>
