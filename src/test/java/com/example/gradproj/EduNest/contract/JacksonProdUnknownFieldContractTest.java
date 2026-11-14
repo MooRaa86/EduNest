@@ -26,8 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * generic malformed shape. {@code GlobalExceptionHandler#handleJsonParseException}
  * now dispatches that cause to the documented ERR_UNKNOWN_FIELD contract; this
  * suite holds it. Dev-parity companion:
- * {@code JacksonDevUnknownFieldContractTest} (dev must KEEP ignoring unknown
- * fields — flip both together and the parity guard fails).
+ * {@code JacksonDevUnknownFieldContractTest} now asserts the same contract.
  */
 @Tag("critical")
 class JacksonProdUnknownFieldContractTest extends ProdChainIntegrationTestBase {
@@ -42,10 +41,15 @@ class JacksonProdUnknownFieldContractTest extends ProdChainIntegrationTestBase {
 						.content("{\"name\":\"Contract Probe\",\"email\":\"probe-mail@example.org\"," +
 								"\"phone\":\"01012345678\",\"message\":\"hi\",\"unexpected\":true}"))
 				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(jsonPath("$.error").value("Bad Request"))
 				.andExpect(jsonPath("$.errorCode").value("ERR_UNKNOWN_FIELD"))
 				.andExpect(jsonPath("$.message").value("Field 'unexpected' is not allowed."))
+				.andExpect(jsonPath("$.path").value(CONTACT))
+				.andExpect(jsonPath("$.timestamp").exists())
 				.andExpect(jsonPath("$.fields.invalidField").value("unexpected"))
-				.andExpect(jsonPath("$.fields.allowedFields").value(org.hamcrest.Matchers.containsString("name")));
+				.andExpect(jsonPath("$.fields.allowedFields").value("email, message, name, phone"))
+				.andExpect(jsonPath("$.refId").doesNotExist());
 	}
 
 	@Test
@@ -56,5 +60,20 @@ class JacksonProdUnknownFieldContractTest extends ProdChainIntegrationTestBase {
 						.content("{\"name\":\"Contract Probe 2\",\"email\":\"probe-mail2@example.org\"," +
 								"\"phone\":\"01012345679\",\"message\":\"clean\"}"))
 				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void prodMalformedBody_keepsMalformedContract() throws Exception {
+		mockMvc.perform(post(CONTACT).contentType("application/json").content("{"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errorCode").value("ERR_MALFORMED_BODY"));
+	}
+
+	@Test
+	void prodInvalidBody_keepsValidationContract() throws Exception {
+		mockMvc.perform(post(CONTACT).contentType("application/json").content("{}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errorCode").value("ERR_VALIDATION"))
+				.andExpect(jsonPath("$.fields.name").exists());
 	}
 }

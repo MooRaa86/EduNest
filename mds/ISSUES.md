@@ -209,7 +209,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | API-01 | TECHNICAL DEBT | Low | ✅ | Envelope inconsistency: `SimpleResponse` vs typed DTOs vs `PageResponse<T>`; no uniform errors contract | controller survey |
 | API-02 | PERFORMANCE | Medium | ✅ | **FIXED (EB-58 / P4-09, 2026-11-14):** client-supplied `page`/`size` clamped at every construction point via `utils/PaginationPolicy` (`page<0`→0, `size<1`→1, `size>50`→50; notification cap 100 kept as approved exception A; single `Pageable`-bound endpoint capped via `spring.data.web.pageable.max-page-size=50`; malformed numeric pagination params → 400 ERR_VALIDATION). Defaults (5/6/10) unchanged; the in-memory paginating aggregator (P4-10) remains open | `utils/PaginationPolicy`; `contract/PaginationContractTest`, `contract/MalformedPaginationContractTest` |
 | API-03 | TECHNICAL DEBT | Low | ✅ | Path-version drift/email-as-identifier paths (`/login-api`, `/files`, `/admin`, absolute badge paths) | route survey |
-| API-05 | BUG | Medium | ✅ | Jackson `fail-on-unknown-properties` true **prod only** → unknown-field 400 in prod, silent ignore in dev (contract drift) | properties delta |
+| API-05 | BUG | Medium | ✅ | **EB-63 / P4-14 implemented:** shared Jackson strictness aligns dev and prod; previously prod rejected unknown fields while dev ignored them. Multipart task/project PATCH retains its existing sanitized 500 limitation (potential follow-up). | `application.properties`; dev/prod contract and multipart probes |
 | API-04 *(xref)* | SECURITY | High | ✅ | **FIXED (EB-16):** = SEL-08 — admin response credential leaks resolved (identity-only DTO) | see ISSUE-MAPPING SEL-08 | (resolved in EB-16) |
 
 ---
