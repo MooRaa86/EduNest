@@ -38,15 +38,17 @@ Menoufia University<br>
 
 ## Abstract
 
+> **Current-state note (EB-71):** This graduation book preserves historical design discussions, requirements and illustrative examples; they are not proof of delivered functionality or verified test results. Current engineering evidence: [mds/README.md](mds/README.md) and the [EB-71 claims matrix](plan/phases/phase-05-production-readiness/EB-71-CLAIMS-RECONCILIATION.md). Completion-certificate PDFs and checkpoint unlocking are not implemented; `passPoints` remains stored without enforcing access. Zoom is optional and disabled by default, with Jitsi fallback; attendance evaluation is dormant by default. D-11 and D-21 remain pending.
+
 **The Problem:** The online learning market is flooded with platforms that rely on pre-recorded video content with no human oversight. Completion rates remain critically low, students receive no personal guidance, and they finish courses without verifiable credentials or portfolio-worthy projects. Meanwhile, industry experts who wish to teach lack a unified tool to structure curricula, communicate with learners, and track their progress.
 
-**The Solution:** EduNest is a mentor-led, structured-learning platform that bridges the gap between passive online courses and real mentorship. It empowers mentors to design week-by-week learning journeys containing lectures, quizzes, tasks, and capstone projects, while students engage through real-time chat, live video sessions, gamified badges, and earn verifiable PDF certificates upon completion.
+**The Solution:** EduNest supports mentor-led weekly curricula, chat, assessments, badges and database-backed completion certificate records for eligible students; completion-certificate PDF rendering is not implemented.
 
-**Technologies:** Java 21, Spring Boot 3.5.7, Spring Security 6 with stateless JWT (jjwt 0.12.5), MySQL 8, Spring Data JPA (Hibernate), Spring WebSocket + STOMP, Apache Tika 2.9.2, iText7 7.2.5, Jitsi Meet, Spring Mail, springdoc-openapi 2.7, Lombok, Thymeleaf, Docker, Maven.
+**Technologies:** Java 21, Spring Boot 3.5.7, Spring Security 6 with JWT (jjwt 0.12.5), PostgreSQL, Spring Data JPA (Hibernate), WebSocket STOMP, Apache Tika 2.9.2, iText7 7.2.5 for admin badge PDFs, optional Zoom integration and Jitsi fallback, Spring Mail, springdoc-openapi 2.7, Lombok, Thymeleaf, Docker and Maven.
 
-**Key Features:** OTP-based registration, mentorship lifecycle management (DRAFT → ACTIVE → COMPLETED), weekly curriculum builder, auto-graded MCQ quizzes, task & project submissions with file upload security (Apache Tika), live sessions via Jitsi with attendance tracking, real-time group & private chat (WebSocket STOMP), gamification engine (badges, points, leaderboards), automated PDF certificates (iText7), student skill portfolios, mentor analytics dashboard, and a full admin console.
+**Key Features:** OTP-based registration, mentorship lifecycle, weekly curricula, quizzes, tasks and projects, configurable live sessions, chat, badges, points, leaderboards and database-backed certificate records. Attendance evaluation is disabled by default.
 
-**The Result:** A production-grade, modular educational ecosystem where every completed learning journey produces a verifiable certificate, a portfolio of submitted projects, and a public skill profile — turning passive learning into measurable, mentor-driven outcomes.
+**The Result:** A modular backend with mentorship, assessments, chat and certificate-record workflows; actual deployment and individual outcomes require separate verification.
 
 <div style="page-break-after: always;"></div>
 
@@ -75,7 +77,7 @@ EduNest is a next-generation, mentor-led structured-learning platform designed t
 
 EduNest tackles these challenges through a centralized learning ecosystem that unifies curriculum delivery, real-time communication, live sessions, assessments, gamification, and certification into a single, cohesive platform. Unlike competitors such as MentorCruise (one-to-one mentorship marketplace), Springboard (high-cost career bootcamps), Edraak (passive Arabic MOOCs), and Azcourses (recorded lecture libraries), EduNest introduces a **scalable group mentorship model** where industry experts design structured, week-by-week learning journeys for cohorts of students.
 
-The platform is built on a production-grade technology stack (Java 21, Spring Boot 3.5.7, MySQL 8, WebSocket STOMP, Jitsi Meet, iText7) and implements enterprise-level security (stateless JWT, RBAC, Apache Tika file validation). Every completed learning journey produces three tangible outcomes: a verifiable PDF certificate, a portfolio of graded projects, and a public skill profile — transforming passive content consumption into measurable, mentor-driven educational achievement.
+The backend uses Java 21, Spring Boot, PostgreSQL and WebSocket STOMP. Completion processing creates database-backed certificate records for eligible students; completion-certificate PDF rendering is not implemented.
 
 EduNest is positioned to reduce learning tool fragmentation by approximately 70–80%, increase learner engagement by 40–60%, and improve course completion rates by 30–50% compared to traditional self-paced platforms — making structured, mentored online education accessible, affordable, and scalable.
 
@@ -84,7 +86,7 @@ EduNest is positioned to reduce learning tool fragmentation by approximately 70�
 # Chapter 1: Introduction
 
 ## 1.1 Project Idea
-EduNest is a mentor-centric, structured-learning platform. Instead of delivering passive video catalogs, it empowers real industry experts (Mentors) to build week-by-week guided learning paths — each week containing lectures, quizzes, hands-on tasks, and capstone projects. Students enroll, progress through the curriculum, earn points and badges, communicate with their mentors via real-time chat, attend live sessions, and receive verifiable PDF certificates upon completion.
+EduNest supports mentor-led weekly curricula, chat, assessments, badges and database-backed completion certificate records for eligible students. Completion-certificate PDF rendering is not implemented.
 
 ## 1.2 Importance of the Project
 Traditional online courses suffer from extremely low completion rates because there is no human accountability. EduNest solves this by making the mentor the centerpiece of the experience — providing structured checkpoints, real-time communication, graded submissions, and a gamified reward system that keeps students engaged throughout the entire journey.
@@ -148,7 +150,7 @@ MentorCruise connects learners with individual mentors for personalized career g
 | -------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
 | Mentorship Model     | One-to-one only                    | Scalable group mentorship with cohort dynamics                          |
 | Communication        | External tools (Slack integration) | Built-in real-time WebSocket chat (group + private)                     |
-| Live Sessions        | Via external Zoom                  | Integrated Jitsi Meet with attendance tracking                          |
+| Live Sessions        | Via external Zoom                  | Optional Zoom integration or Jitsi fallback; attendance evaluation is dormant by default |
 | Curriculum Structure | Informal roadmaps                  | Structured week-by-week curriculum (Lectures, Quizzes, Tasks, Projects) |
 | Assessments          | None                               | Auto-graded MCQ quizzes, manually graded tasks and projects             |
 | Gamification         | None                               | Points, badges (8 categories), leaderboards                             |
@@ -167,7 +169,7 @@ Springboard offers intensive, fixed-curriculum bootcamp programs with assigned m
 | Enrollment      | Application-based (interviews/assessments) | Open marketplace with search, filter, and direct enrollment            |
 | Cost            | $5,000–$11,000 per program                 | Affordable, mentor-set pricing with discounts                          |
 | Communication   | External Slack channels                    | Built-in real-time group and private chat                              |
-| Content         | Self-paced pre-recorded videos             | Recorded lectures + live sessions (Jitsi Meet)                         |
+| Content         | Self-paced pre-recorded videos             | Recorded lecture URLs + optional Zoom integration / Jitsi fallback live sessions |
 | Gamification    | Basic certificates only                    | Points, badges, leaderboards, streaks                                  |
 | Profiles        | Program-specific alumni profiles           | Dynamic, multi-mentorship profiles with evolving skills and portfolios |
 | Target Audience | Career pivots (25–35, tech professionals)  | Students and early-career learners (broad skill development)           |
@@ -202,7 +204,7 @@ Azcourses is an Arabic educational platform covering school and university-level
 | Tasks & Progress Tracking | Not available          | Tasks, progress tracking, and goal monitoring             |
 | Gamification              | Not available          | Points, badges, leaderboards                              |
 | Portfolio System          | Not available          | Auto-generated portfolio from projects and achievements   |
-| Live + Recorded Content   | Recorded lectures only | Both live (Jitsi Meet) and recorded content               |
+| Live + Recorded Content   | Recorded lectures only | Live sessions (optional Zoom or Jitsi fallback) and recorded lecture URLs |
 | Student Collaboration     | Not available          | Cohort-based group learning and peer discussions          |
 
 **Key Takeaway:** Azcourses provides broad educational coverage but functions as a passive content library. EduNest transforms the learning experience from passive consumption to active, mentored, and community-driven skill development.
@@ -223,9 +225,9 @@ EduNest addresses the problems identified above through a **centralized, mentor-
 
 3. **Structured Accountability:** Every mentorship follows a clear lifecycle (DRAFT → ACTIVE → COMPLETED) with weekly milestones, graded assessments, and progress tracking — creating the accountability structure that self-paced platforms fundamentally lack.
 
-4. **Unified Platform Experience:** Communication (WebSocket chat), content delivery (lectures), assessments (quizzes, tasks, projects), live sessions (Jitsi Meet), gamification (badges, points, leaderboards), and certification (iText7 PDF generation) are all built into a single platform — eliminating tool fragmentation entirely.
+4. **Unified Platform Experience:** The backend supports chat, curriculum, assessments, live-session integration, gamification and database-backed completion certificate records.
 
-5. **Measurable Outcomes:** Every completed mentorship produces three tangible artifacts: a verifiable PDF certificate with cohort rank, a portfolio of graded project submissions, and a public skill profile — ensuring that learning translates directly into professional credibility.
+5. **Measurable Outcomes:** Ranked completion certificate records, graded submissions and profile information are supported; PDF completion certificates are not implemented.
 
 ## 1.7 Key Features
 
@@ -239,10 +241,10 @@ Mentors create structured mentorship programs with defined curricula, pricing, a
 Each mentorship is organized into ordered weeks, with each week containing lectures (video URLs), quizzes (MCQ with auto-grading), tasks (with file submissions and manual grading), and projects (with deadlines, briefs, and point awards).
 
 ### Live and Recorded Sessions
-Mentors schedule live sessions via Jitsi Meet with automatic attendance tracking (SCHEDULED → LIVE → ENDED lifecycle). Lecture content supports external video URLs for recorded materials.
+Mentors can schedule live sessions. Zoom is optional and disabled by default; Jitsi is the fallback. Attendance snapshots can be recorded; evaluation is disabled by default.
 
 ### Built-in Real-Time Communication
-WebSocket STOMP-powered group chat rooms per mentorship cohort and private one-to-one conversations, secured with JWT authentication at both handshake and per-message levels.
+WebSocket STOMP supports group and private conversations. JWT is validated on STOMP CONNECT, with room SUBSCRIBE/SEND authorization checks.
 
 ### Progress Tracking and Analytics
 Students track their weekly progress through structured curricula. Mentors access analytics dashboards with enrollment statistics, revenue tracking, and submission queues. Admins view platform-wide analytics.
@@ -260,7 +262,7 @@ Capstone projects with briefs, goals, deadlines, and point awards. Student submi
 - **Admin Badges:** Platform-wide recognition (TOP_MENTOR, ACADEMIC_EXCELLENCE, COMMUNITY_LEADER, INNOVATOR_AWARD).
 
 ### Automated PDF Certificates
-Generated via iText7 upon mentorship completion, containing student name, mentorship title, cohort rank, and issue date. Unique constraints prevent duplicate issuance.
+**Historical heading, not a delivered feature:** Completion processing writes ranked database-backed records for eligible students. Completion-certificate PDF generation and download are not implemented; admin badge PDFs are separate.
 
 ### Student Skill Profiles
 Public profiles aggregating skills, social media links (GitHub, LinkedIn, Facebook), earned badges, certificates, and enrollment history — creating a dynamic, evolving professional identity.
@@ -316,6 +318,8 @@ Based on EduNest's platform design, feature set, and established principles from
 - Collaborative and cohort-based learning models consistently outperform isolated individual learning in both engagement and knowledge retention metrics.
 
 ## 1.10 User Stories
+
+> **Historical/aspirational stories:** These describe requested experiences, not evidence that each capability is implemented. In particular, completion-certificate PDF download is not implemented; Zoom is optional and attendance evaluation is dormant by default.
 
 ### Student User Stories
 
@@ -377,10 +381,10 @@ Based on EduNest's platform design, feature set, and established principles from
 - Build a platform where Mentors can create structured mentorships composed of Weeks, Lectures, Quizzes, Tasks, and Projects.
 - Provide Students with a clear, guided learning path from enrollment to certification.
 - Implement real-time group and private chat (WebSocket STOMP) to foster cohort communication.
-- Enable live video sessions via Jitsi Meet with automatic attendance tracking.
+- Enable live sessions through configured Zoom integration or Jitsi fallback; attendance evaluation is dormant by default.
 - Build a gamification engine (points per mentorship, badges with categories, cohort leaderboards) to sustain student engagement.
 - Automate quiz grading (MCQ: A/B/C/D) while supporting manual grading for tasks and projects.
-- Generate verifiable PDF certificates using iText7 upon mentorship completion.
+- Maintain database-backed completion certificate records; completion-certificate PDF rendering is not implemented.
 - Give students a public profile showcasing their skills, badges, certificates, and social links.
 
 ## 1.13 Target Audience
@@ -396,10 +400,10 @@ Based on EduNest's platform design, feature set, and established principles from
 - JWT authentication with email OTP verification (VERIFY, RESET, DELETE, RESTORE, CHANGE_EMAIL).
 - Mentorship creation with cover images, tags, "What Will Learn" items, pricing, discounts, difficulty levels (ALL_LEVEL, BEGINNER, INTERMEDIATE, EXPERT), and publishing workflow (DRAFT → ACTIVE → COMPLETED).
 - Weekly curriculum builder: each Week contains Lectures (video URL), Quizzes (MCQ A/B/C/D with auto-grading), Tasks (with file submissions and manual grading), and Projects (with file submissions, deadlines, and points).
-- Live sessions via Jitsi Meet with session scheduling (SCHEDULED → LIVE → ENDED) and attendance tracking.
+- Live sessions with optional Zoom integration and Jitsi fallback; attendance evaluation is disabled by default.
 - Real-time chat via WebSocket STOMP: group chat rooms per mentorship cohort + private 1-to-1 conversations.
 - Gamification: Badges per mentorship (8 categories: ACHIEVEMENT, PERFORMANCE, CONSISTENCY, PROBLEM_SOLVING, CREATIVITY, LEADERSHIP, COMMUNITY, SPECIAL_RECOGNITION), total points per student per mentorship, and leaderboards.
-- PDF certificate generation via iText7 with student rank.
+- Ranked completion certificate records; iText PDF generation is used separately for admin badges.
 - Student profile with skills, social media links (GITHUB, LINKEDIN, FACEBOOK), badges, and certificates.
 - Mentor dashboard with enrollment analytics, commissions, and submission queues.
 - Admin console: user directory, admin badges (TOP_MENTOR, ACADEMIC_EXCELLENCE, COMMUNITY_LEADER, INNOVATOR_AWARD), contact message management, and payments overview.
@@ -408,7 +412,7 @@ Based on EduNest's platform design, feature set, and established principles from
 
 ### 1.14.2 Out of Scope
 - Direct payment processing (Stripe/PayPal). Commission and pricing are tracked but not transacted.
-- Native video hosting. Lectures use external URLs; live sessions use Jitsi Meet links.
+- Native video hosting. Lectures use external URLs; live sessions use configured Zoom or fallback Jitsi links.
 - AI-driven content generation or adaptive learning.
 - Mobile application (planned for future).
 <div style="page-break-after: always;"></div>
@@ -416,10 +420,10 @@ Based on EduNest's platform design, feature set, and established principles from
 # Chapter 2: Feasibility Study
 
 ## 2.1 Technical Feasibility
-The project is built on **Java 21** and **Spring Boot 3.5.7** — a mature, battle-tested enterprise stack with long-term support. The chosen integrations (WebSocket for real-time chat, Apache Tika for file validation, iText7 for PDFs, Jitsi for live sessions) are all well-documented, open-source, and fully compatible with Spring. The modular, domain-driven package structure ensures the codebase remains maintainable as it grows.
+The backend uses Java 21 and Spring Boot 3.5.7, with WebSocket, Apache Tika and iText7 for admin badge PDFs. Live sessions support optional Zoom integration or Jitsi fallback; deployed provider settings require separate verification.
 
 ## 2.2 Economic Feasibility
-All core technologies are open-source (Java, Spring Boot, MySQL, Jitsi). The only operational cost is cloud hosting. The platform's business model (mentorship enrollment fees with platform commission tracked via the `Enrollment.platformProfit` field) provides a clear revenue path with minimal upfront investment.
+This historical feasibility discussion does not establish current operating costs. The backend configures PostgreSQL; Zoom is optional and Jitsi is a fallback. Enrollment records include `platformProfit`.
 
 ## 2.3 Operational Feasibility
 EduNest replaces a fragmented toolset (LMS + Zoom + Discord + Google Forms) with a single, role-specific dashboard. Students see their enrolled mentorships, weekly progress, chat, and achievements. Mentors see their curriculum builder, submissions queue, and analytics. Admins see user management and platform health. This consolidation ensures a minimal learning curve for all three user types.
@@ -455,14 +459,14 @@ EduNest replaces a fragmented toolset (LMS + Zoom + Discord + Google Forms) with
 
 ### Live Sessions
 - Mentors schedule sessions linked to a Week (title, scheduledAt, status: SCHEDULED → LIVE → ENDED).
-- Meeting URL generated via **Jitsi Meet** (`JitsiService` creates `https://meet.jit.si/EduNest_Session_<id>_<uuid>`).
-- **SessionAttendance** and **SessionAttendanceResult** entities track which students attended.
+- Configured Zoom integration creates a meeting when scheduling; with Zoom disabled, `JitsiService` generates a fallback link when the session starts.
+- Attendance snapshots may be recorded; attendance evaluation and enforcement are dormant by default.
 
 ### Real-Time Chat
 - Group **ChatRoom** per mentorship cohort with **ChatRoomMembers**.
 - **ChatMessages** persisted in DB and broadcasted via WebSocket STOMP.
 - Private 1-to-1 **Conversations** with **Messages** between any two users.
-- WebSocket secured via `JwtHandshakeInterceptor` (HTTP upgrade) and `JwtChannelInterceptor` (per-message auth using `ChatPrincipal`).
+- `JwtChannelInterceptor` validates JWT on STOMP CONNECT and applies room SUBSCRIBE/SEND authorization; the former handshake interceptor is not registered.
 
 ### Gamification
 - **Badges**: Created by mentors per mentorship. Each badge has a title, category (8 types), description, and point threshold (1–500).
@@ -472,7 +476,7 @@ EduNest replaces a fragmented toolset (LMS + Zoom + Discord + Google Forms) with
 - **AdminBadges**: Platform-wide badges issued by admins (TOP_MENTOR, ACADEMIC_EXCELLENCE, COMMUNITY_LEADER, INNOVATOR_AWARD) tracked via `UserAdminBadge`.
 
 ### Certificates
-- Generated as PDF via **iText7** when a student completes a mentorship.
+- Completion processing writes ranked database-backed records; no completion-certificate PDF renderer or download is implemented.
 - `Certificate` entity stores: student, mentorship, rank (student's position), and issuedAt timestamp.
 - Unique constraint ensures one certificate per student per mentorship.
 
@@ -512,11 +516,11 @@ EduNest replaces a fragmented toolset (LMS + Zoom + Discord + Google Forms) with
 - Browse and enroll in mentorships.
 - View weekly curriculum (lectures, quizzes, tasks, projects).
 - Submit quiz answers (auto-graded), task files, and project files.
-- Join live sessions via Jitsi and have attendance recorded.
+- Join configured Zoom or fallback Jitsi sessions; attendance evaluation is dormant by default.
 - Chat in mentorship group rooms and private conversations.
 - Earn points and unlock badges per mentorship.
 - View leaderboard position within a cohort.
-- Receive a PDF certificate upon completion.
+- View available database-backed completion certificate records; PDF download is not implemented.
 - Build a public profile with skills (StudentSkill) and social links (GITHUB, LINKEDIN, FACEBOOK).
 - Write reviews and ratings for mentorships.
 
@@ -524,7 +528,7 @@ EduNest replaces a fragmented toolset (LMS + Zoom + Discord + Google Forms) with
 - Register with email/password, verify via OTP.
 - Create and manage mentorships (title, description, category, price, cover image, tags, "What Will Learn").
 - Build weekly curriculum: add Lectures (URL), Quizzes (MCQ), Tasks (with points, deadlines, attachments), Projects (with briefs, goals, deadlines, points).
-- Schedule and start live sessions (Jitsi links generated automatically).
+- Schedule and start live sessions using configured Zoom or fallback Jitsi links.
 - Grade task and project submissions manually (SUBMITTED → GRADED).
 - Create badges for their mentorships (with point thresholds and categories).
 - View mentor dashboard with enrollment analytics, revenue/commission tracking, and pending submissions.
@@ -544,6 +548,8 @@ EduNest replaces a fragmented toolset (LMS + Zoom + Discord + Google Forms) with
 <div style="page-break-after: always;"></div>
 
 # Chapter 4: UML Diagrams
+
+> **Historical design illustrations:** The diagrams in this chapter are not a verified current route, database-engine or execution specification. Current configuration uses PostgreSQL; see [mds/README.md](mds/README.md). Where applicable, live-session diagrams depict the Jitsi fallback only.
 
 ## 4.1 Use Case Diagram
 ```mermaid
@@ -811,6 +817,7 @@ sequenceDiagram
 ```
 
 ## 4.7 Sequence Diagram: Live Session Flow
+> **Historical illustration:** This diagram depicts a Jitsi-only flow, not the current conditional Zoom/Jitsi implementation; see §9.8.
 ```mermaid
 sequenceDiagram
     actor Mentor
@@ -1267,6 +1274,8 @@ sequenceDiagram
 ```
 
 ## 4.28 Activity Diagram: Student Enrollment & Learning Journey
+> **Historical illustration:** The course-journey steps are conceptual and do not establish automatic weekly completion, enrollment-to-chat behavior or lecture progress tracking.
+
 ```mermaid
 flowchart TD
   A([Start]) --> B[Student Logs In]
@@ -1279,7 +1288,7 @@ flowchart TD
   H --> I[Watch Lectures]
   H --> J[Take Quiz - Auto-Graded]
   H --> K[Submit Task/Project Files]
-  H --> L[Join Live Session via Jitsi]
+  H --> L[Join configured Zoom or fallback Jitsi session]
   I --> M[Earn Points]
   J --> M
   K --> M
@@ -1289,7 +1298,7 @@ flowchart TD
   O --> P
   P --> Q{All Weeks Completed?}
   Q -- No --> G
-  Q -- Yes --> R[Certificate Generated - PDF via iText7]
+  Q -- Yes --> R["Historical illustration: completion processing creates records, not PDFs"]
   R --> S([End])
 ```
 
@@ -1377,7 +1386,7 @@ stateDiagram-v2
 # Chapter 5: Database Design
 
 ## 5.1 Schema Overview
-The database uses **MySQL 8** with a highly normalized relational schema. The system applies **JOINED Inheritance** for users (UserEntity → Student / Mentor), ensuring strict referential integrity while isolating role-specific data in separate tables.
+The application configures PostgreSQL with a relational schema. The user entities use JOINED inheritance; see the engineering documentation for the current schema and migrations.
 
 ## 5.2 Base Entity (Auditing)
 Every table in the system inherits from `BaseEntity`, a `@MappedSuperclass` that provides:
@@ -1498,12 +1507,12 @@ com.example.gradproj.EduNest/
 ├──────────────────────────────────────────────────────────────┤
 │  Entities (JPA @Entity, JOINED inheritance, BaseEntity)      │
 ├──────────────────────────────────────────────────────────────┤
-│  MySQL 8 Database                                            │
+│  PostgreSQL Database                                        │
 └──────────────────────────────────────────────────────────────┘
 
 Cross-cutting Concerns:
   • JwtTokenGeneratorFilter / JwtTokenValidatorFilter
-  • JwtHandshakeInterceptor / JwtChannelInterceptor (WebSocket)
+  • JwtChannelInterceptor (STOMP CONNECT and room authorization)
   • GlobalExceptionHandler (@ControllerAdvice)
   • AuditorAwareImpl (auto-populates createdBy/updatedBy)
   • FileStorageService + Apache Tika (secure uploads)
@@ -1527,7 +1536,7 @@ Cross-cutting Concerns:
 | **Badges**           | `/api/v1/badges/`        | `POST /create`, `GET /{mentorshipId}/badges`, `GET /leaderboard`                 |
 | **Profile**          | `/api/v1/profile/`       | `GET /me`, `PUT /update`, `GET /mentor/{id}`                                     |
 | **Skills**           | `/api/v1/skills/`        | `POST /add`, `DELETE /{id}`                                                      |
-| **Certificates**     | `/api/v1/certificates/`  | `GET /my-certificates`, `GET /{id}/download`                                     |
+| **Certificates**     | `/api/v1/student/certificates` | `GET` listing and `GET /mentorships/{mentorshipId}/status`; no completion-PDF download route |
 | **Notifications**    | `/api/v1/notifications/` | `GET /`, `PUT /{id}/read`                                                        |
 | **Homepage**         | `/api/v1/homepage/`      | `GET /featured`, `GET /categories`                                               |
 | **Admin**            | `/api/v1/admin/`         | `GET /users`, `POST /badges`, `GET /contacts`, `GET /payments`, `GET /dashboard` |
@@ -1544,13 +1553,13 @@ Cross-cutting Concerns:
 | **Spring Boot**             | 3.5.7        | Core framework — auto-configuration, embedded Tomcat, dependency injection         |
 | **Spring Security**         | 6            | Authentication & authorization framework (filter chain, RBAC)                      |
 | **jjwt**                    | 0.12.5       | JWT token generation, signing, and validation (jjwt-api, jjwt-impl, jjwt-jackson)  |
-| **Spring Data JPA**         | (via Boot)   | Repository abstraction over Hibernate ORM for MySQL queries                        |
+| **Spring Data JPA**         | (via Boot)   | Repository abstraction over Hibernate ORM                                         |
 | **Hibernate**               | (via Boot)   | JPA implementation — entity mapping, JOINED inheritance, lazy loading              |
-| **MySQL**                   | 8.0.33       | Relational database — ACID compliance, indexing, foreign keys                      |
+| **PostgreSQL**              | (configured) | Runtime relational database; actual deployment version must be verified             |
 | **Spring WebSocket**        | (via Boot)   | STOMP protocol for real-time bidirectional chat and notifications                  |
 | **Apache Tika**             | 2.9.2        | File MIME-type validation via magic bytes — prevents spoofed uploads               |
-| **iText7**                  | 7.2.5        | Programmatic PDF generation for completion certificates                            |
-| **Jitsi Meet**              | (external)   | Free, open-source video conferencing — meeting URL generation                      |
+| **iText7**                  | 7.2.5        | PDF generation for admin badge awards; not completion certificates                  |
+| **Jitsi Meet**              | (external)   | Fallback meeting URL generation when optional Zoom integration is disabled          |
 | **Spring Mail**             | (via Boot)   | SMTP integration for OTP emails and notification emails                            |
 | **springdoc-openapi**       | 2.7.0        | Auto-generated Swagger UI for interactive API documentation                        |
 | **Thymeleaf**               | (via Boot)   | Server-side template engine for email HTML templates                               |
@@ -1633,7 +1642,7 @@ Students upload task and project files through a clean submission form. Files ar
 
 ## 8.7 Live Sessions (Jitsi Meet)
 
-Mentors schedule and start live sessions with auto-generated Jitsi Meet links. Students join directly from the platform with automatic attendance tracking.
+When Zoom is enabled and configured, scheduling creates a Zoom meeting; otherwise session start generates a Jitsi fallback link. Attendance evaluation is dormant by default.
 
 > **Screenshot:** Live Session Page — Scheduled sessions list, Join button, Jitsi meeting embedded or linked
 > ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
@@ -1660,12 +1669,12 @@ Students earn points through quizzes, tasks, and projects. Badges are unlocked w
 
 ## 8.10 Certificates
 
-Upon mentorship completion, a PDF certificate is auto-generated via iText7 containing the student's name, mentorship title, cohort rank, and issue date.
+Completion processing creates database-backed ranked certificate records for eligible students; it does not render or provide a completion-certificate PDF.
 
-> **Screenshot:** Certificates List — Student's earned certificates with download buttons
+> **Illustrative screenshot placeholder:** Certificates list; completion-certificate PDF download is not implemented.
 > ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
-> **Screenshot:** Generated PDF Certificate — Styled certificate with rank and date
+> **Aspirational screenshot placeholder:** Completion-certificate PDF rendering is not implemented.
 > ![UI Placeholder](https://placehold.co/800x400/f8f9fa/333333?text=UI+Screenshot+Placeholder)
 
 ## 8.11 Student Profile & Achievements
@@ -1791,8 +1800,8 @@ public class JwtTokenValidatorFilter extends OncePerRequestFilter {
 
 ## 9.3 WebSocket Chat Implementation
 1. Client establishes a STOMP connection to `/ws`.
-2. `JwtHandshakeInterceptor` validates the JWT during the HTTP Upgrade handshake.
-3. `JwtChannelInterceptor` enforces per-message authorization and creates a `ChatPrincipal` for each connected user.
+2. `JwtChannelInterceptor` validates JWT on STOMP CONNECT and creates a `ChatPrincipal`.
+3. The interceptor enforces room SUBSCRIBE/SEND authorization; it is not an HTTP-upgrade JWT handshake interceptor.
 4. Messages sent to a group chat room are persisted via `ChatMessageService` and broadcasted to all subscribers on that topic.
 5. Private conversations use `ConversationService` — messages are persisted and sent only to the two participants.
 
@@ -1842,12 +1851,11 @@ public class ChatWebSocketController {
 ```
 
 ## 9.5 Certificate Generation (Actual Implementation)
-1. When a student completes all weeks of a mentorship, `CertificateService` is triggered.
-2. The student's rank is calculated based on their `TotalPoints` within the mentorship cohort.
-3. **iText7** generates a styled PDF certificate containing the student's name, mentorship title, rank, and issue date.
-4. A `Certificate` record is saved in the database (unique constraint on student_id + mentorship_id prevents duplicates).
+1. Mentorship completion schedules processing using a captured cohort snapshot.
+2. The worker writes ranked certificate records to the database; students can retrieve their records and status.
+3. Completion-certificate PDF rendering/download is not implemented. iText is used separately for admin badge PDFs.
 
-**Code Snapshot: Certificate Issuing Logic**
+**Historical illustrative code snapshot (not the current completion-worker implementation):**
 ```java
     @Transactional
     public void issueCertificates(Long mentorshipId) {
@@ -1971,12 +1979,11 @@ public class ChatWebSocketController {
 ```
 
 ## 9.8 Live Session & Jitsi Integration (Actual Implementation)
-1. Mentors schedule a session via `LiveSessionController`.
-2. When the mentor clicks "Start Session", `LiveSessionService` calls `JitsiService` to generate a unique meeting URL.
-3. The session status is updated to `LIVE` and the URL is persisted.
-4. Students can then fetch the session details and join via the Jitsi link.
+1. Mentors schedule a session via `LiveSessionController`. When enabled and configured, Zoom creates the meeting at scheduling time.
+2. When Zoom is disabled (the default), session start generates a Jitsi fallback URL. Session access remains subject to backend authorization.
+3. Attendance snapshots may be recorded; attendance evaluation is disabled by default. Provider-side passcode or require-authentication enforcement has not been verified.
 
-**Code Snapshot: Jitsi URL Generation**
+**Historical illustrative Jitsi-only snapshot (not the current conditional implementation):**
 ```java
     @Transactional
     public LiveSessionResponse startSession(Long sessionId) {
@@ -2275,7 +2282,7 @@ The `GlobalExceptionHandler` (`@ControllerAdvice`) catches all exceptions and re
 | **RBAC**                 | `@PreAuthorize("hasRole('...')")`                   | Endpoints strictly segregated: Students cannot access Mentor endpoints, Mentors cannot access Admin endpoints |
 | **OTP Verification**     | Email-based OTP                                     | Prevents fake registrations; supports VERIFY, RESET, DELETE, RESTORE, CHANGE_EMAIL flows                      |
 | **File Upload Security** | Apache Tika 2.9.2                                   | Validates real MIME type via magic bytes; blocks spoofed extensions (e.g., `.exe` → `.pdf`)                   |
-| **WebSocket Security**   | `JwtHandshakeInterceptor` + `JwtChannelInterceptor` | JWT validated during HTTP upgrade AND on every STOMP message                                                  |
+| **WebSocket Security**   | `JwtChannelInterceptor` | JWT validated on STOMP CONNECT; room SUBSCRIBE/SEND authorization checked                                   |
 | **Input Validation**     | Jakarta Bean Validation                             | `@Valid`, `@NotBlank`, `@Email`, `@Pattern`, `@Min`, `@Max` on all DTOs                                       |
 | **Custom Validators**    | `@PasswordMatches` + `PasswordMatchesValidator`     | Ensures password confirmation matches during registration                                                     |
 | **Soft Deletion**        | `UserEntity.deleted` flag                           | Accounts are deactivated, not permanently removed — preserves data integrity                                  |
@@ -2289,10 +2296,12 @@ The `GlobalExceptionHandler` (`@ControllerAdvice`) catches all exceptions and re
 
 ## 11.1 Testing Strategies
 - **Unit Testing:** JUnit 5 + Mockito — tests individual service methods (e.g., quiz scoring logic, point calculation) in isolation without the Spring context.
-- **Integration Testing:** `@SpringBootTest` — verifies end-to-end flow: controller → service → repository → MySQL.
+- **Integration Testing:** `@SpringBootTest` exercises application flows; tests use configured test databases, including H2 and selected PostgreSQL integration tests.
 - **User Acceptance Testing:** Manual testing with sample Student, Mentor, and Admin accounts to validate the full learning journey (enrollment → quiz → submission → badge → certificate).
 
 ## 11.2 Test Cases
+
+> **Historical illustrative table:** The status labels below are not linked to execution evidence and do not constitute a verified test run.
 
 | ID    | Scenario                                                | Expected Result                                         | Status |
 | ----- | ------------------------------------------------------- | ------------------------------------------------------- | ------ |
@@ -2304,8 +2313,8 @@ The `GlobalExceptionHandler` (`@ControllerAdvice`) catches all exceptions and re
 | TC-06 | Student accesses Mentor Dashboard endpoint              | `@PreAuthorize` returns 403 Forbidden                   | ✅ Pass |
 | TC-07 | Student sends WebSocket chat message                    | Persisted in DB, broadcasted to cohort room subscribers | ✅ Pass |
 | TC-08 | Student earns enough points to reach badge threshold    | `BadgeAward` created, notification sent                 | ✅ Pass |
-| TC-09 | Student completes mentorship                            | iText7 generates PDF certificate with rank              | ✅ Pass |
-| TC-10 | Mentor schedules and starts live session                | Jitsi URL generated, session status changes to LIVE     | ✅ Pass |
+| TC-09 | Student completes mentorship                            | Historical PDF claim; no completion-certificate PDF renderer | Not verified |
+| TC-10 | Mentor schedules and starts live session                | Configured Zoom or fallback Jitsi; lifecycle evidence required | Not verified by this table |
 | TC-11 | Admin assigns admin badge (TOP_MENTOR) to a user        | `UserAdminBadge` record created                         | ✅ Pass |
 | TC-12 | Expired OTPs                                            | `OtpCleanupService` scheduled task removes them         | ✅ Pass |
 
@@ -2327,7 +2336,7 @@ The `GlobalExceptionHandler` (`@ControllerAdvice`) catches all exceptions and re
 
 # Chapter 13: Conclusions
 
-The **EduNest** graduation project successfully delivers a comprehensive, production-grade mentorship and structured-learning platform that addresses the critical shortcomings of contemporary online education. By combining a modular monolith architecture (Spring Boot 3.5.7), stateless JWT security, real-time WebSocket communication, gamified engagement (badges, points, leaderboards), and automated PDF certificate generation, EduNest demonstrates that online learning can be structured, accountable, and deeply human.
+The **EduNest** backend supports mentorship, assessments, chat, gamification and database-backed completion certificate records. Completion-certificate PDF generation is not implemented; broader product and deployment claims require independent verification.
 
 The platform's three roles (Student, Mentor, Admin) each have complete, feature-rich dashboards and workflows. The domain-driven codebase is architected for clean future expansion into microservices. The competitive analysis confirms that EduNest occupies a unique and underserved market position — combining scalable group mentorship, integrated communication, gamification, and portfolio building in a way that no existing platform (MentorCruise, Springboard, Edraak, or Azcourses) currently offers.
 

@@ -13,7 +13,7 @@
 | P5-02 | Prod logs pattern-complete with requestId; no println | log capture + CI grep job | Eng Lead |
 | P5-03 | Public-route budget table documented; tripping IT green | IT run | Security Reviewer |
 | P5-04 | `.env.example` authoritative; CI guard test green | file + CI run | DevOps |
-| P5-05 | Root books/README claims reconciled per decisions; roadmap state | diff + PO note | PO |
+| P5-05 | Root books/README claims reconciled per decisions; roadmap state | [EB-71 claims matrix](EB-71-CLAIMS-RECONCILIATION.md); remaining claim review, D-11/D-21 and PO sign-off pending | PO |
 
 ## 3. Phase-level checks
 
