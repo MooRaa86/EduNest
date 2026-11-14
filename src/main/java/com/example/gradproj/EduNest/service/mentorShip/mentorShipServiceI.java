@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.mentorShip;
 
 import com.example.gradproj.EduNest.config.integrations.StripeProperties;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.CreateReviewRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipCreateDTO;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.request.mentorShipUpdateDTO;
@@ -230,7 +231,7 @@ public class mentorShipServiceI implements mentorShipService{
     @Override
     public PageResponse<mentorShipFDto> getMentorShips(int page, int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         // P1-15 / EB-22 — D-02 default (a): the public overview excludes DRAFT
         // for every caller; owners see their drafts only in the mentor
@@ -634,7 +635,7 @@ public class mentorShipServiceI implements mentorShipService{
 
     @Override
     public PageResponse<MentorshipExploreDto> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         String cleanKeyword = sanitizeKeyword(keyword);
         String cleanCategory = (category != null && !category.isBlank()) ? category.trim() : null;
         Page<MentorshipExploreDto> result = MentorShipRepository.searchMentorShips(cleanKeyword, cleanCategory, minPrice, maxPrice, pageable);

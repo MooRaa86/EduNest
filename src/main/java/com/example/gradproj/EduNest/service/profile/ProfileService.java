@@ -9,6 +9,7 @@ import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.entity.projects.ProjectSubmission;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.entity.users.Student;
+import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.repository.badges.BadgeAwardRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
 import com.example.gradproj.EduNest.repository.mentorShip.projections.EnrolledMentorshipProgressResponse;
@@ -27,6 +28,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 
 import java.util.List;
 import java.util.UUID;
@@ -143,14 +145,17 @@ public class ProfileService {
 }
 
     @PreAuthorize("hasRole('MENTOR')")
-    public PageResponse<StudentProjectProfileDTO> getStudentProjects(Long studentId, int page, int size) {
+    public PageResponse<StudentProjectProfileDTO> getStudentProjects(Long studentId, SubmissionStatus status, int page, int size) {
         validateMentorHasAccessToStudent(studentId);
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         Page<ProjectSubmission> submissions =
                 projectSubmissionRepository
-                        .findForStudentProfile(studentId, null, pageable);
+                        // P4-09/EB-58 (USR-01): the request `status` param is now
+                        // threaded through — previously dropped at the controller
+                        // boundary (always null → filter silently broken).
+                        .findForStudentProfile(studentId, status, pageable);
 
         List<StudentProjectProfileDTO> content =
                 submissions.getContent()
@@ -210,8 +215,8 @@ public class ProfileService {
     }
 
     @PreAuthorize("hasRole('MENTOR')")
-    public PageResponse<StudentProjectProfileDTO> getStudentProjects(UUID studentPublicId, int page, int size) {
-        return getStudentProjects(resolveStudentId(studentPublicId), page, size);
+    public PageResponse<StudentProjectProfileDTO> getStudentProjects(UUID studentPublicId, SubmissionStatus status, int page, int size) {
+        return getStudentProjects(resolveStudentId(studentPublicId), status, page, size);
     }
 
     @PreAuthorize("hasRole('MENTOR')")
@@ -239,12 +244,13 @@ public class ProfileService {
         PageResponse<EnrolledMentorshipProgressDto> mentorshipsProgress =
                 getEnrolledMentorshipProgress(
                         studentId,
-                        PageRequest.of(mentorshipsPage, mentorshipsSize)
+                        PaginationPolicy.ofClamped(mentorshipsPage, mentorshipsSize)
                 );
 
         PageResponse<StudentProjectProfileDTO> projects =
                 getStudentProjects(
                         studentId,
+                        null, // full-profile composition: no status filter (unchanged contract)
                         projectsPage,
                         projectsSize
                 );

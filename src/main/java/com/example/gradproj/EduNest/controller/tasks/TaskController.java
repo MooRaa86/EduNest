@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.controller.tasks;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.tasks.requests.CreateTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.PatchTaskRequest;
 import com.example.gradproj.EduNest.dto.tasks.requests.UpdateTaskStatusRequest;
@@ -114,7 +115,7 @@ public class TaskController {
             @RequestParam(defaultValue = "4") int size,
             @PathVariable UUID msid
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         SimpleResponse simpleResponse = new SimpleResponse();
         simpleResponse.addMessage("message", "Tasks retrieved successfully");
         simpleResponse.addMessage("Tasks", taskService.getTasks(taskName, status, msid, pageable));
@@ -140,7 +141,7 @@ public class TaskController {
             @RequestParam(defaultValue = "6") int size,
             Authentication authentication
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("message", "Task statistics retrieved successfully");
         resp.addMessage("taskStatistics", taskService.getTaskStatistics(taskId, pageable, authentication.getName()));
@@ -158,7 +159,7 @@ public class TaskController {
             @RequestParam(defaultValue = "4") int size,
             Authentication authentication
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("message", "Full dashboard retrieved successfully");
         resp.addMessage("fullDashboard", taskService.getFullTaskDashboard(mentorshipId, taskName, status, pageable, authentication.getName()));

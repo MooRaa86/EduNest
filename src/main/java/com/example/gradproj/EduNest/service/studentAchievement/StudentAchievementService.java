@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.studentAchievement;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.studentAchievement.BadgeAchievementResponse;
 import com.example.gradproj.EduNest.dto.studentAchievement.ProjectAchievementResponse;
 import com.example.gradproj.EduNest.dto.studentAchievement.StudentAchievementResponse;
@@ -42,7 +43,7 @@ public class StudentAchievementService {
                 .orElseThrow(() -> new globalLogicEx("Student not found"));
 
         var badgesPageResult = badgeAwardRepository
-                .findByStudent_IdOrderByCreatedAtDesc(studentId, PageRequest.of(badgesPage, badgesSize));
+                .findByStudent_IdOrderByCreatedAtDesc(studentId, PaginationPolicy.ofClamped(badgesPage, badgesSize));
 
         PageResponse<BadgeAchievementResponse> badges = PageResponse.<BadgeAchievementResponse>builder()
                 .content(badgesPageResult.getContent().stream().map(this::toBadgeDto).toList())
@@ -53,7 +54,7 @@ public class StudentAchievementService {
                 .build();
 
         var submissionsPage = projectSubmissionRepository
-                .findForStudentProfile(studentId, SubmissionStatus.GRADED, PageRequest.of(projectsPage, projectsSize));
+                .findForStudentProfile(studentId, SubmissionStatus.GRADED, PaginationPolicy.ofClamped(projectsPage, projectsSize));
 
         PageResponse<ProjectAchievementResponse> submissions = PageResponse.<ProjectAchievementResponse>builder()
                 .content(submissionsPage.getContent().stream().map(this::toProjectDto).toList())

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.mylearning;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mylearning.EnrolledMentorshipDto;
 import com.example.gradproj.EduNest.dto.mylearning.MyLearningResponse;
 import com.example.gradproj.EduNest.repository.mentorShip.EnrollmentRepository;
@@ -23,7 +24,7 @@ public class MyLearningService {
 
     public MyLearningResponse getMyLearning(String email, int page, int size) {
         Page<ActiveMentorshipProgressProjection> result = enrollmentRepository
-                .findAllEnrolledMentorshipsWithProgress(email, PageRequest.of(page, size));
+                .findAllEnrolledMentorshipsWithProgress(email, PaginationPolicy.ofClamped(page, size));
 
         List<EnrolledMentorshipDto> content = result.getContent().stream().map(m -> {
             long totalItems = safe(m.getTotalTasks()) + safe(m.getTotalQuizzes()) + safe(m.getTotalProjects());

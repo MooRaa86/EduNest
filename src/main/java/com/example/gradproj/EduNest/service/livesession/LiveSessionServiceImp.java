@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.livesession;
 
 import com.example.gradproj.EduNest.config.integrations.ZoomProperties;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.config.livesession.LiveSessionProperties;
 import com.example.gradproj.EduNest.dto.livesession.request.CreateSessionDto;
 import com.example.gradproj.EduNest.dto.livesession.request.UpdateSessionDto;
@@ -302,7 +303,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
             );
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         Page<DashboardSessionResponse> allSessions =
                 liveSessionRepository.findAllByMentorshipId(
@@ -626,7 +627,7 @@ public class LiveSessionServiceImp implements LiveSessionService {
         Student student = studentRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Student not found"));
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<StudentUpcomingSessionResponse> upcomingSessions = liveSessionRepository
                 .findUpcomingSessionsByStudentId(student.getId(), LocalDateTime.now(), pageable);
 

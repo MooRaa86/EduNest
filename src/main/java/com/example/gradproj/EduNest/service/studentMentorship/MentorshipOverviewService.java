@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.studentMentorship;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.studentMentorship.AfterEnrollData;
 import com.example.gradproj.EduNest.dto.studentMentorship.BeforeEnrollData;
@@ -43,7 +44,7 @@ public class MentorshipOverviewService {
         Page<MentorshipReviewProjection> reviewsPage = reviewsRepository.findMentorshipReviews(
                 mentorshipId, 
                 studentEmail, 
-                PageRequest.of(page, size)
+                PaginationPolicy.ofClamped(page, size)
         );
 
         return PageResponse.<MentorshipReviewProjection>builder()
@@ -60,7 +61,7 @@ public class MentorshipOverviewService {
     }
 
     public List<MentorshipExploreDto> getTopMentorshipsByMentorEmail(String mentorEmail, String studentEmail, int limit) {
-        return mentorShipRepository.findTopByMentorEmailOrderByRating(mentorEmail, studentEmail, PageRequest.of(0, limit));
+        return mentorShipRepository.findTopByMentorEmailOrderByRating(mentorEmail, studentEmail, PageRequest.of(0, PaginationPolicy.clampSize(limit)));
     }
 
     public MentorshipDetailsDto getMentorshipWithEnrollmentStatus(
@@ -97,7 +98,7 @@ public class MentorshipOverviewService {
         if (!isEnrolled) {
             Double finalPrice = mentorship.getPrice() * (1.0 - mentorship.getDiscountPercentage() / 100.0);
             List<MentorshipExploreDto> topMentorships = mentorShipRepository.findTopByMentorEmailOrderByRating(
-                    mentorship.getMentorEmail(), studentEmail, PageRequest.of(0, topMentorshipLimit));
+                    mentorship.getMentorEmail(), studentEmail, PageRequest.of(0, PaginationPolicy.clampSize(topMentorshipLimit)));
             
             BeforeEnrollData beforeEnroll = BeforeEnrollData.builder()
                     .id(mentorship.getPublicId())

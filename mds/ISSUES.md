@@ -65,7 +65,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 |---|---|---|---|---|---|
 | WS-01 | SECURITY | Critical | ✅ | **FIXED (EB-19, contract verified on real sockets by P2-05 / EB-39):** room authorization enforced on both STOMP surfaces — SUBSCRIBE `/topic/room/{id}` runs the D-14 READ rule (mentorship enrollment or the owning mentor), SEND `/app/chat/{roomId}` the D-14 WRITE rule (explicit `ChatRoomMember` row or the room's owning mentor); violated frames are DROPPED and the authored error is pushed to the violator's `/user/{email}/queue/errors` (no STOMP ERROR frame is emitted — the async inbound channel swallows interceptor exceptions, proven wire-level by the EB-39 matrix); `saveMessage` re-checks the WRITE rule before persisting (defense in depth). Rules centralized in `service/chat/ChatAuthorization` | branch `feat/p1-12-ws-room-authorization`; probes `WSRoomAuthorizationProbesTest` (10) + socket matrix `WSAuthMatrixIntegrationTest` (9, EB-39); full suite 379 green; see ISSUE-MAPPING WS-01 | (resolved in EB-19) |
 | WS-02 | TECHNICAL DEBT | Low | ✅ | **FIXED (EB-19):** dead code removed — the never-registered `JwtHandshakeInterceptor` deleted (channel CONNECT is the single WS auth path; SockJS fallback transports cannot authenticate, the FE must use the native WebSocket transport), `connectedUsers` remnants deleted, DISCONNECT logs via SLF4J instead of `System.out` | branch `feat/p1-12-ws-room-authorization`; see ISSUE-MAPPING WS-02 | (resolved in EB-19) |
-| WS-03 | PERFORMANCE | Low | ✅ | Unbounded `size` on chat/notification message pagination (`PageRequest.of(0, size)` from client) | `ChatMessageService:85`, `ConversationService:86`, notification reads |
+| WS-03 | PERFORMANCE | Low | ✅ | **FIXED (EB-58 / P4-09, 2026-11-14):** chat/conversation message pagination caps `size` via `PaginationPolicy.clampSize` (global 50; default 20 + `beforeId` cursor semantics unchanged) | `ChatMessageService`, `ConversationService`; `contract/ChatHistoryCapContractTest` |
 | CHAT-01 | RELIABILITY | Medium | ✅ | Room message save failure pushes an error string and **returns null** (client receives empty acknowledgment; no STOMP ERROR frame) | `ChatMessageService:43-51` |
 | CHAT-02 | SECURITY | Critical | ✅ | **FIXED (EB-20 / P1-13):** History read requires conversation participant (student or mentor of pair) or ROLE_ADMIN; strangers receive 403 Forbidden without ID enumeration oracle | `ConversationRestControllers.getMessages`, `ConversationService.getConversationMessages`; probe `ConversationProbesTest.g2_` |
 | CHAT-03 | SECURITY | High | ✅ | **FIXED (EB-20 / P1-13):** Private-message edit and delete enforce sender ownership; foreigners receive 403 Forbidden | `ConversationService.editMessage`, `ConversationService.deleteMessage`; probe `ConversationProbesTest.g3_` |
@@ -118,10 +118,10 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
-| USR-01 | BUG | Medium | ✅ | Mentor→student projects endpoint drops the `status` filter param (ignored silently) | `ProfileService#getStudentProjects` |
+| USR-01 | BUG | Medium | ✅ | **FIXED (EB-58 / P4-09, 2026-11-14):** the `status` param is threaded controller→service→`findForStudentProfile` (repository slot existed since P4-07); no-filter default unchanged | `ProfileService#getStudentProjects`; `contract/MentorStudentProjectsStatusContractTest` |
 | USR-02 | SECURITY | Low | ✅ | User-identifying surfaces (leaderboards, listings) expose emails beyond necessary scope — *(mostly via MSH-03/09; this row tracks read-surface breadth under prod rules)* | projections incl. emails |
 | USR-03 | BUG | Low | ✅ | Dashboard projection quirks: `MentorStatsProjection.totalBadges` hardcoded 0; admin "students" counts enrollments (double counts repeat students) | `repository/users/*`; dashboard queries |
-| USR-04 | TECHNICAL DEBT | Low | ✅ | Profile compositions hardcode `PageRequest.of(0,10)` caps (data silently cut off) | StudentProfileController internals |
+| USR-04 | TECHNICAL DEBT | Low | ✅ | **RECLASSIFIED (EB-58 / P4-09 decision B, 2026-11-14):** the self-profile "10 graded submissions / 10 certificates" caps are a documented PREVIEW, not a paginated collection — sizes kept, now named constants (`PROFILE_PREVIEW_*`) | `StudentProfileService`; `mds/users-profiles/profiles.md` §1 |
 | USR-05 *(xref)* | SECURITY | Medium | ✅ | **FIXED (EB-50 / P4-01):** = NOTIF-04 (broadcast to all admins per D-12) | – |
 
 ---
@@ -207,7 +207,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | ID | Cat | Sev | Status | Issue | Evidence |
 |---|---|---|---|---|---|
 | API-01 | TECHNICAL DEBT | Low | ✅ | Envelope inconsistency: `SimpleResponse` vs typed DTOs vs `PageResponse<T>`; no uniform errors contract | controller survey |
-| API-02 | PERFORMANCE | Medium | ✅ | Unbounded `size` params; inconsistent defaults (5/6/10); one in-memory paginating aggregator | endpoints doc §2 |
+| API-02 | PERFORMANCE | Medium | ✅ | **FIXED (EB-58 / P4-09, 2026-11-14):** client-supplied `page`/`size` clamped at every construction point via `utils/PaginationPolicy` (`page<0`→0, `size<1`→1, `size>50`→50; notification cap 100 kept as approved exception A; single `Pageable`-bound endpoint capped via `spring.data.web.pageable.max-page-size=50`; malformed numeric pagination params → 400 ERR_VALIDATION). Defaults (5/6/10) unchanged; the in-memory paginating aggregator (P4-10) remains open | `utils/PaginationPolicy`; `contract/PaginationContractTest`, `contract/MalformedPaginationContractTest` |
 | API-03 | TECHNICAL DEBT | Low | ✅ | Path-version drift/email-as-identifier paths (`/login-api`, `/files`, `/admin`, absolute badge paths) | route survey |
 | API-05 | BUG | Medium | ✅ | Jackson `fail-on-unknown-properties` true **prod only** → unknown-field 400 in prod, silent ignore in dev (contract drift) | properties delta |
 | API-04 *(xref)* | SECURITY | High | ✅ | **FIXED (EB-16):** = SEL-08 — admin response credential leaks resolved (identity-only DTO) | see ISSUE-MAPPING SEL-08 | (resolved in EB-16) |

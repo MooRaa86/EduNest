@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.admin;
 
 import com.example.gradproj.EduNest.dto.dashboard.AdminDashboard.AdminDashboardCards;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.dashboard.AdminDashboard.AdminFullDashDto;
 import com.example.gradproj.EduNest.dto.dashboard.SessionsChartResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
@@ -79,7 +80,7 @@ public class Dashboard {
     }
 
     public PageResponse<TopMentorProjection> getTopMentorsByTotalStudents(int size, int page) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         Page<TopMentorProjection> mentors = mentorRepository.
                 findTopMentorsByTotalStudents(pageable);
