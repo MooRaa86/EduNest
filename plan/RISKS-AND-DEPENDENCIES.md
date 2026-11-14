@@ -64,6 +64,7 @@ These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM
 
 - In-memory STOMP simple broker → single instance only (horizontal scale would require external broker — post-launch decision; ARCH-004).
 - OSIV retained until D-24; performance program P4-11 is the prerequisite.
+- **LEARN-08 / D-10 / EB-64:** Checkpoint unlocking remains unimplemented and is deferred for the current sprint. `passPoints` remains stored and exposed temporarily as a PO-approved compatibility exception; it does not enforce unlocking. Existing student access stays unchanged. **Reopen trigger:** a new PO decision and a reviewed implementation or API/schema retirement plan.
 - `qty` of manual verification for infra tasks: despite CI, DNS/TLS/SMTP/backup *reality checks* remain human-verifiable per P7 acceptance checklists.
 
 ## 6. Planning assumptions register
