@@ -7,6 +7,7 @@ import com.example.gradproj.EduNest.dto.profile.FullProfileStudentInformationFor
 import com.example.gradproj.EduNest.dto.profile.StudentProjectProfileDTO;
 import com.example.gradproj.EduNest.enums.tasks.SubmissionStatus;
 import com.example.gradproj.EduNest.service.profile.ProfileService;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +50,7 @@ public class MentorViewStudentProfileController {
     ) {
 
         PageResponse<EnrolledMentorshipProgressDto> progress =
-                profileService.getEnrolledMentorshipProgress(studentId, PageRequest.of(page, size));
+                profileService.getEnrolledMentorshipProgress(studentId, PaginationPolicy.ofClamped(page, size));
 
         SimpleResponse resp = new SimpleResponse();
         resp.addMessage("mentorshipProgress", progress);
@@ -69,6 +70,7 @@ public class MentorViewStudentProfileController {
         PageResponse<StudentProjectProfileDTO> projects =
                 profileService.getStudentProjects(
                         studentId,
+                        status,
                         page,
                         size
                 );

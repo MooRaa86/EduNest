@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.projects;
 
 import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.repository.projects.projection.ProjectSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.GradeProjectSubmissionRequest;
@@ -170,7 +171,7 @@ public class ProjectSubmissionServiceImpl implements ProjectSubmissionService {
             throw new AccessDeniedException("You are not authorized to access this project");
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<ProjectSubmission> submissionsPage = projectSubmissionRepository.findByProject_Id(projectId, pageable);
         List<ProjectSubmissionResponse> content = submissionsPage.getContent().stream()
                 .map(this::mapToSubmissionResponse).toList();

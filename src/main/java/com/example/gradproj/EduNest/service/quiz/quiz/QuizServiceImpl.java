@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.quiz.quiz;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizStatisticsDTO;
@@ -347,7 +348,7 @@ public class QuizServiceImpl implements QuizService {
         if (!(mentorshipRepository.existsById(mentorShipId))) {
             throw new globalLogicEx("MentorShip not found");
         }
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         // EB-60 / P4-11 — F2: projection rows (see getQuizzes); mentor overview
         // keeps DRAFT quizzes visible (no status filter), like the old query.
         Page<QuizRepository.QuizListRow> allQuizzes =

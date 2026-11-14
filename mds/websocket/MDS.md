@@ -78,7 +78,7 @@ No tests exist for chat/WS (see [../testing/MDS.md](../testing/MDS.md)). Recomme
 - **CHAT-07 (Medium):** `Message.seen` never set; no unread count for chat.
 - **CHAT-08 (Low):** raw `String content` binding (JSON-vs-plaintext ambiguity, needs frontend confirmation).
 - **WS-02 (Low):** ~~handshake interceptor dead code; `connectedUsers` map commented out; debug prints~~ **FIXED (EB-19):** deleted the never-registered interceptor, removed remnants, SLF4J logging.
-- **WS-03 (Low):** unbounded `size` params on message pagination.
+- **WS-03 (Low):** ~~unbounded `size` params on message pagination~~ **RESOLVED (P4-09/EB-58, 2026-11-14):** chat history / conversation message pagination now caps `size` via `PaginationPolicy.clampSize` (global 50; default 20 and `beforeId` cursor semantics unchanged); pinned by `contract/ChatHistoryCapContractTest`.
 
 ## 10. Open Questions
 

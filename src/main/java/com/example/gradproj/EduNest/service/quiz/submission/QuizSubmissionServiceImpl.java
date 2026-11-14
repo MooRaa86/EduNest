@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.quiz.submission;
 
 
 import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizSubmissionDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.StudentAnswerDTO;
 import com.example.gradproj.EduNest.dto.quiz.response.QuizSubmissionResponseDTO;
@@ -285,7 +286,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
 
         securityService.validateMentorHasAccessToStudent(studentId);
 
-        return quizSubmissionRepository.findAllByStudentAndMentor(studentId, mentorId, PageRequest.of(page, size))
+        return quizSubmissionRepository.findAllByStudentAndMentor(studentId, mentorId, PaginationPolicy.ofClamped(page, size))
                 .stream()
                 .map(sub -> QuizSubmissionResponseDTO.builder()
                         .id(sub.getPublicId())
@@ -318,7 +319,7 @@ public class QuizSubmissionServiceImpl implements QuizSubmissionService {
                 .sum();
         double fullMark = totalPoints;
 
-        return  quizSubmissionRepository.findAllByQuiz_Id(quizId, PageRequest.of(page, size))
+        return  quizSubmissionRepository.findAllByQuiz_Id(quizId, PaginationPolicy.ofClamped(page, size))
                 .stream()
                 .map(sub -> {
                     String status;

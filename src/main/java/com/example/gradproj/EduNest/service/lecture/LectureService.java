@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.lecture;
 
 import com.example.gradproj.EduNest.dto.lectures.CreateLecturerequest;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.lectures.LectureResponse;
 import com.example.gradproj.EduNest.dto.lectures.UpdeteLectureRequest;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
@@ -119,7 +120,7 @@ public class LectureService {
     @Transactional(readOnly = true)
     public PageResponse<LectureResponse> getLecturesByMentorshipId(Long mentorshipId, int page, int size){
         contentReadGuard.requireMentorship(mentorshipId);
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<Lecture> lecturePage = lectureRepository.findByWeek_Mentorship_Id(mentorshipId, pageable);
         List<LectureResponse> lectures = lecturePage.getContent().stream()
                 .map(this::mapToLectureResponse)

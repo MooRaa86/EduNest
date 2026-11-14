@@ -42,6 +42,16 @@ public class StudentProfileService {
     private final CertificateService certificateService;
     private static final String STUDENT_IMAGE_FOLDER = "student";
 
+    /**
+     * P4-09/EB-58 (approved decision B — USR-04): the self-profile composition
+     * is a DOCUMENTED PREVIEW, not a paginated collection — "10 latest graded
+     * project submissions" and "10 certificates" per
+     * mds/users-profiles/profiles.md §1. Fixed sizes are intentional; do not
+     * attach client pagination here. Badges are already complete (unpaginated).
+     */
+    private static final int PROFILE_PREVIEW_PROJECTS = 10;
+    private static final int PROFILE_PREVIEW_CERTIFICATES = 10;
+
 
     public StudentProfileInformationResponse getStudentProfile() {
         Student student = getCurrentStudent();
@@ -63,7 +73,7 @@ public class StudentProfileService {
 
         List<StudentProjectProfileDTO> projects =
                 projectSubmissionRepository
-                        .findGradedForStudentProfile(student.getId(), PageRequest.of(0, 10))
+                        .findGradedForStudentProfile(student.getId(), PageRequest.of(0, PROFILE_PREVIEW_PROJECTS))
                         .getContent()
                         .stream()
                         .map(ps -> StudentProjectProfileDTO.builder()
@@ -89,7 +99,7 @@ public class StudentProfileService {
 
 
         PageResponse<CertificateResponse> certificates = certificateService
-                .getStudentCertificates(student.getEmail(), 0, 10);
+                .getStudentCertificates(student.getEmail(), 0, PROFILE_PREVIEW_CERTIFICATES);
 
         return StudentProfileInformationResponse.builder()
                 .firstName(student.getFirstName())

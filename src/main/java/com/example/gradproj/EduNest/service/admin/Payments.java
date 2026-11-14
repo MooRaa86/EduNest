@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.admin;
 
 import com.example.gradproj.EduNest.dto.dashboard.EnrollmentPaymentResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.dashboard.FullPaymentPageResponse;
 import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
@@ -47,7 +48,7 @@ public class Payments {
 
     @PreAuthorize("hasRole('ADMIN')")
     public PageResponse<EnrollmentPaymentResponse> getEnrollmentPayments(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("joinedAt").descending());
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("joinedAt").descending());
 
         Page<EnrollmentPaymentResponse> result = enrollmentRepository.findAllEnrollmentPayments(pageable);
 

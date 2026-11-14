@@ -4,7 +4,7 @@ Companion to [MDS.md](MDS.md). Endpoint-level contracts as implemented.
 
 ## 1. Student self-profile (`/student/profile`, class STUDENT)
 
-- `GET /student/profile` → badges (order `createdAt DESC`), 10 latest **graded** project submissions (`findGradedForStudentProfile`, `PageRequest.of(0,10)`), skills, 10 certificates; resolved from `SecurityContextHolder`.
+- `GET /student/profile` → badges (order `createdAt DESC`), 10 latest **graded** project submissions (`findGradedForStudentProfile`, fixed preview `PROFILE_PREVIEW_PROJECTS=10` — P4-09 decision B, documented preview not a paginated collection), skills, 10 certificates (`PROFILE_PREVIEW_CERTIFICATES=10`); resolved from `SecurityContextHolder`.
 - `PATCH /student/profile` ← `UpdateStudentProfileRequest` (names/bio/jobTitle/social links/skill names — **no bean validation on the request fields**): upserts `SocialMedia` by `Media` enum; skill **diff-sync** (removeIf not-present + add missing).
 - `PATCH /student/profile/image` (multipart `image`) → delete old + save via `ImageStorageService.saveImage("student", id, image)` → `uploads/student/{id}-EduNest-{uuid}.{ext}`.
 
@@ -23,7 +23,7 @@ Companion to [MDS.md](MDS.md). Endpoint-level contracts as implemented.
 
 - `GET /students/{studentId}` — names/email/address/KPIs/social links/points.
 - `GET /students/{id}/mentorships-progress` — joined/enrolled mentorship progress rows.
-- `GET /students/{id}/projects` — `status` request **param dropped** (always passes null → filter broken; USR-01).
+- `GET /students/{id}/projects` — optional `status` filter (**works as of P4-09/EB-58, 2026-11-14** — previously dropped at the controller; USR-01; pinned by `contract/MentorStudentProjectsStatusContractTest`). `page`/`size` clamped via `PaginationPolicy` (default 0/6).
 - `GET /students/{studentId}/full-profile` — aggregation.
 
 ## 5. Admin profile & settings (`/admin/**`, ADMIN)

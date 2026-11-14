@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -324,6 +325,64 @@ public class GlobalExceptionHandler {
         String message = (ex.getMessage() == null || ex.getMessage().isBlank())
                 ? "The requested operation is not allowed." : ex.getMessage();
         return build(req, HttpStatus.BAD_REQUEST, ApiErrorCode.ERR_BUSINESS_RULE, message);
+    }
+
+    /**
+     * P4-09 / EB-58 — malformed NUMERIC PAGINATION parameters only.
+     *
+     * Before this handler, {@code page=abc} / {@code size=abc} fell into the
+     * catch-all as a sanitized 500 — a client typo reported as an "internal
+     * system error". PO-approved contract: malformed numeric pagination
+     * parameters are a client error → 400 ERR_VALIDATION with the standard
+     * {@link ApiError} envelope (same shape as {@link #handleValidation}).
+     *
+     * Isolation is by construction — this handler fires ONLY when BOTH:
+     * <ol>
+     *   <li>the mismatched parameter name is in the exact compile-time set of
+     *       real pagination parameter names verified across every controller
+     *       (case-sensitive — {@code UpcomingPage}/{@code UpcomingSize} are
+     *       capitalized as-coded); and</li>
+     *   <li>the target type is numeric.</li>
+     * </ol>
+     * Everything else keeps today's behavior: enum params (e.g. {@code status}),
+     * UUID path variables and non-pagination ints ({@code months}) fall through
+     * to the same sanitized-500 shape as the catch-all below — NO global
+     * behavior change for unrelated parameters. New pagination parameters must
+     * be added to the set (compile-time reviewable).
+     */
+    private static final Set<String> PAGINATION_PARAM_NAMES = Set.of(
+            "page", "size",
+            "msPage", "msSize", "reviewsPage", "reviewsSize",
+            "mentorshipsPage", "mentorshipsSize", "projectsPage", "projectsSize",
+            "badgesPage", "badgesSize", "UpcomingPage", "UpcomingSize",
+            "reviewPage", "reviewSize", "sessionPage", "sessionSize",
+            "notificationPage", "notificationSize",
+            "topPage", "topSize", "studentPage", "studentSize",
+            "mentorPage", "mentorSize", "limit", "topMentorshipsLimit"
+    );
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(HttpServletRequest req, MethodArgumentTypeMismatchException ex) {
+        boolean numericPaginationParam = PAGINATION_PARAM_NAMES.contains(ex.getName())
+                && ex.getRequiredType() != null
+                && (Number.class.isAssignableFrom(ex.getRequiredType()) || ex.getRequiredType() == int.class);
+        if (numericPaginationParam) {
+            ApiError body = ApiError.of(HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                    ApiErrorCode.ERR_VALIDATION, MSG_VALIDATION, req.getRequestURI());
+            Map<String, String> fields = new LinkedHashMap<>();
+            fields.put(ex.getName(), "Parameter '" + ex.getName() + "' must be a valid integer.");
+            body.setFields(fields);
+            return ResponseEntity.badRequest().body(body);
+        }
+        // Unrelated parameter types (enum / UUID / non-pagination int): preserve
+        // today's exact catch-all contract (sanitized 500 + refId).
+        String refId = UUID.randomUUID().toString().substring(0, 8);
+        log.error("Unhandled exception [refId={}] on {}", refId, req.getMethod(), ex);
+        ApiError body = ApiError.of(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                ApiErrorCode.ERR_INTERNAL_SYSTEM, MSG_INTERNAL, req.getRequestURI());
+        body.setRefId(refId);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     /**
