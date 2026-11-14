@@ -6,16 +6,17 @@
 [![Java](https://img.shields.io/badge/Java-21-007396?style=flat-square&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.7-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Spring Security](https://img.shields.io/badge/Spring_Security-6-6DB33F?style=flat-square&logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![WebSocket](https://img.shields.io/badge/WebSocket-STOMP-000000?style=flat-square&logo=socket.io&logoColor=white)](#)
-[![Jitsi](https://img.shields.io/badge/Jitsi-Meet-1D70B8?style=flat-square&logo=jitsi&logoColor=white)](https://jitsi.org/)
+[![Live sessions](https://img.shields.io/badge/Live_sessions-Zoom_%2F_Jitsi-1D70B8?style=flat-square)](mds/live-sessions/MDS.md)
 
-A production-grade, modular educational ecosystem where every completed learning journey produces a verifiable certificate, a portfolio of submitted projects, and a public skill profile — turning passive learning into measurable, mentor-driven outcomes.
+A modular educational ecosystem for mentor-led curricula, submitted projects, student profiles and database-backed completion certificate records.
 </div>
 
 ---
 
 ## Executive Summary
+For engineering documentation and current implementation details, see [mds/README.md](mds/README.md).
 EduNest is a next-generation, mentor-led structured-learning platform designed to address the fundamental shortcomings of contemporary online education. It bridges the gap between passive online courses and real mentorship by empowering mentors to design week-by-week learning journeys containing lectures, quizzes, tasks, and capstone projects.
 
 Unlike competitors that offer one-to-one mentorship (expensive and unscalable) or traditional MOOCs (passive with low completion rates), EduNest introduces a **scalable group mentorship model** integrating curriculum delivery, real-time communication, live sessions, assessments, gamification, and certification into a single ecosystem.
@@ -26,7 +27,7 @@ Unlike competitors that offer one-to-one mentorship (expensive and unscalable) o
 **The Problem:** The online learning market is flooded with platforms that rely on pre-recorded video content with no human oversight. Completion rates remain critically low, students receive no personal guidance, and they finish courses without verifiable credentials or portfolio-worthy projects. Tool fragmentation forces users to juggle video platforms, messaging apps, and grading spreadsheets.
 
 **The Solution:** EduNest provides a centralized learning ecosystem that unifies every component of the online learning experience. 
-- **For Students:** Structured checkpoints, real-time communication, graded submissions, and a gamified reward system.
+- **For Students:** Structured weekly curricula, real-time communication, graded submissions, and a gamified reward system. Checkpoint-based prerequisite unlocking is not implemented.
 - **For Mentors:** A unified tool to structure curricula, communicate with learners, and track their progress without needing third-party tools.
 
 ---
@@ -40,14 +41,14 @@ Mentors create structured mentorship programs with defined curricula, pricing, a
 Each mentorship is organized into ordered weeks containing:
 - **Lectures**: External video URLs.
 - **Quizzes**: MCQ formats with A/B/C/D choices and auto-grading.
-- **Tasks**: File submissions with manual grading, points, and pass thresholds.
+- **Tasks**: File submissions with manual grading and points. `passPoints` is stored but does not enforce prerequisite unlocking.
 - **Projects**: Capstone assignments with briefs, deadlines, and point awards.
 
 ### 3. Live and Recorded Sessions
-Mentors can schedule live sessions via **Jitsi Meet** with an automated lifecycle (`SCHEDULED` → `LIVE` → `ENDED`) and automatic student attendance tracking. 
+Mentors can schedule live sessions with an automated lifecycle. Zoom meeting creation is available when enabled and configured; otherwise Jitsi links are generated as a fallback. Zoom is disabled by default. Attendance snapshots can be recorded, while attendance evaluation/enforcement is disabled by default.
 
 ### 4. Built-in Real-Time Communication
-Powered by WebSocket STOMP, the platform offers group chat rooms per mentorship cohort and private one-to-one conversations. Secured with JWT at both handshake and per-message levels.
+Powered by WebSocket STOMP, the platform offers group chat rooms and private conversations. JWT is validated on STOMP CONNECT; room SUBSCRIBE and SEND operations apply authorization checks.
 
 ### 5. Gamification Engine & Badges
 - **Badges**: 8 configurable categories (ACHIEVEMENT, PERFORMANCE, CONSISTENCY, PROBLEM_SOLVING, CREATIVITY, LEADERSHIP, COMMUNITY, SPECIAL_RECOGNITION).
@@ -55,7 +56,7 @@ Powered by WebSocket STOMP, the platform offers group chat rooms per mentorship 
 - **Admin Badges**: Platform-wide recognition like `TOP_MENTOR` and `INNOVATOR_AWARD`.
 
 ### 6. Measurable Outcomes (Certificates & Portfolios)
-- **Automated PDF Certificates**: Generated via **iText7** upon mentorship completion, detailing cohort rank and issue date.
+- **Completion certificates**: Completion processing creates database-backed certificate records for eligible ranked students; students can view their records. A completion-certificate PDF renderer or download is not implemented. Admin badge PDFs are a separate feature.
 - **Student Skill Profiles**: Public profiles aggregating skills, social links (GitHub, LinkedIn), earned badges, certificates, and an auto-generated portfolio of graded project submissions.
 
 ### 7. Mentor Analytics Dashboard
@@ -70,7 +71,7 @@ Real-time visibility into enrollment statistics, platform commission/revenue tra
 - Browse, filter, and enroll in mentorships.
 - Navigate weekly curricula (Lectures, Quizzes, Tasks, Projects).
 - Submit files securely (validated by Apache Tika).
-- Engage in real-time chat and join live Jitsi sessions.
+- Engage in real-time chat and join configured Zoom or fallback Jitsi sessions.
 - Earn points, badges, certificates, and build a public profile.
 
 ### MENTOR
@@ -95,9 +96,9 @@ Real-time visibility into enrollment statistics, platform commission/revenue tra
 |----------|--------------|
 | **Core Backend** | Java 21, Spring Boot 3.5.7 |
 | **Security** | Spring Security 6 & jjwt 0.12.5 |
-| **Database & ORM** | MySQL 8, Spring Data JPA |
-| **Real-Time & Media** | Spring WebSocket + STOMP, Jitsi Meet API |
-| **Document Processing**| Apache Tika 2.9.2, iText7 7.2.5 |
+| **Database & ORM** | PostgreSQL, Spring Data JPA |
+| **Real-Time & Media** | Spring WebSocket + STOMP, optional Zoom integration / Jitsi fallback |
+| **Document Processing**| Apache Tika 2.9.2, iText7 for admin badge PDFs |
 | **Tooling & Build** | Spring Mail, springdoc-openapi 2.7 |
 
 ---
@@ -288,8 +289,8 @@ For a complete, in-depth view of the system analysis, comprehensive sequence dia
    cd EduNest
    ```
 2. **Configure the Database:**
-   - Ensure MySQL 8 is running locally.
-   - Update `src/main/resources/application.properties` with your DB credentials and SMTP email settings.
+   - Provide a reachable PostgreSQL database and set `DATABASE_URL`, `DATABASE_NAME` (database username), and `DATABASE_PASSWORD` as environment variables.
+   - Supply the required `JWT_SECRET` and `MAIL_*` settings through the environment; select the appropriate security profile. Do not put credentials in tracked files. See [environment configuration](mds/deployment/environment-configuration.md).
 3. **Build the project:**
    ```bash
    mvn clean install
