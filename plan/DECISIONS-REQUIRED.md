@@ -29,7 +29,7 @@
 | D-17 | Fresh-deployment default commission rate | PO | Before P3-05 | P3-05 |
 | D-18 | Soft-deleted users' visibility on public reads | PO | Before P3-04 | P3-04 |
 | D-19 | Git history cleanup approval for committed uploads | Eng Lead + PO | Before P6-06 execution | P6-06 |
-| D-20 | API envelope/path standardization scope | Eng Lead + FE liaison | Before P4-16 (deferral expected) | P4-16 (conditional) |
+| D-20 | API envelope/path standardization scope | Eng Lead + FE liaison | Before P4-16 (PO recommendation pending confirmation) | P4-16 (conditional) |
 | D-21 | `features/roadmap/**` fate | PO | Before P5-05 | doc sub-item |
 | D-22 | Hosting & environments (staging/prod target, DNS/TLS) | PO + Infra + Eng Lead | ✅ Decided 2026-10-25 (container + Supabase) | P6-02+ §all infra; P7-05+ (unblocked) |
 | D-23 | CORS allowed-origins values | PO + FE liaison | Before P1-23 | P1-23 |
@@ -271,6 +271,9 @@
 ### D-20 — API envelope standardization
 - **Question:** Unify `SimpleResponse` vs typed DTOs vs `PageResponse` (API-01) and normalize legacy path styles (API-03) now or later?
 - **Default:** defer both (breaking-change cost vs zero user value mid-stabilization). Decide-by: before P4-16.
+- **PO recommendation — pending Engineering Lead and Frontend Liaison confirmation:** Defer success-response envelope standardization (API-01), API path consolidation and legacy route retirement (API-03) for the current sprint. This is a proposed outcome, not a finalized D-20 decision.
+- **Proposed compatibility boundary:** Preserve existing routes, request and response formats, and the established `ApiError` contract. Do not introduce aliases or migration layers; do not alter authentication headers, token behavior, authorization rules, or email/identifier compatibility behavior.
+- **Proposed reopening trigger:** If confirmed, reconsider through a future explicit API versioning or frontend migration decision. Engineering Lead and Frontend Liaison confirmation remains pending.
 
 ### D-21 — Roadmap module
 - **Question:** `features/roadmap/**` empty skeleton — implement or delete (TD-06)?

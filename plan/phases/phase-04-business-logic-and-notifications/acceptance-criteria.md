@@ -25,7 +25,7 @@
 | P4-13 | Failed-email records + bounded retry + admin listing | IT run (fake SMTP) | DevOps |
 | P4-14 | Profiles behave identically on unknown-property payloads | probe run | Eng Lead |
 | P4-15 | *(Conditional)* implemented per D-10 or deferral recorded | — | PO + Eng Lead |
-| P4-16 | *(Conditional)* decision outcome recorded; contract suites updated if implemented | — | FE liaison |
+| P4-16 | *(Conditional)* decision outcome recorded; contract suites updated if implemented | [D-20 PO recommendation](../../DECISIONS-REQUIRED.md#d-20--api-envelope-standardization) is pending Engineering Lead and Frontend Liaison confirmation; decision and sign-off not yet complete | FE liaison |
 | P4-17 | *(Conditional)* hook or docs per D-16 | — | DevOps |
 
 ## 3. Phase-level checks
