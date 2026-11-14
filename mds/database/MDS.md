@@ -56,7 +56,7 @@ Spring Data interfaces per domain; extensive **projection interfaces** (`reposit
 
 - Repositories → Hibernate/MySQL; all entities cascade-owned via `@OneToMany(cascade=ALL, orphanRemoval=true)` from their aggregates (MentorShip → weeks/etc., Week → content, Quiz → questions/submissions, Task → submissions…).
 - Cross-aggregate links are predominately **`@ManyToOne(LAZY)`** + service-implemented integrity rules (no DB-level FK text beyond generated constraints from the mappings).
-- OSIV (default ON in Spring Boot) is **relied upon**: several read paths navigate lazy collections outside transactional service methods (e.g. quiz dashboard navigations, `mentorShipServiceI.mapToMentorShipResponse`) — [transactions-consistency.md §3](transactions-consistency.md#3-open-session-in-view-osiv-reliance).
+- OSIV defaults ON in Spring Boot unless externally overridden; single-quiz reads and `mentorShipServiceI.mapToMentorShipResponse` navigate lazy associations outside explicit read transactions. EB-60 moved quiz dashboard/list reads to projections. EB-48 prepares an opt-in test-only `no-osiv` profile and categorized [readiness inventory](transactions-consistency.md#31-eb-48--p3-06-policy-and-readiness-inventory); endpoint readiness remains unverified and D-24 does not approve global disablement.
 
 ## 5. Workflows & Data Flow
 

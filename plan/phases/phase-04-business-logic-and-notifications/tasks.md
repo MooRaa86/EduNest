@@ -165,6 +165,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** no-OSIV suite run (red list = what P4 fixes); green list at end.
 **Docs:** transactions-consistency.md; ISSUE-MAPPING DB-06.
 
+**EB-48 handoff:** the opt-in test-only profile and static readiness inventory are documented in `transactions-consistency.md` §3.1. The no-OSIV endpoint trial and any fixes remain separately gated; D-24 does not approve global disablement, and EB-60's delivered query improvements do not establish no-OSIV readiness.
+
 <a id="p4-12"></a>
 ### P4-12 — Batch persistence loops
 
