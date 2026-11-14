@@ -64,6 +64,7 @@ These drive Phase 0 only; their tasks feed results into the sync process ([`TEAM
 
 - In-memory STOMP simple broker → single instance only (horizontal scale would require external broker — post-launch decision; ARCH-004).
 - OSIV retained until D-24; performance program P4-11 is the prerequisite.
+- **API-01 / API-03 / D-20 / EB-65:** PO recommendation — pending Engineering Lead and Frontend Liaison confirmation — proposes deferring success-envelope standardization, path consolidation and legacy-route retirement for this sprint while preserving existing contracts. The inconsistencies remain; no final disposition is recorded. If confirmed, reconsider through a future explicit API versioning or frontend migration decision.
 - `qty` of manual verification for infra tasks: despite CI, DNS/TLS/SMTP/backup *reality checks* remain human-verifiable per P7 acceptance checklists.
 
 ## 6. Planning assumptions register

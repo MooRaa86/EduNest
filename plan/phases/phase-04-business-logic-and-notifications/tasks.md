@@ -232,6 +232,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Depends on:** D-20.  **Blocks:** —
 **Tests:** contract suites updated accordingly (if implemented).
 
+**EB-65 / D-20 draft:** PO recommendation — pending Engineering Lead and Frontend Liaison confirmation — is to defer success-envelope standardization (API-01), path consolidation and legacy-route retirement (API-03) for the current sprint. The proposed boundary preserves existing routes, request/response formats, `ApiError`, authentication headers and tokens, authorization, and email/identifier compatibility; no aliases or migration layers are proposed. If confirmed, reconsider through a future explicit API versioning or frontend migration decision. This recommendation is not a finalized disposition; the inconsistencies remain.
+
 <a id="p4-17"></a>
 ### P4-17 — Zoom meeting integration (EB-66 / replaces Jitsi per D-16 & D-29)
 
