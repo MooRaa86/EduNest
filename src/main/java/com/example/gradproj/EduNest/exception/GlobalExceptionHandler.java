@@ -132,8 +132,7 @@ public class GlobalExceptionHandler {
         // from the REST path — unknown fields fell into the generic malformed
         // shape. The error-responses.md catalog documents ERR_UNKNOWN_FIELD for
         // prod unknown fields; the dispatch below makes the code match that
-        // documented contract (prod fail-on-unknown-properties=true; dev leaves
-        // unknown properties ignored).
+        // documented ERR_UNKNOWN_FIELD contract for strict Jackson binding.
         if (ex.getCause() instanceof UnrecognizedPropertyException unrecognized) {
             return handleUnknownField(req, unrecognized);
         }

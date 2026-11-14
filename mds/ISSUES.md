@@ -209,7 +209,7 @@ All paths relative to repo root. Domain details: each domain's MDS under its dir
 | API-01 | TECHNICAL DEBT | Low | ✅ | Envelope inconsistency: `SimpleResponse` vs typed DTOs vs `PageResponse<T>`; no uniform errors contract | controller survey |
 | API-02 | PERFORMANCE | Medium | ✅ | Unbounded `size` params; inconsistent defaults (5/6/10); one in-memory paginating aggregator | endpoints doc §2 |
 | API-03 | TECHNICAL DEBT | Low | ✅ | Path-version drift/email-as-identifier paths (`/login-api`, `/files`, `/admin`, absolute badge paths) | route survey |
-| API-05 | BUG | Medium | ✅ | Jackson `fail-on-unknown-properties` true **prod only** → unknown-field 400 in prod, silent ignore in dev (contract drift) | properties delta |
+| API-05 | BUG | Medium | ✅ | **EB-63 / P4-14 implemented:** shared Jackson strictness aligns dev and prod; previously prod rejected unknown fields while dev ignored them. Multipart task/project PATCH retains its existing sanitized 500 limitation (potential follow-up). | `application.properties`; dev/prod contract and multipart probes |
 | API-04 *(xref)* | SECURITY | High | ✅ | **FIXED (EB-16):** = SEL-08 — admin response credential leaks resolved (identity-only DTO) | see ISSUE-MAPPING SEL-08 | (resolved in EB-16) |
 
 ---

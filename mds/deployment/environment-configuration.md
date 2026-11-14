@@ -31,7 +31,7 @@ Complete configuration surface (verified against `application.properties`, `appl
 | `server.port` | `${PORT:8080}` | `${PORT:8080}` |
 | DDL | `ddl-auto=validate` | `ddl-auto=validate` (same) — Flyway owns schema; Hibernate only validates (`spring.flyway.enabled=false`, operator migrations via `-Pdb-migrate`; corrected 2026-11-12 from a stale `update` row against `application.properties`/`application-prod.properties`) |
 | SQL logging | `show-sql=true`, `format_sql=true` | same (**prod-noisy**, DEP-04) |
-| Jackson unknown fields | default (ignored) | `fail-on-unknown-properties=true` (contract drift — API-05) |
+| Jackson unknown fields | `fail-on-unknown-properties=true` (EB-63 / API-05) | `fail-on-unknown-properties=true` (same) |
 | Static resources | – | `static-locations = classpath:/static/, file:uploads/` |
 | Multipart caps | 10MB file / 10MB request | same |
 | Mail | same `${MAIL_*}` set | same |
@@ -55,7 +55,7 @@ Additional prod-profile-only hardcoding: none for JWT (see §1).
 
 1. **Default (no profile) = dev chain:** `anyRequest().permitAll()` + httpBasic + formLogin enabled. IDE runs and CLI `spring-boot:run` without `-Dspring.profiles.active=prod` are **not** production-safe (SEL-02 / ARCH-001).
 2. The Dockerfile always sets `prod`; when running locally, set the env var yourself to exercise the hardened chain — `SPRING_PROFILES_ACTIVE=prod` (watch for typos: a misspelled variable silently degrades to the open dev chain).
-3. The `prod` profile also flips static-locations (adds `file:uploads/`); earlier team docs recorded only the file-serving diff, but the Jackson strictness delta is prod-only too (see matrix).
+3. Jackson strictness is shared by default and prod (EB-63); higher-priority external configuration can still override Spring properties.
 
 ## 5. Local runbook (JDK note)
 
@@ -67,7 +67,7 @@ Additional prod-profile-only hardcoding: none for JWT (see §1).
 
 - DEP-05: JWT secret handling (above).
 - DEP-07: no compose/k8s manifest tracked; no `.env.example`.
-- SEL-01/SEL-02 cross-references; DB-01 (`ddl-auto`), DEP-04 (show-sql), API-05 (Jackson strictness delta).
+- SEL-01/SEL-02 cross-references; DB-01 (`ddl-auto`), DEP-04 (show-sql). API-05 profile strictness is aligned by EB-63.
 
 ## 7. Supabase PostgreSQL — implemented state ([ADD-01]/EB-81, `feat/add-01-supabase-pg`, PR #68)
 
@@ -151,7 +151,7 @@ Single canonical list, cross-checked against `.env.example` and `ops/environment
 | Opt | `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | `app.stripe.success-url` / `app.stripe.cancel-url` | *(empty)* | FE landing routes Stripe redirects to; required once `STRIPE_ENABLED=true` (gateway fails fast without them) |
 | Dev-only | `EDUNEST_UNSAFE_DEV` | `ProjectSecurityConfig` gate | `false` | Boot refusal without it when `prod` absent; **never set true outside local dev** |
 
-**Not env-configurable (inventory facts):** CORS (`ProjectSecurityConfig`, `*` in both chains), Jackson prod strictness (`application-prod.properties`), multipart caps (10MB in files), `springdoc` UI settings.
+**Configuration inventory:** CORS (`ProjectSecurityConfig`, `*` in both chains), Jackson strictness (`application.properties` and `application-prod.properties`), multipart caps (10MB in files), `springdoc` UI settings. Spring's higher-priority configuration sources can override properties.
 
 **Deferred vars:** none — the previously deferred `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` (D-28 / EB-108) are now wired: see the rows above and section 6b of `.env.example`. Live-mode keys remain gated to P7 provisioning (D-28).
 

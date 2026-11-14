@@ -16,8 +16,10 @@
 | Pagination | `page` + `size` request params → `Pageable` | Common defaults: page 0, size 5/6/10 depending on endpoint; **no global cap** (`size` unbounded — API-02). One in-memory paginating aggregator exists ([../mentorship-flow/explore-and-homepage.md](../mentorship-flow/explore-and-homepage.md)). **Contract pinned by P2-06/EB-40** (`contract/PaginationContractTest`, 2026-11-02, on `/api/v1/mentorship/explore`): beyond-range page → 200 empty; but `size<=0` / `page=-1` → raw `IllegalArgumentException` → **500 ERR_INTERNAL_SYSTEM** (no clamp anywhere — every controller inherits this quirk; the cap/clamp fix stays P4-09) |
 | Validation | Bean Validation on request DTOs (`@Valid`) | Coverage inconsistent; `@Validated` is used **nowhere repo-wide**; login + verify-user lack `@Valid` (SEL-07) |
 | Errors | `@RestControllerAdvice GlobalExceptionHandler` | Contract: [error-responses.md](error-responses.md) |
-| Serialization | Jackson; `fail-on-unknown-properties=true` **prod only** → unknown-field 400 there, silent ignore in dev | **Contract pin delivered (P2-06/EB-40, 2026-11-02):** prod unknown field → **400 ERR_UNKNOWN_FIELD** (+ `invalidField`/`allowedFields`) — the advice now dispatches wrapped `UnrecognizedPropertyException` causes to the documented handler (was unreachable → generic malformed); dev keeps ignoring unknown fields (parity pair: `JacksonProdUnknownFieldContractTest` + `JacksonDevUnknownFieldContractTest`) |
+| Serialization | Jackson `fail-on-unknown-properties=true` in common configuration and prod | **EB-63 / P4-14:** dev and prod now reject unknown MVC JSON fields with **400 ERR_UNKNOWN_FIELD** (+ `invalidField`/`allowedFields`); tests: `JacksonProdUnknownFieldContractTest`, `JacksonDevUnknownFieldContractTest`. EB-40 made the prod handler dispatch reachable; previously dev ignored unknown fields. Task/project multipart PATCH preserves its existing sanitized 500 limitation; see [error-responses.md](error-responses.md). |
 | Multipart | multipart/form-data endpoints for file uploads/patches | Separate JSON-part + file-part pattern |
+
+**EB-63 compatibility note:** development clients must omit undeclared DTO properties, as production clients already must. Frontend liaison confirmation is pending; the consolidated frontend handoff is deferred. Task/project multipart PATCH unknown fields return the pre-existing sanitized 500, not the MVC unknown-field 400; this is potential follow-up technical debt.
 
 ## 3. Documents
 
@@ -31,7 +33,7 @@
 - **API-02:** unbounded `size`, inconsistent defaults, in-memory pagination.
 - **API-03:** email-as-identifier path params (`/api/v1/profile/mentor/{mentorEmail}`, `/settings/*`, admin delete `/{email}`) — fine functionally, leaks enumeration + easy-to-misuse contract.
 - **API-04:** mixed password-hash/registration leaks in admin response DTOs (SEL-08) and JWT-in-body (SEL-12).
-- **API-05:** profile-dependent Jackson strictness (dev vs prod).
+- **API-05:** Jackson strictness aligned across dev and prod by EB-63; multipart PATCH error handling remains a potential follow-up.
 
 ## 5. Related Documentation
 
