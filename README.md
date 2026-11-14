@@ -1,304 +1,309 @@
 <div align="center">
 
-# EduNest
-### Next-Generation Mentorship & Structured-Learning Platform
+# 🎓 EduNest Backend
+### Enterprise-Grade Mentorship, Structured Learning & Gamified EdTech Ecosystem
 
-[![Java](https://img.shields.io/badge/Java-21-007396?style=flat-square&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.7-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Spring Security](https://img.shields.io/badge/Spring_Security-6-6DB33F?style=flat-square&logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![WebSocket](https://img.shields.io/badge/WebSocket-STOMP-000000?style=flat-square&logo=socket.io&logoColor=white)](#)
-[![Live sessions](https://img.shields.io/badge/Live_sessions-Zoom_%2F_Jitsi-1D70B8?style=flat-square)](mds/live-sessions/MDS.md)
+[![Java 21](https://img.shields.io/badge/Java-21-007396?style=for-the-badge&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
+[![Spring Boot 3.5.7](https://img.shields.io/badge/Spring_Boot-3.5.7-6DB33F?style=for-the-badge&logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Security 6](https://img.shields.io/badge/Spring_Security-6-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
+[![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL_17-Supabase-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker & GHCR](https://img.shields.io/badge/Container-GHCR_Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/MooRaa86/EduNest/pkgs/container/edunest-backend)
+[![WebSocket STOMP](https://img.shields.io/badge/WebSocket-STOMP-000000?style=for-the-badge&logo=socket.io&logoColor=white)](#)
 
-A modular educational ecosystem for mentor-led curricula, submitted projects, student profiles and database-backed completion certificate records.
+*A modular, domain-driven educational platform bridging asynchronous curriculum delivery, cohort-based mentorship, real-time collaboration, and verifiable learning outcomes.*
+
+[Architecture](#-domain-driven-business-architecture) • [Core Domains](#-business-domains--bounded-contexts) • [Domain Model](#-core-domain-model) • [Security & Resilience](#-enterprise-engineering--security-standards) • [Getting Started](#-local-deployment--developer-quickstart)
+
 </div>
 
 ---
 
-## Executive Summary
-For engineering documentation and current implementation details, see [mds/README.md](mds/README.md).
-EduNest is a next-generation, mentor-led structured-learning platform designed to address the fundamental shortcomings of contemporary online education. It bridges the gap between passive online courses and real mentorship by empowering mentors to design week-by-week learning journeys containing lectures, quizzes, tasks, and capstone projects.
+## 🌟 Executive Overview & Business Value
 
-Unlike competitors that offer one-to-one mentorship (expensive and unscalable) or traditional MOOCs (passive with low completion rates), EduNest introduces a **scalable group mentorship model** integrating curriculum delivery, real-time communication, live sessions, assessments, gamification, and certification into a single ecosystem.
+Traditional online education suffers from a **critical retention and completion crisis (< 10% industry average)** driven by passive pre-recorded video consumption and the absence of human accountability. Conversely, 1-on-1 private tutoring is cost-prohibitive and unscalable.
 
----
-
-## The Problem & Our Solution
-**The Problem:** The online learning market is flooded with platforms that rely on pre-recorded video content with no human oversight. Completion rates remain critically low, students receive no personal guidance, and they finish courses without verifiable credentials or portfolio-worthy projects. Tool fragmentation forces users to juggle video platforms, messaging apps, and grading spreadsheets.
-
-**The Solution:** EduNest provides a centralized learning ecosystem that unifies every component of the online learning experience. 
-- **For Students:** Structured weekly curricula, real-time communication, graded submissions, and a gamified reward system. Checkpoint-based prerequisite unlocking is not implemented.
-- **For Mentors:** A unified tool to structure curricula, communicate with learners, and track their progress without needing third-party tools.
+**EduNest** bridges this gap through a **Scalable Cohort Mentorship Model**. It empowers expert mentors to architect structured, week-by-week learning journeys containing video lectures, auto-evaluated MCQ quizzes, graded capstone projects, live video sessions, and real-time STOMP chat rooms. Learners advance together in cohorts, rewarded by an intrinsic gamification ledger and certified upon completion with tamper-evident database snapshots.
 
 ---
 
-## Key Features & Scope
+## 🏛️ Domain-Driven Business Architecture
 
-### 1. Centralized Learning & Group-Based Mentorship
-Mentors create structured mentorship programs with defined curricula, pricing, and enrollment. Students join as cohorts, enabling collaborative learning, peer interaction, and community building at scale.
+EduNest is structured around **7 Autonomous Bounded Contexts (Business Domains)**, enforcing separation of concerns, explicit domain events, and strict transaction boundaries:
 
-### 2. Weekly Curriculum Builder
-Each mentorship is organized into ordered weeks containing:
-- **Lectures**: External video URLs.
-- **Quizzes**: MCQ formats with A/B/C/D choices and auto-grading.
-- **Tasks**: File submissions with manual grading and points. `passPoints` is stored but does not enforce prerequisite unlocking.
-- **Projects**: Capstone assignments with briefs, deadlines, and point awards.
-
-### 3. Live and Recorded Sessions
-Mentors can schedule live sessions with an automated lifecycle. Zoom meeting creation is available when enabled and configured; otherwise Jitsi links are generated as a fallback. Zoom is disabled by default. Attendance snapshots can be recorded, while attendance evaluation/enforcement is disabled by default.
-
-### 4. Built-in Real-Time Communication
-Powered by WebSocket STOMP, the platform offers group chat rooms and private conversations. JWT is validated on STOMP CONNECT; room SUBSCRIBE and SEND operations apply authorization checks.
-
-### 5. Gamification Engine & Badges
-- **Badges**: 8 configurable categories (ACHIEVEMENT, PERFORMANCE, CONSISTENCY, PROBLEM_SOLVING, CREATIVITY, LEADERSHIP, COMMUNITY, SPECIAL_RECOGNITION).
-- **Points & Leaderboards**: Points are accumulated per mentorship and displayed on cohort-specific leaderboards.
-- **Admin Badges**: Platform-wide recognition like `TOP_MENTOR` and `INNOVATOR_AWARD`.
-
-### 6. Measurable Outcomes (Certificates & Portfolios)
-- **Completion certificates**: Completion processing creates database-backed certificate records for eligible ranked students; students can view their records. A completion-certificate PDF renderer or download is not implemented. Admin badge PDFs are a separate feature.
-- **Student Skill Profiles**: Public profiles aggregating skills, social links (GitHub, LinkedIn), earned badges, certificates, and an auto-generated portfolio of graded project submissions.
-
-### 7. Mentor Analytics Dashboard
-Real-time visibility into enrollment statistics, platform commission/revenue tracking, and pending submission queues.
-
----
-
-## Users and Roles
-
-### STUDENT
-- Register via email/OTP.
-- Browse, filter, and enroll in mentorships.
-- Navigate weekly curricula (Lectures, Quizzes, Tasks, Projects).
-- Submit files securely (validated by Apache Tika).
-- Engage in real-time chat and join configured Zoom or fallback Jitsi sessions.
-- Earn points, badges, certificates, and build a public profile.
-
-### MENTOR
-- Create mentorships (`DRAFT` → `ACTIVE` → `COMPLETED`).
-- Build week-by-week curricula and schedule live sessions.
-- Grade tasks and projects manually.
-- Create custom gamification badges.
-- Track revenues and student progress via the Mentor Dashboard.
-
-### ADMIN
-- View and search all platform users via `AdminUserDirectory`.
-- Handle "Contact Us" workflows (`PENDING` → `UNDER_REVIEW` → `COMPLETED`).
-- Issue global Admin Badges.
-- Access platform-wide analytics and payment overviews.
-- Send broadcast notifications.
-
----
-
-## System Architecture & Technologies
-
-| Category | Technologies |
-|----------|--------------|
-| **Core Backend** | Java 21, Spring Boot 3.5.7 |
-| **Security** | Spring Security 6 & jjwt 0.12.5 |
-| **Database & ORM** | PostgreSQL, Spring Data JPA |
-| **Real-Time & Media** | Spring WebSocket + STOMP, optional Zoom integration / Jitsi fallback |
-| **Document Processing**| Apache Tika 2.9.2, iText7 for admin badge PDFs |
-| **Tooling & Build** | Spring Mail, springdoc-openapi 2.7 |
-
----
-
-## UML Diagrams Overview
-
-### Use Case Diagram
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ebf5fb', 'primaryTextColor': '#154360', 'primaryBorderColor': '#3498db', 'lineColor': '#3498db', 'textColor': '#3498db'}}}%%
-flowchart LR
-  Student([Student])
-  Mentor([Mentor])
-  Admin([Admin])
-
-  subgraph EduNest Platform
-    UC1(Register & OTP Verify)
-    UC2(Browse & Enroll)
-    UC3(View Weekly Curriculum)
-    UC4(Submit Quizzes)
-    UC5(Submit Tasks & Projects)
-    UC6(Join Live Session)
-    UC7(Chat - Group & Private)
-    UC8(Earn Points & Badges)
-    UC9(View Certificate)
-    UC10(Create Mentorship)
-    UC11(Build Curriculum)
-    UC12(Grade Submissions)
-    UC13(Schedule Live Session)
-    UC14(Create Badges)
-    UC15(View Mentor Dashboard)
-    UC16(Manage Users)
-    UC17(Handle Contact Messages)
-    UC18(Manage Admin Badges)
-    UC19(View Payments)
+flowchart TD
+  subgraph IdentityDomain["1. Identity, Access & User Directory"]
+    Auth[JWT Authentication & OTP]
+    RBAC[Role-Based Access Control]
+    Profiles[Student & Mentor Skill Profiles]
   end
 
-  Student --> UC1
-  Student --> UC2
-  Student --> UC3
-  Student --> UC4
-  Student --> UC5
-  Student --> UC6
-  Student --> UC7
-  Student --> UC8
-  Student --> UC9
+  subgraph MentorshipDomain["2. Mentorship & Curriculum Orchestration"]
+    Cohort[Cohort & Mentorship Lifecycle]
+    Curriculum[Ordered Weekly Syllabus]
+    Live[Live Sessions - Zoom / Jitsi]
+  end
 
-  Mentor --> UC1
-  Mentor --> UC10
-  Mentor --> UC11
-  Mentor --> UC12
-  Mentor --> UC13
-  Mentor --> UC14
-  Mentor --> UC15
-  Mentor --> UC7
+  subgraph AssessmentDomain["3. Assessment & Evaluation Engine"]
+    Quizzes[Auto-Graded MCQ Quizzes]
+    Submissions[File Tasks & Capstone Projects]
+    Grading[Mentor Rubrics & Late Policy]
+  end
 
-  Admin --> UC1
-  Admin --> UC16
-  Admin --> UC17
-  Admin --> UC18
-  Admin --> UC19
+  subgraph GamificationDomain["4. Gamification & Progression"]
+    Ledger[Transactional Points Ledger]
+    Badges[8-Category Badge Taxonomy]
+    Leaderboard[Cohort & Global Leaderboards]
+    Certificates[Snapshot Completion Certificates]
+  end
+
+  subgraph CollaborationDomain["5. Real-Time Collaboration & Events"]
+    Chat[STOMP WebSocket Rooms]
+    PrivateMsg[Direct Peer Messaging]
+    Notifs[Transactional In-App Notifications]
+  end
+
+  subgraph BillingDomain["6. Commerce & Financial Clearance"]
+    Stripe[Stripe Checkout & Webhooks]
+    Commissions[Platform Commission Split]
+    FreeTier[Instant Zero-Cost Bypass]
+  end
+
+  subgraph StorageDomain["7. Storage & Asset Infrastructure"]
+    S3[Supabase Storage S3]
+    Tika[MIME Magic-Byte Validation]
+    Hygiene[Repository Hygiene Guard]
+  end
+
+  IdentityDomain --> MentorshipDomain
+  BillingDomain -->|Authorizes Enrollment| MentorshipDomain
+  MentorshipDomain --> AssessmentDomain
+  AssessmentDomain -->|Awards Points & Triggers| GamificationDomain
+  MentorshipDomain --> CollaborationDomain
+  AssessmentDomain --> StorageDomain
+  GamificationDomain --> IdentityDomain
 ```
 
-### Core Domain (Class Diagram)
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ebf5fb', 'primaryTextColor': '#154360', 'primaryBorderColor': '#3498db', 'lineColor': '#3498db', 'classText': '#154360', 'textColor': '#3498db'}}}%%
-classDiagram
-  BaseEntity <|-- UserEntity
-  BaseEntity <|-- Admin
-  UserEntity <|-- Student
-  UserEntity <|-- Mentor
+---
 
-  class BaseEntity {
-    +Long id
-    +LocalDateTime createdAt
-    +LocalDateTime updatedAt
-    +String createdBy
-    +String updatedBy
-  }
+## 📦 Business Domains & Bounded Contexts
+
+### 1. 🎓 Mentorship & Curriculum Orchestration Domain
+* **Mentorship Lifecycle Management:** Mentors design, publish, and supervise comprehensive learning programs transitioning through structured states (`DRAFT` → `ACTIVE` → `COMPLETED`).
+* **Ordered Weekly Syllabi:** Curricula are decomposed into ordered weeks containing asynchronous video lectures, instructional resources, and evaluation gates.
+* **Synchronous Live Sessions:** Automated scheduling and lifecycle management for live cohorts, featuring integrated Zoom meeting creation with resilient Jitsi fallback routing.
+* **Enrollment Registry:** Manages cohort rosters, capacity controls, seat allocation, and student progression states.
+
+### 2. 📝 Assessment & Submission Evaluation Domain
+* **Auto-Graded MCQ Quizzes:** Time-bounded interactive evaluations with randomized answer permutations, immediate automated grading, and scheduled automated sweep transitions (`PUBLISHED` → `CLOSED`).
+* **Capstone Projects & Tasks:** Deep practical assignments requiring artifact submissions with deadline enforcement, grace windows, and tamper-evident student file attachments.
+* **Mentor Evaluation Rubrics:** Mentors review student deliverables, award granular points, and supply structured qualitative feedback through transactional grading workflows.
+* **Anti-Cheat & Late Submission Controls:** Fail-closed late grace periods, immutable original submission timestamps, and multi-mentor re-parenting IDOR guards.
+
+### 3. 🏆 Gamification, Progression & Certification Domain
+* **Transactional Points Ledger:** Double-entry points tracking ensuring mathematical consistency across quiz completions, task approvals, and badge grants without race conditions.
+* **8-Tier Badge Taxonomy:** Dynamic achievements spanning `ACHIEVEMENT`, `PERFORMANCE`, `CONSISTENCY`, `PROBLEM_SOLVING`, `CREATIVITY`, `LEADERSHIP`, `COMMUNITY`, and `SPECIAL_RECOGNITION`.
+* **Cohort & Global Leaderboards:** Dynamic ranking projections enabling healthy competition within individual mentorships and across the global platform.
+* **Verifiable Completion Certification:** Database-backed, immutable snapshot certification generated upon mentorship completion for qualified graduates, establishing verified student credentials.
+
+### 4. 💬 Real-Time Collaboration & Communication Domain
+* **STOMP over WebSockets (`/ws/websocket`):** Full-duplex real-time protocol supporting low-latency group discussions and cohort study rooms (`/topic/room/{id}`).
+* **Private Direct Messaging:** Authorized 1-on-1 mentorship consultation channels with conversation identity authorization and member-only read guards.
+* **Transactional In-App Notifications:** Real-time push alerts for assignment deadlines, grading publication, live session starts, and badge awards.
+
+### 5. 🔐 Identity, Access Management & Security Domain
+* **Strict Role-Based Access Control (RBAC):** Distinct functional partitions for `ROLE_STUDENT`, `ROLE_MENTOR`, and `ROLE_ADMIN`.
+* **Stateless JWT Architecture:** Cryptographically signed tokens with automated secret rotation discipline, token blacklisting, and server-side session invalidation.
+* **Secure Registration & OTP Flow:** Email verification, brute-force throttling, and single-purpose password reset tokens.
+* **Administrative Governance:** Platform-wide oversight via `AdminUserDirectory`, contact-us message resolution flows, and system health observability.
+
+### 6. 💳 Financials, Billing & Commerce Domain
+* **Server-Computed Stripe Checkout:** Transparent transaction initiation calculating mentorship price, dynamic discounts, and platform commission.
+* **Signature-Verified Webhook Engine:** Fail-closed HMAC signature verification on `POST /api/v1/payments/webhook`, guaranteeing idempotent, exactly-once enrollment clearance.
+* **Zero-Cost Free-Tier Bypass:** Dedicated bypass logic allowing immediate enrollment into free mentorships without routing through external payment gateways.
+
+### 7. 🗄️ File Storage & Asset Security Domain
+* **S3-Compatible Object Storage:** Cloud file hosting powered by Supabase Storage S3 buckets (`edunest-public` / `edunest-private`).
+* **Deep Magic-Byte Inspection:** File validation using Apache Tika to eliminate file extension spoofing, MIME confusion, and executable upload vulnerabilities.
+* **Repository Hygiene Gate:** Fail-closed CI gate (`repo-hygiene-gate.sh`) rejecting any tracked user uploads or binary payloads in Git history.
+
+---
+
+## 📊 Core Domain Model
+
+```mermaid
+classDiagram
+  direction TB
+
   class UserEntity {
+    +UUID publicId
+    +String email
     +String firstName
     +String lastName
-    +String email
-    +String password
-    +String phoneNumber
-    +String profileImageUrl
     +Roles role
     +boolean enabled
-    +boolean deleted
   }
-  class Student {
-    +EducationalLevel educationalLevel
-    +String address
-    +String jobTitle
-    +String bio
-  }
-  class Mentor {
-    +String jobTitle
-    +String bio
-    +double yearsOfExperience
-  }
-  class Admin {
-    +String email
-    +String password
-    +String headline
-  }
+
   class MentorShip {
+    +UUID publicId
     +String title
-    +String category
-    +DifficultyLevel difficultyLevel
-    +Status status
     +Double price
     +Integer discountPercentage
+    +Status status
     +Double rating
   }
+
   class Week {
     +String title
+    +Integer weekOrder
   }
+
   class Quiz {
     +String title
     +Integer durationMinutes
+    +LocalDateTime closeAt
     +QuizStatus status
   }
+
   class Task {
     +String title
     +Integer points
-    +Integer passPoints
     +TaskStatus status
   }
+
   class Project {
     +String title
     +String brief
     +Integer points
     +ProjectStatus status
   }
+
   class Enrollment {
-    +Double price
+    +Double pricePaid
     +Double platformProfit
+    +EnrollmentStatus status
     +LocalDateTime joinedAt
+  }
+
+  class PaymentTransaction {
+    +String stripeSessionId
+    +String paymentIntentId
+    +Long amountCents
+    +PaymentStatus status
   }
 
   class Badge {
     +String title
     +BadgeCategory category
-    +String description
     +int points
   }
 
-  class Lecture {
-    +String title
-    +String lectureUrl
+  class Certificate {
+    +UUID certificateCode
+    +LocalDateTime issuedAt
+    +String snapshotStudentName
+    +String snapshotMentorshipTitle
   }
 
-  class Session {
-    +String title
-    +LocalDateTime scheduledAt
-    +LocalDateTime actualStartTime
-    +LocalDateTime actualEndTime
-    +String meetingUrl
-    +SessionStatus status
-  }
-
-  Mentor "1" --> "*" MentorShip : creates
-  MentorShip "1" --> "*" Week : contains
-  Week "1" --> "*" Quiz : has
-  Week "1" --> "*" Task : has
-  Week "1" --> "*" Project : has
-  Week "1" --> "*" Lecture : has
-  Week "1" --> "*" Session : has
-  Student "1" --> "*" Enrollment : enrolls
-  MentorShip "1" --> "*" Badge : offers
-  MentorShip "1" --> "*" Enrollment : has
+  UserEntity "1" <|-- Mentor
+  UserEntity "1" <|-- Student
+  Mentor "1" --> "*" MentorShip : designs & mentors
+  MentorShip "1" *-- "*" Week : structured into
+  Week "1" *-- "*" Quiz : contains
+  Week "1" *-- "*" Task : contains
+  Week "1" *-- "*" Project : contains
+  Student "1" --> "*" Enrollment : enrolls in
+  MentorShip "1" --> "*" Enrollment : admits
+  Enrollment "1" --> "1" PaymentTransaction : cleared by
+  Student "1" --> "*" Certificate : awarded
+  MentorShip "1" --> "*" Certificate : produces
+  MentorShip "1" --> "*" Badge : awards
 ```
 
 ---
 
-## Full Documentation
-For a complete, in-depth view of the system analysis, comprehensive sequence diagrams, API details, feasibility study, and competitive analysis, please refer to the main project documentation file:
+## 🛡️ Enterprise Engineering & Security Standards
 
-**[EduNest Project Documentation](EduNest_Project_Documentation1.md)**
+The EduNest backend is engineered according to enterprise safety doctrines and non-negotiable operational invariants:
+
+| Engineering Standard | Implementation Detail & Evidence |
+| :--- | :--- |
+| **Strict Forward-Only Database Migrations** | 13 versioned SQL scripts managed via **Flyway**; `ddl-auto=validate` active in production; zero in-app runtime schema mutations. |
+| **Fail-Closed API Security Doctrine** | All unexpected runtime exceptions map to sanitized `500 ERR_INTERNAL_SYSTEM` envelopes with correlated tracking `refId`s (zero stack-trace leakage). |
+| **Bounded Pagination & DoS Prevention** | Global `PaginationPolicy` clamping `page` ($\ge 0$) and `size` ($1 \le \text{size} \le 50$) with strict `400 ERR_VALIDATION` on malformed inputs (`EB-58`). |
+| **Environment Parity & Serialization Guard** | `fail-on-unknown-properties=true` enforced uniformly across all profiles to reject unexpected payload fields with `400 ERR_UNKNOWN_FIELD` (`EB-63`). |
+| **WebSocket Room Boundary Authorization** | Handshake CONNECT authenticated via raw JWT; room SUBSCRIBE and SEND operations validated against cohort membership rows (`ChatAuthorization`). |
+| **Zero-PII Storage Discipline** | User uploads strictly stored on private S3 buckets with ephemeral pre-signed access; zero local disk reliance. |
 
 ---
 
-## How to Run Locally
+## 🚀 Local Deployment & Developer Quickstart
+
+### Prerequisites
+- **Java Development Kit (JDK 21)** (Temurin recommended)
+- **Maven 3.9+**
+- **Docker Desktop** (for containerized execution)
+
+### Option A: Running with Docker Compose (Recommended for Frontend & Rapid Evaluation)
+EduNest provides an out-of-the-box local orchestration environment pulling the latest public container image from GitHub Container Registry (GHCR):
 
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/MooRaa86/EduNest.git
    cd EduNest
    ```
-2. **Configure the Database:**
-   - Provide a reachable PostgreSQL database and set `DATABASE_URL`, `DATABASE_NAME` (database username), and `DATABASE_PASSWORD` as environment variables.
-   - Supply the required `JWT_SECRET` and `MAIL_*` settings through the environment; select the appropriate security profile. Do not put credentials in tracked files. See [environment configuration](mds/deployment/environment-configuration.md).
-3. **Build the project:**
+2. **Start the pre-built backend:**
    ```bash
-   mvn clean install
+   docker compose up -d
    ```
-4. **Run the application:**
+3. **Verify running status:**
    ```bash
-   mvn spring-boot:run
+   curl http://localhost:8080/actuator/health
+   # Returns: {"status":"UP"}
    ```
 
+### Option B: Running from Source (Backend Development)
+1. **Configure Environment Variables:**
+   Create an `.env` or populate your session with the necessary connection credentials:
+   ```bash
+   export SPRING_PROFILES_ACTIVE=dev
+   export DATABASE_URL="jdbc:postgresql://<HOST>:5432/<DB>?sslmode=verify-full"
+   export DATABASE_NAME="<DB_USER>"
+   export DATABASE_PASSWORD="<DB_PASSWORD>"
+   export JWT_SECRET="<MIN_256_BIT_HEX_OR_BASE64_SECRET>"
+   ```
+2. **Build and Run Test Suite:**
+   ```bash
+   ./mvnw clean test
+   ```
+3. **Launch Spring Boot Application:**
+   ```bash
+   ./mvnw spring-boot:run
+   ```
 
+---
+
+## 📡 Essential Platform Endpoints
+
+| Resource | Protocol & Route | Access Level | Description |
+| :--- | :--- | :--- | :--- |
+| **System Health** | `GET /actuator/health` | Public | Real-time liveness and readiness probe status |
+| **Interactive API Docs** | `GET /swagger-ui/index.html` | Public | OpenAPI 3 Swagger specification and test sandbox |
+| **Root Gateway Showcase** | `GET /` | Public | In-memory cached system showcase and status metadata |
+| **WebSocket STOMP** | `WS /ws/websocket` | Authenticated | Live full-duplex socket for group and direct chat |
+| **Stripe Webhook** | `POST /api/v1/payments/webhook` | Public (Signed) | Idempotent transaction and enrollment clearance |
+
+---
+
+## 📚 Architectural & Operational Runbooks
+
+- [Production Activation & Cutover Readiness](PRODUCTION-ACTIVATION-READINESS.md) — 6-stage release gate, cutover plan, and disaster recovery procedures.
+- [Cloud Migration & VPS Runbook](CLOUD-MIGRATION-RUNBOOK.md) — Production deployment guide for Hetzner, Caddy reverse proxy, and Docker.
+- [Database Transaction & OSIV Policy](mds/database/transactions-consistency.md) — Read-path optimization, N+1 query elimination, and lazy-loading boundaries.
+- [Master Plan & Issue Mapping](plan/ISSUE-MAPPING.md) — Complete traceability between Jira tickets, PRs, and architectural decisions.
+
+---
+
+<div align="center">
+<b>EduNest Platform</b> • Engineering Excellence & Architectural Integrity
 </div>
