@@ -18,8 +18,7 @@ name: Build and Push Docker Image
 #   from a fresh checkout of the verified commit, so nothing untrusted from a
 #   prior run is executed.
 # - The only write permission is `packages: write` for GHCR.
-# - Tags are immutable identities (full commit SHA + git describe); `latest`
-#   is deliberately NOT published. Deploys pin by digest.
+# - Tags include immutable identities (full commit SHA + git describe) and 'latest' for convenience.
 # - Gate logic is shared with deploy-staging.yml and unit-tested locally in
 #   scripts/cicd/test-deploy-gate.sh (G1/G2/G3 + stale-run protection).
 #
@@ -105,7 +104,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (no 'latest' tag)
+      - name: Build and push (with 'latest' tag)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -113,6 +112,7 @@ jobs:
           tags: |
             ${{ steps.tags.outputs.image }}:${{ steps.tags.outputs.sha_tag }}
             ${{ steps.tags.outputs.image }}:${{ steps.tags.outputs.describe_tag }}
+            ${{ steps.tags.outputs.image }}:latest
           labels: |
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

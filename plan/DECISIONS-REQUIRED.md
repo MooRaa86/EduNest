@@ -262,6 +262,11 @@
 - **Question:** Approve history purge of committed `uploads/**` user files (FILE-06)?
 - **Impact:** force-push coordination for all contributors; permissions.
 - **Default:** yes (privacy). Decide-by: before P6-06 execution.
+- **Outcome (decided 2026-11-13, user-approved — EB-77):** **Waived for history purge; superseded by Supabase Storage migration ([ADD-03]/EB-83) and CI hygiene guard.**
+  * *Context & Findings:* Forensic audit confirmed that historical files under `uploads/**` (18 unique blobs, ~4.5 MB across 30 paths committed between Feb–Jun 2026) were synthetic developer test fixtures and dummy templates with zero real user PII, credentials, or secrets.
+  * *Storage Architecture:* Production file storage was migrated to Supabase Storage (S3 API) under [ADD-03]/EB-83 with dual public/private buckets and fail-closed runtime enforcement (`StorageFailClosedTest`), completely eliminating local storage fallback in production.
+  * *Disproportionate Impact:* Rewriting Git history (`git-filter-repo`) would mutate 566 commits across all 142 branches back to repository inception (`a3ddabf`, 2026-02-07). This would invalidate contributor clones, break active PRs (including PR #129 / EB-115), orphan commit references in Jira and documentation, and create a critical risk of triggering Railway Auto Deploy on the `production` branch.
+  * *Resolution:* The destructive history purge and force-push are waived. Repository hygiene is permanently enforced via a non-disruptive CI guard (`scripts/cicd/repo-hygiene-gate.sh` in `.github/workflows/tests.yml`) that rejects any tracked upload files in HEAD or introduced within PR commit ranges.
 
 ### D-20 — API envelope standardization
 - **Question:** Unify `SimpleResponse` vs typed DTOs vs `PageResponse` (API-01) and normalize legacy path styles (API-03) now or later?

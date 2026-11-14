@@ -130,13 +130,15 @@ To count content with **no extant submissions**, bind the same mentorship ID in 
 
 ## 3. Open-Session-In-View (OSIV) reliance
 
-Spring Boot's default OSIV keeps the session open per request; the following verified paths navigate lazy state **outside** explicit transactions and would break `LazyInitializationException` or re-query per item if OSIV were disabled:
+Spring Boot's default OSIV keeps the session open per request. Disabling it without addressing lazy navigation outside service transactions can cause `LazyInitializationException`.
 
-- `mentorShipServiceI.mapToMentorShipResponse` walking `whatWillLearn` per row (also the source of the MSH-08 N+1).
-- Quiz dashboard/detail reads navigating `quiz.getQuestions()` without `@Transactional(readOnly)` on the calling method.
-- Dashboard services reading lazy projections through repository aggregates.
+**EB-60 / P4-11 update (2026-11-13):**
 
-Implication: build a **no-OSIV test profile** before attempting transactional refactors; document explicitly which reads must become fetch-joins.
+- The quiz dashboard aggregation, paginated quiz listings and mentorship-quiz overview projection queries read grouped scalar values instead of traversing lazy submissions. `getQuizDashboard` uses `findDashboardAggregatesByMentorship`; the listing and overview pages use `QuizListRow` projections. These projection reads do not depend on OSIV for submissions. The former pageable collection fetch join has been removed; `QuizN1QueryBudgetIntegrationTest` records the query budgets and checks database pagination.
+- `getAllSubmissionsByQuiz` and `getAllSubmissionsByStudent` pre-join `student` via the pagination-safe to-one `@EntityGraph(attributePaths = "student")`, eliminating per-row student selects. This graph does **not** load `quiz.questions`: `getAllSubmissionsByQuiz` still accesses that lazy collection outside an explicit service transaction and remains OSIV-dependent.
+- Single-quiz `getQuizDetails` and `getQuizStatistics` also navigate lazy associations outside an explicit service transaction. `mentorShipServiceI.mapToMentorShipResponse` walks `whatWillLearn` per row (the MSH-08 N+1 is mitigated by `@BatchSize(25)`). These paths remain relevant to the no-OSIV audit.
+
+The no-OSIV test-profile trial and remaining transactional/fetch-plan work are deferred to EB-48/D-24. No no-OSIV end-to-end verification is claimed here.
 
 ## 4. Multi-step operations without atomicity
 

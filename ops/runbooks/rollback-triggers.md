@@ -1,5 +1,10 @@
 # Rollback Triggers (P6-08 / EB-79)
 
+> EB-115 is not activated. A future automated deploy with an unknown Railway
+> outcome must be investigated as potentially mutated, not assumed unchanged;
+> application rollback must be checked against the current schema first. See
+> [`../cicd/production-pipeline.md`](../cicd/production-pipeline.md).
+
 > What happens when a deploy fails verification. Built by P6-08; the *drill* that exercises it is P7-01 per plan. Companion to [`Invoke-DeployVerification.ps1`](Invoke-DeployVerification.ps1) (the red/green verdict) and [`../backups/restore-procedure.md`](../backups/restore-procedure.md) (data recovery).
 
 ## The verdict → action map

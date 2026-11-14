@@ -106,6 +106,8 @@ unchanged.
 <a id="p6-06"></a>
 ### P6-06 — Repo hygiene + uploads history purge
 
+> **Amendment (2026-11-13, user-approved — EB-77 / D-19):** scope reduced to lightweight CI hygiene guard without Git history rewrite. Forensic audit confirmed that historical files under `uploads/**` (18 unique blobs, ~4.5 MB across 30 paths from Feb–Jun 2026) were synthetic developer test fixtures and dummy templates with zero real user PII, credentials, or secrets. Furthermore, production storage was fully migrated to Supabase Storage (S3 API) under [ADD-03]/EB-83 with fail-closed runtime enforcement (`StorageFailClosedTest`). Rewriting Git history (566 commits back to 2026-02-07) was waived under D-19 due to disproportionate operational risk to active branches (PR #129), contributor clones, and Railway Auto Deploy on `production`. Repository hygiene is permanently enforced via a non-disruptive CI guard (`scripts/cicd/repo-hygiene-gate.sh` in `tests.yml`) asserting zero tracked files in HEAD and across PR commit ranges.
+
 **Priority:** P2 — 23+ real user files are in git history (FILE-06/DEP-06); even with `.gitignore` (`**/uploads/` already present) they persist in all clones. D-19 approves the forced-push moment.  **Size:** M
 **Owner role:** DevOps Engineer   **Reviewers:** Eng Lead + PO (approval) + Security Reviewer
 **Issues:** FILE-06, DEP-06 (D-19)   **Domain:** deployment / repo hygiene
