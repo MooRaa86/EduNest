@@ -156,6 +156,10 @@ public class ProjectSecurityConfig {
                         .requestMatchers(HttpMethod.GET, PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).permitAll()
                         .requestMatchers(HttpMethod.HEAD, PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).permitAll()
                         .requestMatchers(PublicRoutesPolicy.PUBLIC_PROBE_PATTERNS.toArray(new String[0])).denyAll()
+                        // [EB-112][P5-06] Gateway "/" showcase: GET/HEAD only, anonymous.
+                        .requestMatchers(HttpMethod.GET, PublicRoutesPolicy.PUBLIC_GATEWAY_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers(HttpMethod.HEAD, PublicRoutesPolicy.PUBLIC_GATEWAY_PATTERNS.toArray(new String[0])).permitAll()
+                        .requestMatchers(PublicRoutesPolicy.PUBLIC_GATEWAY_PATTERNS.toArray(new String[0])).denyAll()
                         .requestMatchers(PublicRoutesPolicy.ALL_PUBLIC_PATTERNS.toArray(new String[0])).permitAll()
                         .requestMatchers("/actuator/info").hasRole("ADMIN")
                         .requestMatchers("/actuator", "/actuator/**").denyAll()

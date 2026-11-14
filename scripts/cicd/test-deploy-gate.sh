@@ -134,6 +134,77 @@ assert_blocks "prod ref anywhere in URL blocks"       "PRODUCTION Supabase proje
 # safe manual dispatch shape: explicit success+completed+main with matching SHA
 assert_passes  "manual dispatch safe path passes"                                      gate_verify_trigger success completed main "$SHA" "$SHA"
 
+# ==============================================================================
+# EB-115: Production Database Target Guard & Approval Tests
+# ==============================================================================
+PROD_DIRECT="jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full"
+PROD_DIRECT_NO_PORT="jdbc:postgresql://db.${PROD_REF}.supabase.co/postgres?sslmode=verify-full"
+PROD_POOLER="jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=verify-full"
+PROD_POOLER_EXTRA="jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=verify-full&connectTimeout=10"
+
+# Positive target identity tests
+assert_passes  "prod direct host with sslmode=verify-full passes"                      gate_production_db_identity "$PROD_DIRECT" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_passes  "prod direct host without port passes"                                  gate_production_db_identity "$PROD_DIRECT_NO_PORT" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_passes  "prod pooler host with coupled user passes"                             gate_production_db_identity "$PROD_POOLER" "postgres.${PROD_REF}" "$PROD_REF" "$STAGE_REF"
+assert_passes  "prod pooler host with extra safe query params passes"                  gate_production_db_identity "$PROD_POOLER_EXTRA" "postgres.${PROD_REF}" "$PROD_REF" "$STAGE_REF"
+
+# Negative: sslmode verification
+assert_blocks "sslmode=require is rejected for production"   "exact sslmode=verify-full" gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=require" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "sslmode=prefer is rejected for production"    "exact sslmode=verify-full" gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=prefer" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "missing sslmode parameter blocks"             "missing query parameters"  gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "duplicate sslmode parameters block"           "duplicate sslmode"         gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full&sslmode=verify-full" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "conflicting sslmode parameters block"         "duplicate sslmode"         gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full&sslmode=require" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "ssl=false parameter blocks"                   "ssl=false is prohibited"   gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full&ssl=false" "postgres" "$PROD_REF" "$STAGE_REF"
+
+# Negative: embedded credentials & authority injection
+assert_blocks "embedded userinfo in authority blocks"        "embedded userinfo"         gate_production_db_identity "jdbc:postgresql://user:pass@db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "embedded password query param blocks"         "credentials in JDBC query" gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full&password=secret" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "embedded user query param blocks"             "credentials in JDBC query" gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full&user=postgres" "postgres" "$PROD_REF" "$STAGE_REF"
+
+# Negative: ambiguous multi-host URLs
+assert_blocks "ambiguous multi-host URL blocks"              "ambiguous multi-host URL"  gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432,backup.supabase.co:5432/postgres?sslmode=verify-full" "postgres" "$PROD_REF" "$STAGE_REF"
+
+# Negative: staging & unknown project identity
+assert_blocks "staging project ref in host blocks"           "staging project identity"  gate_production_db_identity "jdbc:postgresql://db.${STAGE_REF}.supabase.co:5432/postgres?sslmode=verify-full" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "staging project ref in db_user blocks"        "staging project identity"  gate_production_db_identity "$PROD_POOLER" "postgres.${STAGE_REF}" "$PROD_REF" "$STAGE_REF"
+assert_blocks "unknown project ref in pooler user blocks"    "does not match approved"   gate_production_db_identity "$PROD_POOLER" "postgres.unknown999ref" "$PROD_REF" "$STAGE_REF"
+
+# Negative: user and host coupling
+assert_blocks "direct host with pooler user blocks"          "does not match approved"   gate_production_db_identity "$PROD_DIRECT" "postgres.${PROD_REF}" "$PROD_REF" "$STAGE_REF"
+assert_blocks "pooler host with plain postgres user blocks"  "does not match approved"   gate_production_db_identity "$PROD_POOLER" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "unexpected foreign host blocks"               "does not match approved"   gate_production_db_identity "jdbc:postgresql://evil.supabase.co:5432/postgres?sslmode=verify-full" "postgres" "$PROD_REF" "$STAGE_REF"
+
+# Negative: inputs validation
+assert_blocks "empty prod URL blocks"                        "migration URL is empty"    gate_production_db_identity "" "postgres" "$PROD_REF" "$STAGE_REF"
+assert_blocks "empty prod db_user blocks"                    "username is empty"         gate_production_db_identity "$PROD_DIRECT" "" "$PROD_REF" "$STAGE_REF"
+assert_blocks "empty approved prod ref blocks"               "not configured"            gate_production_db_identity "$PROD_DIRECT" "postgres" "" "$STAGE_REF"
+assert_blocks "non-postgresql JDBC url blocks"               "PostgreSQL JDBC URL"       gate_production_db_identity "jdbc:mysql://db.${PROD_REF}.supabase.co:3306/postgres?sslmode=verify-full" "postgres" "$PROD_REF" "$STAGE_REF"
+
+# Credentials leakage test
+out=$(gate_production_db_identity "jdbc:postgresql://db.${PROD_REF}.supabase.co:5432/postgres?sslmode=verify-full&password=supersecretpassword" "postgres" "$PROD_REF" "$STAGE_REF" 2>&1)
+printf '%s' "$out" | grep -qF "supersecretpassword" && { fail=$((fail+1)); echo "FAIL  production identity check leaked password"; } || { pass=$((pass+1)); echo "PASS  production identity check never prints credentials"; }
+
+# Pre-migration backup confirmation tests
+assert_passes  "matching backup confirmation SHA passes"                               gate_backup_readiness "$SHA" "$SHA"
+assert_blocks "empty backup confirmation SHA blocks"         "not set"                   gate_backup_readiness "" "$SHA"
+assert_blocks "mismatched backup confirmation SHA blocks"    "mismatch"                  gate_backup_readiness "0000000000000000000000000000000000000000" "$SHA"
+
+# Schema backward compatibility confirmation tests
+assert_passes  "matching compatibility approval SHA passes"                            gate_schema_compatibility "$SHA" "$SHA"
+assert_blocks "empty compatibility approval SHA blocks"      "not set"                   gate_schema_compatibility "" "$SHA"
+assert_blocks "mismatched compatibility approval SHA blocks" "mismatch"                  gate_schema_compatibility "0000000000000000000000000000000000000000" "$SHA"
+
+# Production activation label check
+assert_passes  "prod activation true passes"                                           gate_activation "true" "production" "PROD_AUTO_DEPLOY_ENABLED"
+assert_blocks "prod activation false blocks"                 "PROD_AUTO_DEPLOY_ENABLED"  gate_activation "false" "production" "PROD_AUTO_DEPLOY_ENABLED"
+
+# G2m — manual dispatch ancestry compare tests
+assert_passes  "ancestry status identical passes"                                      gate_ancestry_status "identical" "production"
+assert_passes  "ancestry status behind passes"                                         gate_ancestry_status "behind" "production"
+assert_blocks "ancestry status ahead blocks"                 "not part of"               gate_ancestry_status "ahead" "production"
+assert_blocks "ancestry status diverged blocks"              "not part of"               gate_ancestry_status "diverged" "production"
+assert_blocks "empty ancestry status blocks"                 "not part of"               gate_ancestry_status "" "production"
+
 echo "-----"
 echo "deploy-gate tests: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

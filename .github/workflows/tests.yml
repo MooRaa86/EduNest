@@ -27,6 +27,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # EB-77 [P6-06 / FILE-06]: Repository hygiene gate — reject upload files tracked in
+      # Git index / HEAD or introduced within PR / push commit ranges.
+      - name: Repository hygiene gate (EB-77 / FILE-06)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          bash scripts/cicd/repo-hygiene-gate.sh check-ci "$EVENT_NAME" "$BASE_REF" "$BEFORE_SHA" "$AFTER_SHA"
 
       - name: Set up JDK 21 (Temurin) + Maven cache
         uses: actions/setup-java@v5

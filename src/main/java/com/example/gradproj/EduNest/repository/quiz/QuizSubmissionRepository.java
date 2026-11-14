@@ -4,6 +4,7 @@ import com.example.gradproj.EduNest.entity.quiz.QuizSubmission;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -50,10 +51,18 @@ public interface QuizSubmissionRepository extends JpaRepository<QuizSubmission, 
      */
     boolean existsByQuiz_IdAndEndDateAfter(Long quizId, java.time.LocalDateTime cutoff);
 
+    /**
+     * EB-60 / P4-11 — F3: the listing mappings read {@code submission.getStudent()}
+     * per row; the association is LAZY, so a page of N rows fired N extra selects.
+     * To-one fetch join is pagination-safe (no bag), so DB-level LIMIT is preserved.
+     */
+    @EntityGraph(attributePaths = "student")
     Page<QuizSubmission> findAllByQuiz_Id(Long quizId, Pageable pageable);
 
     Page<QuizSubmission> findAllByStudent_Id(Long studentId, Pageable pageable);
 
+    /** EB-60 / P4-11 — F3: same per-row student fetch elimination as {@link #findAllByQuiz_Id}. */
+    @EntityGraph(attributePaths = "student")
     @Query("""
         SELECT qs
         FROM QuizSubmission qs
