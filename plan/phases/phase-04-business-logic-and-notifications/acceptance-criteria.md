@@ -24,7 +24,7 @@
 | P4-12 | Batch writes unchanged outcomes, fewer flushes | IT run | Backend Lead |
 | P4-13 | Failed-email records + bounded retry + admin listing | IT run (fake SMTP) | DevOps |
 | P4-14 | Profiles behave identically on unknown-property payloads | probe run | Eng Lead |
-| P4-15 | *(Conditional)* implemented per D-10 or deferral recorded | — | PO + Eng Lead |
+| P4-15 | *(Conditional)* implemented per D-10 or deferral recorded | [D-10 PO deferral](../../DECISIONS-REQUIRED.md#d-10--passpointsunlock); documentation integration and Eng Lead verification pending | PO + Eng Lead |
 | P4-16 | *(Conditional)* decision outcome recorded; contract suites updated if implemented | — | FE liaison |
 | P4-17 | *(Conditional)* hook or docs per D-16 | — | DevOps |
 

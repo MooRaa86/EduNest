@@ -219,6 +219,8 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Tests:** lifecycle IT if built.
 **Docs:** quizzes-workflow.md (either outcome); ISSUE-MAPPING row.
 
+**D-10 / EB-64 PO decision (2026-11-14):** Checkpoint unlocking is deferred for the current sprint and remains **unimplemented**. Preserve the existing `passPoints` API field and database column temporarily as a PO-approved compatibility exception to the historical removal recommendation above; field removal is not authorized. `passPoints` is stored but does not enforce unlocking, and existing student access is unchanged. Future implementation or field removal requires a new PO decision and a reviewed plan.
+
 <a id="p4-16"></a>
 ### P4-16 — Envelope/path standardization (conditional)
 
