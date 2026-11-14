@@ -134,6 +134,7 @@ Live tracker. Update statuses **in this file** per execution ([`TEAM-WORKFLOW §
 | **DOC-01** | Med | P5-05 | 5 | deployment | T | Planned |
 | **DOC-02** | Low | P5-05 | 5 | deployment | T | Planned |
 | **DOC-03** | Low | — | — | docs | RES (mds reorganization) | Resolved |
+| **DOC-04** | High | P5-06 | 5 | architecture / docs | T | **In Progress — EB-112**: Root Domain Gateway (`/`) with interactive HTML showcase, pinned Mermaid.js diagrams, content-negotiated JSON domain model (`?audience=hr|business|technical`), `/view`, `/diagrams`, and `/status` endpoints; Sprint 2 assigned to Omar Medhat. |
 | **TD-01** | Low | — | — | tech-debt | DEF (risk>value now) | Deferred |
 | **TD-02** | Low | P1-26 | 1 | tech-debt | T | **Implemented — EB-33** (2026-11-01): consolidated redundant `util` package into `utils`; `FileResponseBuilder` moved to `com.example.gradproj.EduNest.utils`. |
 | **TD-03** | Low | P1-26 (+P1-12 dead code) | 1 | tech-debt | T | **Implemented — EB-33** (2026-11-01): dead code cleaned: deleted dead DTO `DirectMessageRequest`, dead projections `NotificationProjection` and `UserNotificationProjection`, removed dead queries `ChatMessageRepository.findSenderInfo` and `MessageRepository.findByConversationIdOrderBySentAtDesc`, removed unused `@Scheduled` import in `QuizSubmissionServiceImpl`. |

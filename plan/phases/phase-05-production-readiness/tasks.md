@@ -78,3 +78,20 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Depends on:** D-11/D-16/D-21.  **Blocks:** P7-08 release notes; P7-05 checklist.
 **Tests:** none (docs).
 **Docs:** root books + mds docs; ISSUE-MAPPING rows updated.
+
+<a id="p5-06"></a>
+### P5-06 — Root Domain Gateway & Backend Architecture Showcase ('/')
+
+**Priority:** P1 — root domain currently returns 404/Whitelabel; evaluators, recruiters, and clients need an informative gate to backend capabilities.  **Size:** M
+**Owner role:** Tech Lead / Backend Architect (Omar Medhat)   **Reviewers:** Team Lead / Eng Reviewers
+**Jira Issue:** EB-112   **Sprint:** EB Sprint 2 (`sprint-2`)
+**Domain:** architecture / documentation / deployment
+**Components:** `GatewayController.java`, `GatewayService.java`, `PublicRoutesPolicy.java`, `ProjectSecurityConfig.java`, `gateway.html` (pinned Mermaid.js)
+
+**Evidence:** Jira [`EB-112`](https://mromarmedhat.atlassian.net/browse/EB-112); Task Blueprint [`task-gateway-root-path.md`](../../../brain/6dbd2042-22b4-4b9c-b6f7-d3e8c12d33d4/task-gateway-root-path.md).
+**Expected outcome:** `GET /` serves an interactive, self-contained HTML showcase (for browser clients with pinned Mermaid.js visual architecture diagrams) and structured content-negotiated JSON (for API clients with `?audience=hr|business|technical`), backed by `/view`, `/diagrams`, `/status`, and `/api/v1/showcase/**` aliases. Read-only, pre-cached in memory (<15ms response), 0 DB writes, fail-closed security.
+**Approach:** Dual-representation controller with in-memory caching and dynamic route reflection. Allowlisted in `PublicRoutesPolicy.java` as anonymous-public.
+**Depends on:** P1-03 (PublicRoutesPolicy), P5-01 (health probe alignment).  **Blocks:** P7-07.
+**Tests:** Unit (`GatewayServiceTest`), WebMvc integration (`GatewayControllerTest`), security probe (`GatewaySecurityProbeTest`).
+**Docs:** root docs, Jira EB-112, ISSUE-MAPPING P5-06.
+

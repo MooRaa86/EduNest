@@ -57,10 +57,29 @@ public final class PublicRoutesPolicy {
     );
 
     /**
+     * [EB-112][P5-06] Root-domain gateway & showcase routes. Public for
+     * anonymous visitors (GET/HEAD only — the security chain applies the
+     * same method restriction as the probe patterns). Content is a static,
+     * pre-computed showcase model: no secrets, no PII (asserted by
+     * GatewayServiceTest). JWT validator gracefully ignores stale tokens
+     * here like any other public route.
+     */
+    public static final List<String> PUBLIC_GATEWAY_PATTERNS = List.of(
+            "/",
+            "/view",
+            "/diagrams",
+            "/status",
+            "/api/v1/showcase",
+            "/api/v1/showcase/**"
+    );
+
+    /**
      * Complete allowlist of all anonymous-public routes (APIs + public upload folders).
      */
     public static final List<String> ALL_PUBLIC_PATTERNS = Stream.concat(
-            Stream.concat(PUBLIC_API_PATTERNS.stream(), PUBLIC_PROBE_PATTERNS.stream()),
+            Stream.concat(
+                    Stream.concat(PUBLIC_API_PATTERNS.stream(), PUBLIC_GATEWAY_PATTERNS.stream()),
+                    PUBLIC_PROBE_PATTERNS.stream()),
             UploadPolicy.PUBLIC_UPLOAD_PATTERNS.stream()
     ).toList();
 
