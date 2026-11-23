@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.service.dashboard;
 
 
 import com.example.gradproj.EduNest.dto.dashboard.MentorshipDashboardResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipStudentRankDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.ReviewsRsponse;
@@ -61,10 +62,7 @@ public class MentorshipDashboardService {
             throw new UsernameNotFoundException("Mentor not found");
         }
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("createdAt").descending()
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("createdAt").descending()
         );
 
         Page<MentorShipListResponse> result =
@@ -109,10 +107,7 @@ public class MentorshipDashboardService {
             throw new AccessDeniedException("you are not authorized to access this mentorship");
         }
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("createdAt").descending()
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("createdAt").descending()
         );
 
         Page<MentorShipReviews> reviews = reviewsRepository.
@@ -142,7 +137,7 @@ public class MentorshipDashboardService {
             throw new AccessDeniedException("you are not authorized to access this mentorship");
         }
 
-        Pageable pageable = PageRequest.of(page , size, Sort.by("createdAt").descending() );
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("createdAt").descending() );
         Page<TopStudentResponse> Page = totalPointsRepository
                 .findTopStudentsByMentorship(mentorshipId, pageable);
         return PageResponse.<TopStudentResponse>builder()
@@ -163,7 +158,7 @@ public class MentorshipDashboardService {
             throw new AccessDeniedException("you are not authorized to access this mentorship");
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<MentorshipStudentRankDto> studentsPage = totalPointsRepository
                 .findStudentsWithRanksByMentorshipId(mentorshipId, pageable);
         

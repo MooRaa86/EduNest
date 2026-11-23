@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.studentMentorship;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.studentMentorship.MsLeaderBoardDto;
 import com.example.gradproj.EduNest.dto.studentMentorship.LeaderboardEntry;
 import com.example.gradproj.EduNest.dto.studentMentorship.StudentInLeaderboardDto;
@@ -42,7 +43,7 @@ public class MentorshipLeaderboardService {
                 && mentorShipRepository.existsByIdAndMentor_Email(mentorshipId, email);
         boolean admin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         if (!isEnrolled && !owner && !admin) throw new AccessDeniedException("Leaderboard unavailable");
-        Pageable pageable = Pageable.ofSize(size).withPage(page);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<StudentInLeaderboardDto> leaderboardPage = totalPointsRepository.findLeaderboardByMentorshipId(mentorshipId, pageable);
 
         var content = new ArrayList<>(leaderboardPage.getContent());

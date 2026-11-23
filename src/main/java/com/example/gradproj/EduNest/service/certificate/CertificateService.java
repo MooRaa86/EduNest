@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.certificate;
 
 import com.example.gradproj.EduNest.dto.certificate.CertificateResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.exception.globalLogicException.globalLogicEx;
 import com.example.gradproj.EduNest.repository.certificate.CertificateRepository;
@@ -40,7 +41,7 @@ public class CertificateService {
     }
 
     public PageResponse<CertificateResponse> getStudentCertificates(String email, int page, int size) {
-        var result = certificateRepository.findByStudentEmail(email, PageRequest.of(page, size));
+        var result = certificateRepository.findByStudentEmail(email, PaginationPolicy.ofClamped(page, size));
 
         return PageResponse.<CertificateResponse>builder()
                 .content(result.getContent())

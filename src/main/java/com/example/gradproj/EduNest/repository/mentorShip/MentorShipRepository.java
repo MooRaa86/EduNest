@@ -126,35 +126,56 @@ public interface MentorShipRepository extends JpaRepository<MentorShip, Long> {
 """)
     List<MentorMentorshipProjection> findMentorMentorshipsForChatRoom(@Param("email") String email);
 
-    @Query("""
+    @Query(value = """
     SELECT new com.example.gradproj.EduNest.dto.mentorShipDTOs.response.MentorshipExploreDto(
         m.publicId, m.title, m.subtitle, m.description, m.category,
         CONCAT(m.mentor.firstName, ' ', m.mentor.lastName) as mentorName,
         m.price,
         m.discountPercentage,
-        m.price * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0),
-        m.duration, m.coverImageUrl,m.rating
+        (COALESCE(m.price, 0.0) * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)),
+        m.duration, m.coverImageUrl, m.rating
     )
     FROM MentorShip m
     WHERE m.status = 'ACTIVE'
     AND m.mentor.deleted = false
     AND (
-        :keyword IS NULL
-        OR LOWER(m.title) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
-        OR LOWER(m.description) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
-        OR LOWER(m.subtitle) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
-        OR LOWER(m.category) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
-        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE CONCAT('%', :keyword, '%') ESCAPE '\\'
+        :hasKeyword = FALSE
+        OR LOWER(m.title) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(m.description) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(m.subtitle) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(m.category) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE :keywordPattern ESCAPE '\\'
     )
-    AND (:category IS NULL OR LOWER(m.category) = LOWER(:category))
-    AND (:minPrice IS NULL OR (m.price * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) >= :minPrice)
-    AND (:maxPrice IS NULL OR (m.price * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) <= :maxPrice)
+    AND (:hasCategory = FALSE OR LOWER(m.category) = :category)
+    AND (:hasMinPrice = FALSE OR (COALESCE(m.price, 0.0) * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) >= :minPrice)
+    AND (:hasMaxPrice = FALSE OR (COALESCE(m.price, 0.0) * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) <= :maxPrice)
+""",
+    countQuery = """
+    SELECT COUNT(m)
+    FROM MentorShip m
+    WHERE m.status = 'ACTIVE'
+    AND m.mentor.deleted = false
+    AND (
+        :hasKeyword = FALSE
+        OR LOWER(m.title) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(m.description) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(m.subtitle) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(m.category) LIKE :keywordPattern ESCAPE '\\'
+        OR LOWER(CONCAT(m.mentor.firstName, ' ', m.mentor.lastName)) LIKE :keywordPattern ESCAPE '\\'
+    )
+    AND (:hasCategory = FALSE OR LOWER(m.category) = :category)
+    AND (:hasMinPrice = FALSE OR (COALESCE(m.price, 0.0) * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) >= :minPrice)
+    AND (:hasMaxPrice = FALSE OR (COALESCE(m.price, 0.0) * (1.0 - COALESCE(m.discountPercentage, 0) / 100.0)) <= :maxPrice)
 """)
     Page<MentorshipExploreDto> searchMentorShips(
-            @Param("keyword") String keyword,
+            @Param("hasKeyword") boolean hasKeyword,
+            @Param("keywordPattern") String keywordPattern,
+            @Param("hasCategory") boolean hasCategory,
             @Param("category") String category,
-            @Param("minPrice") Double minPrice,
-            @Param("maxPrice") Double maxPrice,
+            @Param("hasMinPrice") boolean hasMinPrice,
+            @Param("minPrice") double minPrice,
+            @Param("hasMaxPrice") boolean hasMaxPrice,
+            @Param("maxPrice") double maxPrice,
             Pageable pageable
     );
 

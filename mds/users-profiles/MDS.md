@@ -48,10 +48,10 @@ Repository read-models (verified list): `AuthUserProjection` (logins), `UserRole
 
 ## 5. Known Issues (IDs in ../ISSUES.md)
 
-- **USR-01 (Medium):** `ProfileService#getStudentProjects` ignores the `status` request param (dropped — filter silently broken).
+- **USR-01 (Medium):** ~~`ProfileService#getStudentProjects` ignores the `status` request param~~ **RESOLVED (P4-09/EB-58, 2026-11-14):** the `status` param is now threaded controller→service→`findForStudentProfile` (repository slot existed since P4-07); pinned by `contract/MentorStudentProjectsStatusContractTest`.
 - **USR-02 (Low):** user list/leaderboard surfaces expose emails to broader audiences than necessary (resolved on public profiles via EB-88 / D-04, leaderboards via EB-23).
 - **USR-03 (Low):** `MentorStatsProjection.totalBadges` hard-coded `0`; admin "students count" counts enrollments (double-counts repeat students; `TopMentorProjection` uses DISTINCT — inconsistent).
-- **USR-04 (Low):** Student/KPI compositions hardcode page 0 size 10 caps (profile cutting off data arbitrarily).
+- **USR-04 (Low):** ~~Student/KPI compositions hardcode page 0 size 10 caps~~ **RECLASSIFIED (P4-09/EB-58, decision B):** the self-profile composition is a documented PREVIEW ("10 latest graded project submissions" / "10 certificates", [profiles.md](profiles.md)), not a paginated collection — fixed sizes are intentional, now named constants (`PROFILE_PREVIEW_*`) in `StudentProfileService`; no client pagination is attached here.
 - **USR-05 (Medium, xref = NOTIF-04):** `AdminRepository#findTopByOrderByCreatedAtDesc` — all admin-targeted notifications go to the **newest** admin only (`NotificationService#sendToAdmin`).
 
 ## 6. Open Questions

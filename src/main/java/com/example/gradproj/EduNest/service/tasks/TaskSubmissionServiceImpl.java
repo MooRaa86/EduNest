@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.tasks;
 
 import com.example.gradproj.EduNest.config.learning.LateSubmissionProperties;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.repository.tasks.projection.TaskSubmissionAuthProjection;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.tasks.requests.GradeTaskSubmissionRequest;
@@ -195,7 +196,7 @@ public class TaskSubmissionServiceImpl implements TaskSubmissionService {
     public PageResponse<TaskSubmissionResponse> listByTask(Long taskId, int page, int size) {
         validateMentorOwnsTask(taskId);
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         Page<TaskSubmission> submissionsPage =
                 submissionRepository.findByTask_Id(taskId, pageable);

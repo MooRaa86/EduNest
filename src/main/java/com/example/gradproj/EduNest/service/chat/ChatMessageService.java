@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.chat;
 
 import com.example.gradproj.EduNest.config.webSocket.ChatPrincipal;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.chat.ChatMessageResponse;
 import com.example.gradproj.EduNest.entity.chat.ChatMessage;
 import com.example.gradproj.EduNest.entity.chat.ChatRoom;
@@ -122,7 +123,7 @@ public class ChatMessageService {
             throw new AccessDeniedException("You are not a member of this room");
         }
 
-        Pageable pageable = PageRequest.of(0, size);
+        Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
 
         List<ChatMessageProjection> messages =
                 messageRepo.findMessagesByRoom(
@@ -252,7 +253,7 @@ public class ChatMessageService {
             throw new AccessDeniedException("You are not a member of this room");
         }
         Long internalRoomId = resolveRoomInternalId(roomId);
-        Pageable pageable = PageRequest.of(0, size);
+        Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
         List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, beforeId, pageable, isAdmin());
         return messages.stream()
                 .map(m -> ChatMessageResponse.builder()

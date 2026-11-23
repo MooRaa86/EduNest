@@ -2,6 +2,7 @@ package com.example.gradproj.EduNest.controller.quiz;
 
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizCreateDTO;
 import com.example.gradproj.EduNest.dto.quiz.request.QuizDashboardDTO;
@@ -94,7 +95,7 @@ public class QuizController {
             @RequestParam(defaultValue = "4") int size,
             @PathVariable UUID mentorshipId
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         PageResponse<QuizResponseDTO> response =
                 quizService.getQuizzes(quizName, status, mentorshipId, pageable);
 
@@ -118,7 +119,7 @@ public class QuizController {
             @RequestParam(defaultValue = "4") int size,
             @PathVariable UUID mentorshipId
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         PageResponse<QuizResponseDTO> response =
                 quizService.getStudentQuizzes(quizName, status, mentorshipId, pageable);
 

@@ -6,6 +6,7 @@ import com.example.gradproj.EduNest.dto.contactus.ContactMessageResponseDto;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.enums.message.MessageStatus;
 import com.example.gradproj.EduNest.service.contactus.ContactMessageService;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -72,9 +73,13 @@ public class ContactMessageController {
     @Operation(summary = "filter messages by status with pagination")
     public ResponseEntity<SimpleResponse> filterMessages(
             @RequestParam MessageStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Pageable pageable) {
+        // Bind pagination explicitly: Pageable's resolver silently substitutes
+        // defaults for invalid sizes and malformed numbers. Keep its sort parsing.
         PageResponse<ContactMessageResponseDto> result =
-                contactMessageService.filterMessages(status, pageable);
+                contactMessageService.filterMessages(status, PaginationPolicy.ofClamped(page, size, pageable.getSort()));
         SimpleResponse response = new SimpleResponse();
         response.addMessage("Status", "Messages filtered successfully");
         response.addMessage("Data", result);

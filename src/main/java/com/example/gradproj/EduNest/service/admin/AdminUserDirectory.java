@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.admin;
 
 import com.example.gradproj.EduNest.dto.admin.AdminDashboardSummaryResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.admin.AdminMentorDetailResponse;
 import com.example.gradproj.EduNest.dto.admin.AdminStudentDetailResponse;
 import com.example.gradproj.EduNest.dto.dashboard.UsersChartResponse;
@@ -168,13 +169,13 @@ public class AdminUserDirectory {
     }
 
     public PageResponse<UserListProjection> getAllUsersPaginated(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<UserListProjection> users = userRepository.findAllUsers(pageable);
         return buildPageResponse(users);
     }
 
     public PageResponse<UserListProjection> getUsersByRole(String roleName, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<UserListProjection> users = userRepository.findUsersByRoleName(roleName, pageable);
         return buildPageResponse(users);
     }

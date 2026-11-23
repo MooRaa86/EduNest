@@ -71,13 +71,15 @@ Format canon: [`templates/TASK-TEMPLATE.md`](../../templates/TASK-TEMPLATE.md); 
 **Domain:** documentation / deployment
 **Components:** root `README.md` + `FINAL_EDUNEST_DOCUMENTATION.md` + `EduNest_Project_Documentation*.md` claims sections, `mds/` linkage notes, roadmap skeleton deletion/keep
 
-**Context:** Docs at root stay (documented exception, per audit convention) but their *claims* are corrected to observed reality; `mds/` remains the engineering truth. Roadmap module deleted per D-21 default (dead skeleton — reverting = git history).
+**Context:** Docs at root stay (documented exception, per audit convention) but their *claims* are corrected to observed reality; `mds/` remains the engineering truth. The historical default recommended deleting the roadmap skeleton; EB-71 found no `features/roadmap/**` files tracked on baseline `88736c1`, and does not attribute a deletion. Formal D-21 disposition remains pending.
 **Evidence:** ISSUES DOC-01/02/TD-06/CERT-01/LS-01; [`mds/deployment/production-readiness.md`](../../../mds/deployment/production-readiness.md) claims list.
 **Expected outcome:** every claim reconciled: implemented ↔ not-implemented (per decisions); no invented completion; roadmap module state per D-21; link to `mds/README.md` for engineering truth.
 **Approach:** claims diff list (old→new), apply; keep edit small (tables where sensible); PO sign-off.
 **Depends on:** D-11/D-16/D-21.  **Blocks:** P7-08 release notes; P7-05 checklist.
 **Tests:** none (docs).
 **Docs:** root books + mds docs; ISSUE-MAPPING rows updated.
+
+**EB-71 work in progress:** [claim-by-claim evidence and remaining gaps](EB-71-CLAIMS-RECONCILIATION.md). D-11 and D-21 are not finalized; provider-side Zoom meeting authentication/passcode controls require separate review. Documentation reconciliation and PO sign-off remain pending.
 
 <a id="p5-06"></a>
 ### P5-06 — Root Domain Gateway & Backend Architecture Showcase ('/')

@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.chat;
 
 import com.example.gradproj.EduNest.dto.chat.ConversationListResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.chat.ConversationMessageRequest;
 import com.example.gradproj.EduNest.dto.chat.ConversationMessageResponse;
 import com.example.gradproj.EduNest.dto.chat.EditMessageRequest;
@@ -197,7 +198,7 @@ public class ConversationService {
             throw new AccessDeniedException("Not authorized to view this conversation");
         }
 
-        Pageable pageable = PageRequest.of(0, size);
+        Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
 
         List<ConversationMessageProjection> messages =
                 messageRepo.findConversationMessages(
@@ -359,7 +360,7 @@ public class ConversationService {
             throw new AccessDeniedException("Not authorized to view this conversation");
         }
 
-        Pageable pageable = PageRequest.of(0, size);
+        Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
         List<ConversationMessageProjection> messages = messageRepo.findConversationMessages(
                 conversation.getId(),
                 beforeId,

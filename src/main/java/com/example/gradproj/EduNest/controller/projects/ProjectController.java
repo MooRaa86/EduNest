@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.controller.projects;
 
 import com.example.gradproj.EduNest.dto.SimpleResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
 import com.example.gradproj.EduNest.dto.projects.request.CreateProjectRequest;
 import com.example.gradproj.EduNest.dto.projects.request.PatchProjectRequest;
@@ -116,7 +117,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "4") int size,
             @PathVariable UUID msid
     ) {
-        Pageable pageable = (Pageable) PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         PageResponse<ProjectWithStatsResponse> response =
                 projectService.getProject(projectName, status, msid, pageable);
@@ -136,7 +137,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "6") int size
     ) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
 
         ProjectStatisticsDTO stats =
                 projectService.getProjectStatistics(projectId, pageable);
@@ -158,7 +159,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "4") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         FullProjectDashBoardDto fullDashboard = projectService.getFullProjectDashboard(mentorshipId, projectName, status, pageable);
         
         SimpleResponse resp = new SimpleResponse();

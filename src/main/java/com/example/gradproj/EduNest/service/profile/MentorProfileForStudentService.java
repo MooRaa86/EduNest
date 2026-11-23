@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.profile;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.profile.response.MentorProfileForStudent.*;
 import com.example.gradproj.EduNest.entity.users.SocialMedia;
 import com.example.gradproj.EduNest.repository.mentorShip.MentorShipRepository;
@@ -94,7 +95,7 @@ public class MentorProfileForStudentService {
 
     public PageResponse<MentorProfileMentorshipsDto> getMentorMentorships(String identifier, int size, int page) {
         requireVisibleMentor(identifier);
-        Pageable pageable = Pageable.ofSize(size).withPage(page);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<MentorProfileMentorshipsDto> mentorshipsPage;
 
         if (isUuid(identifier)) {
@@ -127,7 +128,7 @@ public class MentorProfileForStudentService {
 
     public PageResponse<MentorProfileReviews> getMentorReviews(String identifier, int size, int page) {
         requireVisibleMentor(identifier);
-        Pageable pageable = Pageable.ofSize(size).withPage(page);
+        Pageable pageable = PaginationPolicy.ofClamped(page, size);
         Page<MentorProfileReviews> reviewsPage;
 
         if (isUuid(identifier)) {

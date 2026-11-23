@@ -67,7 +67,7 @@ Dev profile (`!prod`): same servlet, but `ProjectSecurityConfig` chain — every
 | Scheduling | `@EnableScheduling`; jobs: OTP cleanup hourly (`OtpCleanupService.removeExpiredOtps`) |
 | Async | `@EnableAsync` (mail, notification fan-outs) |
 | DDL | `hibernate.ddl-auto=update` + `show-sql=true` in **both** profiles |
-| Jackson | `fail-on-unknown-properties=true` in prod only |
+| Jackson | `fail-on-unknown-properties=true` in common configuration and prod (EB-63 / API-05) |
 | Health checks | **none** (no actuator dependency, no Docker `HEALTHCHECK`) |
 | Logging | default Spring console logging; **no logback config**; 4× `System.out.println` (OtpCleanupService, QuizSubmissionServiceImpl:97, JwtChannelInterceptor:153, RolesSeeder:24) |
 

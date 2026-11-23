@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.notification;
 
 import com.example.gradproj.EduNest.dto.mentorShipDTOs.response.PageResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.notification.AdminNotificationResponse;
 import com.example.gradproj.EduNest.dto.notification.NotificationDto;
 import com.example.gradproj.EduNest.entity.notification.AdminNotification;
@@ -67,8 +68,14 @@ public class NotificationService {
         afterCommitExecutor.execute(sendAction);
     }
 
+    /**
+     * P4-09/EB-58 (approved exception A): notification surfaces keep the
+     * pre-existing shipped cap of 100 (EB-50 / NOTIF-05, QA-pinned by
+     * NotificationPipelineProbesTest) — delegated to the shared policy with an
+     * explicit compatibility cap, NOT lowered to the global 50.
+     */
     private int clampPageSize(int size) {
-        return Math.max(1, Math.min(size, 100));
+        return PaginationPolicy.clampSize(size, PaginationPolicy.NOTIFICATION_MAX_PAGE_SIZE);
     }
 
 

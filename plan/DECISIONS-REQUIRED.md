@@ -18,7 +18,7 @@
 | D-08 | Late-submission & quiz close policy | PO | Before P4-04 | P4-04 |
 | D-09 | Points reconciliation & completion freeze rules | PO | Before P4-02 | P4-02 |
 | D-09a | Legacy Submission Grading Policy (Double-Credit Prevention) | PO + Eng Lead | ✅ Decided 2026-11-08 (Integrity First) | EB-51 (P4-02) |
-| D-10 | `passPoints`/unlock: implement or retire | PO | Before P4-15 (may be deferred) | P4-15 (conditional) |
+| D-10 | `passPoints`/unlock: implement or retire | PO | ✅ Decided 2026-11-14 (defer this sprint) | P4-15 (deferred) |
 | D-11 | Certificate PDF feature: implement or claim-update | PO | Before P5-05 (deferral allowed) | P5-05 content, optional feature |
 | D-12 | Admin notification broadcast model | PO + Eng Lead | Before P4-01 slice | P4-01 |
 | D-13 | Chat read receipts scope | PO (deferral allowed) | Before P4-07 | P4-07 (conditional) |
@@ -29,7 +29,7 @@
 | D-17 | Fresh-deployment default commission rate | PO | Before P3-05 | P3-05 |
 | D-18 | Soft-deleted users' visibility on public reads | PO | Before P3-04 | P3-04 |
 | D-19 | Git history cleanup approval for committed uploads | Eng Lead + PO | Before P6-06 execution | P6-06 |
-| D-20 | API envelope/path standardization scope | Eng Lead + FE liaison | Before P4-16 (deferral expected) | P4-16 (conditional) |
+| D-20 | API envelope/path standardization scope | Eng Lead + FE liaison | Before P4-16 (PO recommendation pending confirmation) | P4-16 (conditional) |
 | D-21 | `features/roadmap/**` fate | PO | Before P5-05 | doc sub-item |
 | D-22 | Hosting & environments (staging/prod target, DNS/TLS) | PO + Infra + Eng Lead | ✅ Decided 2026-10-25 (container + Supabase) | P6-02+ §all infra; P7-05+ (unblocked) |
 | D-23 | CORS allowed-origins values | PO + FE liaison | Before P1-23 | P1-23 |
@@ -176,6 +176,8 @@
 ### D-10 — passPoints/unlock
 - **Question:** Implement checkpoint unlock semantics (feature) or remove `passPoints` + fix claims?
 - **Default:** defer as feature; remove the dead field's implication from claims (P6-05 docs) if unapproved. Decide-by: before P4-15.
+- **Outcome (2026-11-14, PO-approved):** Defer checkpoint unlocking for the current sprint. The feature is **not implemented**: `passPoints` is stored but does not enforce unlocking. No prerequisite enforcement is authorized, and existing student content access remains unchanged.
+- **Compatibility exception:** Preserve the existing `passPoints` API field and database column temporarily for backward compatibility. This PO-approved retention supersedes the original P4-15 deferral-cleanup recommendation to remove the field. Future implementation or field removal requires a new PO decision and a reviewed implementation or API/schema retirement plan.
 
 ### D-11 — Certificates PDF
 - **Question:** Implement iText-rendered PDF certificates (feature) or correct README/books claims?
@@ -271,6 +273,9 @@
 ### D-20 — API envelope standardization
 - **Question:** Unify `SimpleResponse` vs typed DTOs vs `PageResponse` (API-01) and normalize legacy path styles (API-03) now or later?
 - **Default:** defer both (breaking-change cost vs zero user value mid-stabilization). Decide-by: before P4-16.
+- **PO recommendation — pending Engineering Lead and Frontend Liaison confirmation:** Defer success-response envelope standardization (API-01), API path consolidation and legacy route retirement (API-03) for the current sprint. This is a proposed outcome, not a finalized D-20 decision.
+- **Proposed compatibility boundary:** Preserve existing routes, request and response formats, and the established `ApiError` contract. Do not introduce aliases or migration layers; do not alter authentication headers, token behavior, authorization rules, or email/identifier compatibility behavior.
+- **Proposed reopening trigger:** If confirmed, reconsider through a future explicit API versioning or frontend migration decision. Engineering Lead and Frontend Liaison confirmation remains pending.
 
 ### D-21 — Roadmap module
 - **Question:** `features/roadmap/**` empty skeleton — implement or delete (TD-06)?

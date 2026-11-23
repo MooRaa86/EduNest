@@ -1,6 +1,7 @@
 package com.example.gradproj.EduNest.service.dashboard;
 
 import com.example.gradproj.EduNest.dto.dashboard.DashboardCardsResponse;
+import com.example.gradproj.EduNest.utils.PaginationPolicy;
 import com.example.gradproj.EduNest.dto.dashboard.MentorDashboardResponse;
 import com.example.gradproj.EduNest.dto.dashboard.SalesChartResponse;
 import com.example.gradproj.EduNest.dto.livesession.response.UpcomingSessionResponse;
@@ -78,10 +79,7 @@ public class DashboardService {
     @PreAuthorize("hasRole('MENTOR')")
     public PageResponse<ReviewsRsponse> getReviewsInDashboard(int page , int size){
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("updatedAt").descending()
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("updatedAt").descending()
         );
 
         Page<MentorShipReviews> reviews = reviewsRepository.
@@ -110,10 +108,7 @@ public class DashboardService {
 
         String email = getCurrentUserEmail();
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("scheduledAt").ascending()
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("scheduledAt").ascending()
         );
 
         Page<UpcomingSessionResponse> sessions =
@@ -183,10 +178,7 @@ public class DashboardService {
 
         String email = getCurrentUserEmail();
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("student.firstName").ascending()
+        Pageable pageable = PaginationPolicy.ofClamped(page, size, Sort.by("student.firstName").ascending()
         );
 
         Page<MentorStudentListResponse> result =
