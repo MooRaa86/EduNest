@@ -637,8 +637,33 @@ public class mentorShipServiceI implements mentorShipService{
     public PageResponse<MentorshipExploreDto> getMentorShipsExplorePage(String keyword, String category, Double minPrice, Double maxPrice, int page, int size) {
         Pageable pageable = PaginationPolicy.ofClamped(page, size);
         String cleanKeyword = sanitizeKeyword(keyword);
-        String cleanCategory = (category != null && !category.isBlank()) ? category.trim() : null;
-        Page<MentorshipExploreDto> result = MentorShipRepository.searchMentorShips(cleanKeyword, cleanCategory, minPrice, maxPrice, pageable);
+        // EB-59/MSH-12: never bind a bare nullable parameter whose only use is `:p IS NULL`.
+        // On PostgreSQL such a parameter has no inferable type and the Extended Query Protocol Parse
+        // fails with 42P18 "could not determine data type of parameter $n" (the count query fails first,
+        // which aborts the transaction, then subsequent statements report 25P02).
+        // To guarantee zero untyped null parameters across both Postgres and H2:
+        // 1. Typed boolean flags drive the optional filter branches (:hasX = FALSE OR ...)
+        // 2. Non-null default fallbacks ("", 0.0) ensure all bound values carry concrete JDBC types.
+        boolean hasKeyword = cleanKeyword != null;
+        String keywordPattern = hasKeyword ? "%" + cleanKeyword + "%" : "";
+
+        String cleanCategory = (category != null && !category.isBlank()) ? category.trim().toLowerCase() : null;
+        boolean hasCategory = cleanCategory != null;
+        String categoryParam = hasCategory ? cleanCategory : "";
+
+        boolean hasMinPrice = minPrice != null && !Double.isNaN(minPrice) && !Double.isInfinite(minPrice);
+        double minPriceParam = hasMinPrice ? minPrice : 0.0;
+
+        boolean hasMaxPrice = maxPrice != null && !Double.isNaN(maxPrice) && !Double.isInfinite(maxPrice);
+        double maxPriceParam = hasMaxPrice ? maxPrice : 0.0;
+
+        Page<MentorshipExploreDto> result = MentorShipRepository.searchMentorShips(
+                hasKeyword, keywordPattern,
+                hasCategory, categoryParam,
+                hasMinPrice, minPriceParam,
+                hasMaxPrice, maxPriceParam,
+                pageable
+        );
         return PageResponse.<MentorshipExploreDto>builder()
                 .content(result.getContent())
                 .page(result.getNumber())
