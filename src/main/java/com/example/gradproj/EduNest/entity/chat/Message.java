@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "messages")
@@ -18,6 +19,17 @@ public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "public_id", nullable = false, unique = true, updatable = false)
+    @Builder.Default
+    private UUID publicId = UUID.randomUUID();
+
+    @PrePersist
+    protected void ensurePublicId() {
+        if (this.publicId == null) {
+            this.publicId = UUID.randomUUID();
+        }
+    }
 
     @ManyToOne
     private Conversation conversation;

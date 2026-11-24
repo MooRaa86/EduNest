@@ -70,7 +70,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 		assertThat(sentMsg.getId()).isNotNull();
 		assertThat(sentMsg.getConversationId()).isNotNull();
 		UUID conversationId = sentMsg.getConversationId();
-		Long messageId = sentMsg.getId();
+		UUID messageId = sentMsg.getId();
 
 		// Step 2: User B lists conversations and sees User A
 		mockMvc.perform(get("/api/v1/conversation/all")
@@ -83,7 +83,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 		mockMvc.perform(get("/api/v1/conversation/{conversationId}/messages", conversationId)
 						.header("Authorization", tokenB))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.apiResponse.messages[0].id").value(messageId))
+				.andExpect(jsonPath("$.apiResponse.messages[0].id").value(messageId.toString()))
 				.andExpect(jsonPath("$.apiResponse.messages[0].content").value("Hi there, let's collaborate on the project!"));
 
 		// Step 4: User A edits message
@@ -94,7 +94,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.apiResponse.['message after update'].content").value("Hi there, let's collaborate on Module 2!"));
 
-		Message updated = messages.findById(messageId).orElseThrow();
+		Message updated = messages.findByPublicId(messageId).orElseThrow();
 		assertThat(updated.getContent()).isEqualTo("Hi there, let's collaborate on Module 2!");
 
 		// Step 5: User A deletes message
@@ -102,7 +102,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 						.header("Authorization", tokenA))
 				.andExpect(status().isOk());
 
-		assertThat(messages.findById(messageId)).isEmpty();
+		assertThat(messages.findByPublicId(messageId)).isEmpty();
 	}
 
 	@Test
@@ -167,7 +167,7 @@ public class DirectMessagingFlowIntegrationTest extends ProdChainIntegrationTest
 				.andExpect(status().isForbidden());
 
 		// Message remains unmodified in repository
-		Message untouched = messages.findById(sentMsg.getId()).orElseThrow();
+		Message untouched = messages.findByPublicId(sentMsg.getId()).orElseThrow();
 		assertThat(untouched.getContent()).isEqualTo("Original message by author");
 	}
 }

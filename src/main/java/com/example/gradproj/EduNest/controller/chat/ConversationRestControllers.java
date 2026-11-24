@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -34,7 +35,7 @@ public class ConversationRestControllers {
     @Operation(summary = "Get messages of a conversation")
     public ResponseEntity<SimpleResponse> getMessages(
             @PathVariable UUID conversationId,
-            @RequestParam(required = false) Long beforeId,
+            @RequestParam(required = false) UUID beforeId,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
     ) {
@@ -57,7 +58,7 @@ public class ConversationRestControllers {
     @PatchMapping("/messages/{messageId}")
     @Operation(summary = "Edit a message")
     public ResponseEntity<SimpleResponse> edit(
-            @PathVariable Long messageId,
+            @PathVariable UUID messageId,
             @RequestBody EditMessageRequest request,
             Authentication authentication
     ) {
@@ -91,19 +92,20 @@ public class ConversationRestControllers {
     @DeleteMapping("/messages/{messageId}")
     @Operation(summary = "Delete a message")
     public void delete(
-            @PathVariable Long messageId,
+            @PathVariable UUID messageId,
             @RequestBody(required = false) DeleteMessageRequest request,
             Authentication authentication
     ) {
-        String recipientEmail = conversationService.deleteMessage(
+        ConversationService.MessageDeletion deletion = conversationService.deleteMessage(
                 messageId,
                 authentication.getName()
         );
-        
-        Map<String,Object> event = Map.of(
-                "type","DELETE",
-                "messageId", messageId
-        );
+        String recipientEmail = deletion.recipientEmail();
+
+        Map<String,Object> event = new LinkedHashMap<>();
+        event.put("type", "DELETE");
+        event.put("messageId", messageId);
+        event.put("conversationId", deletion.conversationId());
 
         messagingTemplate.convertAndSendToUser(
                 authentication.getName(),

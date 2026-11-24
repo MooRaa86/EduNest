@@ -112,7 +112,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		Message msg = messages.saveAndFlush(Message.builder().conversation(conv).sender(owner)
 				.content("original content").sentAt(LocalDateTime.now()).build());
 
-		mockMvc.perform(patch("/api/v1/conversation/messages/{id}", msg.getId())
+		mockMvc.perform(patch("/api/v1/conversation/messages/{id}", msg.getPublicId())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT))
 						.contentType("application/json")
 						.content("{\"content\":\"tampered by stranger\",\"recipientEmail\":\""
@@ -137,7 +137,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 				.content("original text").sentAt(LocalDateTime.now()).build());
 
 		// Even when client provides a spoofed recipient, server-derived recipient is the true partner
-		mockMvc.perform(patch("/api/v1/conversation/messages/{id}", msg.getId())
+		mockMvc.perform(patch("/api/v1/conversation/messages/{id}", msg.getPublicId())
 						.header("Authorization", auth.authToken(owner.getEmail(), AuthFixture.STUDENT))
 						.contentType("application/json")
 						.content("{\"content\":\"revised text\",\"recipientEmail\":\""
@@ -163,7 +163,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		Message msg = messages.saveAndFlush(Message.builder().conversation(conv).sender(owner)
 				.content("keep me safe").sentAt(LocalDateTime.now()).build());
 
-		mockMvc.perform(delete("/api/v1/conversation/messages/{id}", msg.getId())
+		mockMvc.perform(delete("/api/v1/conversation/messages/{id}", msg.getPublicId())
 						.header("Authorization", auth.authToken(STRANGER, AuthFixture.STUDENT))
 						.contentType("application/json")
 						.content("{\"recipientEmail\":\"" + partner.getEmail() + "\"}"))
@@ -183,7 +183,7 @@ class ConversationProbesTest extends ProdChainIntegrationTestBase {
 		Message msg = messages.saveAndFlush(Message.builder().conversation(conv).sender(owner)
 				.content("delete me").sentAt(LocalDateTime.now()).build());
 
-		mockMvc.perform(delete("/api/v1/conversation/messages/{id}", msg.getId())
+		mockMvc.perform(delete("/api/v1/conversation/messages/{id}", msg.getPublicId())
 						.header("Authorization", auth.authToken(owner.getEmail(), AuthFixture.STUDENT))
 						.contentType("application/json")
 						.content("{\"recipientEmail\":\"" + partner.getEmail() + "\"}"))

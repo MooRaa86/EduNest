@@ -43,6 +43,7 @@ To prevent version collisions across concurrent feature branches in Phase 3, mig
 | **`V11`** | **MERGED** | `EB-52` | `V11__completion_jobs_and_snapshots.sql` | Adds completion jobs and frozen ranking snapshots. |
 | **`V12`** | **MERGED** | `EB-53` | `V12__quiz_close_at_and_submission_is_late.sql` | Explicit quiz `close_at` auto-close and late-submission `is_late` flag. |
 | **`V14`** | **MERGED (this PR)** | `EB-108` | `V14__payment_transactions.sql` | Stripe enrollment-payment transaction store (D-28): one row per Checkout Session, unique `stripe_session_id` idempotency backstop, server-side amount snapshots. **V13 is RESERVED** for the test-only Flyway startup sentinel (`src/test/resources/startup-migrations`) and must never be used by a real migration. |
+| **`V15`** | **MERGED (this PR)** | `EB-109` follow-up | `V15__messages_public_uuid_identifiers.sql` | Adds `messages.public_id` (UUID, `NOT NULL`, unique index) so private 1:1 conversation messages expose opaque identifiers like `chat_messages` already do. V6 intentionally skipped `messages`; this migration is additive only and leaves the internal bigint identity PK untouched. |
 
 *Note: Do not invent or assign version numbers out of order. Consult the engineering lead and Phase 3 task roadmap before reserving versions beyond V5.*
 

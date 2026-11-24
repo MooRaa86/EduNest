@@ -78,7 +78,7 @@ public class chatRestControllers {
     @Operation(summary = "get latest messages of the room")
     public ResponseEntity<SimpleResponse> getMessages(
             @PathVariable UUID roomId,
-            @RequestParam(required = false) Long beforeId,
+            @RequestParam(required = false) UUID beforeId,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
     ) {

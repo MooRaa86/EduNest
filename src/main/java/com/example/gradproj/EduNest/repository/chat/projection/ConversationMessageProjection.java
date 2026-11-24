@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public interface ConversationMessageProjection {
 
-    Long getMessageId();
+    UUID getMessageId();
 
     String getContent();
 

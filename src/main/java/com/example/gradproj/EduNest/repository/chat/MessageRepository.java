@@ -8,15 +8,21 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.repository.query.Param;
 
 public interface MessageRepository
         extends JpaRepository<Message, Long> {
 
+    Optional<Message> findByPublicId(UUID publicId);
+
+    @Query("SELECT m.id FROM Message m WHERE m.publicId = :publicId")
+    Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
+
     @Query("""
     SELECT
-        m.id as messageId,
+        m.publicId as messageId,
         m.content as content,
         m.sentAt as sentAt,
         m.sender.email as senderEmail,

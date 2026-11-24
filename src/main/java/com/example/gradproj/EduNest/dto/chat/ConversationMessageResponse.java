@@ -15,7 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ConversationMessageResponse {
 
-    private Long id;
+    private UUID id;
     private UUID conversationId;
     private UUID senderId;
     private String senderEmail;
