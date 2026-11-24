@@ -518,8 +518,10 @@ public class GatewayService {
                                         + "Row is written inside the transaction (source of truth); live push fires after commit (EB-50).",
                                 null, "Authenticated CONNECT"),
                         new GatewayModel.WsDestination("/user/queue/messages", "subscribe",
-                                "Private 1:1 conversation messages — ConversationMessageResponse {id, conversationId, senderId, "
-                                        + "senderEmail, senderName, senderProfileImageUrl, recipientId, recipientEmail, content, sentAt}. "
+                                "Private 1:1 conversation messages - ConversationMessageResponse {id, conversationId, senderId, "
+                                        + "senderEmail, senderName, senderProfileImageUrl, recipientId, recipientEmail, content, sentAt} "
+                                        + "where id is the message's public UUID. DELETE events are "
+                                        + "{type:\"DELETE\", messageId:<uuid>, conversationId:<uuid>}. "
                                         + "Both the recipient AND the sender receive it (sender echo = instant UI update).",
                                 null, "Authenticated CONNECT"),
                         new GatewayModel.WsDestination("/user/queue/errors", "subscribe",

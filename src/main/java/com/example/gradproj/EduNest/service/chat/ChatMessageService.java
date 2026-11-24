@@ -112,42 +112,6 @@ public class ChatMessageService {
     }
 
 
-    public List<ChatMessageResponse> getRoomMessages(
-            Long roomId,
-            Long beforeId,
-            int size,
-            String senderEmail
-    ) {
-
-        if (!securityService.isUserMemberOfChatRoom(roomId, senderEmail)) {
-            throw new AccessDeniedException("You are not a member of this room");
-        }
-
-        Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
-
-        List<ChatMessageProjection> messages =
-                messageRepo.findMessagesByRoom(
-                        roomId,
-                        beforeId,
-                        pageable, isAdmin()
-                );
-
-        UUID roomPublicId = roomRepo.findById(roomId).map(com.example.gradproj.EduNest.entity.chat.ChatRoom::getPublicId).orElse(null);
-        return messages.stream()
-                .map(m -> ChatMessageResponse.builder()
-                        .id(m.getMessageId())
-                        .message(m.getContent())
-                        .roomId(roomPublicId)
-                        .time(m.getCreatedAt())
-                        .senderName(m.getSenderName())
-                        .senderEmail(m.getSenderEmail())
-                        .senderProfileImageUrl(m.getSenderProfileImageUrl())
-                        .build())
-                .toList();
-    }
-
-
-
     private ChatMessageResponse messageMapper(ChatMessage message, UUID roomId) {
         return ChatMessageResponse.builder()
                 .id(message.getPublicId())
@@ -243,9 +207,14 @@ public class ChatMessageService {
                 .orElseThrow(() -> new globalLogicEx("Message not found"));
     }
 
+    /**
+     * Keyset history for a cohort room. The {@code beforeId} cursor is the message's
+     * public UUID; it is resolved to the internal bigint id so the repository keeps its
+     * {@code m.id < :beforeId} index plan instead of comparing UUIDs per row.
+     */
     public List<ChatMessageResponse> getRoomMessages(
             UUID roomId,
-            Long beforeId,
+            UUID beforeId,
             int size,
             String senderEmail
     ) {
@@ -253,8 +222,9 @@ public class ChatMessageService {
             throw new AccessDeniedException("You are not a member of this room");
         }
         Long internalRoomId = resolveRoomInternalId(roomId);
+        Long internalBeforeId = beforeId != null ? resolveMessageInternalId(beforeId) : null;
         Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
-        List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, beforeId, pageable, isAdmin());
+        List<ChatMessageProjection> messages = messageRepo.findMessagesByRoom(internalRoomId, internalBeforeId, pageable, isAdmin());
         return messages.stream()
                 .map(m -> ChatMessageResponse.builder()
                         .id(m.getMessageId())

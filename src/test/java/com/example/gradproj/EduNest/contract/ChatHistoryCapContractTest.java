@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -63,17 +65,17 @@ class ChatHistoryCapContractTest extends ProdChainIntegrationTestBase {
 		}
 
 		Long roomId = rooms.findByPublicId(room.getPublicId()).orElseThrow().getId();
+		UUID roomPublicId = room.getPublicId();
 
-		assertThat(chatMessageService.getRoomMessages(roomId, null, 20, studentEmail)).hasSize(20);
-		assertThat(chatMessageService.getRoomMessages(roomId, null, 5000, studentEmail)).hasSize(50);
-		assertThat(chatMessageService.getRoomMessages(roomId, null, 0, studentEmail)).hasSize(1);
+		assertThat(chatMessageService.getRoomMessages(roomPublicId, null, 20, studentEmail)).hasSize(20);
+		assertThat(chatMessageService.getRoomMessages(roomPublicId, null, 5000, studentEmail)).hasSize(50);
+		assertThat(chatMessageService.getRoomMessages(roomPublicId, null, 0, studentEmail)).hasSize(1);
 
-		Long newestId = messages.findAll().stream()
+		ChatMessage newest = messages.findAll().stream()
 				.filter(m -> m.getChatRoom().getId().equals(roomId))
-				.map(ChatMessage::getId)
-				.max(Long::compareTo)
+				.max(java.util.Comparator.comparing(ChatMessage::getId))
 				.orElseThrow();
-		var cursorPage = chatMessageService.getRoomMessages(roomId, newestId, 50, studentEmail);
+		var cursorPage = chatMessageService.getRoomMessages(roomPublicId, newest.getPublicId(), 50, studentEmail);
 		assertThat(cursorPage).hasSize(50);
 		assertThat(cursorPage.get(0).getMessage()).isEqualTo("msg-59");
 	}

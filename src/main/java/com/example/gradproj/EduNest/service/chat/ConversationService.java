@@ -38,6 +38,13 @@ public class ConversationService {
     /** Internal routing destination is never serialized into the response payload. */
     public record MessageDelivery(ConversationMessageResponse payload, String recipientEmail) { }
 
+    /**
+     * Post-delete routing data: the server-derived recipient email plus the now-deleted
+     * message's conversation public id, so the DELETE WebSocket event can be routed
+     * precisely by subscribed clients.
+     */
+    public record MessageDeletion(String recipientEmail, UUID conversationId) { }
+
     private final ConversationRepository conversationRepo;
     private final MessageRepository messageRepo;
     private final UserRepository userRepo;
@@ -86,7 +93,7 @@ public class ConversationService {
         }
 
         return ConversationMessageResponse.builder()
-                .id(msg.getId())
+                .id(msg.getPublicId())
                 .conversationId(c != null ? c.getPublicId() : null)
                 .senderId(senderId)
                 .senderEmail(senderDeleted ? null : msg.getSender().getEmail())
@@ -175,15 +182,20 @@ public class ConversationService {
     /**
      * CHAT-02 (P1-13 / EB-20): Only conversation participants or ADMIN can read messages.
      * Prevents IDOR and enumeration oracles.
+     *
+     * <p>The {@code beforeId} cursor is the message's public UUID; it is resolved to the
+     * internal bigint id before querying so the {@code m.id < :beforeId} keyset plan and
+     * index usage are preserved.</p>
      */
     public List<ConversationMessageResponse> getConversationMessages(
-            Long conversationId,
-            Long beforeId,
+            UUID conversationId,
+            UUID beforeId,
             int size,
             String requesterEmail,
             boolean isAdmin
     ) {
-        Conversation conversation = conversationRepo.findById(conversationId).orElse(null);
+        Conversation conversation = conversationRepo.findByPublicId(conversationId)
+                .orElse(null);
         if (conversation == null) {
             if (isAdmin) {
                 throw new EntityNotFoundException("Conversation not found");
@@ -198,14 +210,13 @@ public class ConversationService {
             throw new AccessDeniedException("Not authorized to view this conversation");
         }
 
+        Long internalBeforeId = beforeId != null ? resolveMessageInternalId(beforeId) : null;
         Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
-
-        List<ConversationMessageProjection> messages =
-                messageRepo.findConversationMessages(
-                        conversationId,
-                        beforeId,
-                        pageable
-                );
+        List<ConversationMessageProjection> messages = messageRepo.findConversationMessages(
+                conversation.getId(),
+                internalBeforeId,
+                pageable
+        );
 
         String user1Email = conversation.getUser1() != null ? conversation.getUser1().getEmail() : null;
         String user2Email = conversation.getUser2() != null ? conversation.getUser2().getEmail() : null;
@@ -245,7 +256,7 @@ public class ConversationService {
      */
     @Transactional
     public ConversationMessageResponse editMessage(
-            Long messageId,
+            UUID messageId,
             String senderEmail,
             EditMessageRequest request
     ) {
@@ -253,9 +264,9 @@ public class ConversationService {
     }
 
     @Transactional
-    public MessageDelivery editMessageForDelivery(Long messageId, String senderEmail, EditMessageRequest request) {
+    public MessageDelivery editMessageForDelivery(UUID messageId, String senderEmail, EditMessageRequest request) {
 
-        Message msg = messageRepo.findById(messageId).orElse(null);
+        Message msg = messageRepo.findByPublicId(messageId).orElse(null);
         if (msg == null) {
             throw new AccessDeniedException("Not allowed to edit this message");
         }
@@ -275,11 +286,11 @@ public class ConversationService {
      * server-derived recipient email for event routing.
      */
     @Transactional
-    public String deleteMessage(
-            Long messageId,
+    public MessageDeletion deleteMessage(
+            UUID messageId,
             String senderEmail
     ) {
-        Message msg = messageRepo.findById(messageId).orElse(null);
+        Message msg = messageRepo.findByPublicId(messageId).orElse(null);
         if (msg == null) {
             throw new AccessDeniedException("Not allowed to delete this message");
         }
@@ -298,8 +309,9 @@ public class ConversationService {
             }
         }
 
+        UUID conversationId = c != null ? c.getPublicId() : null;
         messageRepo.delete(msg);
-        return recipientEmail;
+        return new MessageDeletion(recipientEmail, conversationId);
     }
 
     public List<ConversationListResponse> getUserConversations(
@@ -332,64 +344,9 @@ public class ConversationService {
         return conversationRepo.save(c);
     }
 
-    private Long resolveConversationInternalId(UUID publicId) {
-        return conversationRepo.findIdByPublicId(publicId)
-                .orElseThrow(() -> new globalLogicEx("Conversation not found"));
-    }
-
-    public List<ConversationMessageResponse> getConversationMessages(
-            UUID conversationId,
-            Long beforeId,
-            int size,
-            String requesterEmail,
-            boolean isAdmin
-    ) {
-        Conversation conversation = conversationRepo.findByPublicId(conversationId)
-                .orElse(null);
-        if (conversation == null) {
-            if (isAdmin) {
-                throw new EntityNotFoundException("Conversation not found");
-            }
-            throw new AccessDeniedException("Not authorized to view this conversation");
-        }
-
-        boolean isParticipant = (conversation.getUser1() != null && conversation.getUser1().getEmail().equals(requesterEmail))
-                || (conversation.getUser2() != null && conversation.getUser2().getEmail().equals(requesterEmail));
-
-        if (!isAdmin && !isParticipant) {
-            throw new AccessDeniedException("Not authorized to view this conversation");
-        }
-
-        Pageable pageable = PageRequest.of(0, PaginationPolicy.clampSize(size));
-        List<ConversationMessageProjection> messages = messageRepo.findConversationMessages(
-                conversation.getId(),
-                beforeId,
-                pageable
-        );
-
-        String user1Email = conversation.getUser1() != null ? conversation.getUser1().getEmail() : null;
-        String user2Email = conversation.getUser2() != null ? conversation.getUser2().getEmail() : null;
-        boolean user1Deleted = conversation.getUser1() != null && conversation.getUser1().isDeleted();
-        boolean user2Deleted = conversation.getUser2() != null && conversation.getUser2().isDeleted();
-
-        return messages.stream()
-                .map(m -> {
-                    String sender = m.getSenderEmail();
-                    String recipient = (sender != null && sender.equals(user1Email)) ? user2Email : user1Email;
-                    boolean recipientDeleted = sender != null && sender.equals(user1Email) ? user2Deleted : user1Deleted;
-                    boolean redactSender = !isAdmin && Boolean.TRUE.equals(m.getSenderDeleted());
-                    return ConversationMessageResponse.builder()
-                            .id(m.getMessageId())
-                            .conversationId(conversationId)
-                            .content(m.getContent())
-                            .sentAt(m.getSentAt())
-                            .senderEmail(redactSender ? null : sender)
-                            .senderName(redactSender ? "Deleted user" : m.getSenderName())
-                            .senderProfileImageUrl(redactSender ? null : m.getSenderProfileImageUrl())
-                            .recipientEmail(!isAdmin && recipientDeleted ? null : recipient)
-                            .build();
-                })
-                .toList();
+    private Long resolveMessageInternalId(UUID publicId) {
+        return messageRepo.findIdByPublicId(publicId)
+                .orElseThrow(() -> new globalLogicEx("Message not found"));
     }
 
 }

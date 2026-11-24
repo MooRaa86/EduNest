@@ -88,9 +88,9 @@ public class PostgreSqlMigrationIntegrationTest {
                 .as("Fresh migration against empty schema must succeed")
                 .isTrue();
         assertThat(result.migrationsExecuted)
-                .as("Initial migration must execute scripts V1 through V14 "
+                .as("Initial migration must execute scripts V1 through V15 "
                         + "(V13 stays reserved for the test-only startup sentinel)")
-                .isEqualTo(13);
+                .isEqualTo(14);
     }
 
     @Test
@@ -99,8 +99,8 @@ public class PostgreSqlMigrationIntegrationTest {
     void testMigrationHistoryVerification() {
         MigrationInfo[] applied = primaryFlyway.info().applied();
         assertThat(applied)
-                .as("Thirteen migrations must be registered in flyway_schema_history")
-                .hasSize(13);
+                .as("Fourteen migrations must be registered in flyway_schema_history")
+                .hasSize(14);
 
         MigrationInfo v1 = applied[0];
         assertThat(v1.getVersion().getVersion()).isEqualTo("1");
@@ -200,8 +200,8 @@ public class PostgreSqlMigrationIntegrationTest {
                     tables.add(rs.getString("table_name"));
                 }
                 assertThat(tables)
-                        .as("Schema must contain 52 application and support tables through V14 "
-                                + "(payment_transactions added by EB-108)")
+                        .as("Schema must contain 52 application and support tables through V15 "
+                                + "(payment_transactions added by EB-108; V15 only adds a column)")
                         .hasSize(52);
                 assertThat(tables)
                         .as("All four EB-44 archive surfaces must exist")
@@ -283,6 +283,33 @@ public class PostgreSqlMigrationIntegrationTest {
                 assertThat(indexes44)
                         .as("Redundant pair indexes retired by V3 must be gone")
                         .doesNotContain("idx_enrollments_student_mentorship", "idx_mentorship_student");
+            }
+
+            // C3. [V15] Private conversation messages expose a unique public UUID
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT data_type, is_nullable
+                     FROM information_schema.columns
+                     WHERE table_schema = 'public' AND table_name = 'messages' AND column_name = 'public_id'
+                 """)) {
+                assertThat(rs.next())
+                        .as("V15 must add messages.public_id")
+                        .isTrue();
+                assertThat(rs.getString("data_type"))
+                        .as("messages.public_id must be uuid")
+                        .isEqualTo("uuid");
+                assertThat(rs.getString("is_nullable"))
+                        .as("messages.public_id must be NOT NULL")
+                        .isEqualTo("NO");
+            }
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT indexname FROM pg_indexes
+                     WHERE schemaname = 'public' AND indexname = 'idx_messages_public_id'
+                 """)) {
+                assertThat(rs.next())
+                        .as("V15 must create the unique messages.public_id index")
+                        .isTrue();
             }
 
             // D. Verify initial reference roles seeded by V1
@@ -691,12 +718,12 @@ public class PostgreSqlMigrationIntegrationTest {
             MigrateResult upgraded = upgrade.migrate();
             assertThat(upgraded.success).isTrue();
             assertThat(upgraded.migrationsExecuted)
-                    .as("Upgrade from the V6-shaped database must apply V7 through V12 plus V14 "
+                    .as("Upgrade from the V6-shaped database must apply V7 through V12 plus V14 and V15 "
                             + "(V13 stays reserved for the test-only startup sentinel)")
-                    .isEqualTo(7);
+                    .isEqualTo(8);
             assertThat(upgrade.info().applied())
-                    .as("Upgraded schema history must hold all thirteen migrations")
-                    .hasSize(13);
+                    .as("Upgraded schema history must hold all fourteen migrations")
+                    .hasSize(14);
 
             // 4. Verify new columns exist, are nullable, and legacy rows kept unknown snapshot values.
             try (Connection conn = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
