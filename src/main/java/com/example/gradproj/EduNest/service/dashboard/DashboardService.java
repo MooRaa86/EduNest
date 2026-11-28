@@ -137,15 +137,14 @@ public class DashboardService {
 
         String email = getCurrentUserEmail();
 
-        LocalDateTime startDate = null;
+        boolean hasStartDate = months != null && months > 0;
+        LocalDateTime startDate = hasStartDate
+                ? LocalDateTime.now().minusMonths(months)
+                : LocalDateTime.of(1970, 1, 1, 0, 0);
         LocalDateTime endDate = LocalDateTime.now();
 
-        if (months != null && months > 0) {
-            startDate = LocalDateTime.now().minusMonths(months);
-        }
-
         List<MonthlyRevenueProjection> data =
-                enrollmentRepository.getMonthlyRevenueForMentor(email, startDate, endDate);
+                enrollmentRepository.getMonthlyRevenueForMentor(email, hasStartDate, startDate, true, endDate);
 
         return data.stream()
                 .map(p -> new SalesChartResponse(

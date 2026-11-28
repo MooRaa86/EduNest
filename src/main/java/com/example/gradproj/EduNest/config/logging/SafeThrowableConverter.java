@@ -18,10 +18,10 @@ public final class SafeThrowableConverter extends ThrowableHandlingConverter {
             out.append(cause.getClassName());
             StackTraceElementProxy[] frames = cause.getStackTraceElementProxyArray();
             if (frames != null) {
-                for (int i = 0; i < Math.min(frames.length, 30); i++) {
+                for (int i = 0; i < Math.min(frames.length, 10); i++) {
                     out.append(" | ").append(frames[i].getStackTraceElement());
                 }
-                if (frames.length > 30) out.append(" | ...");
+                if (frames.length > 10) out.append(" | ...");
             }
             cause = cause.getCause();
         }

@@ -29,13 +29,13 @@ public class Payments {
 
     @PreAuthorize("hasRole('ADMIN')")
     public List<SalesChartResponse> getAdminSalesChart(Integer months) {
-        LocalDateTime startDate = null;
-        if (months != null && months > 0) {
-            startDate = LocalDateTime.now().minusMonths(months);
-        }
+        boolean hasStartDate = months != null && months > 0;
+        LocalDateTime startDate = hasStartDate
+                ? LocalDateTime.now().minusMonths(months)
+                : LocalDateTime.of(1970, 1, 1, 0, 0);
 
         List<MonthlyRevenueProjection> data =
-                enrollmentRepository.getMonthlyRevenueForAdmin(startDate);
+                enrollmentRepository.getMonthlyRevenueForAdmin(hasStartDate, startDate);
 
         return data.stream()
                 .map(p -> new SalesChartResponse(

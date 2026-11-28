@@ -40,14 +40,16 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         COALESCE(SUM(e.price - e.platformProfit), 0) as totalRevenue
     FROM Enrollment e
     WHERE e.mentorShip.mentor.email = :email
-      AND (:startDate IS NULL OR e.joinedAt >= :startDate)
-      AND (:endDate IS NULL OR e.joinedAt <= :endDate)
+      AND (:hasStartDate = FALSE OR e.joinedAt >= :startDate)
+      AND (:hasEndDate = FALSE OR e.joinedAt <= :endDate)
     GROUP BY YEAR(e.joinedAt), MONTH(e.joinedAt)
     ORDER BY YEAR(e.joinedAt), MONTH(e.joinedAt)
 """)
     List<MonthlyRevenueProjection> getMonthlyRevenueForMentor(
                     @Param("email") String email,
+                    @Param("hasStartDate") boolean hasStartDate,
                     @Param("startDate") LocalDateTime startDate,
+                    @Param("hasEndDate") boolean hasEndDate,
                     @Param("endDate") LocalDateTime endDate
             );
 
@@ -57,11 +59,12 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
         MONTH(e.joinedAt) as month,
         COALESCE(SUM(e.price), 0) as totalRevenue
     FROM Enrollment e
-    WHERE (:startDate IS NULL OR e.joinedAt >= :startDate)
+    WHERE (:hasStartDate = FALSE OR e.joinedAt >= :startDate)
     GROUP BY YEAR(e.joinedAt), MONTH(e.joinedAt)
     ORDER BY YEAR(e.joinedAt), MONTH(e.joinedAt)
 """)
     List<MonthlyRevenueProjection> getMonthlyRevenueForAdmin(
+            @Param("hasStartDate") boolean hasStartDate,
             @Param("startDate") LocalDateTime startDate
     );
 
@@ -82,7 +85,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 """)
     Page<EnrollmentPaymentResponse> findAllEnrollmentPayments(Pageable pageable);
 
-    @Query("""
+    @Query(
+            value = """
     SELECT
         e.student.publicId AS studentId,
         e.student.firstName AS firstName,
@@ -96,8 +100,15 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     FROM Enrollment e
     JOIN e.mentorShip m
     WHERE m.mentor.email = :email
-    GROUP BY e.student.id, e.student.firstName, e.student.lastName, e.student.email
-""")
+    GROUP BY e.student.id, e.student.publicId, e.student.firstName, e.student.lastName, e.student.email, e.student.profileImageUrl
+""",
+            countQuery = """
+    SELECT COUNT(DISTINCT e.student.id)
+    FROM Enrollment e
+    JOIN e.mentorShip m
+    WHERE m.mentor.email = :email
+"""
+    )
     Page<MentorStudentListResponse> findStudentsForMentor(
             @Param("email") String email,
             Pageable pageable
